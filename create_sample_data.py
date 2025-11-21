@@ -40,29 +40,59 @@ def create_sample_xlsx():
     ]
     sheet.append(headers)
 
-    # Fictitious data configuration
-    first_names = [
-        'Alice', 'Bob', 'Carol', 'David', 'Emma', 'Frank', 'Grace', 'Henry',
-        'Iris', 'Jack', 'Kelly', 'Liam', 'Maya', 'Noah', 'Olivia', 'Peter',
-        'Quinn', 'Rachel', 'Sam', 'Taylor', 'Uma', 'Victor', 'Wendy', 'Xavier',
-        'Yara', 'Zoe', 'Alex', 'Blake', 'Casey', 'Drew', 'Ella', 'Finn',
-        'Gia', 'Harper', 'Ivan', 'Jules', 'Kai', 'Luna', 'Max', 'Nora',
-        'Owen', 'Piper', 'Rowan', 'Sage', 'Tess', 'Uri', 'Vale', 'Wade',
-        'Xena', 'Yale'
+    # Fictitious data configuration - tech/engineering themed names
+    names = [
+        'Paige Duty',
+        'Lee Latency',
+        'Mona Torr',
+        'Robin Rollback',
+        'Kenny Canary',
+        'Tracey Loggins',
+        'Sue Q. Ell',
+        'Jason Blob',
+        'Al Ert',
+        'Addie Min',
+        'Tim Out',
+        'Barbie Que',
+        'Terry Byte',
+        'Nole Pointer',
+        'Marge Conflict',
+        'Bridget Branch',
+        'Cody Ryder',
+        'Cy Ferr',
+        'Phil Wall',
+        'Lana Wan',
+        'Artie Ficial',
+        'Ruth Cause',
+        'Matt Rick',
+        'Cassie Cache',
+        'Sue Do',
+        'Pat Ch',
+        'Devin Null',
+        'Justin Time',
+        'Annie O\'Maly',
+        'Sam Box',
+        'Val Idation',
+        'Bill Ding',
+        'Ty Po',
+        'Mike Roservices',
+        'Lou Pe',
+        'Connie Tainer',
+        'Noah Node',
+        'Sara Ver',
+        'Exa M. Elle',
+        'Dee Ploi',
+        'Ray D. O\'Button',
+        'Cam Elcase',
+        'Hashim Map',
+        'Ben Chmark',
+        'Grace Full',
+        'Shel Script',
+        'Sal T. Hash',
+        'Reba Boot',
+        'Stan Dup',
+        'Kay Eight'
     ]
-
-    last_names = [
-        'Anderson', 'Brown', 'Chen', 'Davis', 'Evans', 'Foster', 'Garcia', 'Harris',
-        'Ibrahim', 'Johnson', 'Kim', 'Lee', 'Martinez', 'Nguyen', 'O\'Brien', 'Patel',
-        'Quinn', 'Rodriguez', 'Smith', 'Taylor', 'Usman', 'Vargas', 'Williams', 'Xavier',
-        'Yang', 'Zhang', 'Ahmed', 'Baker', 'Cohen', 'Diaz', 'Ellis', 'Fischer',
-        'Green', 'Hill', 'Islam', 'Jones', 'Khan', 'Lopez', 'Miller', 'Nelson',
-        'Okafor', 'Park', 'Rossi', 'Santos', 'Thomas', 'Underwood', 'Vasquez', 'Wilson',
-        'Xu', 'Yilmaz'
-    ]
-
-    # Ensure we have enough names
-    names = [f"{first_names[i]} {last_names[i]}" for i in range(50)]
 
     supervisory_orgs = [
         'Engineering - Platform',
