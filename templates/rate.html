@@ -1,0 +1,865 @@
+{% extends "base.html" %}
+
+{% block title %}Rate Team - Quarterly Performance Rating{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rating-form {
+        display: grid;
+        gap: 20px;
+    }
+
+    .employee-card {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 25px;
+        transition: border-color 0.3s;
+    }
+
+    .employee-card:hover {
+        border-color: #667eea;
+    }
+
+    .employee-card.rated {
+        border-color: #27ae60;
+        background: #f8fff9;
+    }
+
+    .employee-header {
+        display: grid;
+        grid-template-columns: 2fr 2fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .employee-header div {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .employee-header label {
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    .employee-header span {
+        font-size: 15px;
+        font-weight: 500;
+        color: #2c3e50;
+    }
+
+    .rating-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+    }
+
+    .rating-section h4 {
+        font-size: 14px;
+        color: #2c3e50;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+
+    .rating-input-group {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .rating-input-group label {
+        font-size: 13px;
+        color: #555;
+        min-width: 180px;
+    }
+
+    .rating-input-group input[type="number"] {
+        width: 120px;
+        padding: 8px 12px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: 600;
+        transition: border-color 0.3s;
+    }
+
+    .rating-input-group input[type="number"].invalid {
+        border-color: #e74c3c;
+        background-color: #fee;
+    }
+
+    .rating-input-group input[type="text"] {
+        flex: 1;
+        padding: 8px 12px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .rating-input-group textarea {
+        flex: 1;
+        padding: 10px 12px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        min-height: 80px;
+        resize: vertical;
+        font-family: inherit;
+    }
+
+    .rating-input-group input:focus,
+    .rating-input-group textarea:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .rating-input-group input.invalid:focus {
+        border-color: #e74c3c;
+    }
+
+    .rating-hint {
+        font-size: 12px;
+        color: #666;
+        margin-left: 195px;
+    }
+
+    .save-btn {
+        background: #27ae60;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    .save-btn:hover {
+        background: #229954;
+    }
+
+    .save-btn:disabled {
+        background: #95a5a6;
+        cursor: not-allowed;
+    }
+
+    .saved-indicator {
+        color: #27ae60;
+        font-size: 14px;
+        font-weight: 600;
+        opacity: 0;
+        transition: opacity 0.3s;
+        margin-left: 15px;
+    }
+
+    .saved-indicator.show {
+        opacity: 1;
+    }
+
+    .filter-section {
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .filter-btn {
+        padding: 8px 16px;
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 14px;
+    }
+
+    .filter-btn:hover {
+        border-color: #667eea;
+    }
+
+    .filter-btn.active {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+
+    .workday-info {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 15px;
+        font-size: 12px;
+    }
+
+    .workday-info div {
+        background: #f0f0f0;
+        padding: 8px;
+        border-radius: 4px;
+    }
+
+    .workday-info label {
+        display: block;
+        color: #666;
+        font-weight: 600;
+        margin-bottom: 3px;
+        font-size: 10px;
+        text-transform: uppercase;
+    }
+
+    .workday-info span {
+        color: #2c3e50;
+        display: block;
+        word-wrap: break-word;
+    }
+
+    /* Compact view styles */
+    .view-toggle {
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .view-btn {
+        padding: 8px 20px;
+        background: white;
+        border: 2px solid #667eea;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        color: #667eea;
+        transition: all 0.3s;
+    }
+
+    .view-btn:hover {
+        background: #f0f2ff;
+    }
+
+    .view-btn.active {
+        background: #667eea;
+        color: white;
+    }
+
+    #compact-view {
+        display: none;
+    }
+
+    #compact-view.active {
+        display: block;
+    }
+
+    #detailed-view.inactive {
+        display: none;
+    }
+
+    .compact-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    .compact-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #2c3e50;
+        border-bottom: 2px solid #e0e0e0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .compact-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .compact-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .compact-table tr.has-rating {
+        background: #f8fff9;
+    }
+
+    .compact-table input[type="number"] {
+        width: 80px;
+        padding: 6px 10px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .compact-table input[type="number"].invalid {
+        border-color: #e74c3c;
+        background-color: #fee;
+    }
+
+    .compact-table .validation-error {
+        display: block;
+        color: #e74c3c;
+        font-size: 11px;
+        margin-top: 2px;
+    }
+
+    .compact-save-indicator {
+        font-size: 11px;
+        color: #27ae60;
+        opacity: 0;
+        transition: opacity 0.3s;
+        margin-left: 10px;
+    }
+
+    .compact-save-indicator.show {
+        opacity: 1;
+    }
+
+    .compact-table th.sortable {
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+        padding-right: 25px;
+    }
+
+    .compact-table th.sortable:hover {
+        background: #e8e9ea;
+    }
+
+    .compact-table th.sortable::after {
+        content: '⇅';
+        position: absolute;
+        right: 8px;
+        opacity: 0.3;
+        font-size: 12px;
+    }
+
+    .compact-table th.sortable.asc::after {
+        content: '↑';
+        opacity: 1;
+    }
+
+    .compact-table th.sortable.desc::after {
+        content: '↓';
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Rate Team Members</h2>
+
+    <div class="view-toggle">
+        <button class="view-btn active" onclick="switchView('detailed')">Detailed View</button>
+        <button class="view-btn" onclick="switchView('compact')">Quick Rating View</button>
+    </div>
+
+    <div class="filter-section">
+        <button class="filter-btn active" onclick="filterEmployees('all')">All ({{ team|length }})</button>
+        <button class="filter-btn" onclick="filterEmployees('unrated')">Unrated Only</button>
+        <button class="filter-btn" onclick="filterEmployees('rated')">Rated Only</button>
+    </div>
+
+    <!-- Compact view -->
+    <div id="compact-view">
+        <div style="overflow-x: auto;">
+            <table class="compact-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="name">Name</th>
+                        <th class="sortable" data-sort="job">Job Profile</th>
+                        <th class="sortable" data-sort="pay">Base Pay (USD)</th>
+                        <th class="sortable" data-sort="rating" style="width: 150px;">Performance Rating %</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="compact-table-body">
+                    {% for employee in team %}
+                    <tr class="{% if employee.performance_rating_percent %}has-rating{% endif %}"
+                        data-associate="{{ employee.Associate }}"
+                        data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}"
+                        data-name="{{ employee.Associate }}"
+                        data-job="{{ employee['Current Job Profile'] }}"
+                        data-pay="{{ employee['Current Base Pay All Countries (USD)'] or 0 }}"
+                        data-rating="{{ employee.performance_rating_percent or 0 }}">
+                        <td><strong>{{ employee.Associate }}</strong></td>
+                        <td>{{ employee['Current Job Profile'] }}</td>
+                        <td>${{ "{:,.0f}".format(employee['Current Base Pay All Countries (USD)'] | float) if employee['Current Base Pay All Countries (USD)'] else 'N/A' }}</td>
+                        <td>
+                            <input type="number"
+                                   min="0"
+                                   max="200"
+                                   step="1"
+                                   placeholder="0-200"
+                                   value="{{ employee.performance_rating_percent }}"
+                                   class="compact-rating-input"
+                                   data-associate="{{ employee.Associate }}">
+                            <span class="validation-error" style="display: none;"></span>
+                        </td>
+                        <td>
+                            <span class="compact-save-indicator" data-associate="{{ employee.Associate }}">
+                                {% if employee.last_updated %}✓ {{ employee.last_updated }}{% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Detailed view -->
+    <div class="rating-form" id="detailed-view">
+        {% for employee in team %}
+        <div class="employee-card {% if employee.performance_rating_percent %}rated{% endif %}"
+             data-associate="{{ employee.Associate }}"
+             data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}">
+
+            <div class="employee-header">
+                <div>
+                    <label>Name</label>
+                    <span>{{ employee.Associate }}</span>
+                </div>
+                <div>
+                    <label>Job Profile</label>
+                    <span>{{ employee['Current Job Profile'] }}</span>
+                </div>
+                <div>
+                    <label>Base Pay (USD)</label>
+                    <span>${{ "{:,.0f}".format(employee['Current Base Pay All Countries (USD)'] | float) if employee['Current Base Pay All Countries (USD)'] else 'N/A' }}</span>
+                </div>
+            </div>
+
+            <div class="workday-info">
+                <div>
+                    <label>Supervisory Org</label>
+                    <span>{{ employee['Supervisory Organization'] }}</span>
+                </div>
+                <div>
+                    <label>Associate ID</label>
+                    <span>{{ employee['Associate ID'] }}</span>
+                </div>
+            </div>
+
+            <div class="rating-section">
+                <h4>Performance Rating & Manager Inputs</h4>
+
+                <div class="rating-input-group">
+                    <label>Performance Rating %:</label>
+                    <input type="number"
+                           min="0"
+                           max="200"
+                           step="1"
+                           placeholder="0-200"
+                           value="{{ employee.performance_rating_percent }}"
+                           data-field="rating_percent"
+                           class="rating-percent-input">
+                    <span class="validation-error" style="display: none; color: #e74c3c; font-size: 12px; margin-left: 10px;"></span>
+                </div>
+                <div class="rating-hint">0-200% (100% = met expectations, 200% = 2x performance)</div>
+
+                <div class="rating-input-group">
+                    <label>Justification:</label>
+                    <textarea data-field="justification" placeholder="One paragraph explaining the rating...">{{ employee.justification }}</textarea>
+                </div>
+
+                <div class="rating-input-group">
+                    <label>Mentor:</label>
+                    <input type="text" data-field="mentor" placeholder="Who is mentoring this person?" value="{{ employee.mentor }}">
+                </div>
+
+                <div class="rating-input-group">
+                    <label>Mentee(s):</label>
+                    <input type="text" data-field="mentees" placeholder="Who is this person mentoring?" value="{{ employee.mentees }}">
+                </div>
+
+                <div class="rating-input-group">
+                    <label>AI Activities:</label>
+                    <textarea data-field="ai_activities" placeholder="Short paragraph on AI-related activities...">{{ employee.ai_activities }}</textarea>
+                </div>
+
+                <div style="margin-top: 20px; text-align: right;">
+                    <span class="saved-indicator">✓ Auto-saved {% if employee.last_updated %}({{ employee.last_updated }}){% endif %}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+// Auto-save functionality
+const autoSaveTimers = {};
+
+function autoSave(associateName, card) {
+    // Clear existing timer for this employee
+    if (autoSaveTimers[associateName]) {
+        clearTimeout(autoSaveTimers[associateName]);
+    }
+
+    // Set new timer - save after 2 seconds of inactivity
+    autoSaveTimers[associateName] = setTimeout(() => {
+        saveRating(associateName, card);
+    }, 2000);
+}
+
+function validateRating(ratingInput) {
+    const value = ratingInput.value.trim();
+    const errorSpan = ratingInput.parentElement.querySelector('.validation-error');
+
+    // Clear previous validation state
+    ratingInput.classList.remove('invalid');
+    errorSpan.style.display = 'none';
+
+    if (value === '') {
+        return true; // Empty is valid (not rated yet)
+    }
+
+    const numValue = parseFloat(value);
+
+    if (isNaN(numValue)) {
+        ratingInput.classList.add('invalid');
+        errorSpan.textContent = 'Must be a number';
+        errorSpan.style.display = 'inline';
+        return false;
+    }
+
+    if (numValue < 0 || numValue > 200) {
+        ratingInput.classList.add('invalid');
+        errorSpan.textContent = 'Must be between 0 and 200';
+        errorSpan.style.display = 'inline';
+        return false;
+    }
+
+    return true;
+}
+
+function saveRating(associateName, card) {
+    const inputs = card.querySelectorAll('[data-field]');
+
+    // Validate rating input first
+    const ratingInput = card.querySelector('[data-field="rating_percent"]');
+    if (!validateRating(ratingInput)) {
+        console.log('Validation failed, not saving');
+        return; // Don't save if validation fails
+    }
+
+    const data = {
+        associate_name: associateName,
+        rating_percent: '',
+        justification: '',
+        mentor: '',
+        mentees: '',
+        ai_activities: ''
+    };
+
+    inputs.forEach(input => {
+        const field = input.getAttribute('data-field');
+        data[field] = input.value;
+    });
+
+    fetch('/api/rate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            const indicator = card.querySelector('.saved-indicator');
+
+            // Update timestamp in indicator
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString();
+            indicator.textContent = `✓ Auto-saved (${timestamp})`;
+
+            indicator.classList.add('show');
+            setTimeout(() => indicator.classList.remove('show'), 3000);
+
+            // Mark card as rated if rating provided
+            if (data.rating_percent) {
+                card.classList.add('rated');
+                card.setAttribute('data-has-rating', 'true');
+            }
+        } else {
+            // Show error message from server
+            const errorSpan = ratingInput.parentElement.querySelector('.validation-error');
+            ratingInput.classList.add('invalid');
+            errorSpan.textContent = result.error || 'Save failed';
+            errorSpan.style.display = 'inline';
+        }
+    })
+    .catch(error => {
+        console.error('Auto-save error:', error);
+        const errorSpan = ratingInput.parentElement.querySelector('.validation-error');
+        ratingInput.classList.add('invalid');
+        errorSpan.textContent = 'Network error';
+        errorSpan.style.display = 'inline';
+    });
+}
+
+function switchView(view) {
+    const detailedView = document.getElementById('detailed-view');
+    const compactView = document.getElementById('compact-view');
+    const viewButtons = document.querySelectorAll('.view-btn');
+
+    viewButtons.forEach(btn => btn.classList.remove('active'));
+
+    if (view === 'compact') {
+        detailedView.classList.add('inactive');
+        compactView.classList.add('active');
+        event.target.classList.add('active');
+    } else {
+        detailedView.classList.remove('inactive');
+        compactView.classList.remove('active');
+        event.target.classList.add('active');
+    }
+}
+
+function filterEmployees(filter) {
+    const detailedCards = document.querySelectorAll('.employee-card');
+    const compactRows = document.querySelectorAll('.compact-table tbody tr');
+    const buttons = document.querySelectorAll('.filter-btn');
+
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // Filter detailed view
+    detailedCards.forEach(card => {
+        const hasRating = card.getAttribute('data-has-rating') === 'true';
+
+        if (filter === 'all') {
+            card.style.display = 'block';
+        } else if (filter === 'unrated') {
+            card.style.display = hasRating ? 'none' : 'block';
+        } else if (filter === 'rated') {
+            card.style.display = hasRating ? 'block' : 'none';
+        }
+    });
+
+    // Filter compact view
+    compactRows.forEach(row => {
+        const hasRating = row.getAttribute('data-has-rating') === 'true';
+
+        if (filter === 'all') {
+            row.style.display = '';
+        } else if (filter === 'unrated') {
+            row.style.display = hasRating ? 'none' : '';
+        } else if (filter === 'rated') {
+            row.style.display = hasRating ? '' : 'none';
+        }
+    });
+}
+
+// Compact view validation and auto-save
+function validateCompactRating(input) {
+    const value = input.value.trim();
+    const errorSpan = input.nextElementSibling;
+
+    // Clear previous validation state
+    input.classList.remove('invalid');
+    errorSpan.style.display = 'none';
+
+    if (value === '') {
+        return true; // Empty is valid
+    }
+
+    const numValue = parseFloat(value);
+
+    if (isNaN(numValue)) {
+        input.classList.add('invalid');
+        errorSpan.textContent = 'Must be a number';
+        errorSpan.style.display = 'block';
+        return false;
+    }
+
+    if (numValue < 0 || numValue > 200) {
+        input.classList.add('invalid');
+        errorSpan.textContent = 'Must be 0-200';
+        errorSpan.style.display = 'block';
+        return false;
+    }
+
+    return true;
+}
+
+const compactSaveTimers = {};
+
+function saveCompactRating(associateName, input) {
+    if (!validateCompactRating(input)) {
+        return;
+    }
+
+    const ratingValue = input.value.trim();
+
+    fetch('/api/rate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            associate_name: associateName,
+            rating_percent: ratingValue,
+            justification: '',
+            mentor: '',
+            mentees: '',
+            ai_activities: ''
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            const indicator = document.querySelector(`.compact-save-indicator[data-associate="${associateName}"]`);
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString();
+            indicator.textContent = `✓ ${timestamp}`;
+            indicator.classList.add('show');
+            setTimeout(() => indicator.classList.remove('show'), 3000);
+
+            // Update row styling
+            const row = input.closest('tr');
+            if (ratingValue) {
+                row.classList.add('has-rating');
+                row.setAttribute('data-has-rating', 'true');
+            }
+        } else {
+            const errorSpan = input.nextElementSibling;
+            input.classList.add('invalid');
+            errorSpan.textContent = result.error || 'Save failed';
+            errorSpan.style.display = 'block';
+        }
+    })
+    .catch(error => {
+        console.error('Auto-save error:', error);
+        const errorSpan = input.nextElementSibling;
+        input.classList.add('invalid');
+        errorSpan.textContent = 'Network error';
+        errorSpan.style.display = 'block';
+    });
+}
+
+function autoSaveCompact(associateName, input) {
+    if (compactSaveTimers[associateName]) {
+        clearTimeout(compactSaveTimers[associateName]);
+    }
+
+    compactSaveTimers[associateName] = setTimeout(() => {
+        saveCompactRating(associateName, input);
+    }, 2000);
+}
+
+// Compact table sorting
+let compactSortState = { column: null, direction: 'asc' };
+
+function sortCompactTable(column) {
+    const tbody = document.getElementById('compact-table-body');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    // Toggle direction if same column, otherwise reset to ascending
+    if (compactSortState.column === column) {
+        compactSortState.direction = compactSortState.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        compactSortState.direction = 'asc';
+    }
+    compactSortState.column = column;
+
+    // Update header classes
+    document.querySelectorAll('.compact-table th.sortable').forEach(th => {
+        th.classList.remove('asc', 'desc');
+    });
+    document.querySelector(`.compact-table th[data-sort="${column}"]`).classList.add(compactSortState.direction);
+
+    // Sort rows
+    rows.sort((a, b) => {
+        let aVal = a.getAttribute(`data-${column}`);
+        let bVal = b.getAttribute(`data-${column}`);
+
+        // Handle numeric columns
+        if (column === 'pay' || column === 'rating') {
+            aVal = parseFloat(aVal) || 0;
+            bVal = parseFloat(bVal) || 0;
+        }
+
+        let comparison = 0;
+        if (aVal > bVal) comparison = 1;
+        if (aVal < bVal) comparison = -1;
+
+        return compactSortState.direction === 'asc' ? comparison : -comparison;
+    });
+
+    // Re-append rows in sorted order
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+// Set up auto-save listeners on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Compact table sort listeners
+    const compactHeaders = document.querySelectorAll('.compact-table th.sortable');
+    compactHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            const sortKey = this.getAttribute('data-sort');
+            sortCompactTable(sortKey);
+        });
+    });
+
+    // Detailed view listeners
+    const cards = document.querySelectorAll('.employee-card');
+
+    cards.forEach(card => {
+        const associateName = card.getAttribute('data-associate');
+        const inputs = card.querySelectorAll('[data-field]');
+
+        inputs.forEach(input => {
+            // Auto-save on blur (when leaving a field)
+            input.addEventListener('blur', () => {
+                autoSave(associateName, card);
+            });
+
+            // Real-time validation for rating input
+            if (input.getAttribute('data-field') === 'rating_percent') {
+                input.addEventListener('input', () => {
+                    validateRating(input);
+                    autoSave(associateName, card);
+                });
+            }
+            // Also auto-save on input for text fields (with debounce)
+            else if (input.tagName === 'TEXTAREA' || input.type === 'text' || input.type === 'number') {
+                input.addEventListener('input', () => {
+                    autoSave(associateName, card);
+                });
+            }
+        });
+    });
+
+    // Compact view listeners
+    const compactInputs = document.querySelectorAll('.compact-rating-input');
+
+    compactInputs.forEach(input => {
+        const associateName = input.getAttribute('data-associate');
+
+        input.addEventListener('input', () => {
+            validateCompactRating(input);
+            autoSaveCompact(associateName, input);
+        });
+
+        input.addEventListener('blur', () => {
+            autoSaveCompact(associateName, input);
+        });
+    });
+});
+</script>
+{% endblock %}

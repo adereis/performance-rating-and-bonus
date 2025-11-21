@@ -1,0 +1,30 @@
+# Team data files (keep private per manager)
+team.csv
+bonus-from-wd.xlsx
+ratings_export_*.csv
+ratings.db
+ratings.db-journal
+
+# Note: sample-data.xlsx is intentionally NOT ignored
+# It's demo data that should be in the repository
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

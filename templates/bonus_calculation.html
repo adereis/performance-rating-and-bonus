@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}Bonus Calculation - Quarterly Performance Rating{% endblock %}
+
+{% block extra_css %}
+<style>
+    .config-panel {
+        background: #f8f9fa;
+        border: 2px solid #667eea;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+
+    .config-panel h3 {
+        margin: 0 0 15px 0;
+        color: #2c3e50;
+        font-size: 18px;
+    }
+
+    .config-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .config-input {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .config-input label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .config-input input {
+        padding: 8px 12px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .config-input input:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .config-help {
+        font-size: 12px;
+        color: #666;
+        margin-top: 3px;
+    }
+
+    .calculate-btn {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    .calculate-btn:hover {
+        background: #5568d3;
+    }
+
+    .summary-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .summary-card {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+    }
+
+    .summary-card h4 {
+        margin: 0 0 8px 0;
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+    }
+
+    .summary-card .value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .bonus-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    .bonus-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #2c3e50;
+        border-bottom: 2px solid #e0e0e0;
+        position: sticky;
+        top: 0;
+    }
+
+    .bonus-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .bonus-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .bonus-table th.right, .bonus-table td.right {
+        text-align: right;
+    }
+
+    .performance-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 12px;
+    }
+
+    .performance-high {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .performance-mid {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .performance-low {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .no-data-message {
+        text-align: center;
+        padding: 40px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        color: #666;
+    }
+
+    .methodology {
+        background: #e8eaf6;
+        border-left: 4px solid #667eea;
+        padding: 15px 20px;
+        margin-top: 20px;
+        border-radius: 4px;
+    }
+
+    .methodology h4 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+        font-size: 14px;
+    }
+
+    .methodology ol {
+        margin: 5px 0;
+        padding-left: 20px;
+    }
+
+    .methodology li {
+        font-size: 13px;
+        color: #555;
+        margin: 5px 0;
+        line-height: 1.5;
+    }
+
+    .methodology code {
+        background: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Bonus Calculation (Phase 2)</h2>
+
+    <div class="config-panel">
+        <h3>🔧 Configuration Parameters</h3>
+        <form method="GET" action="{{ url_for('bonus_calculation') }}">
+            <div class="config-grid">
+                <div class="config-input">
+                    <label for="upside_exponent">Upside Exponent</label>
+                    <input type="number" step="0.01" id="upside_exponent" name="upside_exponent"
+                           value="{{ params.upside_exponent }}" required>
+                    <span class="config-help">Exponential reward for rating ≥ 100% (e.g., 1.25)</span>
+                </div>
+
+                <div class="config-input">
+                    <label for="downside_exponent">Downside Exponent</label>
+                    <input type="number" step="0.01" id="downside_exponent" name="downside_exponent"
+                           value="{{ params.downside_exponent }}" required>
+                    <span class="config-help">Exponential penalty for rating < 100% (e.g., 1.8)</span>
+                </div>
+
+                <div class="config-input">
+                    <label for="cr_power">CR Power</label>
+                    <input type="number" step="0.01" id="cr_power" name="cr_power"
+                           value="{{ params.cr_power }}" required>
+                    <span class="config-help">Compa-Ratio influence (0.5 = sqrt, 1.0 = linear)</span>
+                </div>
+            </div>
+
+            <button type="submit" class="calculate-btn">🔄 Recalculate with New Parameters</button>
+        </form>
+    </div>
+
+    {% if has_data %}
+    {% if employees_without_bonus_target > 0 %}
+    <div class="small-team-warning" style="margin-bottom: 20px;">
+        ⚠️ <strong>Incomplete bonus data:</strong> {{ employees_without_bonus_target }} out of {{ total_rated }} rated employees are missing bonus target information from Workday and were excluded from this calculation.
+        To include all employees, ensure the Workday export contains bonus target data for everyone.
+    </div>
+    {% endif %}
+
+    <div class="summary-stats">
+        <div class="summary-card">
+            <h4>Total Bonus Pool</h4>
+            <div class="value">${{ "{:,.0f}".format(total_pool) }}</div>
+        </div>
+        <div class="summary-card">
+            <h4>Total Allocated</h4>
+            <div class="value">${{ "{:,.0f}".format(total_allocated) }}</div>
+        </div>
+        <div class="summary-card">
+            <h4>Rated Employees</h4>
+            <div class="value">{{ team|length }}</div>
+        </div>
+        <div class="summary-card">
+            <h4>Value per Share</h4>
+            <div class="value">{{ "%.4f"|format(value_per_share) }}</div>
+        </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table class="bonus-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Job Profile</th>
+                    <th class="right">Rating %</th>
+                    <th class="right">Bonus Target</th>
+                    <th class="right">Compa-Ratio</th>
+                    <th class="right">Perf Mult</th>
+                    <th class="right">CR Mult</th>
+                    <th class="right">Final Bonus</th>
+                    <th class="right">% of Target</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in team %}
+                <tr>
+                    <td><strong>{{ result.employee.Associate }}</strong></td>
+                    <td>{{ result.employee['Current Job Profile'] }}</td>
+                    <td class="right">
+                        <span class="performance-badge
+                            {% if result.rating >= 120 %}performance-high
+                            {% elif result.rating >= 90 %}performance-mid
+                            {% else %}performance-low{% endif %}">
+                            {{ result.rating }}%
+                        </span>
+                    </td>
+                    <td class="right">${{ "{:,.0f}".format(result.bonus_target_usd) }}</td>
+                    <td class="right">{{ "%.2f"|format(result.cr) }}</td>
+                    <td class="right">{{ "%.3f"|format(result.perf_multiplier) }}</td>
+                    <td class="right">{{ "%.3f"|format(result.cr_multiplier) }}</td>
+                    <td class="right"><strong>${{ "{:,.0f}".format(result.final_bonus) }}</strong></td>
+                    <td class="right">
+                        <strong {% if result.bonus_percent_of_target > 100 %}style="color: #27ae60;"
+                                {% elif result.bonus_percent_of_target < 100 %}style="color: #dc3545;"
+                                {% endif %}>
+                            {{ "%.0f"|format(result.bonus_percent_of_target) }}%
+                        </strong>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="methodology">
+        <h4>📋 Calculation Methodology</h4>
+        <ol>
+            <li><strong>Total Pool:</strong> Sum of all bonus targets (from Workday, USD)</li>
+            <li><strong>Performance Multiplier:</strong> If rating < 100: <code>(rating/100)^{{ params.downside_exponent }}</code>, else <code>(rating/100)^{{ params.upside_exponent }}</code></li>
+            <li><strong>Compa-Ratio (CR):</strong> Currently set to 1.0 (100%) for all employees. <em>Future: Will be imported from Workday.</em></li>
+            <li><strong>CR Multiplier:</strong> <code>1 / (CR^{{ params.cr_power }})</code> = 1.0 currently (lower CR would get slight boost)</li>
+            <li><strong>Raw Share:</strong> <code>Bonus Target × Perf Multiplier × CR Multiplier</code></li>
+            <li><strong>Normalization:</strong> Final bonus = <code>Raw Share × Value per Share</code> (where value per share ensures total = pool)</li>
+        </ol>
+    </div>
+
+    {% else %}
+    <div class="no-data-message">
+        {% if missing_bonus_data %}
+        <p style="font-size: 18px; margin-bottom: 10px;">📋 Missing bonus target data</p>
+        <p>Bonus calculation requires employee bonus target information from Workday.</p>
+        <p style="margin-top: 15px;">To set up bonus data:</p>
+        <ol style="text-align: left; display: inline-block; margin-top: 10px;">
+            <li>Export your team data from Workday as <code>bonus-from-wd.xlsx</code></li>
+            <li>Run: <code>python convert_xlsx.py</code> to import the data</li>
+            <li>Return to this page to calculate bonuses</li>
+        </ol>
+        {% else %}
+        <p style="font-size: 18px; margin-bottom: 10px;">📊 No rated employees yet</p>
+        <p>Performance ratings must be completed before bonus calculation can be performed.</p>
+        <p><a href="{{ url_for('rate_page') }}" class="btn" style="display: inline-block; margin-top: 15px;">Go to Rating Page</a></p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

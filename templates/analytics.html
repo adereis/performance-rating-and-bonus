@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - Quarterly Performance Rating{% endblock %}
+
+{% block extra_css %}
+<style>
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .chart-container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .chart-container h3 {
+        margin-bottom: 15px;
+        color: #2c3e50;
+        font-size: 18px;
+    }
+
+    canvas {
+        max-height: 350px;
+    }
+
+    .ranking-table tbody tr td:first-child {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .dept-stats, .job-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-box {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        border-left: 4px solid #667eea;
+    }
+
+    .stat-box h4 {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 5px;
+    }
+
+    .stat-box .avg {
+        font-size: 24px;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    /* Calibration styles */
+    .calibration-disclaimer {
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+    }
+
+    .calibration-disclaimer h4 {
+        margin: 0 0 8px 0;
+        color: #2c3e50;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .calibration-disclaimer p {
+        margin: 0;
+        font-size: 13px;
+        color: #666;
+        line-height: 1.5;
+    }
+
+    .calibration-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    .calibration-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #2c3e50;
+        border-bottom: 2px solid #e0e0e0;
+    }
+
+    .calibration-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .calibration-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-badge.good {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-badge.warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-badge.alert {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .delta-value {
+        font-weight: 600;
+    }
+
+    .delta-value.positive {
+        color: #dc3545;
+    }
+
+    .delta-value.negative {
+        color: #0066cc;
+    }
+
+    .small-team-warning {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 12px 16px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #856404;
+    }
+
+    .calibration-chart-container {
+        height: 300px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Performance Distribution</h2>
+    <div class="charts-grid">
+        <div class="chart-container">
+            <h3>Rating Distribution</h3>
+            <canvas id="ratingChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3>Average by Supervisory Organization</h3>
+            <canvas id="departmentChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3>Average by Job Profile</h3>
+            <canvas id="jobChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Distribution Calibration Section -->
+{% if total_rated > 0 %}
+<div class="card">
+    <h2>Distribution Calibration Guide</h2>
+
+    <div class="calibration-disclaimer">
+        <h4>ℹ️ This is guidance, not a requirement</h4>
+        <p>
+            The suggested distribution below represents a typical performance curve for reference only.
+            <strong>This is not a quota or forced ranking.</strong> Your team's actual performance may legitimately differ.
+            Use this as a calibration tool to ensure your standards are appropriately set.
+        </p>
+    </div>
+
+    {% if total_rated < 10 %}
+    <div class="small-team-warning">
+        ⚠️ <strong>Small team size ({{ total_rated }} rated):</strong> Percentage-based distributions are less meaningful for small teams.
+        Focus on individual performance rather than fitting a curve.
+    </div>
+    {% endif %}
+
+    <div class="calibration-chart-container">
+        <canvas id="calibrationChart"></canvas>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table class="calibration-table">
+            <thead>
+                <tr>
+                    <th>Performance Band</th>
+                    <th>Your Team</th>
+                    <th>Suggested Range</th>
+                    <th>Delta</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in calibration_data %}
+                <tr>
+                    <td>
+                        <strong>
+                            {% if item.bucket == 'above_120' %}
+                                Above 120%
+                            {% elif item.bucket == '90_to_120' %}
+                                90-120%
+                            {% elif item.bucket == '60_to_90' %}
+                                60-90%
+                            {% else %}
+                                Below 60%
+                            {% endif %}
+                        </strong>
+                        <br>
+                        <span style="font-size: 12px; color: #666;">
+                            {% if item.bucket == 'above_120' %}
+                                Exceptional performers
+                            {% elif item.bucket == '90_to_120' %}
+                                Solid performers
+                            {% elif item.bucket == '60_to_90' %}
+                                Needs improvement
+                            {% else %}
+                                Significant concerns
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <strong>{{ item.percentage }}%</strong>
+                        <span style="color: #666; font-size: 13px;">({{ item.count }} people)</span>
+                    </td>
+                    <td>
+                        {{ item.suggested_min }}-{{ item.suggested_max }}%
+                    </td>
+                    <td>
+                        <span class="delta-value {{ 'positive' if item.delta > 0 else 'negative' if item.delta < 0 else '' }}">
+                            {% if item.delta > 0 %}+{% endif %}{{ "%.1f"|format(item.delta) }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge {{ item.status }}">
+                            {% if item.status == 'good' %}
+                                ✓ Within Range
+                            {% elif item.status == 'warning' %}
+                                ⚠ Slightly Off
+                            {% else %}
+                                ⚠️ Off Target
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Supervisory Organization Averages</h2>
+    <div class="dept-stats">
+        {% for dept, avg in dept_averages.items() %}
+        <div class="stat-box">
+            <h4>{{ dept }}</h4>
+            <div class="avg">{{ "%.1f"|format(avg) }}%</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card">
+    <h2>Job Profile Averages</h2>
+    <div class="job-stats">
+        {% for job, avg in job_averages.items() %}
+        <div class="stat-box">
+            <h4>{{ job }}</h4>
+            <div class="avg">{{ "%.1f"|format(avg) }}%</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card">
+    <h2>Team Rankings (by Performance Rating)</h2>
+    <div style="overflow-x: auto;">
+        <table class="ranking-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Job Profile</th>
+                    <th>Performance Rating %</th>
+                    <th>Justification</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for employee in team %}
+                    {% if employee.performance_rating_percent %}
+                    <tr>
+                        <td><strong>{{ employee.Associate }}</strong></td>
+                        <td>{{ employee['Current Job Profile'] }}</td>
+                        <td>
+                            <span style="color: #27ae60; font-weight: 600; font-size: 16px;">
+                                {{ employee.performance_rating_percent }}%
+                            </span>
+                        </td>
+                        <td style="max-width: 400px; font-size: 13px;">
+                            {{ employee.justification[:200] }}{% if employee.justification|length > 200 %}...{% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const chartData = {{ chart_data | tojson }};
+
+// Rating Distribution Chart
+const ratingCtx = document.getElementById('ratingChart').getContext('2d');
+new Chart(ratingCtx, {
+    type: 'bar',
+    data: {
+        labels: chartData.rating_distribution.labels,
+        datasets: [{
+            label: 'Number of Employees',
+            data: chartData.rating_distribution.data,
+            backgroundColor: [
+                '#e74c3c',
+                '#e67e22',
+                '#f39c12',
+                '#3498db',
+                '#27ae60'
+            ],
+            borderColor: '#fff',
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return 'Employees: ' + context.parsed.y;
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Department Averages Chart
+const deptCtx = document.getElementById('departmentChart').getContext('2d');
+new Chart(deptCtx, {
+    type: 'bar',
+    data: {
+        labels: chartData.department_averages.labels,
+        datasets: [{
+            label: 'Average Rating %',
+            data: chartData.department_averages.data,
+            backgroundColor: '#667eea',
+            borderColor: '#5568d3',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        indexAxis: 'y',
+        scales: {
+            x: {
+                beginAtZero: true,
+                max: 150,
+                ticks: {
+                    callback: function(value) {
+                        return value + '%';
+                    }
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return 'Average: ' + context.parsed.x.toFixed(1) + '%';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Job Profile Averages Chart
+const jobCtx = document.getElementById('jobChart').getContext('2d');
+new Chart(jobCtx, {
+    type: 'bar',
+    data: {
+        labels: chartData.job_averages.labels,
+        datasets: [{
+            label: 'Average Rating %',
+            data: chartData.job_averages.data,
+            backgroundColor: '#3498db',
+            borderColor: '#2980b9',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 150,
+                ticks: {
+                    callback: function(value) {
+                        return value + '%';
+                    }
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return 'Average: ' + context.parsed.y.toFixed(1) + '%';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Calibration Chart - Overlay comparison
+{% if total_rated > 0 %}
+const calibrationData = {{ calibration_data | tojson }};
+
+const calibrationCtx = document.getElementById('calibrationChart').getContext('2d');
+new Chart(calibrationCtx, {
+    type: 'bar',
+    data: {
+        labels: ['Above 120%', '90-120%', '60-90%', 'Below 60%'],
+        datasets: [
+            {
+                label: 'Your Team',
+                data: calibrationData.map(d => d.percentage),
+                backgroundColor: calibrationData.map(d => {
+                    if (d.status === 'good') return 'rgba(39, 174, 96, 0.7)';
+                    if (d.status === 'warning') return 'rgba(255, 193, 7, 0.7)';
+                    return 'rgba(220, 53, 69, 0.7)';
+                }),
+                borderColor: calibrationData.map(d => {
+                    if (d.status === 'good') return '#27ae60';
+                    if (d.status === 'warning') return '#ffc107';
+                    return '#dc3545';
+                }),
+                borderWidth: 2
+            },
+            {
+                label: 'Suggested Min',
+                data: calibrationData.map(d => d.suggested_min),
+                backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                borderColor: '#667eea',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                type: 'line',
+                pointRadius: 0
+            },
+            {
+                label: 'Suggested Max',
+                data: calibrationData.map(d => d.suggested_max),
+                backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                borderColor: '#667eea',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                type: 'line',
+                pointRadius: 0,
+                fill: '-1'
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                    callback: function(value) {
+                        return value + '%';
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Percentage of Team'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Performance Band'
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        if (context.dataset.label === 'Your Team') {
+                            const item = calibrationData[context.dataIndex];
+                            return `Your Team: ${item.percentage}% (${item.count} people)`;
+                        }
+                        return context.dataset.label + ': ' + context.parsed.y + '%';
+                    }
+                }
+            },
+            title: {
+                display: true,
+                text: 'Your Team Distribution vs. Suggested Range',
+                font: {
+                    size: 16,
+                    weight: 'bold'
+                }
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}
