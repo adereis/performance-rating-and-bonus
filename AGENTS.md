@@ -60,6 +60,10 @@ To achieve similar results with AI assistance:
 4. **Documentation**: Explicitly request user-facing and technical documentation
 5. **Sample Data**: Ask for realistic demo data to enable immediate testing
 
+## Development Workflow
+
+**Git Commit Policy**: The AI agent performs git commits locally as work progresses, but only pushes to GitHub when explicitly instructed by the user. This allows for local version control while maintaining user control over what gets published to remote repositories.
+
 ## Model Information
 
 - **AI Model**: Claude Sonnet 4.5 (claude-sonnet-4-5@20250929)
