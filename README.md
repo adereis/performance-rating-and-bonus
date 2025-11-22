@@ -39,7 +39,7 @@ python3 app.py
 ```
 
 ### Option 2: Large Multi-Manager Organization
-Test multi-org scenarios - 50 employees across 5 managers with realistic ratings.
+Test multi-org scenarios - 50 employees across 5 managers with realistic ratings (Director-level view).
 
 ```bash
 # 2. Generate large org sample data
@@ -55,8 +55,8 @@ python3 populate_sample_ratings.py large
 ```
 
 **Sample Data Details:**
-- **Small**: 12 employees, 1 manager (Della Gate), all US-based, fully rated (ready for bonus calculation)
-- **Large**: 50 employees, 5 managers (Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone), includes international employees, fully rated
+- **Small**: 12 employees (Software Developers & SREs), 1 manager (Della Gate) rating their team, all US-based, fully rated
+- **Large**: 50 employees (Software Developers, SREs & Engineering Managers), 5 teams across Platform/Frontend/Backend/Infrastructure/Reliability, simulates Director rating their managers and ICs, includes international employees, fully rated
 
 **What you get:**
 - ✅ Complete employee data (salary, bonus targets, job profiles)
