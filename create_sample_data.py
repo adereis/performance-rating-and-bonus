@@ -47,26 +47,28 @@ def get_small_team_data():
     """
     Small team: 12 employees under single manager (Della Gate).
     Perfect for testing with a manageable dataset.
+    Includes realistic performance ratings for bonus calculation.
     """
     manager = "Della Gate - Engineering"
 
+    # (name, job, salary, currency, grade, bonus_pct, rating, justification)
     employees = [
-        ('Paige Duty', 'Staff Engineer', 180000, 'USD', 'IC4', 15),
-        ('Lee Latency', 'Senior Software Engineer', 150000, 'USD', 'IC3', 12),
-        ('Mona Torr', 'Senior Software Engineer', 145000, 'USD', 'IC3', 12),
-        ('Robin Rollback', 'Software Engineer', 120000, 'USD', 'IC2', 10),
-        ('Kenny Canary', 'Software Engineer', 115000, 'USD', 'IC2', 10),
-        ('Tracey Loggins', 'Senior Software Engineer', 155000, 'USD', 'IC3', 12),
-        ('Sue Q. Ell', 'Senior Software Engineer', 148000, 'USD', 'IC3', 12),
-        ('Jason Blob', 'Software Engineer', 118000, 'USD', 'IC2', 10),
-        ('Al Ert', 'Staff Engineer', 175000, 'USD', 'IC4', 15),
-        ('Addie Min', 'Senior Software Engineer', 152000, 'USD', 'IC3', 12),
-        ('Tim Out', 'Software Engineer', 110000, 'USD', 'IC2', 10),
-        ('Barbie Que', 'Senior Software Engineer', 149000, 'USD', 'IC3', 12),
+        ('Paige Duty', 'Staff Engineer', 180000, 'USD', 'IC4', 15, 130, 'Exceptional technical leadership and on-call reliability'),
+        ('Lee Latency', 'Senior Software Engineer', 150000, 'USD', 'IC3', 12, 120, 'Outstanding performance optimization work'),
+        ('Mona Torr', 'Senior Software Engineer', 145000, 'USD', 'IC3', 12, 110, 'Strong monitoring and observability contributions'),
+        ('Robin Rollback', 'Software Engineer', 120000, 'USD', 'IC2', 10, 105, 'Reliable deployment management'),
+        ('Kenny Canary', 'Software Engineer', 115000, 'USD', 'IC2', 10, 100, 'Solid canary testing and deployment work'),
+        ('Tracey Loggins', 'Senior Software Engineer', 155000, 'USD', 'IC3', 12, 115, 'Excellent logging infrastructure improvements'),
+        ('Sue Q. Ell', 'Senior Software Engineer', 148000, 'USD', 'IC3', 12, 125, 'Outstanding database optimization and query performance'),
+        ('Jason Blob', 'Software Engineer', 118000, 'USD', 'IC2', 10, 95, 'Good progress on unstructured data handling'),
+        ('Al Ert', 'Staff Engineer', 175000, 'USD', 'IC4', 15, 135, 'Critical alerting system improvements, exceptional work'),
+        ('Addie Min', 'Senior Software Engineer', 152000, 'USD', 'IC3', 12, 108, 'Solid access management and security work'),
+        ('Tim Out', 'Software Engineer', 110000, 'USD', 'IC2', 10, 85, 'Needs improvement in reliability and uptime'),
+        ('Barbie Que', 'Senior Software Engineer', 149000, 'USD', 'IC3', 12, 112, 'Strong message queue management'),
     ]
 
     result = []
-    for i, (name, job, salary, currency, grade, bonus_pct) in enumerate(employees):
+    for i, (name, job, salary, currency, grade, bonus_pct, rating, justification) in enumerate(employees):
         result.append({
             'associate': name,
             'supervisory_organization': manager,
@@ -75,6 +77,8 @@ def get_small_team_data():
             'currency': currency,
             'grade': grade,
             'bonus_pct': bonus_pct,
+            'rating': rating,
+            'justification': justification,
             'associate_id': f'EMP{1000 + i}'
         })
 
@@ -112,67 +116,69 @@ def get_large_org_data():
         'Stan Dup', 'Kay Eight'
     ]
 
-    # Job profiles per team
+    # Job profiles per team with performance ratings
+    # Format: (job, salary, grade, bonus_pct, rating, justification) or
+    #         (job, salary_usd, grade, bonus_pct, currency, salary_local, rating, justification) for international
     team_configs = {
         'Engineering - Platform': [
-            ('Principal Engineer', 220000, 'IC5', 20),
-            ('Staff Engineer', 180000, 'IC4', 15),
-            ('Senior Software Engineer', 150000, 'IC3', 12),
-            ('Senior Software Engineer', 145000, 'IC3', 12),
-            ('Software Engineer', 120000, 'IC2', 10),
-            ('Software Engineer', 115000, 'IC2', 10),
-            ('Software Engineer', 118000, 'IC2', 10),
-            ('Software Engineer', 112000, 'IC2', 10),
-            ('Senior Software Engineer', 148000, 'IC3', 12),
-            ('Senior Software Engineer', 152000, 'IC3', 12),
+            ('Principal Engineer', 220000, 'IC5', 20, 140, 'Exceptional technical vision and platform architecture'),
+            ('Staff Engineer', 180000, 'IC4', 15, 130, 'Outstanding platform reliability improvements'),
+            ('Senior Software Engineer', 150000, 'IC3', 12, 115, 'Strong API development work'),
+            ('Senior Software Engineer', 145000, 'IC3', 12, 110, 'Solid infrastructure contributions'),
+            ('Software Engineer', 120000, 'IC2', 10, 105, 'Good platform integration work'),
+            ('Software Engineer', 115000, 'IC2', 10, 100, 'Met expectations on service deployment'),
+            ('Software Engineer', 118000, 'IC2', 10, 95, 'Steady progress on platform features'),
+            ('Software Engineer', 112000, 'IC2', 10, 90, 'Needs more ownership of features'),
+            ('Senior Software Engineer', 148000, 'IC3', 12, 120, 'Excellent platform tooling improvements'),
+            ('Senior Software Engineer', 152000, 'IC3', 12, 108, 'Solid mentorship and code quality'),
         ],
         'Engineering - Frontend': [
-            ('Staff Engineer', 175000, 'IC4', 15),
-            ('Senior Software Engineer', 155000, 'IC3', 12),
-            ('Senior Software Engineer', 149000, 'IC3', 12),
-            ('Software Engineer', 110000, 'IC2', 10),
-            ('Software Engineer', 125000, 'IC2', 10),
-            ('Senior Software Engineer', 147000, 'IC3', 12),
-            ('Software Engineer', 122000, 'IC2', 10),
-            ('Senior Software Engineer', 151000, 'IC3', 12),
-            ('Software Engineer', 119000, 'IC2', 10),
-            ('Software Engineer', 116000, 'IC2', 10),
+            ('Staff Engineer', 175000, 'IC4', 15, 125, 'Outstanding UI framework modernization'),
+            ('Senior Software Engineer', 155000, 'IC3', 12, 118, 'Strong React component library work'),
+            ('Senior Software Engineer', 149000, 'IC3', 12, 112, 'Solid accessibility improvements'),
+            ('Software Engineer', 110000, 'IC2', 10, 88, 'Needs improvement in code review participation'),
+            ('Software Engineer', 125000, 'IC2', 10, 102, 'Good responsive design work'),
+            ('Senior Software Engineer', 147000, 'IC3', 12, 115, 'Excellent state management refactoring'),
+            ('Software Engineer', 122000, 'IC2', 10, 98, 'Solid component development'),
+            ('Senior Software Engineer', 151000, 'IC3', 12, 110, 'Strong performance optimization'),
+            ('Software Engineer', 119000, 'IC2', 10, 92, 'Adequate progress on feature development'),
+            ('Software Engineer', 116000, 'IC2', 10, 85, 'Needs more proactive communication'),
         ],
         'Product Management': [
-            ('Senior Product Manager', 165000, 'IC4', 15),
-            ('Senior Product Manager', 160000, 'IC4', 15),
-            ('Product Manager', 130000, 'IC3', 12),
-            ('Product Manager', 125000, 'IC3', 12),
-            ('Product Manager', 135000, 'IC3', 12),
-            ('Product Manager', 128000, 'IC3', 12),
-            ('Senior Product Manager', 158000, 'IC4', 15),
-            ('Product Manager', 132000, 'IC3', 12),
-            ('Product Manager', 127000, 'IC3', 12),
-            ('Product Manager', 133000, 'IC3', 12),
+            ('Senior Product Manager', 165000, 'IC4', 15, 128, 'Exceptional product strategy and roadmap'),
+            ('Senior Product Manager', 160000, 'IC4', 15, 122, 'Outstanding stakeholder management'),
+            ('Product Manager', 130000, 'IC3', 12, 110, 'Strong feature prioritization'),
+            ('Product Manager', 125000, 'IC3', 12, 105, 'Good user research and validation'),
+            ('Product Manager', 135000, 'IC3', 12, 115, 'Excellent cross-functional collaboration'),
+            ('Product Manager', 128000, 'IC3', 12, 100, 'Met goals on product launches'),
+            ('Senior Product Manager', 158000, 'IC4', 15, 118, 'Strong data-driven decision making'),
+            ('Product Manager', 132000, 'IC3', 12, 108, 'Solid execution on product initiatives'),
+            ('Product Manager', 127000, 'IC3', 12, 95, 'Needs improvement in stakeholder alignment'),
+            ('Product Manager', 133000, 'IC3', 12, 112, 'Strong customer empathy and insights'),
         ],
         'Engineering - Data': [
-            ('Senior Data Engineer', 132911, 'IC3', 12, 'GBP', 105000),  # International
-            ('Data Engineer', 98734, 'IC2', 10, 'GBP', 78000),  # International
-            ('Senior Data Engineer', 145000, 'IC3', 12),
-            ('Data Engineer', 115000, 'IC2', 10),
-            ('Senior Data Engineer', 148000, 'IC3', 12),
-            ('Data Engineer', 118000, 'IC2', 10),
-            ('Senior Data Engineer', 142000, 'IC3', 12),
-            ('Data Engineer', 112000, 'IC2', 10),
-            ('Senior Data Engineer', 150000, 'IC3', 12),
-            ('Data Engineer', 120000, 'IC2', 10),
+            ('Senior Data Engineer', 132911, 'IC3', 12, 'GBP', 105000, 120, 'Outstanding data pipeline architecture'),
+            ('Data Engineer', 98734, 'IC2', 10, 'GBP', 78000, 105, 'Good ETL development work'),
+            ('Senior Data Engineer', 145000, 'IC3', 12, 115, 'Strong data warehouse optimization'),
+            ('Data Engineer', 115000, 'IC2', 10, 100, 'Solid data quality improvements'),
+            ('Senior Data Engineer', 148000, 'IC3', 12, 125, 'Excellent ML pipeline infrastructure'),
+            ('Data Engineer', 118000, 'IC2', 10, 98, 'Good progress on data ingestion'),
+            ('Senior Data Engineer', 142000, 'IC3', 12, 110, 'Strong analytics platform work'),
+            ('Data Engineer', 112000, 'IC2', 10, 92, 'Adequate data modeling work'),
+            ('Senior Data Engineer', 150000, 'IC3', 12, 118, 'Excellent data governance initiatives'),
+            ('Data Engineer', 120000, 'IC2', 10, 95, 'Steady progress on reporting tools'),
         ],
         'Engineering - Infrastructure': [
-            ('Staff Infrastructure Engineer', 185000, 'IC4', 15),
-            ('Senior DevOps Engineer', 155000, 'IC3', 12),
-            ('Senior DevOps Engineer', 152000, 'IC3', 12),
-            ('DevOps Engineer', 125000, 'IC2', 10),
-            ('DevOps Engineer', 122000, 'IC2', 10),
-            ('Senior Security Engineer', 160000, 'IC3', 12),
-            ('Security Engineer', 135000, 'IC2', 10),
-            ('Senior DevOps Engineer', 148000, 'IC3', 12),
-            ('DevOps Engineer', 128000, 'IC2', 10),
-            ('DevOps Engineer', 130000, 'IC2', 10),
+            ('Staff Infrastructure Engineer', 185000, 'IC4', 15, 135, 'Exceptional infrastructure modernization'),
+            ('Senior DevOps Engineer', 155000, 'IC3', 12, 120, 'Outstanding CI/CD pipeline improvements'),
+            ('Senior DevOps Engineer', 152000, 'IC3', 12, 112, 'Strong Kubernetes migration work'),
+            ('DevOps Engineer', 125000, 'IC2', 10, 103, 'Good infrastructure automation'),
+            ('DevOps Engineer', 122000, 'IC2', 10, 98, 'Solid monitoring setup'),
+            ('Senior Security Engineer', 160000, 'IC3', 12, 125, 'Excellent security hardening'),
+            ('Security Engineer', 135000, 'IC2', 10, 108, 'Strong vulnerability management'),
+            ('Senior DevOps Engineer', 148000, 'IC3', 12, 115, 'Strong cloud cost optimization'),
+            ('DevOps Engineer', 128000, 'IC2', 10, 100, 'Met expectations on infrastructure work'),
+            ('DevOps Engineer', 130000, 'IC2', 10, 95, 'Good disaster recovery planning'),
         ],
     }
 
@@ -184,10 +190,10 @@ def get_large_org_data():
         configs = team_configs[org]
 
         for config in configs:
-            if len(config) == 6:  # International employee
-                job, salary_usd, grade, bonus_pct, currency, salary_local = config
+            if len(config) == 8:  # International employee
+                job, salary_usd, grade, bonus_pct, currency, salary_local, rating, justification = config
             else:
-                job, salary_usd, grade, bonus_pct = config
+                job, salary_usd, grade, bonus_pct, rating, justification = config
                 currency = 'USD'
                 salary_local = salary_usd
 
@@ -200,6 +206,8 @@ def get_large_org_data():
                 'currency': currency,
                 'grade': grade,
                 'bonus_pct': bonus_pct,
+                'rating': rating,
+                'justification': justification,
                 'associate_id': f'EMP{1000 + name_idx}'
             })
 

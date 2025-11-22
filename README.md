@@ -17,7 +17,7 @@ A web-based tool for managers to conduct quarterly performance reviews and calcu
 Try the system immediately with fictitious demo data. Choose either:
 
 ### Option 1: Small Team (Recommended for First-Time Users)
-Perfect for learning the system - 12 employees under one manager.
+Perfect for learning the system - 12 employees under one manager with pre-populated ratings.
 
 ```bash
 # 1. Install dependencies
@@ -29,14 +29,17 @@ python3 create_sample_data.py
 # 3. Import sample data to database
 python3 convert_xlsx.py sample-data-small.xlsx
 
-# 4. Start the web server
+# 4. Populate performance ratings
+python3 populate_sample_ratings.py small
+
+# 5. Start the web server
 python3 app.py
 
-# 5. Open browser to http://localhost:5000
+# 6. Open browser to http://localhost:5000
 ```
 
 ### Option 2: Large Multi-Manager Organization
-Test multi-org scenarios - 50 employees across 5 managers.
+Test multi-org scenarios - 50 employees across 5 managers with realistic ratings.
 
 ```bash
 # 2. Generate large org sample data
@@ -45,18 +48,28 @@ python3 create_sample_data.py --large
 # 3. Import sample data to database
 python3 convert_xlsx.py sample-data-large.xlsx
 
-# (Continue with steps 4-5 above)
+# 4. Populate performance ratings
+python3 populate_sample_ratings.py large
+
+# (Continue with steps 5-6 above)
 ```
 
 **Sample Data Details:**
-- **Small**: 12 employees, 1 manager (Della Gate), all US-based
-- **Large**: 50 employees, 5 managers (Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone), includes international employees
+- **Small**: 12 employees, 1 manager (Della Gate), all US-based, fully rated (ready for bonus calculation)
+- **Large**: 50 employees, 5 managers (Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone), includes international employees, fully rated
+
+**What you get:**
+- ✅ Complete employee data (salary, bonus targets, job profiles)
+- ✅ Pre-populated performance ratings (85-140% range)
+- ✅ Realistic justifications for each rating
+- ✅ Ready for immediate bonus calculation
+- ✅ Mix of high performers, solid performers, and those needing improvement
 
 You can now explore all features:
-- **Dashboard**: See team overview
-- **Rate Team**: Practice rating employees
-- **Analytics**: View distribution and calibration guidance
-- **Bonus Calculation**: Experiment with bonus parameters
+- **Dashboard**: See team overview with ratings
+- **Rate Team**: View/modify existing ratings or practice adding new ones
+- **Analytics**: Explore distribution and calibration guidance
+- **Bonus Calculation**: Run algorithmic bonus distribution immediately
 
 ## Using Your Own Team Data
 
