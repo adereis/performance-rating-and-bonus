@@ -14,11 +14,11 @@ import sys
 
 
 def create_headers(sheet):
-    """Add standard Workday export headers."""
+    """Add standard Workday export headers plus sample-specific rating column."""
     # Row 1: Empty (matches Workday export format)
     sheet.append([])
 
-    # Row 2: Headers (matches Workday export structure)
+    # Row 2: Headers (matches Workday export structure + sample rating)
     headers = [
         'Associate',
         'Supervisory Organization',
@@ -38,7 +38,8 @@ def create_headers(sheet):
         'Proposed Bonus Amount (USD)',
         'Proposed Percent of Target Bonus',
         'Notes',
-        'Zero Bonus Allocated'
+        'Zero Bonus Allocated',
+        'Performance Rating Percent'  # SAMPLE DATA ONLY - not in real Workday exports
     ]
     sheet.append(headers)
 
@@ -258,7 +259,8 @@ def write_employee_data(sheet, employees):
             None,  # Proposed bonus USD
             None,  # Proposed percent
             '',  # Notes
-            ''   # Zero bonus allocated
+            '',  # Zero bonus allocated
+            emp['rating']  # Performance Rating Percent (sample data only)
         ]
 
         sheet.append(row)

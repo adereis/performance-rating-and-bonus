@@ -26,16 +26,13 @@ pip install -r requirements.txt
 # 2. Generate small team sample data
 python3 create_sample_data.py
 
-# 3. Import sample data to database
+# 3. Import sample data to database (includes ratings)
 python3 convert_xlsx.py sample-data-small.xlsx
 
-# 4. Populate performance ratings
-python3 populate_sample_ratings.py small
-
-# 5. Start the web server
+# 4. Start the web server
 python3 app.py
 
-# 6. Open browser to http://localhost:5000
+# 5. Open browser to http://localhost:5000
 ```
 
 ### Option 2: Large Multi-Manager Organization
@@ -45,25 +42,22 @@ Test multi-org scenarios - 50 employees across 5 managers with realistic ratings
 # 2. Generate large org sample data
 python3 create_sample_data.py --large
 
-# 3. Import sample data to database
+# 3. Import sample data to database (includes ratings)
 python3 convert_xlsx.py sample-data-large.xlsx
 
-# 4. Populate performance ratings
-python3 populate_sample_ratings.py large
-
-# (Continue with steps 5-6 above)
+# (Continue with steps 4-5 above)
 ```
 
 **Sample Data Details:**
 - **Small**: 12 employees (Software Developers & SREs), 1 manager (Della Gate) rating their team, all US-based, fully rated
 - **Large**: 50 employees (Software Developers, SREs & Engineering Managers), 5 managers (Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone), simulates Director rating their managers and ICs, includes international employees (GBP), fully rated
 
-**Note**: Sample data matches Workday export format where Supervisory Organization = `"Supervisory Organization (Manager Name)"`
+**Note**: Sample data matches Workday export format where Supervisory Organization = `"Supervisory Organization (Manager Name)"`, plus an additional column with pre-populated performance ratings for immediate testing.
 
 **What you get:**
 - ✅ Complete employee data (salary, bonus targets, job profiles)
-- ✅ Pre-populated performance ratings (85-140% range)
-- ✅ Realistic justifications for each rating
+- ✅ Pre-populated performance ratings (85-140% range) via single import step
+- ✅ Empty justification/mentor/mentee/AI fields for you to fill in
 - ✅ Ready for immediate bonus calculation
 - ✅ Mix of high performers, solid performers, and those needing improvement
 

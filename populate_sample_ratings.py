@@ -40,8 +40,9 @@ def populate_ratings(size='small'):
         for emp_data in employees_data:
             emp = db.query(Employee).filter(Employee.associate == emp_data['associate']).first()
             if emp:
+                # Only populate performance rating, not justification/mentor/mentee/AI fields
+                # This allows users to try bonus calculation immediately without pre-filled text
                 emp.performance_rating_percent = emp_data['rating']
-                emp.justification = emp_data['justification']
                 emp.last_updated = datetime.now()
                 updated_count += 1
 
@@ -49,6 +50,7 @@ def populate_ratings(size='small'):
         print(f"✓ Populated {updated_count} performance ratings for {dataset_name}")
         print(f"  - Ready to view at http://localhost:5000")
         print(f"  - All employees now have ratings and can be used for bonus calculation")
+        print(f"  - Justification/mentor/mentee/AI fields left blank for you to fill in")
     except Exception as e:
         db.rollback()
         print(f"✗ Error populating ratings: {e}")

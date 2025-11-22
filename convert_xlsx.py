@@ -62,6 +62,7 @@ def convert_xlsx_to_db(xlsx_file='bonus-from-wd.xlsx'):
         COL_PROPOSED_PCT = 16
         COL_NOTES = 17
         COL_ZERO_BONUS = 18
+        COL_PERFORMANCE_RATING = 19  # Optional - only in sample data
 
         # Process data rows (start from row 2, which is index 2)
         for i, row in enumerate(rows[2:], start=2):
@@ -110,7 +111,12 @@ def convert_xlsx_to_db(xlsx_file='bonus-from-wd.xlsx'):
 
             # Initialize manager input fields as empty if new
             if not existing:
-                employee.performance_rating_percent = None
+                # Check if this is sample data with performance ratings included
+                if len(row) > COL_PERFORMANCE_RATING and row[COL_PERFORMANCE_RATING]:
+                    employee.performance_rating_percent = parse_float(row[COL_PERFORMANCE_RATING])
+                else:
+                    employee.performance_rating_percent = None
+
                 employee.justification = ''
                 employee.mentor = ''
                 employee.mentees = ''
