@@ -392,11 +392,11 @@
                         data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}"
                         data-name="{{ employee.Associate }}"
                         data-job="{{ employee['Current Job Profile'] }}"
-                        data-pay="{{ employee['Current Base Pay All Countries (USD)'] or 0 }}"
+                        data-pay="{{ employee['Current Base Pay All Countries (USD)'] or employee['Current Base Pay All Countries'] or 0 }}"
                         data-rating="{{ employee.performance_rating_percent or 0 }}">
                         <td><strong>{{ employee.Associate }}</strong></td>
                         <td>{{ employee['Current Job Profile'] }}</td>
-                        <td>${{ "{:,.0f}".format(employee['Current Base Pay All Countries (USD)'] | float) if employee['Current Base Pay All Countries (USD)'] else 'N/A' }}</td>
+                        <td>${{ "{:,.0f}".format((employee['Current Base Pay All Countries (USD)'] or employee['Current Base Pay All Countries']) | float) if (employee['Current Base Pay All Countries (USD)'] or employee['Current Base Pay All Countries']) else 'N/A' }}</td>
                         <td>
                             <input type="number"
                                    min="0"
@@ -438,7 +438,7 @@
                 </div>
                 <div>
                     <label>Base Pay (USD)</label>
-                    <span>${{ "{:,.0f}".format(employee['Current Base Pay All Countries (USD)'] | float) if employee['Current Base Pay All Countries (USD)'] else 'N/A' }}</span>
+                    <span>${{ "{:,.0f}".format((employee['Current Base Pay All Countries (USD)'] or employee['Current Base Pay All Countries']) | float) if (employee['Current Base Pay All Countries (USD)'] or employee['Current Base Pay All Countries']) else 'N/A' }}</span>
                 </div>
             </div>
 
