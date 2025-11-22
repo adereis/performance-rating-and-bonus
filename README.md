@@ -222,13 +222,17 @@ Run the test suite:
 python3 -m pytest tests/ -v
 ```
 
-Current coverage: 42 tests covering:
+Current coverage: 70 tests covering:
 - Database operations
 - Employee CRUD
 - Rating validation
 - Analytics calculations
 - Distribution calibration
 - Bonus algorithm
+- Multi-organization scenarios
+- Workday export format validation
+- USD vs international employee handling
+- Quarterly bonus calculations
 
 ## Privacy & Security
 

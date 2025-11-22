@@ -308,7 +308,12 @@ def bonus_calculation():
     for emp in rated_employees:
         try:
             rating = float(emp.get('performance_rating_percent', 100))
-            # Prefer USD version if exists (non-US), otherwise use local currency (US employees already in USD)
+
+            # CRITICAL: Fallback logic for USD vs International employees
+            # USD employees: Have values ONLY in "Local Currency" column (which is USD)
+            # International: Have values in BOTH "Local Currency" AND "USD" columns
+            # Always prefer USD column if present, fallback to local (works for both cases)
+            # See tests/test_workday_format.py for detailed documentation
             bonus_target_usd = float((emp.get('Bonus Target - Local Currency (USD)') or emp.get('Bonus Target - Local Currency')) or 0)
             base_pay_usd = float((emp.get('Current Base Pay All Countries (USD)') or emp.get('Current Base Pay All Countries')) or 0)
         except (ValueError, TypeError):
