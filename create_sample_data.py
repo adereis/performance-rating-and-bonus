@@ -2,17 +2,19 @@
 """
 Create sample demo data for the Quarterly Performance Rating System.
 This generates fictitious employee data so managers can try the tool out of the box.
+
+Usage:
+    python3 create_sample_data.py              # Creates small team (12 employees, 1 manager)
+    python3 create_sample_data.py --large      # Creates large org (50 employees, 5 managers)
 """
 import openpyxl
 from openpyxl import Workbook
 import random
+import sys
 
-def create_sample_xlsx():
-    """Create sample-data.xlsx with fictitious employee data."""
 
-    wb = Workbook()
-    sheet = wb.active
-
+def create_headers(sheet):
+    """Add standard Workday export headers."""
     # Row 1: Empty (matches Workday export format)
     sheet.append([])
 
@@ -40,329 +42,255 @@ def create_sample_xlsx():
     ]
     sheet.append(headers)
 
-    # Fictitious data configuration - tech/engineering themed names
+
+def get_small_team_data():
+    """
+    Small team: 12 employees under single manager (Della Gate).
+    Perfect for testing with a manageable dataset.
+    """
+    manager = "Della Gate - Engineering"
+
+    employees = [
+        ('Paige Duty', 'Staff Engineer', 180000, 'USD', 'IC4', 15),
+        ('Lee Latency', 'Senior Software Engineer', 150000, 'USD', 'IC3', 12),
+        ('Mona Torr', 'Senior Software Engineer', 145000, 'USD', 'IC3', 12),
+        ('Robin Rollback', 'Software Engineer', 120000, 'USD', 'IC2', 10),
+        ('Kenny Canary', 'Software Engineer', 115000, 'USD', 'IC2', 10),
+        ('Tracey Loggins', 'Senior Software Engineer', 155000, 'USD', 'IC3', 12),
+        ('Sue Q. Ell', 'Senior Software Engineer', 148000, 'USD', 'IC3', 12),
+        ('Jason Blob', 'Software Engineer', 118000, 'USD', 'IC2', 10),
+        ('Al Ert', 'Staff Engineer', 175000, 'USD', 'IC4', 15),
+        ('Addie Min', 'Senior Software Engineer', 152000, 'USD', 'IC3', 12),
+        ('Tim Out', 'Software Engineer', 110000, 'USD', 'IC2', 10),
+        ('Barbie Que', 'Senior Software Engineer', 149000, 'USD', 'IC3', 12),
+    ]
+
+    result = []
+    for i, (name, job, salary, currency, grade, bonus_pct) in enumerate(employees):
+        result.append({
+            'associate': name,
+            'supervisory_organization': manager,
+            'job_profile': job,
+            'salary': salary,
+            'currency': currency,
+            'grade': grade,
+            'bonus_pct': bonus_pct,
+            'associate_id': f'EMP{1000 + i}'
+        })
+
+    return result
+
+
+def get_large_org_data():
+    """
+    Large org: 50 employees across 5 managers.
+    Tests multi-manager/multi-org scenario with international employees.
+    """
+    # Manager names from Gemini 3
+    managers = {
+        'Della Gate': 'Engineering - Platform',
+        'Rhoda Map': 'Engineering - Frontend',
+        'Kay P. Eye': 'Product Management',
+        'Agie Enda': 'Engineering - Data',
+        'Mai Stone': 'Engineering - Infrastructure'
+    }
+
+    # Tech-themed employee names
     names = [
-        'Paige Duty',
-        'Lee Latency',
-        'Mona Torr',
-        'Robin Rollback',
-        'Kenny Canary',
-        'Tracey Loggins',
-        'Sue Q. Ell',
-        'Jason Blob',
-        'Al Ert',
-        'Addie Min',
-        'Tim Out',
-        'Barbie Que',
-        'Terry Byte',
-        'Nole Pointer',
-        'Marge Conflict',
-        'Bridget Branch',
-        'Cody Ryder',
-        'Cy Ferr',
-        'Phil Wall',
-        'Lana Wan',
-        'Artie Ficial',
-        'Ruth Cause',
-        'Matt Rick',
-        'Cassie Cache',
-        'Sue Do',
-        'Pat Ch',
-        'Devin Null',
-        'Justin Time',
-        'Annie O\'Maly',
-        'Sam Box',
-        'Val Idation',
-        'Bill Ding',
-        'Ty Po',
-        'Mike Roservices',
-        'Lou Pe',
-        'Connie Tainer',
-        'Noah Node',
-        'Sara Ver',
-        'Exa M. Elle',
-        'Dee Ploi',
-        'Ray D. O\'Button',
-        'Cam Elcase',
-        'Hashim Map',
-        'Ben Chmark',
-        'Grace Full',
-        'Shel Script',
-        'Sal T. Hash',
-        'Reba Boot',
-        'Stan Dup',
-        'Kay Eight'
+        'Paige Duty', 'Lee Latency', 'Mona Torr', 'Robin Rollback',
+        'Kenny Canary', 'Tracey Loggins', 'Sue Q. Ell', 'Jason Blob',
+        'Al Ert', 'Addie Min', 'Tim Out', 'Barbie Que',
+        'Terry Byte', 'Nole Pointer', 'Marge Conflict', 'Bridget Branch',
+        'Cody Ryder', 'Cy Ferr', 'Phil Wall', 'Lana Wan',
+        'Artie Ficial', 'Ruth Cause', 'Matt Rick', 'Cassie Cache',
+        'Sue Do', 'Pat Ch', 'Devin Null', 'Justin Time',
+        'Annie O\'Maly', 'Sam Box', 'Val Idation', 'Bill Ding',
+        'Ty Po', 'Mike Roservices', 'Lou Pe', 'Connie Tainer',
+        'Noah Node', 'Sara Ver', 'Exa M. Elle', 'Dee Ploi',
+        'Ray D. O\'Button', 'Cam Elcase', 'Hashim Map', 'Ben Chmark',
+        'Grace Full', 'Shel Script', 'Sal T. Hash', 'Reba Boot',
+        'Stan Dup', 'Kay Eight'
     ]
 
-    supervisory_orgs = [
-        'Engineering - Platform',
-        'Engineering - Platform',
-        'Engineering - Platform',
-        'Engineering - Platform',
-        'Engineering - Platform',
-        'Engineering - Frontend',
-        'Engineering - Frontend',
-        'Engineering - Frontend',
-        'Engineering - Backend Services',
-        'Engineering - Backend Services',
-        'Engineering - Backend Services',
-        'Engineering - Backend Services',
-        'Engineering - Infrastructure',
-        'Engineering - Infrastructure',
-        'Engineering - Security',
-        'Engineering - Security',
-        'Product Management',
-        'Product Management',
-        'Product Management',
-        'Engineering - Data',
-        'Engineering - Data',
-        'Engineering - Mobile',
-        'Engineering - Mobile',
-        'Engineering - DevOps',
-        'Engineering - DevOps',
-        'Engineering - QA',
-        'Engineering - QA',
-        'Engineering - QA',
-        'Product Design',
-        'Product Design',
-        'Engineering - Platform',
-        'Engineering - Frontend',
-        'Engineering - Backend Services',
-        'Engineering - Infrastructure',
-        'Engineering - Security',
-        'Product Management',
-        'Engineering - Data',
-        'Engineering - Mobile',
-        'Engineering - DevOps',
-        'Engineering - QA',
-        'Product Design',
-        'Engineering - Platform',
-        'Engineering - Frontend',
-        'Engineering - Backend Services',
-        'Engineering - Infrastructure',
-        'Product Management',
-        'Engineering - Data',
-        'Engineering - Mobile',
-        'Engineering - DevOps',
-        'Engineering - QA'
-    ]
-
-    job_profiles = [
-        'Senior Software Engineer',
-        'Software Engineer',
-        'Staff Engineer',
-        'Senior Software Engineer',
-        'Principal Engineer',
-        'Senior Software Engineer',
-        'Software Engineer',
-        'Senior Software Engineer',
-        'Staff Engineer',
-        'Senior Software Engineer',
-        'Senior Software Engineer',
-        'Software Engineer',
-        'Senior Software Engineer',
-        'Staff Engineer',
-        'Senior Software Engineer',
-        'Software Engineer',
-        'Senior Product Manager',
-        'Product Manager',
-        'Senior Product Manager',
-        'Senior Data Engineer',
-        'Data Engineer',
-        'Senior Software Engineer',
-        'Software Engineer',
-        'Senior DevOps Engineer',
-        'DevOps Engineer',
-        'Senior QA Engineer',
-        'QA Engineer',
-        'QA Engineer',
-        'Senior Product Designer',
-        'Product Designer',
-        'Software Engineer',
-        'Software Engineer',
-        'Senior Software Engineer',
-        'Senior Software Engineer',
-        'Security Engineer',
-        'Product Manager',
-        'Data Analyst',
-        'Mobile Engineer',
-        'DevOps Engineer',
-        'QA Engineer',
-        'Product Designer',
-        'Senior Software Engineer',
-        'Senior Software Engineer',
-        'Software Engineer',
-        'Infrastructure Engineer',
-        'Senior Product Manager',
-        'Senior Data Engineer',
-        'Senior Mobile Engineer',
-        'Senior DevOps Engineer',
-        'Senior QA Engineer'
-    ]
-
-    # Salary ranges by job profile (in USD)
-    salary_ranges = {
-        'Software Engineer': (90000, 120000),
-        'Senior Software Engineer': (130000, 170000),
-        'Staff Engineer': (170000, 220000),
-        'Principal Engineer': (220000, 280000),
-        'Product Manager': (110000, 140000),
-        'Senior Product Manager': (150000, 190000),
-        'Data Engineer': (95000, 125000),
-        'Senior Data Engineer': (135000, 175000),
-        'Mobile Engineer': (95000, 125000),
-        'Senior Mobile Engineer': (135000, 175000),
-        'DevOps Engineer': (100000, 130000),
-        'Senior DevOps Engineer': (140000, 180000),
-        'QA Engineer': (85000, 110000),
-        'Senior QA Engineer': (115000, 145000),
-        'Product Designer': (95000, 125000),
-        'Senior Product Designer': (130000, 165000),
-        'Data Analyst': (80000, 105000),
-        'Security Engineer': (120000, 160000),
-        'Infrastructure Engineer': (115000, 150000)
+    # Job profiles per team
+    team_configs = {
+        'Engineering - Platform': [
+            ('Principal Engineer', 220000, 'IC5', 20),
+            ('Staff Engineer', 180000, 'IC4', 15),
+            ('Senior Software Engineer', 150000, 'IC3', 12),
+            ('Senior Software Engineer', 145000, 'IC3', 12),
+            ('Software Engineer', 120000, 'IC2', 10),
+            ('Software Engineer', 115000, 'IC2', 10),
+            ('Software Engineer', 118000, 'IC2', 10),
+            ('Software Engineer', 112000, 'IC2', 10),
+            ('Senior Software Engineer', 148000, 'IC3', 12),
+            ('Senior Software Engineer', 152000, 'IC3', 12),
+        ],
+        'Engineering - Frontend': [
+            ('Staff Engineer', 175000, 'IC4', 15),
+            ('Senior Software Engineer', 155000, 'IC3', 12),
+            ('Senior Software Engineer', 149000, 'IC3', 12),
+            ('Software Engineer', 110000, 'IC2', 10),
+            ('Software Engineer', 125000, 'IC2', 10),
+            ('Senior Software Engineer', 147000, 'IC3', 12),
+            ('Software Engineer', 122000, 'IC2', 10),
+            ('Senior Software Engineer', 151000, 'IC3', 12),
+            ('Software Engineer', 119000, 'IC2', 10),
+            ('Software Engineer', 116000, 'IC2', 10),
+        ],
+        'Product Management': [
+            ('Senior Product Manager', 165000, 'IC4', 15),
+            ('Senior Product Manager', 160000, 'IC4', 15),
+            ('Product Manager', 130000, 'IC3', 12),
+            ('Product Manager', 125000, 'IC3', 12),
+            ('Product Manager', 135000, 'IC3', 12),
+            ('Product Manager', 128000, 'IC3', 12),
+            ('Senior Product Manager', 158000, 'IC4', 15),
+            ('Product Manager', 132000, 'IC3', 12),
+            ('Product Manager', 127000, 'IC3', 12),
+            ('Product Manager', 133000, 'IC3', 12),
+        ],
+        'Engineering - Data': [
+            ('Senior Data Engineer', 132911, 'IC3', 12, 'GBP', 105000),  # International
+            ('Data Engineer', 98734, 'IC2', 10, 'GBP', 78000),  # International
+            ('Senior Data Engineer', 145000, 'IC3', 12),
+            ('Data Engineer', 115000, 'IC2', 10),
+            ('Senior Data Engineer', 148000, 'IC3', 12),
+            ('Data Engineer', 118000, 'IC2', 10),
+            ('Senior Data Engineer', 142000, 'IC3', 12),
+            ('Data Engineer', 112000, 'IC2', 10),
+            ('Senior Data Engineer', 150000, 'IC3', 12),
+            ('Data Engineer', 120000, 'IC2', 10),
+        ],
+        'Engineering - Infrastructure': [
+            ('Staff Infrastructure Engineer', 185000, 'IC4', 15),
+            ('Senior DevOps Engineer', 155000, 'IC3', 12),
+            ('Senior DevOps Engineer', 152000, 'IC3', 12),
+            ('DevOps Engineer', 125000, 'IC2', 10),
+            ('DevOps Engineer', 122000, 'IC2', 10),
+            ('Senior Security Engineer', 160000, 'IC3', 12),
+            ('Security Engineer', 135000, 'IC2', 10),
+            ('Senior DevOps Engineer', 148000, 'IC3', 12),
+            ('DevOps Engineer', 128000, 'IC2', 10),
+            ('DevOps Engineer', 130000, 'IC2', 10),
+        ],
     }
 
-    # Bonus target percentages by level
-    bonus_targets = {
-        'Software Engineer': 10,
-        'Senior Software Engineer': 12,
-        'Staff Engineer': 15,
-        'Principal Engineer': 20,
-        'Product Manager': 12,
-        'Senior Product Manager': 15,
-        'Data Engineer': 10,
-        'Senior Data Engineer': 12,
-        'Mobile Engineer': 10,
-        'Senior Mobile Engineer': 12,
-        'DevOps Engineer': 10,
-        'Senior DevOps Engineer': 12,
-        'QA Engineer': 8,
-        'Senior QA Engineer': 10,
-        'Product Designer': 10,
-        'Senior Product Designer': 12,
-        'Data Analyst': 8,
-        'Security Engineer': 12,
-        'Infrastructure Engineer': 12
-    }
+    result = []
+    name_idx = 0
 
-    # Currency data for non-US employees (25% of team)
-    currencies = ['USD', 'GBP', 'EUR', 'CAD', 'INR']
-    exchange_rates = {
-        'USD': 1.0,
-        'GBP': 0.79,
-        'EUR': 0.92,
-        'CAD': 1.35,
-        'INR': 82.5
-    }
+    for manager_name, teams in managers.items():
+        org = teams
+        configs = team_configs[org]
 
-    # Generate 50 employees
-    for i in range(50):
-        associate = names[i]
-        supervisory_org = supervisory_orgs[i]
-        job_profile = job_profiles[i]
-        photo = ''
-        errors = ''
-        associate_id = f'EMP{1000 + i}'
+        for config in configs:
+            if len(config) == 6:  # International employee
+                job, salary_usd, grade, bonus_pct, currency, salary_local = config
+            else:
+                job, salary_usd, grade, bonus_pct = config
+                currency = 'USD'
+                salary_local = salary_usd
 
-        # Determine currency (75% USD, rest distributed)
-        if i < 38:  # First 38 are US-based
-            currency = 'USD'
-        else:
-            currency = random.choice(['GBP', 'EUR', 'CAD', 'INR'])
+            result.append({
+                'associate': names[name_idx],
+                'supervisory_organization': org,
+                'job_profile': job,
+                'salary': salary_usd,
+                'salary_local': salary_local,
+                'currency': currency,
+                'grade': grade,
+                'bonus_pct': bonus_pct,
+                'associate_id': f'EMP{1000 + name_idx}'
+            })
 
-        # Generate salary
-        salary_range = salary_ranges.get(job_profile, (100000, 150000))
-        base_pay_usd = random.randint(salary_range[0], salary_range[1])
-        base_pay_usd = round(base_pay_usd / 1000) * 1000  # Round to nearest 1000
+            name_idx += 1
 
-        # Convert to local currency if needed
-        exchange_rate = exchange_rates[currency]
-        base_pay_local = base_pay_usd * exchange_rate
+    return result
 
+
+def write_employee_data(sheet, employees):
+    """Write employee data to worksheet."""
+    for i, emp in enumerate(employees):
         # Bonus calculations
-        bonus_target_pct = bonus_targets.get(job_profile, 10)
-        bonus_target_usd = base_pay_usd * (bonus_target_pct / 100)
-        bonus_target_local = bonus_target_usd * exchange_rate
-
-        # For non-USD, we have both columns
-        if currency == 'USD':
-            bonus_target_local_col = bonus_target_usd
-            bonus_target_usd_col = None  # USD employees don't have the USD column
-            base_pay_local_col = base_pay_usd
-            base_pay_usd_col = None
+        if emp['currency'] == 'USD':
+            base_pay_local = emp['salary']
+            base_pay_usd = None
+            bonus_target_local = emp['salary'] * (emp['bonus_pct'] / 100)
+            bonus_target_usd = None
         else:
-            bonus_target_local_col = bonus_target_local
-            bonus_target_usd_col = bonus_target_usd
-            base_pay_local_col = base_pay_local
-            base_pay_usd_col = base_pay_usd
+            base_pay_local = emp['salary_local']
+            base_pay_usd = emp['salary']
+            bonus_target_local = emp['salary_local'] * (emp['bonus_pct'] / 100)
+            bonus_target_usd = emp['salary'] * (emp['bonus_pct'] / 100)
 
-        # Grade (internal, not shown to managers but in data)
-        grade_map = {
-            'Software Engineer': 'IC2',
-            'Senior Software Engineer': 'IC3',
-            'Staff Engineer': 'IC4',
-            'Principal Engineer': 'IC5',
-            'Product Manager': 'IC3',
-            'Senior Product Manager': 'IC4',
-            'Data Engineer': 'IC2',
-            'Senior Data Engineer': 'IC3',
-            'Mobile Engineer': 'IC2',
-            'Senior Mobile Engineer': 'IC3',
-            'DevOps Engineer': 'IC2',
-            'Senior DevOps Engineer': 'IC3',
-            'QA Engineer': 'IC2',
-            'Senior QA Engineer': 'IC3',
-            'Product Designer': 'IC2',
-            'Senior Product Designer': 'IC3',
-            'Data Analyst': 'IC2',
-            'Security Engineer': 'IC3',
-            'Infrastructure Engineer': 'IC3'
-        }
-        grade = grade_map.get(job_profile, 'IC2')
-
-        # Last bonus allocation (previous quarter - some value around 80-120%)
+        # Last bonus allocation (previous quarter)
         last_bonus_pct = random.choice([None, None, None, 85, 90, 95, 100, 105, 110, 115])
 
-        # Empty fields for now
-        proposed_bonus = None
-        proposed_bonus_usd = None
-        proposed_pct = None
-        notes = ''
-        zero_bonus = ''
-
         row = [
-            associate,
-            supervisory_org,
-            job_profile,
-            photo,
-            errors,
-            associate_id,
-            base_pay_local_col,
-            base_pay_usd_col,
-            currency,
-            grade,
-            bonus_target_pct,
+            emp['associate'],
+            emp['supervisory_organization'],
+            emp['job_profile'],
+            '',  # Photo
+            '',  # Errors
+            emp['associate_id'],
+            base_pay_local,
+            base_pay_usd,
+            emp['currency'],
+            emp['grade'],
+            emp['bonus_pct'],
             last_bonus_pct,
-            bonus_target_local_col,
-            bonus_target_usd_col,
-            proposed_bonus,
-            proposed_bonus_usd,
-            proposed_pct,
-            notes,
-            zero_bonus
+            bonus_target_local,
+            bonus_target_usd,
+            None,  # Proposed bonus
+            None,  # Proposed bonus USD
+            None,  # Proposed percent
+            '',  # Notes
+            ''   # Zero bonus allocated
         ]
 
         sheet.append(row)
 
+
+def create_sample_xlsx(size='small'):
+    """
+    Create sample-data.xlsx with fictitious employee data.
+
+    Args:
+        size: 'small' for 12 employees (1 manager), 'large' for 50 employees (5 managers)
+    """
+    wb = Workbook()
+    sheet = wb.active
+
+    create_headers(sheet)
+
+    if size == 'small':
+        employees = get_small_team_data()
+        filename = 'sample-data-small.xlsx'
+        description = "12 employees under 1 manager (Della Gate)"
+    else:
+        employees = get_large_org_data()
+        filename = 'sample-data-large.xlsx'
+        description = "50 employees across 5 managers"
+
+    write_employee_data(sheet, employees)
+
     # Save the workbook
-    wb.save('sample-data.xlsx')
-    print(f"✓ Created sample-data.xlsx with 50 fictitious employees")
-    print("  - 38 US-based employees (USD)")
-    print("  - 12 international employees (GBP, EUR, CAD, INR)")
-    print("  - Mix of job levels and departments")
-    print("  - Ready to import with: python convert_xlsx.py sample-data.xlsx")
+    wb.save(filename)
+
+    print(f"✓ Created {filename}")
+    print(f"  - {description}")
+    if size == 'large':
+        print(f"  - Managers: Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone")
+    print(f"  - Total employees: {len(employees)}")
+    us_count = sum(1 for e in employees if e['currency'] == 'USD')
+    intl_count = len(employees) - us_count
+    if intl_count > 0:
+        print(f"  - {us_count} US-based (USD), {intl_count} international (GBP)")
+    else:
+        print(f"  - All US-based (USD)")
+    print(f"  - Ready to import with: python3 convert_xlsx.py {filename}")
 
 
 if __name__ == '__main__':
-    create_sample_xlsx()
+    size = 'large' if '--large' in sys.argv else 'small'
+    create_sample_xlsx(size)

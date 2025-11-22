@@ -14,23 +14,43 @@ A web-based tool for managers to conduct quarterly performance reviews and calcu
 
 ## Quick Start with Sample Data
 
-Try the system immediately with fictitious demo data:
+Try the system immediately with fictitious demo data. Choose either:
+
+### Option 1: Small Team (Recommended for First-Time Users)
+Perfect for learning the system - 12 employees under one manager.
 
 ```bash
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Generate sample data (50 fictitious employees)
+# 2. Generate small team sample data
 python3 create_sample_data.py
 
 # 3. Import sample data to database
-python3 convert_xlsx.py sample-data.xlsx
+python3 convert_xlsx.py sample-data-small.xlsx
 
 # 4. Start the web server
 python3 app.py
 
 # 5. Open browser to http://localhost:5000
 ```
+
+### Option 2: Large Multi-Manager Organization
+Test multi-org scenarios - 50 employees across 5 managers.
+
+```bash
+# 2. Generate large org sample data
+python3 create_sample_data.py --large
+
+# 3. Import sample data to database
+python3 convert_xlsx.py sample-data-large.xlsx
+
+# (Continue with steps 4-5 above)
+```
+
+**Sample Data Details:**
+- **Small**: 12 employees, 1 manager (Della Gate), all US-based
+- **Large**: 50 employees, 5 managers (Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone), includes international employees
 
 You can now explore all features:
 - **Dashboard**: See team overview
@@ -172,7 +192,8 @@ bonuses/
 ├── BONUS_CALCULATION_README.md     # Manager's guide to bonuses
 ├── phase-two-prompt.md             # Technical bonus algorithm spec
 ├── ratings.db                      # SQLite database (created on first run)
-├── sample-data.xlsx                # Sample employee data (generated)
+├── sample-data-small.xlsx          # Small team sample (12 employees)
+├── sample-data-large.xlsx          # Large org sample (50 employees)
 ├── bonus-from-wd.xlsx              # Your Workday export (not in repo)
 ├── templates/                      # HTML templates
 │   ├── base.html                   # Base layout
@@ -214,7 +235,7 @@ Current coverage: 42 tests covering:
 
 ### "No such file or directory: bonus-from-wd.xlsx"
 - You need to export from Workday first, OR
-- Use sample data: `python3 create_sample_data.py && python3 convert_xlsx.py sample-data.xlsx`
+- Use sample data: `python3 create_sample_data.py && python3 convert_xlsx.py sample-data-small.xlsx`
 
 ### "Only 6 employees showing in bonus calculation"
 - Employees need bonus target data in Workday export
