@@ -5,6 +5,9 @@ ratings_export_*.csv
 ratings.db
 ratings.db-journal
 
+# REAL Workday exports (sensitive data)
+REAL-*.xlsx
+
 # Note: sample-data.xlsx is intentionally NOT ignored
 # It's demo data that should be in the repository
 

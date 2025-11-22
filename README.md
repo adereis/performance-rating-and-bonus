@@ -56,7 +56,9 @@ python3 populate_sample_ratings.py large
 
 **Sample Data Details:**
 - **Small**: 12 employees (Software Developers & SREs), 1 manager (Della Gate) rating their team, all US-based, fully rated
-- **Large**: 50 employees (Software Developers, SREs & Engineering Managers), 5 teams across Platform/Frontend/Backend/Infrastructure/Reliability, simulates Director rating their managers and ICs, includes international employees, fully rated
+- **Large**: 50 employees (Software Developers, SREs & Engineering Managers), 5 managers (Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone), simulates Director rating their managers and ICs, includes international employees (GBP), fully rated
+
+**Note**: Sample data matches Workday export format where Supervisory Organization = `"Supervisory Organization (Manager Name)"`
 
 **What you get:**
 - ✅ Complete employee data (salary, bonus targets, job profiles)

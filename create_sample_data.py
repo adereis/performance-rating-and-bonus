@@ -49,7 +49,8 @@ def get_small_team_data():
     Perfect for testing with a manageable dataset.
     Includes realistic performance ratings for bonus calculation.
     """
-    manager = "Della Gate - Engineering"
+    # Workday format: "Supervisory Organization (Manager Name)"
+    manager = "Supervisory Organization (Della Gate)"
 
     # (name, job, salary, currency, grade, bonus_pct, rating, justification)
     employees = [
@@ -89,14 +90,16 @@ def get_large_org_data():
     """
     Large org: 50 employees across 5 managers.
     Tests multi-manager/multi-org scenario with international employees.
+    Matches Workday export format where Supervisory Organization = "Supervisory Organization (Manager Name)"
     """
     # Manager names from Gemini 3
+    # Format matches Workday: "Supervisory Organization (Manager Name)"
     managers = {
-        'Della Gate': 'Engineering - Platform',
-        'Rhoda Map': 'Engineering - Frontend',
-        'Kay P. Eye': 'Engineering - Backend Services',
-        'Agie Enda': 'Engineering - Infrastructure',
-        'Mai Stone': 'Engineering - Reliability'
+        'Della Gate': 'Supervisory Organization (Della Gate)',
+        'Rhoda Map': 'Supervisory Organization (Rhoda Map)',
+        'Kay P. Eye': 'Supervisory Organization (Kay P. Eye)',
+        'Agie Enda': 'Supervisory Organization (Agie Enda)',
+        'Mai Stone': 'Supervisory Organization (Mai Stone)'
     }
 
     # Tech-themed employee names
@@ -122,7 +125,7 @@ def get_large_org_data():
     # NOTE: In large org, Engineering Managers are included because a higher-level manager
     #       (e.g., Director) would be rating them along with their teams.
     team_configs = {
-        'Engineering - Platform': [
+        'Supervisory Organization (Della Gate)': [
             ('Principal Software Developer', 220000, 'IC5', 20, 140, 'Exceptional technical vision and platform architecture'),
             ('Engineering Manager', 190000, 'M3', 18, 135, 'Outstanding team leadership and delivery'),
             ('Staff Software Developer', 180000, 'IC4', 15, 130, 'Outstanding platform reliability improvements'),
@@ -134,7 +137,7 @@ def get_large_org_data():
             ('Software Developer', 112000, 'IC2', 10, 90, 'Needs more ownership of features'),
             ('Senior Software Developer', 152000, 'IC3', 12, 108, 'Solid mentorship and code quality'),
         ],
-        'Engineering - Frontend': [
+        'Supervisory Organization (Rhoda Map)': [
             ('Staff Software Developer', 175000, 'IC4', 15, 125, 'Outstanding UI framework modernization'),
             ('Engineering Manager', 185000, 'M3', 18, 128, 'Strong team growth and technical direction'),
             ('Senior Software Developer', 155000, 'IC3', 12, 118, 'Strong React component library work'),
@@ -146,7 +149,7 @@ def get_large_org_data():
             ('Software Developer', 119000, 'IC2', 10, 92, 'Adequate progress on feature development'),
             ('Software Developer', 116000, 'IC2', 10, 85, 'Needs more proactive communication'),
         ],
-        'Engineering - Backend Services': [
+        'Supervisory Organization (Kay P. Eye)': [
             ('Principal Software Developer', 215000, 'IC5', 20, 138, 'Exceptional distributed systems architecture'),
             ('Staff Software Developer', 182000, 'IC4', 15, 130, 'Outstanding microservices design'),
             ('Engineering Manager', 188000, 'M3', 18, 132, 'Excellent cross-team coordination and delivery'),
@@ -158,7 +161,7 @@ def get_large_org_data():
             ('Senior Software Developer', 155000, 'IC3', 12, 115, 'Strong database optimization'),
             ('Software Developer', 125000, 'IC2', 10, 92, 'Adequate progress on microservices'),
         ],
-        'Engineering - Infrastructure': [
+        'Supervisory Organization (Agie Enda)': [
             ('Senior SRE', 132911, 'IC3', 12, 'GBP', 105000, 120, 'Outstanding infrastructure automation'),
             ('SRE', 98734, 'IC2', 10, 'GBP', 78000, 105, 'Good deployment pipeline work'),
             ('Staff SRE', 185000, 'IC4', 15, 135, 'Exceptional infrastructure modernization'),
@@ -170,7 +173,7 @@ def get_large_org_data():
             ('Senior SRE', 148000, 'IC3', 12, 115, 'Strong cloud cost optimization'),
             ('SRE', 130000, 'IC2', 10, 95, 'Good disaster recovery planning'),
         ],
-        'Engineering - Reliability': [
+        'Supervisory Organization (Mai Stone)': [
             ('Staff SRE', 188000, 'IC4', 15, 133, 'Outstanding SLO/SLI framework design'),
             ('Engineering Manager', 195000, 'M3', 18, 128, 'Excellent reliability culture building'),
             ('Senior SRE', 160000, 'IC3', 12, 125, 'Exceptional on-call process improvements'),
