@@ -345,51 +345,7 @@
         </div>
     </div>
 
-    <div style="overflow-x: auto;">
-        <table class="ranking-table">
-            <thead>
-                <tr>
-                    <th>Tenet</th>
-                    <th>Category</th>
-                    <th style="text-align: center;">Strengths</th>
-                    <th style="text-align: center;">Improvements</th>
-                    <th style="text-align: center;">Total</th>
-                    <th style="width: 200px;">Distribution</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for tenet in tenets_summary %}
-                <tr>
-                    <td><strong>{{ tenet.name }}</strong></td>
-                    <td>{{ tenet.category }}</td>
-                    <td style="text-align: center;">
-                        <span style="color: #27ae60; font-weight: 600;">{{ tenet.strength_count }}</span>
-                    </td>
-                    <td style="text-align: center;">
-                        <span style="color: #e67e22; font-weight: 600;">{{ tenet.improvement_count }}</span>
-                    </td>
-                    <td style="text-align: center;">
-                        <strong>{{ tenet.total_mentions }}</strong>
-                    </td>
-                    <td>
-                        <div style="display: flex; height: 20px; border-radius: 4px; overflow: hidden; background: #f0f0f0;">
-                            {% set strength_pct = (tenet.strength_count / tenet.total_mentions * 100) if tenet.total_mentions > 0 else 0 %}
-                            {% if tenet.strength_count > 0 %}
-                            <div style="width: {{ strength_pct }}%; background: #27ae60;" title="Strengths: {{ tenet.strength_count }}"></div>
-                            {% endif %}
-                            {% if tenet.improvement_count > 0 %}
-                            <div style="width: {{ 100 - strength_pct }}%; background: #e67e22;" title="Improvements: {{ tenet.improvement_count }}"></div>
-                            {% endif %}
-                        </div>
-                        <div style="font-size: 11px; color: #666; margin-top: 3px; text-align: center;">
-                            {{ "%.0f"|format(strength_pct) }}% / {{ "%.0f"|format(100 - strength_pct) }}%
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    <div id="tenetsChartContainer"></div>
 </div>
 {% endif %}
 {% endblock %}
@@ -631,6 +587,158 @@ new Chart(calibrationCtx, {
         }
     }
 });
+{% endif %}
+
+// Team Tenets Diverging Bar Chart (Butterfly Chart) - Individual row per tenet
+{% if tenets_summary %}
+const tenetsData = {{ tenets_summary | tojson }};
+
+// Sort by net score (strengths - weaknesses) descending
+const sortedTenets = tenetsData.sort((a, b) => {
+    const netScoreA = a.strength_count - a.improvement_count;
+    const netScoreB = b.strength_count - b.improvement_count;
+    return netScoreB - netScoreA;
+});
+
+// Find the maximum value for consistent scaling
+const maxValue = Math.max(
+    ...sortedTenets.map(t => Math.max(t.strength_count, t.improvement_count))
+);
+
+const container = document.getElementById('tenetsChartContainer');
+
+// Create a row for each tenet
+sortedTenets.forEach((tenet, index) => {
+    // Create row div
+    const row = document.createElement('div');
+    row.style.cssText = 'display: grid; grid-template-columns: 1fr 300px 1fr; gap: 8px; align-items: center; margin-bottom: 4px; padding: 2px 0;';
+
+    // Left side - Weakness bar (red, grows left)
+    const weaknessDiv = document.createElement('div');
+    weaknessDiv.style.cssText = 'text-align: right;';
+    const weaknessCanvas = document.createElement('canvas');
+    weaknessCanvas.id = `weakness-${index}`;
+    weaknessCanvas.height = 25;
+    weaknessDiv.appendChild(weaknessCanvas);
+
+    // Center - Tenet name
+    const labelDiv = document.createElement('div');
+    labelDiv.style.cssText = 'font-weight: 600; color: #2c3e50; padding: 0 10px; text-align: center; overflow: hidden; text-overflow: ellipsis; font-size: 14px;';
+    labelDiv.textContent = tenet.name;
+
+    // Right side - Strength bar (green, grows right)
+    const strengthDiv = document.createElement('div');
+    strengthDiv.style.cssText = 'text-align: left;';
+    const strengthCanvas = document.createElement('canvas');
+    strengthCanvas.id = `strength-${index}`;
+    strengthCanvas.height = 25;
+    strengthDiv.appendChild(strengthCanvas);
+
+    row.appendChild(weaknessDiv);
+    row.appendChild(labelDiv);
+    row.appendChild(strengthDiv);
+    container.appendChild(row);
+
+    // Create weakness chart (red, reversed)
+    new Chart(weaknessCanvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: [''],
+            datasets: [{
+                data: [tenet.improvement_count],
+                backgroundColor: '#dc3545',
+                borderColor: '#c82333',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Weaknesses: ' + context.parsed.x;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    min: 0,
+                    max: maxValue,
+                    reverse: true,
+                    display: false,
+                    grid: { display: false },
+                    ticks: { display: false }
+                },
+                y: {
+                    display: false,
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+
+    // Create strength chart (green, normal)
+    new Chart(strengthCanvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: [''],
+            datasets: [{
+                data: [tenet.strength_count],
+                backgroundColor: '#27ae60',
+                borderColor: '#229954',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Strengths: ' + context.parsed.x;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    min: 0,
+                    max: maxValue,
+                    display: false,
+                    grid: { display: false },
+                    ticks: { display: false }
+                },
+                y: {
+                    display: false,
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+});
+
+// Add legend at the top
+const legendDiv = document.createElement('div');
+legendDiv.style.cssText = 'display: flex; justify-content: center; gap: 30px; margin-bottom: 12px; padding: 10px; background: #f8f9fa; border-radius: 6px;';
+legendDiv.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="width: 16px; height: 16px; background: #dc3545; border: 1px solid #c82333; border-radius: 3px;"></div>
+        <span style="font-weight: 600; color: #2c3e50; font-size: 14px;">Weaknesses (Left)</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="width: 16px; height: 16px; background: #27ae60; border: 1px solid #229954; border-radius: 3px;"></div>
+        <span style="font-weight: 600; color: #2c3e50; font-size: 14px;">Strengths (Right)</span>
+    </div>
+`;
+container.insertBefore(legendDiv, container.firstChild);
 {% endif %}
 </script>
 {% endblock %}
