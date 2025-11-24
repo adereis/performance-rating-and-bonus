@@ -272,6 +272,68 @@ def analytics():
             'status': status
         })
 
+    # Load tenets configuration
+    tenets_file = 'tenets.json' if os.path.exists('tenets.json') else 'tenets-sample.json'
+    tenets_config = {}
+    tenets_map = {}
+    try:
+        with open(tenets_file, 'r') as f:
+            tenets_config = json.load(f)
+            # Create a map of tenet ID to tenet data
+            for tenet in tenets_config.get('tenets', []):
+                tenets_map[tenet['id']] = tenet
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    # Analyze tenets data
+    strength_counts = defaultdict(int)
+    improvement_counts = defaultdict(int)
+    employees_with_tenets = 0
+
+    for emp in team_data:
+        has_tenets = False
+
+        # Count strengths
+        if emp.get('tenets_strengths'):
+            try:
+                strengths = json.loads(emp['tenets_strengths'])
+                for tenet_id in strengths:
+                    strength_counts[tenet_id] += 1
+                    has_tenets = True
+            except json.JSONDecodeError:
+                pass
+
+        # Count improvements
+        if emp.get('tenets_improvements'):
+            try:
+                improvements = json.loads(emp['tenets_improvements'])
+                for tenet_id in improvements:
+                    improvement_counts[tenet_id] += 1
+                    has_tenets = True
+            except json.JSONDecodeError:
+                pass
+
+        if has_tenets:
+            employees_with_tenets += 1
+
+    # Build tenets summary with names
+    tenets_summary = []
+    all_tenet_ids = set(strength_counts.keys()) | set(improvement_counts.keys())
+
+    for tenet_id in all_tenet_ids:
+        tenet_info = tenets_map.get(tenet_id, {})
+        tenets_summary.append({
+            'id': tenet_id,
+            'name': tenet_info.get('name', tenet_id),
+            'category': tenet_info.get('category', 'Unknown'),
+            'strength_count': strength_counts.get(tenet_id, 0),
+            'improvement_count': improvement_counts.get(tenet_id, 0),
+            'total_mentions': strength_counts.get(tenet_id, 0) + improvement_counts.get(tenet_id, 0)
+        })
+
+    # Sort by total mentions descending
+    tenets_summary.sort(key=lambda x: x['total_mentions'], reverse=True)
+
     chart_data = {
         'rating_distribution': {
             'labels': list(rating_buckets.keys()),
@@ -294,7 +356,9 @@ def analytics():
                          job_averages=job_averages,
                          calibration_data=calibration_data,
                          total_rated=total_rated,
-                         total_employees=len(team_data))
+                         total_employees=len(team_data),
+                         tenets_summary=tenets_summary,
+                         employees_with_tenets=employees_with_tenets)
 
 
 @app.route('/bonus-calculation')
