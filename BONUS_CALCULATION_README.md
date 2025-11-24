@@ -27,6 +27,17 @@ This creates a **performance curve** that rewards excellence and addresses under
 ### Step 3: Normalize to Your Budget
 After calculating everyone's "raw shares" based on performance, we scale everything proportionally so the total exactly matches your bonus pool. This ensures you stay on budget while maintaining the relative differences created by the performance curve.
 
+## Performance-to-Bonus Curve
+
+The chart below shows how different team performance scenarios affect bonus payouts through the normalization mechanism.
+
+Each panel shows a different team composition with red dots representing individual team members. The curves demonstrate how the normalization factor adjusts payouts to match the total bonus pool:
+- **Balanced Team** (norm ~0.90): Three exceptional stars compress the budget, so a 100% performer gets ~90% of target
+- **All Average Team** (norm = 1.0): Everyone at 100% rating gets exactly their target bonus
+- **Low Performing Team** (norm ~1.5): Budget surplus means everyone gets more than their raw calculation
+
+![Bonus Payout Scenarios](bonus-curve-realistic-scenarios.png)
+
 ## The Algorithm (Slightly More Technical)
 
 For each employee, we calculate:
