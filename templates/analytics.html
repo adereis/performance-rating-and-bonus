@@ -159,6 +159,15 @@
 {% endblock %}
 
 {% block content %}
+{% if total_rated > 0 %}
+<div class="card">
+    <h2>Performance-to-Bonus Curve (Your Team)</h2>
+    <div class="chart-container" style="height: 450px;">
+        <canvas id="bonusCurveChart"></canvas>
+    </div>
+</div>
+{% endif %}
+
 <div class="card">
     <h2>Performance Distribution</h2>
     <div class="charts-grid">
@@ -335,6 +344,196 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 const chartData = {{ chart_data | tojson }};
+const teamData = {{ team | tojson }};
+
+// Performance-to-Bonus Curve Chart
+{% if total_rated > 0 %}
+(function() {
+    // Configuration matching app.py defaults
+    const UPSIDE_EXP = 1.25;
+    const DOWNSIDE_EXP = 1.8;
+
+    // Calculate performance multiplier (matches app.py algorithm)
+    function calcPerfMultiplier(rating) {
+        if (rating < 100) {
+            return Math.pow(rating / 100, DOWNSIDE_EXP);
+        } else {
+            return Math.pow(rating / 100, UPSIDE_EXP);
+        }
+    }
+
+    // Extract rated team members and calculate normalization
+    const ratedTeam = teamData.filter(emp => emp.performance_rating_percent);
+    const ratings = ratedTeam.map(emp => parseFloat(emp.performance_rating_percent));
+
+    // Calculate normalization factor
+    const rawShares = ratings.map(r => calcPerfMultiplier(r));
+    const totalRawShares = rawShares.reduce((a, b) => a + b, 0);
+    const normFactor = ratings.length / totalRawShares;
+
+    // Generate curve data (0-200%)
+    const curveRatings = [];
+    const curvePayouts = [];
+    for (let r = 0; r <= 200; r += 2) {
+        curveRatings.push(r);
+        const payout = calcPerfMultiplier(r) * normFactor * 100;
+        curvePayouts.push(payout);
+    }
+
+    // Generate team member points with names
+    const teamPoints = ratedTeam.map(emp => {
+        const rating = parseFloat(emp.performance_rating_percent);
+        return {
+            x: rating,
+            y: calcPerfMultiplier(rating) * normFactor * 100,
+            name: emp.Associate
+        };
+    });
+
+    const bonusCurveCtx = document.getElementById('bonusCurveChart').getContext('2d');
+    new Chart(bonusCurveCtx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'Performance Curve',
+                    data: curveRatings.map((r, i) => ({ x: r, y: curvePayouts[i] })),
+                    borderColor: '#0056b3',
+                    backgroundColor: 'rgba(0, 86, 179, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    fill: false
+                },
+                {
+                    label: 'Your Team Members',
+                    data: teamPoints,
+                    borderColor: '#dc3545',
+                    backgroundColor: '#dc3545',
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    showLine: false
+                },
+                {
+                    label: 'Linear (1:1)',
+                    data: [{x: 0, y: 0}, {x: 200, y: 200}],
+                    borderColor: '#999',
+                    borderWidth: 1,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'linear',
+                    min: 0,
+                    max: 200,
+                    title: {
+                        display: true,
+                        text: 'Performance Rating (%)',
+                        font: { size: 14, weight: 'bold' }
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    grid: {
+                        drawOnChartArea: true,
+                        color: function(context) {
+                            if (context.tick.value === 100) {
+                                return 'rgba(0, 0, 0, 0.3)';
+                            }
+                            return 'rgba(0, 0, 0, 0.1)';
+                        }
+                    }
+                },
+                y: {
+                    min: 0,
+                    max: 200,
+                    title: {
+                        display: true,
+                        text: 'Final Bonus Payout (% of Target)',
+                        font: { size: 14, weight: 'bold' }
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    grid: {
+                        drawOnChartArea: true,
+                        color: function(context) {
+                            if (context.tick.value === 100) {
+                                return 'rgba(0, 0, 0, 0.3)';
+                            }
+                            return 'rgba(0, 0, 0, 0.1)';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            if (context[0].dataset.label === 'Your Team Members') {
+                                const dataPoint = context[0].raw;
+                                return dataPoint.name;
+                            }
+                            return '';
+                        },
+                        label: function(context) {
+                            if (context.dataset.label === 'Your Team Members') {
+                                return `Rating: ${context.parsed.x.toFixed(0)}% → Payout: ${context.parsed.y.toFixed(1)}% of target`;
+                            }
+                            return context.dataset.label;
+                        }
+                    }
+                },
+                title: {
+                    display: true,
+                    text: `Your Team's Performance-to-Bonus Curve (Normalization Factor: ${normFactor.toFixed(3)})`,
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    },
+                    padding: {
+                        bottom: 20
+                    }
+                },
+                annotation: {
+                    annotations: {
+                        line1: {
+                            type: 'line',
+                            xMin: 100,
+                            xMax: 100,
+                            borderColor: '#999',
+                            borderWidth: 2,
+                            borderDash: [5, 5]
+                        },
+                        line2: {
+                            type: 'line',
+                            yMin: 100,
+                            yMax: 100,
+                            borderColor: '#999',
+                            borderWidth: 2,
+                            borderDash: [5, 5]
+                        }
+                    }
+                }
+            }
+        }
+    });
+})();
+{% endif %}
 
 // Rating Distribution Chart
 const ratingCtx = document.getElementById('ratingChart').getContext('2d');
