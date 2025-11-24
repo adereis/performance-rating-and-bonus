@@ -2,6 +2,7 @@
 from flask import Flask, render_template, request, jsonify
 import csv
 import os
+import json
 from datetime import datetime
 from collections import defaultdict
 from models import Employee, init_db, get_db
@@ -66,6 +67,8 @@ def rate_employee():
     mentor = data.get('mentor', '')
     mentees = data.get('mentees', '')
     ai_activities = data.get('ai_activities', '')
+    tenets_strengths = data.get('tenets_strengths', [])
+    tenets_improvements = data.get('tenets_improvements', [])
 
     if not associate_name:
         return jsonify({'error': 'Missing associate name'}), 400
@@ -81,6 +84,23 @@ def rate_employee():
     else:
         rating_percent = None
 
+    # Validate tenets data
+    if tenets_strengths and not isinstance(tenets_strengths, list):
+        return jsonify({'error': 'Tenets strengths must be an array'}), 400
+    if tenets_improvements and not isinstance(tenets_improvements, list):
+        return jsonify({'error': 'Tenets improvements must be an array'}), 400
+
+    # Validate count (exactly 3 of each if provided, or empty)
+    if tenets_strengths and len(tenets_strengths) != 3:
+        return jsonify({'error': 'Must select exactly 3 strength tenets'}), 400
+    if tenets_improvements and len(tenets_improvements) != 3:
+        return jsonify({'error': 'Must select exactly 3 improvement tenets'}), 400
+
+    # Validate no duplicates between lists
+    if tenets_strengths and tenets_improvements:
+        if set(tenets_strengths) & set(tenets_improvements):
+            return jsonify({'error': 'Cannot select the same tenet as both strength and improvement'}), 400
+
     db = get_db()
     try:
         employee = db.query(Employee).filter(Employee.associate == associate_name).first()
@@ -94,6 +114,8 @@ def rate_employee():
         employee.mentor = mentor
         employee.mentees = mentees
         employee.ai_activities = ai_activities
+        employee.tenets_strengths = json.dumps(tenets_strengths) if tenets_strengths else None
+        employee.tenets_improvements = json.dumps(tenets_improvements) if tenets_improvements else None
         employee.last_updated = datetime.now()
 
         db.commit()
@@ -104,6 +126,25 @@ def rate_employee():
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
+@app.route('/api/tenets', methods=['GET'])
+def get_tenets():
+    """API endpoint to serve tenets configuration."""
+    tenets_file = 'tenets.json'
+
+    # Fallback to sample file if organization-specific file doesn't exist
+    if not os.path.exists(tenets_file):
+        tenets_file = 'tenets-sample.json'
+
+    try:
+        with open(tenets_file, 'r') as f:
+            tenets_data = json.load(f)
+        return jsonify(tenets_data)
+    except FileNotFoundError:
+        return jsonify({'error': 'Tenets configuration file not found'}), 404
+    except json.JSONDecodeError:
+        return jsonify({'error': 'Invalid JSON in tenets configuration file'}), 500
 
 
 @app.route('/analytics')
