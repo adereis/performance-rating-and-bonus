@@ -244,7 +244,6 @@ class TestExcelImport:
                 alice.justification = 'Outstanding performance'
                 alice.mentor = 'Senior Manager'
                 alice.mentees = 'Junior Dev 1, Junior Dev 2'
-                alice.ai_activities = 'Led AI initiatives'
                 alice.last_updated = datetime.now()
                 db.commit()
             finally:
@@ -261,7 +260,6 @@ class TestExcelImport:
                 assert alice.justification == 'Outstanding performance'
                 assert alice.mentor == 'Senior Manager'
                 assert alice.mentees == 'Junior Dev 1, Junior Dev 2'
-                assert alice.ai_activities == 'Led AI initiatives'
                 assert alice.last_updated is not None
             finally:
                 db.close()
@@ -385,7 +383,6 @@ class TestExcelImport:
                 assert alice.justification == ''
                 assert alice.mentor == ''
                 assert alice.mentees == ''
-                assert alice.ai_activities == ''
                 assert alice.last_updated is None
             finally:
                 db.close()

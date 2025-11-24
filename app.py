@@ -66,7 +66,6 @@ def rate_employee():
     justification = data.get('justification', '')
     mentor = data.get('mentor', '')
     mentees = data.get('mentees', '')
-    ai_activities = data.get('ai_activities', '')
     tenets_strengths = data.get('tenets_strengths', [])
     tenets_improvements = data.get('tenets_improvements', [])
 
@@ -113,7 +112,6 @@ def rate_employee():
         employee.justification = justification
         employee.mentor = mentor
         employee.mentees = mentees
-        employee.ai_activities = ai_activities
         employee.tenets_strengths = json.dumps(tenets_strengths) if tenets_strengths else None
         employee.tenets_improvements = json.dumps(tenets_improvements) if tenets_improvements else None
         employee.last_updated = datetime.now()

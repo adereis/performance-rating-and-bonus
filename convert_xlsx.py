@@ -120,7 +120,6 @@ def convert_xlsx_to_db(xlsx_file='bonus-from-wd.xlsx'):
                 employee.justification = ''
                 employee.mentor = ''
                 employee.mentees = ''
-                employee.ai_activities = ''
                 employee.last_updated = None
 
                 db.add(employee)

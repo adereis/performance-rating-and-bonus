@@ -34,7 +34,6 @@ class TestAPIEndpoints:
             'justification': 'Great work on product launch',
             'mentor': 'Bob Smith',
             'mentees': 'New hire team',
-            'ai_activities': 'Led AI feature planning'
         }
 
         response = client.post('/api/rate',
@@ -55,7 +54,6 @@ class TestAPIEndpoints:
         assert employee.justification == 'Great work on product launch'
         assert employee.mentor == 'Bob Smith'
         assert employee.mentees == 'New hire team'
-        assert employee.ai_activities == 'Led AI feature planning'
         assert employee.last_updated is not None
 
     def test_rate_employee_update_existing_rating(self, client, populated_db):
@@ -66,7 +64,6 @@ class TestAPIEndpoints:
             'justification': 'Updated justification',
             'mentor': 'New mentor',
             'mentees': 'Updated mentees',
-            'ai_activities': 'Updated activities'
         }
 
         response = client.post('/api/rate',
@@ -240,7 +237,6 @@ class TestAPIEndpoints:
             'justification': 'Work in progress',
             'mentor': 'Alice Johnson',
             'mentees': '',
-            'ai_activities': 'Exploring AI tools'
         }
 
         response = client.post('/api/rate',
@@ -256,7 +252,6 @@ class TestAPIEndpoints:
         assert employee.performance_rating_percent is None
         assert employee.justification == 'Work in progress'
         assert employee.mentor == 'Alice Johnson'
-        assert employee.ai_activities == 'Exploring AI tools'
 
     def test_export_endpoint(self, client, populated_db):
         """Test CSV export endpoint."""

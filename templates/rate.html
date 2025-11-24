@@ -607,11 +607,6 @@
                     <input type="text" data-field="mentees" placeholder="Who is this person mentoring?" value="{{ employee.mentees }}">
                 </div>
 
-                <div class="rating-input-group">
-                    <label>AI Activities:</label>
-                    <textarea data-field="ai_activities" placeholder="Short paragraph on AI-related activities...">{{ employee.ai_activities }}</textarea>
-                </div>
-
                 <div class="tenets-section">
                     <h5>Team Tenets Evaluation (Select 3 strengths and 3 areas for improvement)</h5>
                     <div class="loading-tenets">Loading tenets...</div>
@@ -701,7 +696,6 @@ function saveRating(associateName, card) {
         justification: '',
         mentor: '',
         mentees: '',
-        ai_activities: '',
         tenets_strengths: [],
         tenets_improvements: []
     };
@@ -872,8 +866,7 @@ function saveCompactRating(associateName, input) {
             rating_percent: ratingValue,
             justification: '',
             mentor: '',
-            mentees: '',
-            ai_activities: ''
+            mentees: ''
         })
     })
     .then(response => response.json())

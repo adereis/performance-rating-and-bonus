@@ -57,7 +57,6 @@ def sample_employee_data():
         'justification': '',
         'mentor': '',
         'mentees': '',
-        'ai_activities': ''
     }
 
 
@@ -76,7 +75,6 @@ def sample_employees():
             'justification': 'Excellent performance',
             'mentor': 'Bob Smith',
             'mentees': 'Charlie Brown',
-            'ai_activities': 'Led AI integration project'
         },
         {
             'associate_id': 'EMP002',
@@ -89,7 +87,6 @@ def sample_employees():
             'justification': 'Outstanding contributions',
             'mentor': '',
             'mentees': 'Alice Johnson, Charlie Brown',
-            'ai_activities': 'Developed ML pipeline'
         },
         {
             'associate_id': 'EMP003',
@@ -102,7 +99,6 @@ def sample_employees():
             'justification': 'Good progress, needs more experience',
             'mentor': 'Alice Johnson',
             'mentees': '',
-            'ai_activities': 'Participated in AI workshops'
         },
         {
             'associate_id': 'EMP004',
@@ -115,8 +111,7 @@ def sample_employees():
             'justification': '',
             'mentor': '',
             'mentees': '',
-            'ai_activities': ''
-        }
+            }
     ]
 
 

@@ -41,7 +41,6 @@ class Employee(Base):
     justification = Column(String)
     mentor = Column(String)
     mentees = Column(String)
-    ai_activities = Column(String)
     tenets_strengths = Column(String)  # JSON array of 3 tenet IDs for strengths
     tenets_improvements = Column(String)  # JSON array of 3 tenet IDs for improvements
     last_updated = Column(DateTime)
@@ -72,7 +71,6 @@ class Employee(Base):
             'justification': self.justification,
             'mentor': self.mentor,
             'mentees': self.mentees,
-            'ai_activities': self.ai_activities,
             'tenets_strengths': self.tenets_strengths,
             'tenets_improvements': self.tenets_improvements,
             'last_updated': self.last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.last_updated else ''

@@ -134,7 +134,7 @@ Open http://localhost:5000 and navigate to **Rate Team** to begin.
 - For each employee:
   - Enter performance rating (0-200%, where 100% = met expectations)
   - Add justification explaining the rating
-  - Optionally note mentors, mentees, and AI activities
+  - Optionally note mentors and mentees
 - Ratings auto-save after 2 seconds of inactivity
 
 ### 2. Review Analytics
