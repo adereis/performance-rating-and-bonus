@@ -4,16 +4,49 @@ Create sample demo data for the Quarterly Performance Rating System.
 This generates fictitious employee data so managers can try the tool out of the box.
 
 Usage:
-    python3 create_sample_data.py              # Creates small team (12 employees, 1 manager)
-    python3 create_sample_data.py --large      # Creates large org (50 employees, 5 managers)
+    python3 create_sample_data.py                    # Creates small team (12 employees, 1 manager)
+    python3 create_sample_data.py --large            # Creates large org (50 employees, 5 managers)
+    python3 create_sample_data.py --with-tenets      # Include random tenets evaluation
+    python3 create_sample_data.py --large --with-tenets  # Large org with tenets
 """
 import openpyxl
 from openpyxl import Workbook
 import random
 import sys
+import json
 
 
-def create_headers(sheet):
+def load_tenets():
+    """Load tenets configuration from tenets-sample.json."""
+    try:
+        with open('tenets-sample.json', 'r') as f:
+            config = json.load(f)
+            return [t['id'] for t in config.get('tenets', []) if t.get('active', True)]
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def generate_random_tenets(all_tenets, strength_count=3, improvement_count=3):
+    """
+    Generate random tenets for an employee.
+
+    Returns:
+        tuple: (strengths_json, improvements_json) - JSON strings of tenet IDs
+    """
+    if not all_tenets:
+        return ('[]', '[]')
+
+    # Randomly select strengths (3 unique tenets)
+    strengths = random.sample(all_tenets, min(strength_count, len(all_tenets)))
+
+    # Randomly select improvements (3 unique tenets, different from strengths)
+    remaining_tenets = [t for t in all_tenets if t not in strengths]
+    improvements = random.sample(remaining_tenets, min(improvement_count, len(remaining_tenets)))
+
+    return (json.dumps(strengths), json.dumps(improvements))
+
+
+def create_headers(sheet, include_tenets=False):
     """Add standard Workday export headers plus sample-specific rating column."""
     # Row 1: Empty (matches Workday export format)
     sheet.append([])
@@ -41,6 +74,13 @@ def create_headers(sheet):
         'Zero Bonus Allocated',
         'Performance Rating Percent'  # SAMPLE DATA ONLY - not in real Workday exports
     ]
+
+    if include_tenets:
+        headers.extend([
+            'Tenets Strengths',
+            'Tenets Improvements'
+        ])
+
     sheet.append(headers)
 
 
@@ -224,7 +264,7 @@ def get_large_org_data():
     return result
 
 
-def write_employee_data(sheet, employees):
+def write_employee_data(sheet, employees, include_tenets=False, all_tenets=None):
     """Write employee data to worksheet."""
     for i, emp in enumerate(employees):
         # Bonus calculations
@@ -265,20 +305,31 @@ def write_employee_data(sheet, employees):
             emp['rating']  # Performance Rating Percent (sample data only)
         ]
 
+        # Add tenets if requested
+        if include_tenets and all_tenets:
+            strengths, improvements = generate_random_tenets(all_tenets)
+            row.extend([strengths, improvements])
+        elif include_tenets:
+            row.extend(['[]', '[]'])
+
         sheet.append(row)
 
 
-def create_sample_xlsx(size='small'):
+def create_sample_xlsx(size='small', include_tenets=False):
     """
     Create sample-data.xlsx with fictitious employee data.
 
     Args:
         size: 'small' for 12 employees (1 manager), 'large' for 50 employees (5 managers)
+        include_tenets: If True, include random tenets evaluation for each employee
     """
     wb = Workbook()
     sheet = wb.active
 
-    create_headers(sheet)
+    # Load tenets if requested
+    all_tenets = load_tenets() if include_tenets else None
+
+    create_headers(sheet, include_tenets=include_tenets)
 
     if size == 'small':
         employees = get_small_team_data()
@@ -289,7 +340,7 @@ def create_sample_xlsx(size='small'):
         filename = 'sample-data-large.xlsx'
         description = "50 employees across 5 managers"
 
-    write_employee_data(sheet, employees)
+    write_employee_data(sheet, employees, include_tenets=include_tenets, all_tenets=all_tenets)
 
     # Save the workbook
     wb.save(filename)
@@ -305,9 +356,12 @@ def create_sample_xlsx(size='small'):
         print(f"  - {us_count} US-based (USD), {intl_count} international (GBP)")
     else:
         print(f"  - All US-based (USD)")
+    if include_tenets and all_tenets:
+        print(f"  - Includes random tenets evaluation ({len(all_tenets)} tenets available)")
     print(f"  - Ready to import with: python3 convert_xlsx.py {filename}")
 
 
 if __name__ == '__main__':
     size = 'large' if '--large' in sys.argv else 'small'
-    create_sample_xlsx(size)
+    include_tenets = '--with-tenets' in sys.argv
+    create_sample_xlsx(size, include_tenets=include_tenets)
