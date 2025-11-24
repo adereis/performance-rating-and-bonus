@@ -1,0 +1,235 @@
+# Project TODO List
+
+This file tracks future enhancements and feature requests for the Quarterly Performance Rating System.
+
+---
+
+## Planned Features
+
+### Team Tenets / Leadership Principles Evaluation
+
+**Priority:** Medium
+**Status:** Design Complete, Implementation Pending
+**Estimated Effort:** 1-2 days
+
+#### Feature Description
+Add support for evaluating employees against team-specific tenets (similar to Amazon Leadership Principles). For each employee, managers select:
+- 3 tenets that are strengths
+- 3 tenets for improvement
+
+#### Design Approach
+Configuration-driven system using JSON file (no hardcoded tenets):
+
+**Configuration File:** `tenets.json` (team-specific, not committed)
+```json
+{
+  "version": "2025-Q4",
+  "tenets": [
+    {
+      "id": "customer_obsession",
+      "name": "Customer Obsession",
+      "description": "Start with customer needs and work backwards",
+      "active": true
+    }
+    // ... up to 15 tenets
+  ],
+  "selection_config": {
+    "strengths_count": 3,
+    "improvement_count": 3,
+    "allow_duplicates": false
+  }
+}
+```
+
+#### Implementation Checklist
+- [ ] Add database fields to `Employee` model:
+  - [ ] `tenets_strengths` (Text/JSON) - stores array of tenet IDs
+  - [ ] `tenets_improvements` (Text/JSON) - stores array of tenet IDs
+- [ ] Create `tenets-sample.json` with example tenets
+- [ ] Add `tenets.json` to `.gitignore`
+- [ ] Update `models.py` with new fields
+- [ ] Create database migration (ALTER TABLE or migration script)
+- [ ] Update `rate.html` template:
+  - [ ] Add tenet selection UI (dropdowns or multi-select)
+  - [ ] Load tenets dynamically from JSON file
+  - [ ] Validate: exactly 3 strengths, exactly 3 improvements
+  - [ ] Prevent duplicates between strength/improvement lists
+  - [ ] Include tenet descriptions as tooltips/help text
+- [ ] Update `app.py`:
+  - [ ] Add endpoint to serve tenets configuration: `/api/tenets`
+  - [ ] Update `/api/rate` to accept and save tenet selections
+  - [ ] Add validation for tenet IDs against config file
+- [ ] Update `convert_xlsx.py`:
+  - [ ] Preserve tenet fields on Workday re-import (manager-entered data)
+- [ ] Update `create_sample_data.py`:
+  - [ ] Optionally generate sample tenet selections for demo data
+- [ ] Add tests:
+  - [ ] Test loading tenets from JSON
+  - [ ] Test tenet selection validation (count, duplicates)
+  - [ ] Test database storage/retrieval of tenet arrays
+  - [ ] Test preservation on Workday re-import
+- [ ] Update documentation:
+  - [ ] Add "Configuring Team Tenets" section to README.md
+  - [ ] Update AGENTS.md with tenet configuration patterns
+  - [ ] Document JSON schema for tenets configuration
+- [ ] Export functionality:
+  - [ ] Include tenet names (not just IDs) in CSV export
+  - [ ] Format: "Strengths: Customer Obsession, Ownership, Bias for Action"
+
+#### Technical Notes
+- Store tenet IDs as JSON arrays in SQLite Text fields
+- Convert to/from JSON in Python using `json.loads()`/`json.dumps()`
+- UI reads from `/api/tenets` endpoint (dynamically loads config)
+- No hardcoded tenets in source code (fully configurable)
+- Sample file committed to repo, actual config in `.gitignore`
+- Consider using `<select multiple>` or checkbox group for UI
+
+#### Benefits
+- ✅ Completely modular - change tenets without code changes
+- ✅ Version controllable (sample file in repo)
+- ✅ Team-specific customization
+- ✅ Easy to add/remove/rename tenets
+- ✅ Configurable selection counts
+- ✅ Self-documenting (descriptions in JSON)
+
+---
+
+## Backlog Features
+
+_(Features from original README.md Future Enhancements section)_
+
+### CSV Export from Bonus Calculation Page
+**Priority:** High
+**Status:** Not Started
+**Description:** Add "Export to CSV" button on bonus calculation page to download results with all bonus details.
+
+**Implementation Notes:**
+- Add export button to `templates/bonus_calculation.html`
+- Create `/api/export_bonuses` endpoint
+- Include all columns: name, rating, base pay, target, calculated bonus, % of target
+- Timestamped filename: `bonus_calculation_2025-11-24.csv`
+
+---
+
+### Import Compa-Ratio Data from Workday
+**Priority:** Medium
+**Status:** Not Started
+**Description:** Add support for importing Compa-Ratio (CR) data from Workday export to enable CR-based bonus adjustments.
+
+**Implementation Notes:**
+- Add `compa_ratio` field to Employee model
+- Update `convert_xlsx.py` to import CR column from Workday
+- Enable CR Power parameter in bonus calculation (currently neutral at 0.5)
+- Update bonus algorithm to apply CR multiplier
+- Add tests for CR-based calculations
+
+---
+
+### Save Multiple Parameter Configurations
+**Priority:** Low
+**Status:** Not Started
+**Description:** Allow saving multiple bonus calculation parameter sets (e.g., "Conservative", "Aggressive", "Balanced") for quick switching.
+
+**Implementation Notes:**
+- Create `bonus_configs.json` or database table
+- Store named configs: `{"name": "Conservative", "upside": 1.1, "downside": 2.0, "cr_power": 0.5}`
+- Add dropdown in bonus calculation page to select config
+- Include "Save Current" and "Load" buttons
+
+---
+
+### Historical Rating Comparison
+**Priority:** Medium
+**Status:** Not Started
+**Description:** Track ratings across quarters and show trends/changes over time per employee.
+
+**Implementation Notes:**
+- Create `ratings_history` table with quarter/year tracking
+- Archive ratings at end of each quarter
+- Add "History" tab showing rating trends per employee
+- Chart.js line graph showing performance over time
+- Compare quarter-over-quarter changes
+
+---
+
+### Bulk Edit Capabilities
+**Priority:** Low
+**Status:** Not Started
+**Description:** Allow bulk operations like "set all unrated to 100%" or "copy justifications from last quarter".
+
+**Implementation Notes:**
+- Add "Bulk Actions" dropdown in rate.html
+- Options: "Set all unrated to 100%", "Clear all ratings", "Apply template justification"
+- Confirmation dialog before applying
+- Update multiple records via `/api/bulk_rate` endpoint
+
+---
+
+### PDF Export for HR Submission
+**Priority:** Medium
+**Status:** Not Started
+**Description:** Generate professional PDF reports with ratings, justifications, and bonus calculations for HR submission.
+
+**Implementation Notes:**
+- Use library like ReportLab or WeasyPrint
+- Include company branding, manager signature block
+- Sections: Team summary, individual ratings with justifications, bonus calculations
+- Generate via `/export_pdf` endpoint
+- Timestamped filename
+
+---
+
+### Read-Only Sharing Mode for Calibration Sessions
+**Priority:** Low
+**Status:** Not Started
+**Description:** Generate read-only view links for calibration sessions with other managers (no database write access).
+
+**Implementation Notes:**
+- Add "Generate Share Link" button
+- Create unique token/URL: `/calibration/view/<token>`
+- Show ratings and analytics, hide edit capabilities
+- Optional: password protection
+- Token expiration (24-48 hours)
+
+---
+
+### Database Migration System
+**Priority:** Low
+**Status:** Not Started
+**Description:** Implement Alembic or similar for managing database schema changes across versions.
+
+**Implementation Notes:**
+- Install Alembic: `pip install alembic`
+- Initialize: `alembic init migrations`
+- Create migration for current schema as baseline
+- Document migration workflow in README
+- Update AGENTS.md with migration patterns
+
+---
+
+### API Documentation
+**Priority:** Low
+**Status:** Not Started
+**Description:** Create Swagger/OpenAPI documentation for all API endpoints.
+
+**Implementation Notes:**
+- Use Flask-RESTX or flask-swagger-ui
+- Document all `/api/*` endpoints
+- Include request/response schemas
+- Add examples for each endpoint
+- Host at `/api/docs`
+
+---
+
+## Completed Features
+
+(This section will be populated as features are implemented)
+
+---
+
+## Notes
+
+- Prioritize features based on team feedback and usage patterns
+- All new features should include comprehensive tests
+- Update README.md and AGENTS.md when implementing new features
+- Maintain backward compatibility with existing Workday exports

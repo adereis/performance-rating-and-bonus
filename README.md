@@ -281,13 +281,7 @@ Navigate to http://localhost:5000/export to download a timestamped CSV with all 
 
 ## Future Enhancements
 
-- [ ] CSV export from Bonus Calculation page
-- [ ] Import Compa-Ratio data from Workday
-- [ ] Save multiple parameter configurations
-- [ ] Historical rating comparison
-- [ ] Bulk edit capabilities
-- [ ] PDF export for HR submission
-- [ ] Read-only sharing mode for calibration sessions
+See [TODO.md](TODO.md) for planned features and enhancements.
 
 ## Contributing
 
