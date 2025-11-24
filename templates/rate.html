@@ -805,6 +805,26 @@ function sortCompactTable(column) {
     rows.forEach(row => tbody.appendChild(row));
 }
 
+// Save all pending changes before page unload
+window.addEventListener('beforeunload', function(e) {
+    // Clear all pending timers and save immediately
+    Object.keys(autoSaveTimers).forEach(associateName => {
+        clearTimeout(autoSaveTimers[associateName]);
+        const card = document.querySelector(`.employee-card[data-associate="${associateName}"]`);
+        if (card) {
+            saveRating(associateName, card);
+        }
+    });
+
+    Object.keys(compactSaveTimers).forEach(associateName => {
+        clearTimeout(compactSaveTimers[associateName]);
+        const input = document.querySelector(`.compact-rating-input[data-associate="${associateName}"]`);
+        if (input) {
+            saveCompactRating(associateName, input);
+        }
+    });
+});
+
 // Set up auto-save listeners on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Compact table sort listeners
