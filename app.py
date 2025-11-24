@@ -285,7 +285,7 @@ def analytics():
     except (FileNotFoundError, json.JSONDecodeError):
         pass
 
-    # Analyze tenets data
+    # Analyze tenets data - Overall
     strength_counts = defaultdict(int)
     improvement_counts = defaultdict(int)
     employees_with_tenets = 0
@@ -334,6 +334,67 @@ def analytics():
     # Sort by total mentions descending
     tenets_summary.sort(key=lambda x: x['total_mentions'], reverse=True)
 
+    # Analyze tenets data - Per Organization
+    org_tenets = {}
+    for emp in team_data:
+        org = emp.get('Supervisory Organization', 'Unknown')
+        if org not in org_tenets:
+            org_tenets[org] = {
+                'strength_counts': defaultdict(int),
+                'improvement_counts': defaultdict(int),
+                'employees_with_tenets': 0
+            }
+
+        has_tenets = False
+
+        # Count strengths per org
+        if emp.get('tenets_strengths'):
+            try:
+                strengths = json.loads(emp['tenets_strengths'])
+                for tenet_id in strengths:
+                    org_tenets[org]['strength_counts'][tenet_id] += 1
+                    has_tenets = True
+            except json.JSONDecodeError:
+                pass
+
+        # Count improvements per org
+        if emp.get('tenets_improvements'):
+            try:
+                improvements = json.loads(emp['tenets_improvements'])
+                for tenet_id in improvements:
+                    org_tenets[org]['improvement_counts'][tenet_id] += 1
+                    has_tenets = True
+            except json.JSONDecodeError:
+                pass
+
+        if has_tenets:
+            org_tenets[org]['employees_with_tenets'] += 1
+
+    # Build per-org tenets summary
+    org_tenets_summary = {}
+    for org, data in org_tenets.items():
+        org_all_tenet_ids = set(data['strength_counts'].keys()) | set(data['improvement_counts'].keys())
+        org_summary = []
+
+        for tenet_id in org_all_tenet_ids:
+            tenet_info = tenets_map.get(tenet_id, {})
+            org_summary.append({
+                'id': tenet_id,
+                'name': tenet_info.get('name', tenet_id),
+                'category': tenet_info.get('category', 'Unknown'),
+                'strength_count': data['strength_counts'].get(tenet_id, 0),
+                'improvement_count': data['improvement_counts'].get(tenet_id, 0),
+                'total_mentions': data['strength_counts'].get(tenet_id, 0) + data['improvement_counts'].get(tenet_id, 0)
+            })
+
+        # Sort by net score (strengths - improvements) descending
+        org_summary.sort(key=lambda x: x['strength_count'] - x['improvement_count'], reverse=True)
+
+        org_tenets_summary[org] = {
+            'tenets': org_summary,
+            'employees_with_tenets': data['employees_with_tenets']
+        }
+
     chart_data = {
         'rating_distribution': {
             'labels': list(rating_buckets.keys()),
@@ -358,7 +419,8 @@ def analytics():
                          total_rated=total_rated,
                          total_employees=len(team_data),
                          tenets_summary=tenets_summary,
-                         employees_with_tenets=employees_with_tenets)
+                         employees_with_tenets=employees_with_tenets,
+                         org_tenets_summary=org_tenets_summary)
 
 
 @app.route('/bonus-calculation')

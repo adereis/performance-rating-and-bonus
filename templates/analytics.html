@@ -348,6 +348,26 @@
     <div id="tenetsChartContainer"></div>
 </div>
 {% endif %}
+
+{% if org_tenets_summary and org_tenets_summary|length > 1 %}
+<div class="card">
+    <h2>Team Tenets Analysis by Organization</h2>
+
+    {% for org, org_data in org_tenets_summary.items() %}
+    {% if org_data.tenets|length > 0 %}
+    <div style="margin-bottom: 30px;">
+        <h3 style="color: #667eea; font-size: 16px; margin-bottom: 10px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">
+            {{ org }}
+            <span style="font-size: 13px; color: #666; font-weight: normal;">
+                ({{ org_data.employees_with_tenets }} {% if org_data.employees_with_tenets == 1 %}employee{% else %}employees{% endif %} evaluated)
+            </span>
+        </h3>
+        <div id="orgTenetsChartContainer-{{ loop.index0 }}"></div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -739,6 +759,167 @@ legendDiv.innerHTML = `
     </div>
 `;
 container.insertBefore(legendDiv, container.firstChild);
+{% endif %}
+
+// Team Tenets by Organization - Individual diverging bar charts
+{% if org_tenets_summary and org_tenets_summary|length > 1 %}
+const orgTenetsData = {{ org_tenets_summary | tojson }};
+
+let orgIndex = 0;
+for (const [orgName, orgData] of Object.entries(orgTenetsData)) {
+    if (!orgData.tenets || orgData.tenets.length === 0) {
+        orgIndex++;
+        continue;
+    }
+
+    const orgContainer = document.getElementById(`orgTenetsChartContainer-${orgIndex}`);
+
+    // Sort already done on backend by net score
+    const sortedOrgTenets = orgData.tenets;
+
+    // Find the maximum value for consistent scaling within this org
+    const orgMaxValue = Math.max(
+        ...sortedOrgTenets.map(t => Math.max(t.strength_count, t.improvement_count)),
+        1 // Minimum 1 to avoid division by zero
+    );
+
+    // Create a row for each tenet in this org
+    sortedOrgTenets.forEach((tenet, tenetIndex) => {
+        // Create row div
+        const row = document.createElement('div');
+        row.style.cssText = 'display: grid; grid-template-columns: 1fr 300px 1fr; gap: 8px; align-items: center; margin-bottom: 4px; padding: 2px 0;';
+
+        // Left side - Weakness bar (red, grows left)
+        const weaknessDiv = document.createElement('div');
+        weaknessDiv.style.cssText = 'text-align: right;';
+        const weaknessCanvas = document.createElement('canvas');
+        weaknessCanvas.id = `org${orgIndex}-weakness-${tenetIndex}`;
+        weaknessCanvas.height = 25;
+        weaknessDiv.appendChild(weaknessCanvas);
+
+        // Center - Tenet name
+        const labelDiv = document.createElement('div');
+        labelDiv.style.cssText = 'font-weight: 600; color: #2c3e50; padding: 0 10px; text-align: center; overflow: hidden; text-overflow: ellipsis; font-size: 14px;';
+        labelDiv.textContent = tenet.name;
+
+        // Right side - Strength bar (green, grows right)
+        const strengthDiv = document.createElement('div');
+        strengthDiv.style.cssText = 'text-align: left;';
+        const strengthCanvas = document.createElement('canvas');
+        strengthCanvas.id = `org${orgIndex}-strength-${tenetIndex}`;
+        strengthCanvas.height = 25;
+        strengthDiv.appendChild(strengthCanvas);
+
+        row.appendChild(weaknessDiv);
+        row.appendChild(labelDiv);
+        row.appendChild(strengthDiv);
+        orgContainer.appendChild(row);
+
+        // Create weakness chart (red, reversed)
+        new Chart(weaknessCanvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: [''],
+                datasets: [{
+                    data: [tenet.improvement_count],
+                    backgroundColor: '#dc3545',
+                    borderColor: '#c82333',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Weaknesses: ' + context.parsed.x;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        min: 0,
+                        max: orgMaxValue,
+                        reverse: true,
+                        display: false,
+                        grid: { display: false },
+                        ticks: { display: false }
+                    },
+                    y: {
+                        display: false,
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // Create strength chart (green, normal)
+        new Chart(strengthCanvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: [''],
+                datasets: [{
+                    data: [tenet.strength_count],
+                    backgroundColor: '#27ae60',
+                    borderColor: '#229954',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Strengths: ' + context.parsed.x;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        min: 0,
+                        max: orgMaxValue,
+                        display: false,
+                        grid: { display: false },
+                        ticks: { display: false }
+                    },
+                    y: {
+                        display: false,
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    });
+
+    // Add legend at the top of this org's chart (only for first org to avoid repetition)
+    if (orgIndex === 0) {
+        const orgLegendDiv = document.createElement('div');
+        orgLegendDiv.style.cssText = 'display: flex; justify-content: center; gap: 30px; margin-bottom: 12px; padding: 10px; background: #f8f9fa; border-radius: 6px;';
+        orgLegendDiv.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 16px; height: 16px; background: #dc3545; border: 1px solid #c82333; border-radius: 3px;"></div>
+                <span style="font-weight: 600; color: #2c3e50; font-size: 14px;">Weaknesses (Left)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 16px; height: 16px; background: #27ae60; border: 1px solid #229954; border-radius: 3px;"></div>
+                <span style="font-weight: 600; color: #2c3e50; font-size: 14px;">Strengths (Right)</span>
+            </div>
+        `;
+        orgContainer.insertBefore(orgLegendDiv, orgContainer.firstChild);
+    }
+
+    orgIndex++;
+}
 {% endif %}
 </script>
 {% endblock %}
