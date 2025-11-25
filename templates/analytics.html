@@ -131,14 +131,19 @@
 
     .delta-value {
         font-weight: 600;
+        font-size: 14px;
     }
 
-    .delta-value.positive {
-        color: #dc3545;
+    .delta-value.delta-good {
+        color: #155724;
     }
 
-    .delta-value.negative {
-        color: #0066cc;
+    .delta-value.delta-warning {
+        color: #856404;
+    }
+
+    .delta-value.delta-alert {
+        color: #721c24;
     }
 
     .small-team-warning {
@@ -260,7 +265,7 @@
                     <th>Performance Band</th>
                     <th>Your Team</th>
                     <th>Suggested Range</th>
-                    <th>Delta</th>
+                    <th>Delta from Mid</th>
                     <th>Status</th>
                 </tr>
             </thead>
@@ -300,7 +305,7 @@
                         {{ item.suggested_min }}-{{ item.suggested_max }}%
                     </td>
                     <td>
-                        <span class="delta-value {{ 'positive' if item.delta > 0 else 'negative' if item.delta < 0 else '' }}">
+                        <span class="delta-value delta-{{ item.status }}">
                             {% if item.delta > 0 %}+{% endif %}{{ "%.1f"|format(item.delta) }}%
                         </span>
                     </td>
