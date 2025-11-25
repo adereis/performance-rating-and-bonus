@@ -399,6 +399,15 @@
 
     const teamPoints = Array.from(teamPointsMap.values());
 
+    // Calculate point radii based on number of people at each rating
+    const pointRadii = teamPoints.map(point => {
+        const count = point.names.length;
+        // Base radius of 6, add 2 pixels for each additional person, max at 16
+        return Math.min(6 + (count - 1) * 2, 16);
+    });
+
+    const pointHoverRadii = pointRadii.map(r => r + 2);
+
     const bonusCurveCtx = document.getElementById('bonusCurveChart').getContext('2d');
     new Chart(bonusCurveCtx, {
         type: 'line',
@@ -418,8 +427,8 @@
                     data: teamPoints,
                     borderColor: '#dc3545',
                     backgroundColor: '#dc3545',
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
+                    pointRadius: pointRadii,
+                    pointHoverRadius: pointHoverRadii,
                     showLine: false
                 },
                 {
