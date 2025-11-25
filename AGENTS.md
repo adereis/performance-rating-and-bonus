@@ -84,8 +84,8 @@ To achieve similar results with AI assistance:
 - **AI Model**: Claude Sonnet 4.5 (claude-sonnet-4-5@20250929)
 - **Platform**: Claude Code CLI (Anthropic)
 - **Development Period**: November 2025
-- **Total Test Coverage**: 70 unit tests
-- **Lines of Code**: ~2,500 (application + tests)
+- **Total Test Coverage**: 86 unit tests
+- **Lines of Code**: ~3,000 (application + tests)
 
 ---
 
@@ -122,6 +122,17 @@ To achieve similar results with AI assistance:
 - Use fetch API for AJAX calls to backend
 - Bootstrap-style CSS classes for consistency
 - Chart.js for data visualizations
+- **Sortable tables**: Use `.sortable` class on headers with `data-sort` attributes
+- **Data attributes**: Store sortable values on table rows as `data-{column}` attributes
+
+### Visualization Patterns
+- **Chart.js** for standard charts (bar, line, pie)
+- **Custom HTML/Canvas**: For specialized visualizations like diverging bar charts
+- When creating complex charts (e.g., butterfly/diverging charts):
+  - Start with simplest approach first (e.g., tried single Chart.js instance, didn't align)
+  - Break down into smaller independent components (individual charts per row)
+  - Use CSS Grid for precise alignment
+  - Prioritize visual clarity over complex single-chart solutions
 
 ---
 
@@ -304,6 +315,16 @@ These fields are **preserved** across Workday re-imports:
 - Standard calibration: ~10% top, ~70% solid, ~20% needs improvement
 - Each organization may have different calibration targets
 
+### Team Tenets Evaluation
+
+- **Purpose**: Track team strengths and areas for improvement against defined cultural tenets
+- **Data model**: JSON arrays stored in `tenets_strengths` and `tenets_improvements` fields
+- **Configuration**: Tenets defined in `tenets-sample.json` (version controlled)
+- **Visualization**: Diverging butterfly chart showing strengths (green, right) vs weaknesses (red, left)
+- **Sorting**: Tenets sorted by net score (strengths - weaknesses) descending
+- **Sample data**: Use `--with-tenets` flag when generating sample data
+- **Import**: Column indices 20 (Tenets Strengths) and 21 (Tenets Improvements)
+
 ---
 
 ## Development Constraints
@@ -403,9 +424,12 @@ Keep these separate and don't duplicate content.
 - `test_models.py` - Employee model and database operations (14 tests)
 - `test_api.py` - Flask routes and API endpoints (22 tests)
 - `test_import.py` - Excel import functionality (6 tests)
-- `test_multi_org.py` - Multi-organization scenarios
-- `test_workday_format.py` - Workday column format validation
+- `test_multi_org.py` - Multi-organization scenarios (16 tests)
+- `test_workday_format.py` - Workday column format validation (13 tests)
+- `test_tenets.py` - Team tenets evaluation system (16 tests)
 - Follow naming convention for pytest discovery
+
+**Important**: When writing import tests, never use `convert_xlsx_to_db()` directly as it writes to the production `ratings.db`. Instead, simulate the import logic using test database fixtures to avoid polluting the real database.
 
 ### Templates (HTML/UI)
 
@@ -427,10 +451,11 @@ Keep these separate and don't duplicate content.
 - Mentor/mentee/AI activity fields
 
 #### `templates/analytics.html` (Analytics Dashboard)
-- Performance distribution chart (Chart.js)
-- Calibration guidance (informational)
-- Department and job profile breakdowns
-- Average rating statistics
+- Performance distribution charts (Chart.js)
+- Team tenets diverging bar chart (custom butterfly chart)
+- Distribution calibration guidance (informational)
+- Team rankings table (sortable)
+- **Section order**: Performance Distribution → Team Tenets → Calibration → Rankings
 
 #### `templates/bonus_calculation.html` (Bonus Calculator)
 - Parameter configuration (upside/downside exponents, CR power)
@@ -500,6 +525,42 @@ python3 -m pytest tests/ --cov=. --cov-report=html
    - Each test gets a fresh database
    - Don't rely on execution order
    - Clean up any side effects
+
+---
+
+## Development Best Practices from Recent Sessions
+
+### Complex Visualizations
+**Lesson**: When Chart.js doesn't naturally support your visualization (e.g., diverging/butterfly charts):
+1. Try the native Chart.js approach first
+2. If alignment issues occur, break into independent components
+3. Use individual charts per row with CSS Grid for precise layout
+4. Simpler is better - don't force a library to do what it wasn't designed for
+
+### Feature Rollout
+**Pattern**: When adding major features (like tenets):
+1. Start with data model (add database fields)
+2. Update import/export logic
+3. Create UI for data entry/display
+4. Add analytics/reporting
+5. Update sample data generators
+6. Write comprehensive tests (data model → import → display → analytics)
+7. Document in AGENTS.md for future AI sessions
+
+### Test Database Isolation
+**Critical**: Never write tests that touch production `ratings.db`:
+- Use test fixtures (`db_session`, `test_db`) from `conftest.py`
+- Simulate import logic rather than calling `convert_xlsx_to_db()`
+- Each test gets fresh database - no shared state
+- This prevents real data pollution during test runs
+
+### Iterative UI Refinement
+**Approach**: When refining UX (like analytics page):
+1. Start with all information visible
+2. Remove redundant sections based on feedback
+3. Reorder for logical flow (overview → details)
+4. Add interactivity (sortable tables) for better usability
+5. Compress/streamline to reduce visual clutter
 
 ---
 
