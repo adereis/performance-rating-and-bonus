@@ -273,30 +273,6 @@
 {% endif %}
 
 <div class="card">
-    <h2>Supervisory Organization Averages</h2>
-    <div class="dept-stats">
-        {% for dept, avg in dept_averages.items() %}
-        <div class="stat-box">
-            <h4>{{ dept }}</h4>
-            <div class="avg">{{ "%.1f"|format(avg) }}%</div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
-<div class="card">
-    <h2>Job Profile Averages</h2>
-    <div class="job-stats">
-        {% for job, avg in job_averages.items() %}
-        <div class="stat-box">
-            <h4>{{ job }}</h4>
-            <div class="avg">{{ "%.1f"|format(avg) }}%</div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
-<div class="card">
     <h2>Team Rankings (by Performance Rating)</h2>
     <div style="overflow-x: auto;">
         <table class="ranking-table">
