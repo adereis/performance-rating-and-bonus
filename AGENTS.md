@@ -522,10 +522,16 @@ Keep these separate and don't duplicate content.
 - **Section order**: Performance Distribution → Team Tenets → Calibration → Rankings
 
 #### `templates/bonus_calculation.html` (Bonus Calculator)
-- Parameter configuration (upside/downside exponents, CR power)
+- Parameter configuration (upside/downside exponents)
 - Recalculation trigger
-- Results table with individual bonuses
+- Results table with individual bonuses (sortable)
 - Total pool verification
+- **Multi-team support**: Tabbed interface for organizations with multiple teams
+  - Tab 1: Overview (organization-level calculation, always visible)
+  - Tab 2: Team Comparison (team-level vs org-level normalization comparison)
+  - Tab 3: Detailed Breakdown (per-employee side-by-side comparison)
+  - Auto-detects multi-team scenario by counting unique supervisory organizations
+  - Shows budget flow between teams (gains/losses from normalization)
 
 ### Generated/Temporary Files (Never Commit)
 
@@ -625,6 +631,22 @@ python3 -m pytest tests/ --cov=. --cov-report=html
 3. Reorder for logical flow (overview → details)
 4. Add interactivity (sortable tables) for better usability
 5. Compress/streamline to reduce visual clutter
+
+### Multi-Level Organization Support
+**Pattern**: When adding features that work differently based on organizational structure:
+1. **Auto-detection**: Count unique supervisory organizations to detect multi-team scenario
+2. **Progressive Disclosure**: Show simple view for single-team, expanded view for multi-team
+3. **Reuse calculation logic**: Extract bonus calculation into helper function, call twice (team-level and org-level)
+4. **Tabbed interface**: Use tabs to separate views without overwhelming single-team users
+5. **Budget flow visualization**: Show teams gaining/losing budget during normalization
+6. **Terminology**: Avoid role-specific terms like "director" - use neutral terms like "multi-team" or "organization-level"
+
+**Implementation Notes** (bonus_calculation.html + app.py:500-617):
+- Helper function `calculate_bonus_for_employees()` encapsulates calculation logic
+- Detection: `len(unique_orgs) > 1` triggers multi-team view
+- Three tabs: Overview (always), Team Comparison, Detailed Breakdown (only if multi-team)
+- Budget impact calculated as: `org_level_allocation - team_level_allocation` per team
+- No database changes needed - all calculations are ephemeral
 
 ---
 

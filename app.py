@@ -423,39 +423,14 @@ def analytics():
                          org_tenets_summary=org_tenets_summary)
 
 
-@app.route('/bonus-calculation')
-def bonus_calculation():
-    """Bonus calculation page with configurable parameters."""
-    # Default configuration parameters
-    default_params = {
-        'upside_exponent': 1.35,
-        'downside_exponent': 1.9
-    }
-
-    # Get parameters from query string or use defaults
-    params = {
-        'upside_exponent': float(request.args.get('upside_exponent', default_params['upside_exponent'])),
-        'downside_exponent': float(request.args.get('downside_exponent', default_params['downside_exponent']))
-    }
-
-    team_data = get_all_employees()
-
-    # Filter to only rated employees
-    rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
-
-    if not rated_employees:
-        return render_template('bonus_calculation.html',
-                             team=[],
-                             params=params,
-                             total_pool=0,
-                             total_allocated=0,
-                             has_data=False,
-                             missing_bonus_data=False)
-
+def calculate_bonus_for_employees(employees, params):
+    """
+    Calculate bonuses for a given set of employees.
+    Returns dict with results, normalization factor, and metadata.
+    """
     # Calculate total bonus pool (sum of all bonus targets in USD)
     total_pool = 0
-    for emp in rated_employees:
-        # Prefer USD version if it exists (for non-US employees), otherwise use local currency (already in USD for US employees)
+    for emp in employees:
         bonus_target_usd = emp.get('Bonus Target - Local Currency (USD)') or emp.get('Bonus Target - Local Currency')
         if bonus_target_usd:
             try:
@@ -468,22 +443,14 @@ def bonus_calculation():
     total_raw_shares = 0
     employees_without_bonus_target = 0
 
-    for emp in rated_employees:
+    for emp in employees:
         try:
             rating = float(emp.get('performance_rating_percent', 100))
-
-            # CRITICAL: Fallback logic for USD vs International employees
-            # USD employees: Have values ONLY in "Local Currency" column (which is USD)
-            # International: Have values in BOTH "Local Currency" AND "USD" columns
-            # Always prefer USD column if present, fallback to local (works for both cases)
-            # See tests/test_workday_format.py for detailed documentation
             bonus_target_usd = float((emp.get('Bonus Target - Local Currency (USD)') or emp.get('Bonus Target - Local Currency')) or 0)
             base_pay_usd = float((emp.get('Current Base Pay All Countries (USD)') or emp.get('Current Base Pay All Countries')) or 0)
         except (ValueError, TypeError):
-            # Skip employees with invalid data
             continue
 
-        # Track employees without bonus target
         if bonus_target_usd <= 0:
             employees_without_bonus_target += 1
             continue
@@ -517,29 +484,137 @@ def bonus_calculation():
         result['bonus_percent_of_target'] = (result['final_bonus'] / result['bonus_target_usd'] * 100) if result['bonus_target_usd'] > 0 else 0
         total_allocated += result['final_bonus']
 
-    # Check if we have any valid bonus data
-    if not bonus_results or total_pool == 0:
+    # Create lookup by Associate ID for easy access
+    results_by_id = {r['employee']['Associate ID']: r for r in bonus_results}
+
+    return {
+        'results': bonus_results,
+        'results_by_id': results_by_id,
+        'total_pool': total_pool,
+        'total_allocated': total_allocated,
+        'value_per_share': value_per_share,
+        'employees_without_bonus_target': employees_without_bonus_target
+    }
+
+
+@app.route('/bonus-calculation')
+def bonus_calculation():
+    """Bonus calculation page with configurable parameters."""
+    # Default configuration parameters
+    default_params = {
+        'upside_exponent': 1.35,
+        'downside_exponent': 1.9
+    }
+
+    # Get parameters from query string or use defaults
+    params = {
+        'upside_exponent': float(request.args.get('upside_exponent', default_params['upside_exponent'])),
+        'downside_exponent': float(request.args.get('downside_exponent', default_params['downside_exponent']))
+    }
+
+    team_data = get_all_employees()
+
+    # Filter to only rated employees
+    rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
+
+    if not rated_employees:
         return render_template('bonus_calculation.html',
                              team=[],
                              params=params,
                              total_pool=0,
                              total_allocated=0,
                              has_data=False,
-                             missing_bonus_data=True)
+                             missing_bonus_data=False,
+                             is_multi_team=False)
+
+    # Detect multi-team scenario by checking unique supervisory organizations
+    unique_orgs = set()
+    for emp in rated_employees:
+        org = emp.get('Supervisory Organization')
+        if org:
+            unique_orgs.add(org)
+
+    is_multi_team = len(unique_orgs) > 1
+
+    # Calculate organization-level bonuses (always)
+    org_level_calc = calculate_bonus_for_employees(rated_employees, params)
+
+    # If multi-team, also calculate per-team bonuses for comparison
+    team_comparisons = []
+    teams_data = []
+
+    if is_multi_team:
+        # Group employees by supervisory organization
+        teams_by_org = {}
+        for emp in rated_employees:
+            org = emp.get('Supervisory Organization', 'Unknown')
+            if org not in teams_by_org:
+                teams_by_org[org] = []
+            teams_by_org[org].append(emp)
+
+        # Calculate bonuses for each team independently
+        for org_name, team_employees in teams_by_org.items():
+            team_calc = calculate_bonus_for_employees(team_employees, params)
+
+            # Calculate average rating for this team
+            team_ratings = [float(e.get('performance_rating_percent', 100)) for e in team_employees]
+            avg_rating = sum(team_ratings) / len(team_ratings) if team_ratings else 0
+
+            # Calculate budget impact (org-level allocation - team-level allocation)
+            team_allocated_org_level = sum(
+                org_level_calc['results_by_id'][e['Associate ID']]['final_bonus']
+                for e in team_employees
+                if e['Associate ID'] in org_level_calc['results_by_id']
+            )
+            team_allocated_team_level = team_calc['total_allocated']
+            budget_impact = team_allocated_org_level - team_allocated_team_level
+            impact_percent = (budget_impact / team_calc['total_pool'] * 100) if team_calc['total_pool'] > 0 else 0
+
+            team_comparisons.append({
+                'team_name': org_name,
+                'team_pool': team_calc['total_pool'],
+                'avg_rating': round(avg_rating, 1),
+                'team_norm': team_calc['value_per_share'],
+                'org_norm': org_level_calc['value_per_share'],
+                'budget_impact': budget_impact,
+                'impact_percent': impact_percent,
+                'employee_count': len(team_employees)
+            })
+
+            teams_data.append({
+                'name': org_name,
+                'employees': team_employees,
+                'team_level_calc': team_calc,
+                'org_level_calc': org_level_calc
+            })
+
+    # Check if we have any valid bonus data
+    if not org_level_calc['results'] or org_level_calc['total_pool'] == 0:
+        return render_template('bonus_calculation.html',
+                             team=[],
+                             params=params,
+                             total_pool=0,
+                             total_allocated=0,
+                             has_data=False,
+                             missing_bonus_data=True,
+                             is_multi_team=False)
 
     # Sort by final bonus descending
-    bonus_results.sort(key=lambda x: x['final_bonus'], reverse=True)
+    org_level_calc['results'].sort(key=lambda x: x['final_bonus'], reverse=True)
 
     return render_template('bonus_calculation.html',
-                         team=bonus_results,
+                         team=org_level_calc['results'],
                          params=params,
-                         total_pool=total_pool,
-                         total_allocated=total_allocated,
-                         value_per_share=value_per_share,
+                         total_pool=org_level_calc['total_pool'],
+                         total_allocated=org_level_calc['total_allocated'],
+                         value_per_share=org_level_calc['value_per_share'],
                          has_data=True,
                          missing_bonus_data=False,
                          total_rated=len(rated_employees),
-                         employees_without_bonus_target=employees_without_bonus_target)
+                         employees_without_bonus_target=org_level_calc['employees_without_bonus_target'],
+                         is_multi_team=is_multi_team,
+                         team_comparisons=team_comparisons,
+                         teams_data=teams_data)
 
 
 @app.route('/export')

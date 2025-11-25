@@ -223,12 +223,128 @@
         content: '↓';
         opacity: 1;
     }
+
+    /* Tab navigation */
+    .tabs {
+        display: flex;
+        gap: 2px;
+        border-bottom: 2px solid #e0e0e0;
+        margin-bottom: 20px;
+    }
+
+    .tab-button {
+        background: #f8f9fa;
+        border: none;
+        padding: 12px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #666;
+        cursor: pointer;
+        border-radius: 6px 6px 0 0;
+        transition: all 0.2s;
+    }
+
+    .tab-button:hover {
+        background: #e8e9ea;
+        color: #2c3e50;
+    }
+
+    .tab-button.active {
+        background: white;
+        color: #667eea;
+        border-bottom: 2px solid #667eea;
+        margin-bottom: -2px;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Team comparison table */
+    .team-comparison-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        margin-top: 15px;
+    }
+
+    .team-comparison-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #2c3e50;
+        border-bottom: 2px solid #e0e0e0;
+    }
+
+    .team-comparison-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .team-comparison-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .team-comparison-table .right {
+        text-align: right;
+    }
+
+    .status-gain {
+        color: #27ae60;
+        font-weight: 600;
+    }
+
+    .status-loss {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .status-neutral {
+        color: #666;
+        font-weight: 600;
+    }
+
+    .comparison-intro {
+        background: #e8f4f8;
+        border-left: 4px solid #3498db;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+    }
+
+    .comparison-intro h4 {
+        margin: 0 0 8px 0;
+        color: #2c3e50;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .comparison-intro p {
+        margin: 0;
+        font-size: 13px;
+        color: #555;
+        line-height: 1.6;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="card">
     <h2>Bonus Calculation (Phase 2)</h2>
+
+    <!-- Tab navigation (only show if multi-team) -->
+    {% if is_multi_team %}
+    <div class="tabs">
+        <button class="tab-button active" data-tab="overview">Overview</button>
+        <button class="tab-button" data-tab="team-comparison">Team Comparison</button>
+        <button class="tab-button" data-tab="detailed">Detailed Breakdown</button>
+    </div>
+    {% endif %}
 
     <div class="config-panel">
         <h3>🔧 Configuration Parameters</h3>
@@ -253,6 +369,8 @@
         </form>
     </div>
 
+    <!-- Tab 1: Overview (existing view) -->
+    <div class="tab-content {% if not is_multi_team or true %}active{% endif %}" id="overview">
     {% if has_data %}
     <div class="card" style="margin-bottom: 20px;">
         <h3>Performance-to-Bonus Curve (Your Team)</h3>
@@ -363,6 +481,144 @@
         {% endif %}
     </div>
     {% endif %}
+    </div><!-- End Tab 1: Overview -->
+
+    <!-- Tab 2: Team Comparison (only if multi-team) -->
+    {% if is_multi_team %}
+    <div class="tab-content" id="team-comparison">
+        <div class="comparison-intro">
+            <h4>ℹ️ Multi-Team Bonus Normalization</h4>
+            <p>
+                When calculating bonuses across multiple teams, normalization happens at the organization level.
+                This means budget may shift between teams based on their performance distribution.
+                Teams with concentrated high performers may receive additional budget from teams with more modest distributions.
+            </p>
+        </div>
+
+        <h3>Team-Level vs Organization-Level Comparison</h3>
+        <div style="overflow-x: auto;">
+            <table class="team-comparison-table">
+                <thead>
+                    <tr>
+                        <th>Team</th>
+                        <th class="right">Employees</th>
+                        <th class="right">Total Pool</th>
+                        <th class="right">Avg Rating</th>
+                        <th class="right">Team-Level Norm</th>
+                        <th class="right">Org-Level Norm</th>
+                        <th class="right">Budget Impact</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for comparison in team_comparisons %}
+                    <tr>
+                        <td><strong>{{ comparison.team_name }}</strong></td>
+                        <td class="right">{{ comparison.employee_count }}</td>
+                        <td class="right">${{ "{:,.0f}".format(comparison.team_pool) }}</td>
+                        <td class="right">{{ comparison.avg_rating }}%</td>
+                        <td class="right">{{ "%.3f"|format(comparison.team_norm) }}</td>
+                        <td class="right">{{ "%.3f"|format(comparison.org_norm) }}</td>
+                        <td class="right">
+                            <span class="{% if comparison.budget_impact > 0 %}status-gain{% elif comparison.budget_impact < 0 %}status-loss{% else %}status-neutral{% endif %}">
+                                {% if comparison.budget_impact > 0 %}+{% endif %}${{ "{:,.0f}".format(comparison.budget_impact) }}
+                                ({% if comparison.impact_percent > 0 %}+{% endif %}{{ "%.1f"|format(comparison.impact_percent) }}%)
+                            </span>
+                        </td>
+                        <td>
+                            {% if comparison.budget_impact > 0 %}
+                            <span class="status-gain">↑ Budget Gain</span>
+                            {% elif comparison.budget_impact < 0 %}
+                            <span class="status-loss">↓ Budget Loss</span>
+                            {% else %}
+                            <span class="status-neutral">= Neutral</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="methodology" style="margin-top: 20px;">
+            <h4>📋 Understanding the Comparison</h4>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+                <li style="font-size: 13px; color: #555; margin: 5px 0; line-height: 1.5;">
+                    <strong>Team-Level Norm:</strong> Normalization factor if the team was calculated in isolation
+                </li>
+                <li style="font-size: 13px; color: #555; margin: 5px 0; line-height: 1.5;">
+                    <strong>Org-Level Norm:</strong> Actual normalization factor when all teams are combined
+                </li>
+                <li style="font-size: 13px; color: #555; margin: 5px 0; line-height: 1.5;">
+                    <strong>Budget Impact:</strong> Dollar amount gained or lost due to organization-level normalization
+                </li>
+                <li style="font-size: 13px; color: #555; margin: 5px 0; line-height: 1.5;">
+                    Teams with higher average ratings tend to gain budget, while teams with lower averages tend to contribute budget
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Tab 3: Detailed Breakdown (only if multi-team) -->
+    <div class="tab-content" id="detailed">
+        <div class="comparison-intro">
+            <h4>ℹ️ Per-Employee Comparison</h4>
+            <p>
+                This view shows each employee's bonus under both team-level and organization-level calculations.
+                The difference illustrates how organization-level normalization affects individual bonuses.
+            </p>
+        </div>
+
+        {% for team in teams_data %}
+        <h3>{{ team.name }} ({{ team.employees|length }} employees)</h3>
+        <div style="overflow-x: auto; margin-bottom: 30px;">
+            <table class="bonus-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th class="right">Rating %</th>
+                        <th class="right">Team-Level Bonus</th>
+                        <th class="right">Org-Level Bonus</th>
+                        <th class="right">Difference</th>
+                        <th class="right">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in team.employees %}
+                    {% set emp_id = emp['Associate ID'] %}
+                    {% if emp_id in team.team_level_calc.results_by_id and emp_id in team.org_level_calc.results_by_id %}
+                    {% set team_bonus = team.team_level_calc.results_by_id[emp_id].final_bonus %}
+                    {% set org_bonus = team.org_level_calc.results_by_id[emp_id].final_bonus %}
+                    {% set diff = org_bonus - team_bonus %}
+                    <tr>
+                        <td><strong>{{ emp.Associate }}</strong></td>
+                        <td class="right">{{ "%.0f"|format(emp.performance_rating_percent) }}%</td>
+                        <td class="right">${{ "{:,.0f}".format(team_bonus) }}</td>
+                        <td class="right">${{ "{:,.0f}".format(org_bonus) }}</td>
+                        <td class="right">
+                            <span class="{% if diff > 0 %}status-gain{% elif diff < 0 %}status-loss{% else %}status-neutral{% endif %}">
+                                {% if diff > 0 %}+{% endif %}${{ "{:,.0f}".format(diff) }}
+                            </span>
+                        </td>
+                        <td class="right">
+                            {% if diff > 0 %}
+                            <span style="color: #27ae60;">↑</span>
+                            {% elif diff < 0 %}
+                            <span style="color: #dc3545;">↓</span>
+                            {% else %}
+                            <span style="color: #666;">=</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
 </div>
 {% endblock %}
 
@@ -617,6 +873,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Set initial sort indicator (sorted by Final Bonus descending)
     document.querySelector('th[data-sort="final"]').classList.add('desc');
+
+    // Tab switching functionality (only if multi-team)
+    {% if is_multi_team %}
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetTab = this.getAttribute('data-tab');
+
+            // Remove active class from all buttons and contents
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            // Add active class to clicked button and corresponding content
+            this.classList.add('active');
+            document.getElementById(targetTab).classList.add('active');
+        });
+    });
+    {% endif %}
 });
 </script>
 {% endif %}
