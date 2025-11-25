@@ -380,14 +380,24 @@
         curvePayouts.push(payout);
     }
 
-    // Generate team member points with names
-    const teamPoints = teamResults.map(result => {
-        return {
-            x: result.rating,
-            y: calcPerfMultiplier(result.rating) * normFactor * 100,
-            name: result.employee.Associate
-        };
+    // Group team members by rating to handle duplicates
+    const teamPointsMap = new Map();
+    teamResults.forEach(result => {
+        const rating = result.rating;
+        const payout = calcPerfMultiplier(rating) * normFactor * 100;
+        const key = rating.toString();
+
+        if (!teamPointsMap.has(key)) {
+            teamPointsMap.set(key, {
+                x: rating,
+                y: payout,
+                names: []
+            });
+        }
+        teamPointsMap.get(key).names.push(result.employee.Associate);
     });
+
+    const teamPoints = Array.from(teamPointsMap.values());
 
     const bonusCurveCtx = document.getElementById('bonusCurveChart').getContext('2d');
     new Chart(bonusCurveCtx, {
@@ -485,13 +495,21 @@
                         title: function(context) {
                             if (context[0].dataset.label === 'Your Team Members') {
                                 const dataPoint = context[0].raw;
-                                return dataPoint.name;
+                                const names = dataPoint.names;
+                                if (names.length === 1) {
+                                    return names[0];
+                                } else {
+                                    return names; // Chart.js will display as array
+                                }
                             }
                             return '';
                         },
                         label: function(context) {
                             if (context.dataset.label === 'Your Team Members') {
-                                return `Rating: ${context.parsed.x.toFixed(0)}% → Payout: ${context.parsed.y.toFixed(1)}% of target`;
+                                const dataPoint = context.raw;
+                                const count = dataPoint.names.length;
+                                const countText = count > 1 ? ` (${count} people)` : '';
+                                return `Rating: ${context.parsed.x.toFixed(0)}% → Payout: ${context.parsed.y.toFixed(1)}% of target${countText}`;
                             }
                             return context.dataset.label;
                         }
