@@ -63,6 +63,8 @@ def convert_xlsx_to_db(xlsx_file='bonus-from-wd.xlsx'):
         COL_NOTES = 17
         COL_ZERO_BONUS = 18
         COL_PERFORMANCE_RATING = 19  # Optional - only in sample data
+        COL_TENETS_STRENGTHS = 20  # Optional - only in sample data with --with-tenets
+        COL_TENETS_IMPROVEMENTS = 21  # Optional - only in sample data with --with-tenets
 
         # Process data rows (start from row 2, which is index 2)
         for i, row in enumerate(rows[2:], start=2):
@@ -116,6 +118,17 @@ def convert_xlsx_to_db(xlsx_file='bonus-from-wd.xlsx'):
                     employee.performance_rating_percent = parse_float(row[COL_PERFORMANCE_RATING])
                 else:
                     employee.performance_rating_percent = None
+
+                # Check if this is sample data with tenets included
+                if len(row) > COL_TENETS_STRENGTHS and row[COL_TENETS_STRENGTHS]:
+                    employee.tenets_strengths = str(row[COL_TENETS_STRENGTHS])
+                else:
+                    employee.tenets_strengths = None
+
+                if len(row) > COL_TENETS_IMPROVEMENTS and row[COL_TENETS_IMPROVEMENTS]:
+                    employee.tenets_improvements = str(row[COL_TENETS_IMPROVEMENTS])
+                else:
+                    employee.tenets_improvements = None
 
                 employee.justification = ''
                 employee.mentor = ''
