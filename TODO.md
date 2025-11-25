@@ -112,16 +112,48 @@ _(Features from original README.md Future Enhancements section)_
 ---
 
 ### Import Compa-Ratio Data from Workday
-**Priority:** Medium
-**Status:** Not Started
-**Description:** Add support for importing Compa-Ratio (CR) data from Workday export to enable CR-based bonus adjustments.
+**Priority:** Low (Deferred)
+**Status:** Not Started - Complex and potentially problematic
+**Description:** Add support for importing Compa-Ratio (CR) data from Workday to enable salary equity-based bonus adjustments.
 
-**Implementation Notes:**
+**Why Deferred:**
+
+1. **Export Complexity:**
+   - Workday export format for CR data is complex and inconsistent
+   - Would require importing from specialized compensation reports
+   - Multi-row format per employee (varies by country: 4-10 rows)
+   - Need to calculate CR from base pay and range midpoint fields
+
+2. **Per-Country Distortions:**
+   - CR values can be distorted in some countries due to outdated salary bands
+   - Example: Country with outdated bands shows inflated CRs (employees paid above "midpoint")
+   - These inflated CRs are compensation for band staleness, not actual overpayment
+   - Using CR as bonus drag in these cases would unfairly penalize employees
+   - Would require manual per-country CR adjustment factors to compensate
+   - Different countries have different band refresh cycles and market conditions
+
+3. **Business Logic Complexity:**
+   - Requires country-specific CR interpretation rules
+   - Need to identify which countries have distorted bands
+   - Must maintain per-country adjustment factors
+   - Adds significant complexity for marginal benefit
+   - Risk of unintended consequences in bonus distribution
+
+4. **Current Focus:**
+   - Bonus algorithm focuses on performance differentiation
+   - Team performance is the primary factor, not salary equity
+   - Simpler implementation is more maintainable and transparent
+
+**Potential Future Implementation (if needed):**
+- Import CR data from Workday compensation export
+- Calculate: `compa_ratio = base_pay_usd / range_midpoint_usd`
 - Add `compa_ratio` field to Employee model
-- Update `convert_xlsx.py` to import CR column from Workday
-- Enable CR Power parameter in bonus calculation (currently neutral at 0.5)
-- Update bonus algorithm to apply CR multiplier
-- Add tests for CR-based calculations
+- Implement per-country CR adjustment configuration
+- Add CR Power parameter to bonus calculation
+- Apply CR multiplier: `1 / (CR^cr_power)` with country adjustments
+- Create country-specific rules for CR interpretation
+
+**Note:** This feature has been removed from the current implementation due to technical complexity and business logic concerns around per-country distortions. The bonus algorithm now focuses solely on performance-based differentiation, which is simpler, more transparent, and avoids unintended geographic biases.
 
 ---
 

@@ -148,7 +148,6 @@ Open http://localhost:5000 and navigate to **Rate Team** to begin.
 - Review default parameters:
   - **Upside Exponent** (1.35): Rewards for ratings ≥ 100%
   - **Downside Exponent** (1.9): Penalties for ratings < 100%
-  - **CR Power** (0.5): Compa-Ratio influence (future feature)
 - Adjust parameters if needed
 - Click **Recalculate** to see results
 - Review individual bonuses and % of target
@@ -176,9 +175,8 @@ See [BONUS_CALCULATION_README.md](BONUS_CALCULATION_README.md) for detailed expl
 **Summary**:
 1. Total Pool = Sum of all bonus targets from Workday (USD)
 2. Performance Multiplier = Split curve (different exponents for above/below 100%)
-3. Compa-Ratio Multiplier = Future equity adjustment (currently neutral)
-4. Raw Share = Target × Perf Multiplier × CR Multiplier
-5. Final Bonus = Raw Share × Normalization Factor (ensures total = pool)
+3. Raw Share = Target × Perf Multiplier
+4. Final Bonus = Raw Share × Normalization Factor (ensures total = pool)
 
 ## Technology Stack
 

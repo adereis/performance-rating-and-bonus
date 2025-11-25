@@ -429,15 +429,13 @@ def bonus_calculation():
     # Default configuration parameters
     default_params = {
         'upside_exponent': 1.35,
-        'downside_exponent': 1.9,
-        'cr_power': 0.5
+        'downside_exponent': 1.9
     }
 
     # Get parameters from query string or use defaults
     params = {
         'upside_exponent': float(request.args.get('upside_exponent', default_params['upside_exponent'])),
-        'downside_exponent': float(request.args.get('downside_exponent', default_params['downside_exponent'])),
-        'cr_power': float(request.args.get('cr_power', default_params['cr_power']))
+        'downside_exponent': float(request.args.get('downside_exponent', default_params['downside_exponent']))
     }
 
     team_data = get_all_employees()
@@ -490,24 +488,14 @@ def bonus_calculation():
             employees_without_bonus_target += 1
             continue
 
-        # Calculate Compa-Ratio (CR)
-        # TODO: Import CR data from Workday in future
-        # For now, assume everyone is at 100% (CR = 1.0)
-        # When Workday provides CR data, update this to:
-        # cr = float(emp.get('Compa-Ratio') or 1.0)
-        cr = 1.0
-
         # Calculate Performance Multiplier (Split Curve)
         if rating < 100:
             perf_multiplier = (rating / 100) ** params['downside_exponent']
         else:
             perf_multiplier = (rating / 100) ** params['upside_exponent']
 
-        # Calculate CR Multiplier (Dampened)
-        cr_multiplier = 1 / (cr ** params['cr_power'])
-
         # Calculate Raw Share
-        raw_share = bonus_target_usd * perf_multiplier * cr_multiplier
+        raw_share = bonus_target_usd * perf_multiplier
         total_raw_shares += raw_share
 
         bonus_results.append({
@@ -515,9 +503,7 @@ def bonus_calculation():
             'rating': rating,
             'bonus_target_usd': bonus_target_usd,
             'base_pay_usd': base_pay_usd,
-            'cr': cr,
             'perf_multiplier': perf_multiplier,
-            'cr_multiplier': cr_multiplier,
             'raw_share': raw_share
         })
 

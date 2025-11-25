@@ -659,7 +659,6 @@ python3 -m pytest tests/ --cov=. --cov-report=html
 Potential areas for expansion (not yet implemented):
 
 - [ ] CSV export from Bonus Calculation page
-- [ ] Import Compa-Ratio data from Workday
 - [ ] Save multiple parameter configurations
 - [ ] Historical rating comparison (quarter-over-quarter)
 - [ ] Bulk edit capabilities

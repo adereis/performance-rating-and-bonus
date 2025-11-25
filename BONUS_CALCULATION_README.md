@@ -48,22 +48,16 @@ For each employee, we calculate:
    - Example: With defaults, a 120% rating gets `1.20^1.35 = 1.28x` their target
    - Example: With defaults, an 80% rating gets `0.80^1.9 = 0.65x` their target
 
-2. **Compa-Ratio Adjustment** (Future Enhancement)
-   - Currently set to 1.0 (neutral) for everyone
-   - In the future, this will provide a minor equity adjustment based on how someone's salary compares to market rates
-   - Formula: `1 / (CR^cr_power)`
-   - Lower paid employees (relative to market) would get a slight boost; higher paid would get a slight drag
+2. **Raw Share**
+   - `Bonus Target × Performance Multiplier`
 
-3. **Raw Share**
-   - `Bonus Target × Performance Multiplier × CR Adjustment`
-
-4. **Final Bonus**
+3. **Final Bonus**
    - `Raw Share × Normalization Factor`
    - The normalization factor ensures total bonuses = total pool
 
 ## Configuration Parameters
 
-You can experiment with three parameters to adjust how aggressive the curve is:
+You can experiment with two parameters to adjust how aggressive the curve is:
 
 ### Upside Exponent (Default: 1.35)
 - Controls the reward for ratings ≥ 100%
@@ -83,13 +77,6 @@ You can experiment with three parameters to adjust how aggressive the curve is:
   - At 1.9: 65% of target
   - At 2.0: 64% of target
 
-### CR Power (Default: 0.5)
-- Controls how much Compa-Ratio affects bonuses
-- Currently has no effect since CR = 1.0 for everyone
-- **0.5**: Square root (moderate influence when CR data is available)
-- **1.0**: Linear (stronger influence)
-- **0.0**: No influence
-
 ## Reading the Results
 
 The Bonus Calculation page shows:
@@ -105,9 +92,7 @@ For each employee, you'll see:
 
 - **Rating %**: Their performance rating you assigned
 - **Bonus Target**: Their target from Workday (in USD)
-- **Compa-Ratio**: Currently 1.0 for everyone (future: from Workday)
 - **Perf Mult**: Performance multiplier calculated from the rating
-- **CR Mult**: CR multiplier (currently 1.0, neutral)
 - **Final Bonus**: The actual bonus they'll receive
 - **% of Target**: How their final bonus compares to their target
   - **Green** (>100%): Above target
@@ -141,8 +126,7 @@ The system automatically handles employees in different countries:
 If some rated employees don't appear in the calculation, they're likely missing bonus target data in the Workday export. Ensure your export includes the bonus target columns for all employees.
 
 ### Current Limitations
-1. **Compa-Ratio**: Currently set to 1.0 for everyone. Future versions will import actual CR data from Workday to provide minor equity adjustments.
-2. **One-time calculation**: This is a planning tool. The results are not automatically saved or exported to Workday.
+1. **One-time calculation**: This is a planning tool. The results are not automatically saved or exported to Workday.
 
 ## Example Scenarios
 
