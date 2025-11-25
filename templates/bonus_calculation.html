@@ -193,6 +193,36 @@
         font-family: 'Courier New', monospace;
         font-size: 12px;
     }
+
+    /* Sortable table headers */
+    th.sortable {
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+        padding-right: 25px;
+    }
+
+    th.sortable:hover {
+        background: #e8e9ea;
+    }
+
+    th.sortable::after {
+        content: '⇅';
+        position: absolute;
+        right: 8px;
+        opacity: 0.5;
+        font-size: 12px;
+    }
+
+    th.sortable.asc::after {
+        content: '↑';
+        opacity: 1;
+    }
+
+    th.sortable.desc::after {
+        content: '↓';
+        opacity: 1;
+    }
 </style>
 {% endblock %}
 
@@ -268,20 +298,28 @@
         <table class="bonus-table">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Job Profile</th>
-                    <th class="right">Rating %</th>
-                    <th class="right">Bonus Target</th>
-                    <th class="right">Compa-Ratio</th>
-                    <th class="right">Perf Mult</th>
-                    <th class="right">CR Mult</th>
-                    <th class="right">Final Bonus</th>
-                    <th class="right">% of Target</th>
+                    <th class="sortable" data-sort="name">Name</th>
+                    <th class="sortable" data-sort="job">Job Profile</th>
+                    <th class="right sortable" data-sort="rating">Rating %</th>
+                    <th class="right sortable" data-sort="target">Bonus Target</th>
+                    <th class="right sortable" data-sort="cr">Compa-Ratio</th>
+                    <th class="right sortable" data-sort="perf-mult">Perf Mult</th>
+                    <th class="right sortable" data-sort="cr-mult">CR Mult</th>
+                    <th class="right sortable" data-sort="final">Final Bonus</th>
+                    <th class="right sortable" data-sort="percent">% of Target</th>
                 </tr>
             </thead>
             <tbody>
                 {% for result in team %}
-                <tr>
+                <tr data-name="{{ result.employee.Associate }}"
+                    data-job="{{ result.employee['Current Job Profile'] }}"
+                    data-rating="{{ result.rating }}"
+                    data-target="{{ result.bonus_target_usd }}"
+                    data-cr="{{ result.cr }}"
+                    data-perf-mult="{{ result.perf_multiplier }}"
+                    data-cr-mult="{{ result.cr_multiplier }}"
+                    data-final="{{ result.final_bonus }}"
+                    data-percent="{{ result.bonus_percent_of_target }}">
                     <td><strong>{{ result.employee.Associate }}</strong></td>
                     <td>{{ result.employee['Current Job Profile'] }}</td>
                     <td class="right">
@@ -539,6 +577,62 @@
         }
     });
 })();
+
+// Table sorting for Bonus Results
+document.addEventListener('DOMContentLoaded', function() {
+    const headers = document.querySelectorAll('th.sortable');
+    let currentSort = { column: 'final', direction: 'desc' };
+
+    headers.forEach(header => {
+        header.addEventListener('click', function() {
+            const sortKey = this.getAttribute('data-sort');
+            sortBonusTable(sortKey);
+        });
+    });
+
+    function sortBonusTable(column) {
+        const table = document.querySelector('.bonus-table tbody');
+        const rows = Array.from(table.querySelectorAll('tr'));
+
+        // Toggle direction if same column, otherwise default to descending
+        if (currentSort.column === column) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.column = column;
+            currentSort.direction = (column === 'name' || column === 'job') ? 'asc' : 'desc';
+        }
+
+        // Update header classes
+        document.querySelectorAll('th.sortable').forEach(th => {
+            th.classList.remove('asc', 'desc');
+        });
+        document.querySelector(`th[data-sort="${column}"]`).classList.add(currentSort.direction);
+
+        // Sort rows
+        rows.sort((a, b) => {
+            let aVal = a.getAttribute(`data-${column}`);
+            let bVal = b.getAttribute(`data-${column}`);
+
+            // Convert to numbers for numeric columns
+            if (column !== 'name' && column !== 'job') {
+                aVal = parseFloat(aVal);
+                bVal = parseFloat(bVal);
+            }
+
+            if (currentSort.direction === 'asc') {
+                return aVal > bVal ? 1 : -1;
+            } else {
+                return aVal < bVal ? 1 : -1;
+            }
+        });
+
+        // Re-append rows in sorted order
+        rows.forEach(row => table.appendChild(row));
+    }
+
+    // Set initial sort indicator (sorted by Final Bonus descending)
+    document.querySelector('th[data-sort="final"]').classList.add('desc');
+});
 </script>
 {% endif %}
 {% endblock %}
