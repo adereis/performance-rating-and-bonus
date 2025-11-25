@@ -428,8 +428,8 @@ def bonus_calculation():
     """Bonus calculation page with configurable parameters."""
     # Default configuration parameters
     default_params = {
-        'upside_exponent': 1.25,
-        'downside_exponent': 1.8,
+        'upside_exponent': 1.35,
+        'downside_exponent': 1.9,
         'cr_power': 0.5
     }
 

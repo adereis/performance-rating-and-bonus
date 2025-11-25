@@ -45,8 +45,8 @@ For each employee, we calculate:
 1. **Performance Multiplier**
    - If rating < 100%: `(rating/100) ^ downside_exponent`
    - If rating ≥ 100%: `(rating/100) ^ upside_exponent`
-   - Example: With defaults, a 120% rating gets `1.20^1.25 = 1.23x` their target
-   - Example: With defaults, an 80% rating gets `0.80^1.8 = 0.62x` their target
+   - Example: With defaults, a 120% rating gets `1.20^1.35 = 1.28x` their target
+   - Example: With defaults, an 80% rating gets `0.80^1.9 = 0.65x` their target
 
 2. **Compa-Ratio Adjustment** (Future Enhancement)
    - Currently set to 1.0 (neutral) for everyone
@@ -65,22 +65,22 @@ For each employee, we calculate:
 
 You can experiment with three parameters to adjust how aggressive the curve is:
 
-### Upside Exponent (Default: 1.25)
+### Upside Exponent (Default: 1.35)
 - Controls the reward for ratings ≥ 100%
 - **Higher value** (e.g., 1.5): More aggressive rewards for top performers
 - **Lower value** (e.g., 1.0): More linear, less exponential reward
 - Example impact on 120% rating:
   - At 1.0: 120% of target
-  - At 1.25: 123% of target
-  - At 1.5: 126% of target
+  - At 1.35: 128% of target
+  - At 1.5: 131% of target
 
-### Downside Exponent (Default: 1.8)
+### Downside Exponent (Default: 1.9)
 - Controls the penalty for ratings < 100%
 - **Higher value** (e.g., 2.0): Harsher penalties for underperformance
 - **Lower value** (e.g., 1.5): Softer penalties
 - Example impact on 80% rating:
-  - At 1.5: 71% of target
-  - At 1.8: 62% of target
+  - At 1.5: 72% of target
+  - At 1.9: 65% of target
   - At 2.0: 64% of target
 
 ### CR Power (Default: 0.5)
@@ -157,8 +157,8 @@ If some rated employees don't appear in the calculation, they're likely missing 
 - Result: Large spread, top performers get much more
 
 ### Scenario 3: Balanced (Default)
-- Upside: 1.25 (meaningful rewards)
-- Downside: 1.8 (appropriate penalties)
+- Upside: 1.35 (meaningful rewards)
+- Downside: 1.9 (appropriate penalties)
 - Result: Reasonable differentiation while staying fair
 
 ## Workflow Recommendation

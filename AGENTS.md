@@ -166,8 +166,8 @@ To achieve similar results with AI assistance:
 
 #### Split Curve Algorithm
 - Different exponents for above/below 100% performance
-- **Upside exponent** (default 1.25): Rewards for ratings ≥ 100%
-- **Downside exponent** (default 1.8): Penalties for ratings < 100%
+- **Upside exponent** (default 1.35): Rewards for ratings ≥ 100%
+- **Downside exponent** (default 1.9): Penalties for ratings < 100%
 - More aggressive penalties than rewards (intentional asymmetry)
 
 ### Don't Break These

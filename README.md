@@ -146,8 +146,8 @@ Open http://localhost:5000 and navigate to **Rate Team** to begin.
 ### 3. Calculate Bonuses
 - Navigate to **Bonus Calculation** tab
 - Review default parameters:
-  - **Upside Exponent** (1.25): Rewards for ratings ≥ 100%
-  - **Downside Exponent** (1.8): Penalties for ratings < 100%
+  - **Upside Exponent** (1.35): Rewards for ratings ≥ 100%
+  - **Downside Exponent** (1.9): Penalties for ratings < 100%
   - **CR Power** (0.5): Compa-Ratio influence (future feature)
 - Adjust parameters if needed
 - Click **Recalculate** to see results

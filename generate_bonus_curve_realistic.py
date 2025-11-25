@@ -29,8 +29,8 @@ from typing import List, Tuple
 
 
 # Configuration parameters matching app.py bonus calculation defaults
-UPSIDE_EXPONENT = 1.25      # Exponent for ratings >= 100%
-DOWNSIDE_EXPONENT = 1.8     # Exponent for ratings < 100%
+UPSIDE_EXPONENT = 1.35      # Exponent for ratings >= 100%
+DOWNSIDE_EXPONENT = 1.9     # Exponent for ratings < 100%
 
 # Chart settings
 RATING_MIN = 0              # Minimum performance rating (%)
