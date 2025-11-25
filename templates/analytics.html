@@ -159,6 +159,7 @@
 {% endblock %}
 
 {% block content %}
+<!-- 1. Performance Distribution -->
 <div class="card">
     <h2>Performance Distribution</h2>
     <div class="charts-grid">
@@ -177,7 +178,47 @@
     </div>
 </div>
 
-<!-- Distribution Calibration Section -->
+<!-- 2. Team Tenets Analysis -->
+{% if tenets_summary %}
+<div class="card">
+    <h2>Team Tenets Analysis</h2>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+        <div class="stat-box">
+            <h4>Employees Evaluated</h4>
+            <div class="avg">{{ employees_with_tenets }} / {{ total_employees }}</div>
+        </div>
+        <div class="stat-box">
+            <h4>Completion Rate</h4>
+            <div class="avg">{{ "%.0f"|format((employees_with_tenets / total_employees * 100) if total_employees > 0 else 0) }}%</div>
+        </div>
+    </div>
+
+    <div id="tenetsChartContainer"></div>
+</div>
+{% endif %}
+
+{% if org_tenets_summary and org_tenets_summary|length > 1 %}
+<div class="card">
+    <h2>Team Tenets Analysis by Organization</h2>
+
+    {% for org, org_data in org_tenets_summary.items() %}
+    {% if org_data.tenets|length > 0 %}
+    <div style="margin-bottom: 30px;">
+        <h3 style="color: #667eea; font-size: 16px; margin-bottom: 10px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">
+            {{ org }}
+            <span style="font-size: 13px; color: #666; font-weight: normal;">
+                ({{ org_data.employees_with_tenets }} {% if org_data.employees_with_tenets == 1 %}employee{% else %}employees{% endif %} evaluated)
+            </span>
+        </h3>
+        <div id="orgTenetsChartContainer-{{ loop.index0 }}"></div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- 3. Distribution Calibration Guide -->
 {% if total_rated > 0 %}
 <div class="card">
     <h2>Distribution Calibration Guide</h2>
@@ -272,6 +313,7 @@
 </div>
 {% endif %}
 
+<!-- 4. Team Rankings -->
 <div class="card">
     <h2>Team Rankings (by Performance Rating)</h2>
     <div style="overflow-x: auto;">
@@ -305,45 +347,6 @@
         </table>
     </div>
 </div>
-
-{% if tenets_summary %}
-<div class="card">
-    <h2>Team Tenets Analysis</h2>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
-        <div class="stat-box">
-            <h4>Employees Evaluated</h4>
-            <div class="avg">{{ employees_with_tenets }} / {{ total_employees }}</div>
-        </div>
-        <div class="stat-box">
-            <h4>Completion Rate</h4>
-            <div class="avg">{{ "%.0f"|format((employees_with_tenets / total_employees * 100) if total_employees > 0 else 0) }}%</div>
-        </div>
-    </div>
-
-    <div id="tenetsChartContainer"></div>
-</div>
-{% endif %}
-
-{% if org_tenets_summary and org_tenets_summary|length > 1 %}
-<div class="card">
-    <h2>Team Tenets Analysis by Organization</h2>
-
-    {% for org, org_data in org_tenets_summary.items() %}
-    {% if org_data.tenets|length > 0 %}
-    <div style="margin-bottom: 30px;">
-        <h3 style="color: #667eea; font-size: 16px; margin-bottom: 10px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">
-            {{ org }}
-            <span style="font-size: 13px; color: #666; font-weight: normal;">
-                ({{ org_data.employees_with_tenets }} {% if org_data.employees_with_tenets == 1 %}employee{% else %}employees{% endif %} evaluated)
-            </span>
-        </h3>
-        <div id="orgTenetsChartContainer-{{ loop.index0 }}"></div>
-    </div>
-    {% endif %}
-    {% endfor %}
-</div>
-{% endif %}
 {% endblock %}
 
 {% block extra_js %}
