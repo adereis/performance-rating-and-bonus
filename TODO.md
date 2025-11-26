@@ -6,91 +6,7 @@ This file tracks future enhancements and feature requests for the Quarterly Perf
 
 ## Planned Features
 
-### Team Tenets / Leadership Principles Evaluation
-
-**Priority:** Medium
-**Status:** Design Complete, Implementation Pending
-**Estimated Effort:** 1-2 days
-
-#### Feature Description
-Add support for evaluating employees against team-specific tenets (similar to Amazon Leadership Principles). For each employee, managers select:
-- 3 tenets that are strengths
-- 3 tenets for improvement
-
-#### Design Approach
-Configuration-driven system using JSON file (no hardcoded tenets):
-
-**Configuration File:** `tenets.json` (team-specific, not committed)
-```json
-{
-  "version": "2025-Q4",
-  "tenets": [
-    {
-      "id": "customer_obsession",
-      "name": "Customer Obsession",
-      "description": "Start with customer needs and work backwards",
-      "active": true
-    }
-    // ... up to 15 tenets
-  ],
-  "selection_config": {
-    "strengths_count": 3,
-    "improvement_count": 3,
-    "allow_duplicates": false
-  }
-}
-```
-
-#### Implementation Checklist
-- [ ] Add database fields to `Employee` model:
-  - [ ] `tenets_strengths` (Text/JSON) - stores array of tenet IDs
-  - [ ] `tenets_improvements` (Text/JSON) - stores array of tenet IDs
-- [ ] Create `tenets-sample.json` with example tenets
-- [ ] Add `tenets.json` to `.gitignore`
-- [ ] Update `models.py` with new fields
-- [ ] Create database migration (ALTER TABLE or migration script)
-- [ ] Update `rate.html` template:
-  - [ ] Add tenet selection UI (dropdowns or multi-select)
-  - [ ] Load tenets dynamically from JSON file
-  - [ ] Validate: exactly 3 strengths, exactly 3 improvements
-  - [ ] Prevent duplicates between strength/improvement lists
-  - [ ] Include tenet descriptions as tooltips/help text
-- [ ] Update `app.py`:
-  - [ ] Add endpoint to serve tenets configuration: `/api/tenets`
-  - [ ] Update `/api/rate` to accept and save tenet selections
-  - [ ] Add validation for tenet IDs against config file
-- [ ] Update `convert_xlsx.py`:
-  - [ ] Preserve tenet fields on Workday re-import (manager-entered data)
-- [ ] Update `create_sample_data.py`:
-  - [ ] Optionally generate sample tenet selections for demo data
-- [ ] Add tests:
-  - [ ] Test loading tenets from JSON
-  - [ ] Test tenet selection validation (count, duplicates)
-  - [ ] Test database storage/retrieval of tenet arrays
-  - [ ] Test preservation on Workday re-import
-- [ ] Update documentation:
-  - [ ] Add "Configuring Team Tenets" section to README.md
-  - [ ] Update AGENTS.md with tenet configuration patterns
-  - [ ] Document JSON schema for tenets configuration
-- [ ] Export functionality:
-  - [ ] Include tenet names (not just IDs) in CSV export
-  - [ ] Format: "Strengths: Customer Obsession, Ownership, Bias for Action"
-
-#### Technical Notes
-- Store tenet IDs as JSON arrays in SQLite Text fields
-- Convert to/from JSON in Python using `json.loads()`/`json.dumps()`
-- UI reads from `/api/tenets` endpoint (dynamically loads config)
-- No hardcoded tenets in source code (fully configurable)
-- Sample file committed to repo, actual config in `.gitignore`
-- Consider using `<select multiple>` or checkbox group for UI
-
-#### Benefits
-- ✅ Completely modular - change tenets without code changes
-- ✅ Version controllable (sample file in repo)
-- ✅ Team-specific customization
-- ✅ Easy to add/remove/rename tenets
-- ✅ Configurable selection counts
-- ✅ Self-documenting (descriptions in JSON)
+_(No planned features at this time)_
 
 ---
 
@@ -288,7 +204,31 @@ def export_ratings():
 
 ## Completed Features
 
-(This section will be populated as features are implemented)
+### Team Tenets / Leadership Principles Evaluation
+
+**Completed:** 2025-11-26
+**Description:** Configuration-driven system for evaluating employees against team-specific tenets.
+
+**Implementation:**
+- ✅ Database fields added: `tenets_strengths`, `tenets_improvements` (JSON arrays in Text fields)
+- ✅ Configuration file system: `tenets.json` (team-specific, gitignored)
+- ✅ Sample configuration: `tenets-sample.json` (committed to repo)
+- ✅ UI in `rate.html`: Checkbox-based selection with tooltips for tenet descriptions
+- ✅ Client-side validation: Exactly 3 strengths, 3 improvements, no duplicates between lists
+- ✅ Server-side validation: Count validation, duplicate detection, JSON validation
+- ✅ API endpoint: `/api/tenets` serves configuration dynamically
+- ✅ Auto-save: Tenet selections saved with 2-second debounce
+- ✅ Analytics: Overall and per-organization tenet analysis on analytics page
+- ✅ Workday import preservation: Tenets preserved on re-import (manager-entered data)
+- ✅ Sample data generation: `populate_sample_ratings.py` generates random tenet selections
+- ✅ Comprehensive test coverage: `tests/test_tenets.py` with 10 test cases
+
+**Technical Details:**
+- Stores tenet IDs as JSON arrays: `["customer_obsession", "ownership", "bias_for_action"]`
+- Dynamic UI rendering from JSON configuration (no hardcoded tenets)
+- Real-time checkbox state management (disables selections after 3 chosen)
+- Prevents selecting same tenet in both strengths and improvements
+- Analytics shows most common strengths/improvements across team and per organization
 
 ---
 
