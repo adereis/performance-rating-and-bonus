@@ -12,6 +12,9 @@ A web-based tool for managers to conduct quarterly performance reviews and calcu
 - **International Support**: Handles multiple currencies (USD, GBP, EUR, CAD, INR)
 - **Privacy-Focused**: SQLite database, runs locally, no cloud dependencies
 
+![Bonus Calculation Curve](screenshot-bonus-curve.png)
+*Performance-to-bonus allocation curve showing how ratings translate to bonuses with proportional scaling*
+
 ## Quick Start with Sample Data
 
 Try the system immediately with fictitious demo data. Choose either:
@@ -177,6 +180,9 @@ Currently manual (copy from UI). Future versions will support CSV export.
 | 130-200% | Exceptional performance |
 
 **Note**: 100% is the baseline for "met all expectations". Most solid performers should be in the 90-110% range.
+
+![Performance Calibration](screenshot-perf-calibration.png)
+*Analytics dashboard showing performance distribution with calibration guidance to help ensure fair ratings across the team*
 
 ## Bonus Calculation Algorithm
 
