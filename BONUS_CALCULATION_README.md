@@ -163,4 +163,4 @@ If some rated employees don't appear in the calculation, they're likely missing 
 
 ## Technical Details
 
-For technical documentation on the implementation, see `phase-two-prompt.md` and the code in `app.py` (the `bonus_calculation()` function).
+For technical documentation on the implementation, see `AGENTS.md` (Development Patterns > Modifying Bonus Algorithm) and the code in `app.py` (the `calculate_bonus_for_employees()` function).
