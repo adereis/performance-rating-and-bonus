@@ -539,7 +539,7 @@ These files are in `.gitignore` and should **never** be committed:
 - `ratings.db` - Active database with employee data
 - `sample-data-*.xlsx` - Generated sample files
 - `bonus-from-wd.xlsx` - User's Workday export
-- `ratings_export_*.csv` - CSV exports with timestamps
+- `ratings_export_*.csv` - Legacy pattern (feature removed, kept for historical .gitignore compatibility)
 - `__pycache__/` - Python bytecode
 - `.pytest_cache/` - Pytest cache
 

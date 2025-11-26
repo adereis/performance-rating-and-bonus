@@ -250,7 +250,6 @@ Current coverage: 70 tests covering:
 - **Git-safe**: `.gitignore` excludes sensitive files:
   - `ratings.db` (your data)
   - `bonus-from-wd.xlsx` (Workday export)
-  - `ratings_export_*.csv` (exports)
 
 ## Common Issues
 
@@ -282,10 +281,6 @@ python3 convert_xlsx.py bonus-from-wd.xlsx
 ```
 
 **Important**: Re-importing updates Workday fields (salary, job title, etc.) but **preserves** your performance ratings and justifications. Only ratings for employees in the new export will be kept.
-
-## Export Ratings
-
-Navigate to http://localhost:5000/export to download a timestamped CSV with all current ratings.
 
 ## Future Enhancements
 

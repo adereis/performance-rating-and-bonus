@@ -440,22 +440,6 @@ class TestMultiOrganization:
         assert 'IC4' in grades
         assert 'IC5' in grades
 
-    def test_export_includes_all_orgs(self, client, db_session, multi_org_employees):
-        """Test that CSV export includes employees from all organizations."""
-        # Populate database
-        for emp_data in multi_org_employees:
-            employee = Employee(**emp_data)
-            db_session.add(employee)
-        db_session.commit()
-
-        response = client.get('/export')
-        assert response.status_code == 200
-
-        # Verify response indicates success
-        json_data = response.get_json()
-        assert json_data['success'] is True
-        assert 'filename' in json_data
-
 
 class TestMultiOrgEdgeCases:
     """Test edge cases specific to multi-organization scenarios."""

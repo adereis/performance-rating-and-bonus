@@ -253,26 +253,6 @@ class TestAPIEndpoints:
         assert employee.justification == 'Work in progress'
         assert employee.mentor == 'Alice Johnson'
 
-    def test_export_endpoint(self, client, populated_db):
-        """Test CSV export endpoint."""
-        response = client.get('/export')
-
-        assert response.status_code == 200
-        result = json.loads(response.data)
-        assert result['success'] is True
-        assert 'filename' in result
-        assert result['filename'].startswith('ratings_export_')
-        assert result['filename'].endswith('.csv')
-
-    def test_export_empty_database(self, client, db_session):
-        """Test export with no employees."""
-        response = client.get('/export')
-
-        assert response.status_code == 400
-        result = json.loads(response.data)
-        assert 'error' in result
-        assert result['error'] == 'No data to export'
-
 
 class TestDashboardStatistics:
     """Test dashboard statistics calculations."""

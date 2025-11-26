@@ -98,16 +98,49 @@ Configuration-driven system using JSON file (no hardcoded tenets):
 
 _(Features from original README.md Future Enhancements section)_
 
-### CSV Export from Bonus Calculation Page
+### CSV Export Functionality
 **Priority:** High
-**Status:** Not Started
-**Description:** Add "Export to CSV" button on bonus calculation page to download results with all bonus details.
+**Status:** Not Started (removed incomplete implementation)
+**Description:** Add proper browser-download CSV export for ratings and bonus calculations.
+
+**Previous Issue:**
+- Incomplete export feature was removed that saved files to ~/tmp without triggering browser download
+- Users had to manually retrieve files from server filesystem
+
+**Proper Implementation:**
+- Use Flask's `send_file()` with in-memory CSV generation
+- Trigger browser download (no server-side file accumulation)
+- Export buttons on:
+  - Dashboard: Export all ratings with justifications
+  - Bonus Calculation page: Export bonus results with all details
+- Include all relevant columns in exports
+- Timestamped filenames: `ratings_export_2025-11-24.csv`, `bonus_calculation_2025-11-24.csv`
 
 **Implementation Notes:**
-- Add export button to `templates/bonus_calculation.html`
-- Create `/api/export_bonuses` endpoint
-- Include all columns: name, rating, base pay, target, calculated bonus, % of target
-- Timestamped filename: `bonus_calculation_2025-11-24.csv`
+```python
+from flask import send_file
+from io import StringIO, BytesIO
+
+@app.route('/export/ratings')
+def export_ratings():
+    # Generate CSV in memory
+    output = StringIO()
+    writer = csv.DictWriter(output, fieldnames=...)
+    writer.writeheader()
+    writer.writerows(data)
+
+    # Convert to bytes for send_file
+    mem = BytesIO()
+    mem.write(output.getvalue().encode())
+    mem.seek(0)
+
+    return send_file(
+        mem,
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=f'ratings_export_{timestamp}.csv'
+    )
+```
 
 ---
 

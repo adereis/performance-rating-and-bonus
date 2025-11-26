@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from flask import Flask, render_template, request, jsonify
-import csv
 import os
 import json
 from datetime import datetime
@@ -615,31 +614,6 @@ def bonus_calculation():
                          is_multi_team=is_multi_team,
                          team_comparisons=team_comparisons,
                          teams_data=teams_data)
-
-
-@app.route('/export')
-def export():
-    """Export ratings to timestamped CSV file."""
-    team_data = get_all_employees()
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    export_file = f"ratings_export_{timestamp}.csv"
-
-    if not team_data:
-        return jsonify({'error': 'No data to export'}), 400
-
-    fieldnames = list(team_data[0].keys())
-
-    with open(export_file, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(team_data)
-
-    return jsonify({
-        'success': True,
-        'message': f'Ratings exported to {export_file}',
-        'filename': export_file
-    })
 
 
 if __name__ == '__main__':
