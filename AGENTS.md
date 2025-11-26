@@ -44,9 +44,11 @@ The Quarterly Performance Rating System was built through an iterative collabora
 - ✅ Analytics dashboard with Chart.js visualizations
 - ✅ Distribution calibration calculations and UI
 - ✅ Algorithmic bonus calculation with configurable parameters
+- ✅ Budget override feature with proportional scaling
 - ✅ Multi-currency support (USD, GBP, EUR, CAD, INR)
 - ✅ Workday Excel import functionality
 - ✅ Sample data generation for demo purposes
+- ✅ Team tenets evaluation with inline editing UI
 
 ### Human Oversight
 
@@ -240,6 +242,69 @@ def new_endpoint():
 4. Add navigation link in `base.html` if needed
 5. Test rendering with `tests/test_api.py`
 
+### Inline Editing with Auto-Save Pattern
+
+For editable fields in summary stats or cards:
+
+1. **HTML Structure**:
+   ```html
+   <input type="number"
+          id="field_name"
+          value="{{ value }}"
+          style="border: none; background: transparent; ..."
+          title="Tooltip explaining what this does">
+   ```
+
+2. **CSS for Visual Feedback**:
+   ```css
+   #field_name:hover {
+       background: rgba(102, 126, 234, 0.05) !important;
+   }
+   #field_name:focus {
+       background: rgba(102, 126, 234, 0.1) !important;
+       border: 1px solid #667eea !important;
+   }
+   ```
+
+3. **JavaScript Auto-Save**:
+   - Debounce: 2 seconds after last keystroke
+   - Also save on blur (when clicking away)
+   - Show temporary "✓ Saved" indicator
+   - Reload page if values affect displayed data
+
+4. **Examples**: Rating percentages on `/rate`, budget override on `/bonus-calculation`
+
+### UI Design Iteration
+
+When adding new features, follow this pattern:
+1. **Implement** with initial UI (may be verbose)
+2. **Gather user feedback** about UI space and usability
+3. **Simplify** based on feedback (example: budget override went from separate config panel → inline editable summary stat)
+4. **Document** the final pattern for consistency
+
+**Principle**: Minimize UI clutter. If a field can be inline-editable, prefer that over a separate form/panel.
+
+---
+
+## UI/UX Principles
+
+### Hide Implementation Details
+- Don't expose internal calculation details unless they help users make decisions
+- Example: "Value per Share" was removed from bonus calculation UI because it's an implementation detail that doesn't inform manager decisions
+- Show: Base Pool, Override, Adjusted Pool, Final Bonuses
+- Hide: Normalization factors, raw shares, internal multipliers
+
+### Prefer Inline Editing
+- Make summary stats editable where appropriate (budget override)
+- Use tooltips (ⓘ) to explain what fields do
+- Provide visual feedback on hover/focus
+- Consistent auto-save pattern (2-second debounce)
+
+### Responsive to User Feedback
+- Initial implementations may be verbose (separate config panels, extra fields)
+- Refine based on "taking too much real estate" feedback
+- Final UIs should be as compact as possible while remaining clear
+
 ---
 
 ## Domain Knowledge
@@ -324,6 +389,22 @@ These fields are **preserved** across Workday re-imports:
 - **Sorting**: Tenets sorted by net score (strengths - weaknesses) descending
 - **Sample data**: Use `--with-tenets` flag when generating sample data
 - **Import**: Column indices 20 (Tenets Strengths) and 21 (Tenets Improvements)
+
+### Budget Override
+
+- **Purpose**: Allow managers to adjust total bonus pool when authorized to go over/under budget
+- **Design choice**: Proportional scaling (Option 1)
+  - Considered alternatives: performance-weighted distribution, targeted individual adjustments
+  - Chose proportional scaling because it's fairest and maintains all performance differentials
+- **How it works**:
+  - Manager enters USD amount (can be positive or negative)
+  - `adjusted_pool = base_pool + budget_override`
+  - All bonuses scale proportionally by `adjusted_pool / base_pool` multiplier
+  - Example: +$50k on $500k pool → everyone's bonus increases by 10%
+- **Scope**: Org-level only (applies to entire organization in multi-team mode)
+- **Storage**: `BonusSettings` table with `budget_override_usd` field (persisted)
+- **UI**: Inline editable field in summary stats (not separate panel)
+- **Validation**: None - managers can set any amount (trust-based)
 
 ---
 
