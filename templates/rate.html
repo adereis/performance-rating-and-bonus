@@ -28,7 +28,7 @@
 
     .employee-header {
         display: grid;
-        grid-template-columns: 2fr 2fr 1fr;
+        grid-template-columns: 1fr 1fr;
         gap: 15px;
         margin-bottom: 20px;
         padding-bottom: 15px;
@@ -502,7 +502,6 @@
                     <tr>
                         <th class="sortable" data-sort="name">Name</th>
                         <th class="sortable" data-sort="job">Job Profile</th>
-                        <th class="sortable" data-sort="pay">Base Pay (USD)</th>
                         <th class="sortable" data-sort="rating" style="width: 150px;">Performance Rating %</th>
                         <th>Status</th>
                     </tr>
@@ -514,11 +513,9 @@
                         data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}"
                         data-name="{{ employee.Associate }}"
                         data-job="{{ employee['Current Job Profile'] }}"
-                        data-pay="{{ employee['Current Base Pay All Countries (USD)'] or employee['Current Base Pay All Countries'] or 0 }}"
                         data-rating="{{ employee.performance_rating_percent or 0 }}">
                         <td><strong>{{ employee.Associate }}</strong></td>
                         <td>{{ employee['Current Job Profile'] }}</td>
-                        <td>${{ "{:,.0f}".format((employee['Current Base Pay All Countries (USD)'] or employee['Current Base Pay All Countries']) | float) if (employee['Current Base Pay All Countries (USD)'] or employee['Current Base Pay All Countries']) else 'N/A' }}</td>
                         <td>
                             <input type="number"
                                    min="0"
@@ -557,10 +554,6 @@
                 <div>
                     <label>Job Profile</label>
                     <span>{{ employee['Current Job Profile'] }}</span>
-                </div>
-                <div>
-                    <label>Base Pay (USD)</label>
-                    <span>${{ "{:,.0f}".format((employee['Current Base Pay All Countries (USD)'] or employee['Current Base Pay All Countries']) | float) if (employee['Current Base Pay All Countries (USD)'] or employee['Current Base Pay All Countries']) else 'N/A' }}</span>
                 </div>
             </div>
 
@@ -938,7 +931,7 @@ function sortCompactTable(column) {
         let bVal = b.getAttribute(`data-${column}`);
 
         // Handle numeric columns
-        if (column === 'pay' || column === 'rating') {
+        if (column === 'rating') {
             aVal = parseFloat(aVal) || 0;
             bVal = parseFloat(bVal) || 0;
         }
