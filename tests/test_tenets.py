@@ -388,45 +388,37 @@ class TestTenetsSampleDataGeneration:
     """Test sample data generation with tenets."""
 
     def test_generate_random_tenets(self):
-        """Test that generate_random_tenets creates valid JSON."""
-        from create_sample_data import generate_random_tenets
+        """Test that generate_random_tenets creates valid data structures."""
+        from populate_sample_ratings import generate_random_tenets
 
         all_tenets = ['delete_more', 'campfire_cleaner', 'tests_or_hallucination',
                       'ship_to_learn', 'yagni', 'fail_fast', 'rubber_duck']
 
         strengths, improvements = generate_random_tenets(all_tenets)
 
-        # Should return JSON strings
-        assert isinstance(strengths, str)
-        assert isinstance(improvements, str)
-
-        # Should be valid JSON
-        strengths_list = json.loads(strengths)
-        improvements_list = json.loads(improvements)
-
-        # Should be lists
-        assert isinstance(strengths_list, list)
-        assert isinstance(improvements_list, list)
+        # Should return lists
+        assert isinstance(strengths, list)
+        assert isinstance(improvements, list)
 
         # Should have 3 items each (or less if not enough tenets)
-        assert len(strengths_list) <= 3
-        assert len(improvements_list) <= 3
+        assert len(strengths) <= 3
+        assert len(improvements) <= 3
 
         # Should not overlap
-        assert not set(strengths_list).intersection(set(improvements_list))
+        assert not set(strengths).intersection(set(improvements))
 
     def test_generate_random_tenets_with_empty_list(self):
         """Test generate_random_tenets with no tenets available."""
-        from create_sample_data import generate_random_tenets
+        from populate_sample_ratings import generate_random_tenets
 
         strengths, improvements = generate_random_tenets([])
 
-        assert strengths == '[]'
-        assert improvements == '[]'
+        assert strengths == []
+        assert improvements == []
 
     def test_load_tenets(self):
         """Test loading tenets from configuration file."""
-        from create_sample_data import load_tenets
+        from populate_sample_ratings import load_tenets
 
         tenets = load_tenets()
 

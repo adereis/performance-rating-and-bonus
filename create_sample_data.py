@@ -1,57 +1,27 @@
 #!/usr/bin/env python3
 """
 Create sample demo data for the Quarterly Performance Rating System.
-This generates fictitious employee data so managers can try the tool out of the box.
+This generates fictitious Workday employee data (no ratings/tenets).
 
 Usage:
-    python3 create_sample_data.py                    # Creates small team (12 employees, 1 manager)
-    python3 create_sample_data.py --large            # Creates large org (50 employees, 5 managers)
-    python3 create_sample_data.py --with-tenets      # Include random tenets evaluation
-    python3 create_sample_data.py --large --with-tenets  # Large org with tenets
+    python3 create_sample_data.py          # Creates small team (12 employees, 1 manager)
+    python3 create_sample_data.py --large  # Creates large org (50 employees, 5 managers)
+
+Note: This generates ONLY Workday export data (salaries, bonus targets, org structure).
+      To add sample ratings/tenets, use populate_sample_ratings.py after import.
 """
 import openpyxl
 from openpyxl import Workbook
 import random
 import sys
-import json
 
 
-def load_tenets():
-    """Load tenets configuration from tenets-sample.json."""
-    try:
-        with open('tenets-sample.json', 'r') as f:
-            config = json.load(f)
-            return [t['id'] for t in config.get('tenets', []) if t.get('active', True)]
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
-
-
-def generate_random_tenets(all_tenets, strength_count=3, improvement_count=3):
-    """
-    Generate random tenets for an employee.
-
-    Returns:
-        tuple: (strengths_json, improvements_json) - JSON strings of tenet IDs
-    """
-    if not all_tenets:
-        return ('[]', '[]')
-
-    # Randomly select strengths (3 unique tenets)
-    strengths = random.sample(all_tenets, min(strength_count, len(all_tenets)))
-
-    # Randomly select improvements (3 unique tenets, different from strengths)
-    remaining_tenets = [t for t in all_tenets if t not in strengths]
-    improvements = random.sample(remaining_tenets, min(improvement_count, len(remaining_tenets)))
-
-    return (json.dumps(strengths), json.dumps(improvements))
-
-
-def create_headers(sheet, include_tenets=False):
-    """Add standard Workday export headers plus sample-specific rating column."""
+def create_headers(sheet):
+    """Add standard Workday export headers (exactly as they come from Workday)."""
     # Row 1: Empty (matches Workday export format)
     sheet.append([])
 
-    # Row 2: Headers (matches Workday export structure + sample rating)
+    # Row 2: Headers (matches Workday export structure ONLY - no manager-entered fields)
     headers = [
         'Associate',
         'Supervisory Organization',
@@ -71,15 +41,8 @@ def create_headers(sheet, include_tenets=False):
         'Proposed Bonus Amount (USD)',
         'Proposed Percent of Target Bonus',
         'Notes',
-        'Zero Bonus Allocated',
-        'Performance Rating Percent'  # SAMPLE DATA ONLY - not in real Workday exports
+        'Zero Bonus Allocated'
     ]
-
-    if include_tenets:
-        headers.extend([
-            'Tenets Strengths',
-            'Tenets Improvements'
-        ])
 
     sheet.append(headers)
 
@@ -88,40 +51,39 @@ def get_small_team_data():
     """
     Small team: 12 employees under single manager (Della Gate).
     Perfect for testing with a manageable dataset.
-    Includes realistic performance ratings for bonus calculation.
+    Generates Workday data only (no ratings/tenets).
     """
     # Workday format: "Supervisory Organization (Manager Name)"
     manager = "Supervisory Organization (Della Gate)"
 
-    # (name, job, salary, currency, grade, bonus_pct, rating, justification)
+    # (name, job, salary, grade, bonus_pct)
     # Bonus percentages are QUARTERLY (annual target / 4)
     employees = [
-        ('Paige Duty', 'Staff SRE', 180000, 'USD', 'IC4', 3.75, 130, 'Exceptional technical leadership and on-call reliability'),
-        ('Lee Latency', 'Senior Software Developer', 150000, 'USD', 'IC3', 3.0, 120, 'Outstanding performance optimization work'),
-        ('Mona Torr', 'Senior SRE', 145000, 'USD', 'IC3', 3.0, 110, 'Strong monitoring and observability contributions'),
-        ('Robin Rollback', 'Software Developer', 120000, 'USD', 'IC2', 2.5, 105, 'Reliable deployment management'),
-        ('Kenny Canary', 'Software Developer', 115000, 'USD', 'IC2', 2.5, 100, 'Solid canary testing and deployment work'),
-        ('Tracey Loggins', 'Senior SRE', 155000, 'USD', 'IC3', 3.0, 115, 'Excellent logging infrastructure improvements'),
-        ('Sue Q. Ell', 'Senior Software Developer', 148000, 'USD', 'IC3', 3.0, 125, 'Outstanding database optimization and query performance'),
-        ('Jason Blob', 'Software Developer', 118000, 'USD', 'IC2', 2.5, 95, 'Good progress on unstructured data handling'),
-        ('Al Ert', 'Staff SRE', 175000, 'USD', 'IC4', 3.75, 135, 'Critical alerting system improvements, exceptional work'),
-        ('Addie Min', 'Senior Software Developer', 152000, 'USD', 'IC3', 3.0, 110, 'Solid access management and security work'),
-        ('Tim Out', 'Software Developer', 110000, 'USD', 'IC2', 2.5, 85, 'Needs improvement in reliability and uptime'),
-        ('Barbie Que', 'Senior SRE', 149000, 'USD', 'IC3', 3.0, 110, 'Strong message queue management'),
+        ('Paige Duty', 'Staff SRE', 180000, 'IC4', 3.75),
+        ('Lee Latency', 'Senior Software Developer', 150000, 'IC3', 3.0),
+        ('Mona Torr', 'Senior SRE', 145000, 'IC3', 3.0),
+        ('Robin Rollback', 'Software Developer', 120000, 'IC2', 2.5),
+        ('Kenny Canary', 'Software Developer', 115000, 'IC2', 2.5),
+        ('Tracey Loggins', 'Senior SRE', 155000, 'IC3', 3.0),
+        ('Sue Q. Ell', 'Senior Software Developer', 148000, 'IC3', 3.0),
+        ('Jason Blob', 'Software Developer', 118000, 'IC2', 2.5),
+        ('Al Ert', 'Staff SRE', 175000, 'IC4', 3.75),
+        ('Addie Min', 'Senior Software Developer', 152000, 'IC3', 3.0),
+        ('Tim Out', 'Software Developer', 110000, 'IC2', 2.5),
+        ('Barbie Que', 'Senior SRE', 149000, 'IC3', 3.0),
     ]
 
     result = []
-    for i, (name, job, salary, currency, grade, bonus_pct, rating, justification) in enumerate(employees):
+    for i, (name, job, salary, grade, bonus_pct) in enumerate(employees):
         result.append({
             'associate': name,
             'supervisory_organization': manager,
             'job_profile': job,
             'salary': salary,
-            'currency': currency,
+            'salary_local': salary,  # USD employees
+            'currency': 'USD',
             'grade': grade,
             'bonus_pct': bonus_pct,
-            'rating': rating,
-            'justification': justification,
             'associate_id': f'EMP{1000 + i}'
         })
 
@@ -161,72 +123,72 @@ def get_large_org_data():
         'Stan Dup', 'Kay Eight'
     ]
 
-    # Job profiles per team with performance ratings
-    # Format: (job, salary, grade, bonus_pct, rating, justification) or
-    #         (job, salary_usd, grade, bonus_pct, currency, salary_local, rating, justification) for international
+    # Job profiles per team (Workday data only - no ratings/justifications)
+    # Format: (job, salary, grade, bonus_pct) for USD employees
+    #         (job, salary_usd, grade, bonus_pct, currency, salary_local) for international
     # NOTE: In large org, Engineering Managers are included because a higher-level manager
     #       (e.g., Director) would be rating them along with their teams.
     # NOTE: Bonus percentages are QUARTERLY (annual / 4): IC2=2.5%, IC3=3%, IC4=3.75%, IC5=5%, M3=4.5%
     team_configs = {
         'Supervisory Organization (Della Gate)': [
-            ('Principal Software Developer', 220000, 'IC5', 5, 140, 'Exceptional technical vision and platform architecture'),
-            ('Engineering Manager', 190000, 'M3', 4.5, 135, 'Outstanding team leadership and delivery'),
-            ('Staff Software Developer', 180000, 'IC4', 3.75, 130, 'Outstanding platform reliability improvements'),
-            ('Senior Software Developer', 150000, 'IC3', 3, 115, 'Strong API development work'),
-            ('Senior Software Developer', 145000, 'IC3', 3, 110, 'Solid infrastructure contributions'),
-            ('Software Developer', 120000, 'IC2', 2.5, 105, 'Good platform integration work'),
-            ('Software Developer', 115000, 'IC2', 2.5, 100, 'Met expectations on service deployment'),
-            ('Software Developer', 118000, 'IC2', 2.5, 95, 'Steady progress on platform features'),
-            ('Software Developer', 112000, 'IC2', 2.5, 90, 'Needs more ownership of features'),
-            ('Senior Software Developer', 152000, 'IC3', 3, 110, 'Solid mentorship and code quality'),
+            ('Principal Software Developer', 220000, 'IC5', 5),
+            ('Engineering Manager', 190000, 'M3', 4.5),
+            ('Staff Software Developer', 180000, 'IC4', 3.75),
+            ('Senior Software Developer', 150000, 'IC3', 3),
+            ('Senior Software Developer', 145000, 'IC3', 3),
+            ('Software Developer', 120000, 'IC2', 2.5),
+            ('Software Developer', 115000, 'IC2', 2.5),
+            ('Software Developer', 118000, 'IC2', 2.5),
+            ('Software Developer', 112000, 'IC2', 2.5),
+            ('Senior Software Developer', 152000, 'IC3', 3),
         ],
         'Supervisory Organization (Rhoda Map)': [
-            ('Staff Software Developer', 175000, 'IC4', 3.75, 185, 'Exceptional performance - transformational UI architecture work'),
-            ('Engineering Manager', 185000, 'M3', 4.5, 130, 'Strong team growth and technical direction'),
-            ('Senior Software Developer', 155000, 'IC3', 3, 120, 'Strong React component library work'),
-            ('Senior Software Developer', 149000, 'IC3', 3, 110, 'Solid accessibility improvements'),
-            ('Software Developer', 110000, 'IC2', 2.5, 45, 'Serious performance concerns - requires improvement plan'),
-            ('Software Developer', 125000, 'IC2', 2.5, 100, 'Good responsive design work'),
-            ('Senior Software Developer', 147000, 'IC3', 3, 115, 'Excellent state management refactoring'),
-            ('Software Developer', 122000, 'IC2', 2.5, 100, 'Solid component development'),
-            ('Software Developer', 119000, 'IC2', 2.5, 65, 'Below expectations - needs significant improvement'),
-            ('Software Developer', 116000, 'IC2', 2.5, 85, 'Needs more proactive communication'),
+            ('Staff Software Developer', 175000, 'IC4', 3.75),
+            ('Engineering Manager', 185000, 'M3', 4.5),
+            ('Senior Software Developer', 155000, 'IC3', 3),
+            ('Senior Software Developer', 149000, 'IC3', 3),
+            ('Software Developer', 110000, 'IC2', 2.5),
+            ('Software Developer', 125000, 'IC2', 2.5),
+            ('Senior Software Developer', 147000, 'IC3', 3),
+            ('Software Developer', 122000, 'IC2', 2.5),
+            ('Software Developer', 119000, 'IC2', 2.5),
+            ('Software Developer', 116000, 'IC2', 2.5),
         ],
         'Supervisory Organization (Kay P. Eye)': [
-            ('Principal Software Developer', 215000, 'IC5', 5, 140, 'Exceptional distributed systems architecture'),
-            ('Staff Software Developer', 182000, 'IC4', 3.75, 130, 'Outstanding microservices design'),
-            ('Engineering Manager', 188000, 'M3', 4.5, 130, 'Excellent cross-team coordination and delivery'),
-            ('Senior Software Developer', 158000, 'IC3', 3, 120, 'Strong API design and implementation'),
-            ('Senior Software Developer', 152000, 'IC3', 3, 110, 'Solid service reliability work'),
-            ('Software Developer', 128000, 'IC2', 2.5, 105, 'Good backend feature development'),
-            ('Software Developer', 122000, 'IC2', 2.5, 100, 'Met expectations on service development'),
-            ('Software Developer', 118000, 'IC2', 2.5, 95, 'Steady progress on REST API work'),
-            ('Senior Software Developer', 155000, 'IC3', 3, 115, 'Strong database optimization'),
-            ('Software Developer', 125000, 'IC2', 2.5, 90, 'Adequate progress on microservices'),
+            ('Principal Software Developer', 215000, 'IC5', 5),
+            ('Staff Software Developer', 182000, 'IC4', 3.75),
+            ('Engineering Manager', 188000, 'M3', 4.5),
+            ('Senior Software Developer', 158000, 'IC3', 3),
+            ('Senior Software Developer', 152000, 'IC3', 3),
+            ('Software Developer', 128000, 'IC2', 2.5),
+            ('Software Developer', 122000, 'IC2', 2.5),
+            ('Software Developer', 118000, 'IC2', 2.5),
+            ('Senior Software Developer', 155000, 'IC3', 3),
+            ('Software Developer', 125000, 'IC2', 2.5),
         ],
         'Supervisory Organization (Agie Enda)': [
-            ('Senior SRE', 132911, 'IC3', 3, 'GBP', 105000, 120, 'Outstanding infrastructure automation'),
-            ('SRE', 98734, 'IC2', 2.5, 'GBP', 78000, 105, 'Good deployment pipeline work'),
-            ('Staff SRE', 185000, 'IC4', 3.75, 135, 'Exceptional infrastructure modernization'),
-            ('Engineering Manager', 192000, 'M3', 4.5, 130, 'Strong infrastructure team leadership'),
-            ('Senior SRE', 155000, 'IC3', 3, 120, 'Outstanding CI/CD pipeline improvements'),
-            ('Senior SRE', 152000, 'IC3', 3, 110, 'Strong Kubernetes migration work'),
-            ('SRE', 125000, 'IC2', 2.5, 105, 'Good infrastructure automation'),
-            ('SRE', 122000, 'IC2', 2.5, 100, 'Solid monitoring setup'),
-            ('Senior SRE', 148000, 'IC3', 3, 115, 'Strong cloud cost optimization'),
-            ('SRE', 130000, 'IC2', 2.5, 95, 'Good disaster recovery planning'),
+            ('Senior SRE', 132911, 'IC3', 3, 'GBP', 105000),
+            ('SRE', 98734, 'IC2', 2.5, 'GBP', 78000),
+            ('Staff SRE', 185000, 'IC4', 3.75),
+            ('Engineering Manager', 192000, 'M3', 4.5),
+            ('Senior SRE', 155000, 'IC3', 3),
+            ('Senior SRE', 152000, 'IC3', 3),
+            ('SRE', 125000, 'IC2', 2.5),
+            ('SRE', 122000, 'IC2', 2.5),
+            ('Senior SRE', 148000, 'IC3', 3),
+            ('SRE', 130000, 'IC2', 2.5),
         ],
         'Supervisory Organization (Mai Stone)': [
-            ('Staff SRE', 188000, 'IC4', 3.75, 135, 'Outstanding SLO/SLI framework design'),
-            ('Engineering Manager', 195000, 'M3', 4.5, 130, 'Excellent reliability culture building'),
-            ('Senior SRE', 160000, 'IC3', 3, 125, 'Exceptional on-call process improvements'),
-            ('Senior SRE', 156000, 'IC3', 3, 120, 'Strong incident response leadership'),
-            ('Senior SRE', 153000, 'IC3', 3, 110, 'Solid observability improvements'),
-            ('SRE', 128000, 'IC2', 2.5, 110, 'Strong monitoring and alerting work'),
-            ('SRE', 124000, 'IC2', 2.5, 100, 'Good chaos engineering initiatives'),
-            ('SRE', 120000, 'IC2', 2.5, 100, 'Solid capacity planning work'),
-            ('SRE', 118000, 'IC2', 2.5, 95, 'Adequate progress on reliability metrics'),
-            ('SRE', 115000, 'IC2', 2.5, 90, 'Needs more proactive incident prevention'),
+            ('Staff SRE', 188000, 'IC4', 3.75),
+            ('Engineering Manager', 195000, 'M3', 4.5),
+            ('Senior SRE', 160000, 'IC3', 3),
+            ('Senior SRE', 156000, 'IC3', 3),
+            ('Senior SRE', 153000, 'IC3', 3),
+            ('SRE', 128000, 'IC2', 2.5),
+            ('SRE', 124000, 'IC2', 2.5),
+            ('SRE', 120000, 'IC2', 2.5),
+            ('SRE', 118000, 'IC2', 2.5),
+            ('SRE', 115000, 'IC2', 2.5),
         ],
     }
 
@@ -238,10 +200,10 @@ def get_large_org_data():
         configs = team_configs[org]
 
         for config in configs:
-            if len(config) == 8:  # International employee
-                job, salary_usd, grade, bonus_pct, currency, salary_local, rating, justification = config
+            if len(config) == 6:  # International employee
+                job, salary_usd, grade, bonus_pct, currency, salary_local = config
             else:
-                job, salary_usd, grade, bonus_pct, rating, justification = config
+                job, salary_usd, grade, bonus_pct = config
                 currency = 'USD'
                 salary_local = salary_usd
 
@@ -254,8 +216,6 @@ def get_large_org_data():
                 'currency': currency,
                 'grade': grade,
                 'bonus_pct': bonus_pct,
-                'rating': rating,
-                'justification': justification,
                 'associate_id': f'EMP{1000 + name_idx}'
             })
 
@@ -264,8 +224,8 @@ def get_large_org_data():
     return result
 
 
-def write_employee_data(sheet, employees, include_tenets=False, all_tenets=None):
-    """Write employee data to worksheet."""
+def write_employee_data(sheet, employees):
+    """Write employee data to worksheet (Workday data only)."""
     for i, emp in enumerate(employees):
         # Bonus calculations
         if emp['currency'] == 'USD':
@@ -301,35 +261,23 @@ def write_employee_data(sheet, employees, include_tenets=False, all_tenets=None)
             None,  # Proposed bonus USD
             None,  # Proposed percent
             '',  # Notes
-            '',  # Zero bonus allocated
-            emp['rating']  # Performance Rating Percent (sample data only)
+            ''  # Zero bonus allocated
         ]
-
-        # Add tenets if requested
-        if include_tenets and all_tenets:
-            strengths, improvements = generate_random_tenets(all_tenets)
-            row.extend([strengths, improvements])
-        elif include_tenets:
-            row.extend(['[]', '[]'])
 
         sheet.append(row)
 
 
-def create_sample_xlsx(size='small', include_tenets=False):
+def create_sample_xlsx(size='small'):
     """
-    Create sample-data.xlsx with fictitious employee data.
+    Create sample-data.xlsx with fictitious Workday employee data (no ratings/tenets).
 
     Args:
         size: 'small' for 12 employees (1 manager), 'large' for 50 employees (5 managers)
-        include_tenets: If True, include random tenets evaluation for each employee
     """
     wb = Workbook()
     sheet = wb.active
 
-    # Load tenets if requested
-    all_tenets = load_tenets() if include_tenets else None
-
-    create_headers(sheet, include_tenets=include_tenets)
+    create_headers(sheet)
 
     if size == 'small':
         employees = get_small_team_data()
@@ -340,7 +288,7 @@ def create_sample_xlsx(size='small', include_tenets=False):
         filename = 'sample-data-large.xlsx'
         description = "50 employees across 5 managers"
 
-    write_employee_data(sheet, employees, include_tenets=include_tenets, all_tenets=all_tenets)
+    write_employee_data(sheet, employees)
 
     # Save the workbook
     wb.save(filename)
@@ -356,12 +304,12 @@ def create_sample_xlsx(size='small', include_tenets=False):
         print(f"  - {us_count} US-based (USD), {intl_count} international (GBP)")
     else:
         print(f"  - All US-based (USD)")
-    if include_tenets and all_tenets:
-        print(f"  - Includes random tenets evaluation ({len(all_tenets)} tenets available)")
-    print(f"  - Ready to import with: python3 convert_xlsx.py {filename}")
+    print(f"\nNext steps:")
+    print(f"  1. python3 convert_xlsx.py {filename}")
+    print(f"  2. python3 populate_sample_ratings.py {size}")
+    print(f"  3. python3 app.py")
 
 
 if __name__ == '__main__':
     size = 'large' if '--large' in sys.argv else 'small'
-    include_tenets = '--with-tenets' in sys.argv
-    create_sample_xlsx(size, include_tenets=include_tenets)
+    create_sample_xlsx(size)

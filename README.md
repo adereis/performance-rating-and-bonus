@@ -17,47 +17,57 @@ A web-based tool for managers to conduct quarterly performance reviews and calcu
 Try the system immediately with fictitious demo data. Choose either:
 
 ### Option 1: Small Team (Recommended for First-Time Users)
-Perfect for learning the system - 12 employees under one manager with pre-populated ratings.
+Perfect for learning the system - 12 employees under one manager with sample ratings/justifications.
 
 ```bash
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Generate small team sample data
+# 2. Generate small team Workday data (salaries, bonus targets, org structure)
 python3 create_sample_data.py
 
-# 3. Import sample data to database (includes ratings)
+# 3. Import Workday data to database
 python3 convert_xlsx.py sample-data-small.xlsx
 
-# 4. Start the web server
+# 4. Populate sample ratings and justifications
+python3 populate_sample_ratings.py small
+
+# 5. Start the web server
 python3 app.py
 
-# 5. Open browser to http://localhost:5000
+# 6. Open browser to http://localhost:5000
 ```
 
 ### Option 2: Large Multi-Manager Organization
-Test multi-org scenarios - 50 employees across 5 managers with realistic ratings (Director-level view).
+Test multi-org scenarios - 50 employees across 5 managers with sample ratings.
 
 ```bash
-# 2. Generate large org sample data
+# 2. Generate large org Workday data
 python3 create_sample_data.py --large
 
-# 3. Import sample data to database (includes ratings)
+# 3. Import Workday data to database
 python3 convert_xlsx.py sample-data-large.xlsx
 
-# (Continue with steps 4-5 above)
+# 4. Populate sample ratings and justifications
+python3 populate_sample_ratings.py large
+
+# (Continue with steps 5-6 above)
 ```
 
 **Sample Data Details:**
-- **Small**: 12 employees (Software Developers & SREs), 1 manager (Della Gate) rating their team, all US-based, fully rated
-- **Large**: 50 employees (Software Developers, SREs & Engineering Managers), 5 managers (Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone), simulates Director rating their managers and ICs, includes international employees (GBP), fully rated
+- **Small**: 12 employees (Software Developers & SREs), 1 manager (Della Gate)
+- **Large**: 50 employees across 5 managers (Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone)
+- Both include international employees (GBP) for testing multi-currency support
 
-**Note**: Sample data matches Workday export format where Supervisory Organization = `"Supervisory Organization (Manager Name)"`, plus an additional column with pre-populated performance ratings for immediate testing.
+**Architecture Note**: Sample data generation follows the same pattern as real usage:
+1. **Workday export** (create_sample_data.py) contains ONLY HR data: salaries, bonus targets, org structure
+2. **Manager ratings** (populate_sample_ratings.py) adds performance ratings and justifications to the DATABASE
+3. This separation mirrors reality: Workday data vs. local manager-entered ratings
 
 **What you get:**
-- ✅ Complete employee data (salary, bonus targets, job profiles)
-- ✅ Pre-populated performance ratings (85-140% range) via single import step
-- ✅ Empty justification/mentor/mentee/AI fields for you to fill in
+- ✅ Complete Workday employee data (salary, bonus targets, job profiles)
+- ✅ Sample performance ratings (45-185% range) and justifications
+- ✅ Empty mentor/mentee/AI fields for you to fill in
 - ✅ Ready for immediate bonus calculation
 - ✅ Mix of high performers, solid performers, and those needing improvement
 
