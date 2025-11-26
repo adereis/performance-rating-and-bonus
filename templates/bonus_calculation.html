@@ -99,6 +99,24 @@
         color: #2c3e50;
     }
 
+    #budget_override_input {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    #budget_override_input:hover {
+        background: rgba(102, 126, 234, 0.05) !important;
+        border-radius: 4px !important;
+    }
+
+    #budget_override_input:focus {
+        outline: none;
+        background: rgba(102, 126, 234, 0.1) !important;
+        border: 1px solid #667eea !important;
+        border-radius: 4px !important;
+        padding: 2px 4px !important;
+    }
+
     .bonus-table {
         width: 100%;
         border-collapse: collapse;
@@ -369,6 +387,7 @@
         </form>
     </div>
 
+
     <!-- Tab 1: Overview (existing view) -->
     <div class="tab-content {% if not is_multi_team or true %}active{% endif %}" id="overview">
     {% if has_data %}
@@ -388,7 +407,27 @@
 
     <div class="summary-stats">
         <div class="summary-card">
-            <h4>Total Bonus Pool</h4>
+            <h4>Base Bonus Pool</h4>
+            <div class="value">${{ "{:,.0f}".format(base_pool) }}</div>
+        </div>
+        <div class="summary-card" style="position: relative;">
+            <h4 title="Additional budget in USD (can be negative). Distributes proportionally across all employees. Click to edit.">
+                Budget Override
+                <span style="cursor: help; opacity: 0.6;">ⓘ</span>
+            </h4>
+            <div class="value" style="{% if budget_override_usd > 0 %}color: #27ae60;{% elif budget_override_usd < 0 %}color: #dc3545;{% endif %}">
+                $<input type="number"
+                       id="budget_override_input"
+                       value="{{ budget_override_usd }}"
+                       style="border: none; background: transparent; color: inherit; font-size: inherit; font-weight: inherit; width: 120px; text-align: center; font-family: inherit;"
+                       title="Additional budget in USD (can be negative). Auto-saves after 2 seconds.">
+            </div>
+            <div style="position: absolute; bottom: 5px; right: 10px; font-size: 11px; color: #27ae60; opacity: 0; transition: opacity 0.3s;" id="budget-save-indicator">
+                ✓ Saved
+            </div>
+        </div>
+        <div class="summary-card">
+            <h4>Adjusted Pool</h4>
             <div class="value">${{ "{:,.0f}".format(total_pool) }}</div>
         </div>
         <div class="summary-card">
@@ -902,6 +941,67 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     {% endif %}
 });
+
+// Budget override auto-save functionality
+let budgetOverrideSaveTimer = null;
+
+function saveBudgetOverride(value) {
+    const indicator = document.getElementById('budget-save-indicator');
+
+    fetch('/api/bonus-settings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            budget_override_usd: value
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Show save indicator
+            indicator.style.opacity = '1';
+            setTimeout(() => {
+                indicator.style.opacity = '0';
+            }, 2000);
+
+            // Reload page to show updated bonuses
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        } else {
+            console.error('Error saving budget override:', result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+// Set up budget override input auto-save
+const budgetOverrideInput = document.getElementById('budget_override_input');
+if (budgetOverrideInput) {
+    budgetOverrideInput.addEventListener('input', function() {
+        // Clear existing timer
+        if (budgetOverrideSaveTimer) {
+            clearTimeout(budgetOverrideSaveTimer);
+        }
+
+        // Set new timer - save after 2 seconds of inactivity
+        budgetOverrideSaveTimer = setTimeout(() => {
+            saveBudgetOverride(this.value);
+        }, 2000);
+    });
+
+    // Also save on blur (when leaving the field)
+    budgetOverrideInput.addEventListener('blur', function() {
+        if (budgetOverrideSaveTimer) {
+            clearTimeout(budgetOverrideSaveTimer);
+        }
+        saveBudgetOverride(this.value);
+    });
+}
 </script>
 {% endif %}
 {% endblock %}

@@ -4,7 +4,7 @@ import os
 import json
 from datetime import datetime
 from collections import defaultdict
-from models import Employee, init_db, get_db
+from models import Employee, BonusSettings, init_db, get_db
 
 app = Flask(__name__)
 
@@ -27,6 +27,42 @@ def get_employee_by_name(associate_name):
     db = get_db()
     try:
         return db.query(Employee).filter(Employee.associate == associate_name).first()
+    finally:
+        db.close()
+
+
+def get_bonus_settings():
+    """Get bonus settings from database, creating default if needed."""
+    db = get_db()
+    try:
+        settings = db.query(BonusSettings).first()
+        if not settings:
+            # Create default settings
+            settings = BonusSettings(budget_override_usd=0.0, last_updated=datetime.now())
+            db.add(settings)
+            db.commit()
+            db.refresh(settings)
+        return settings
+    finally:
+        db.close()
+
+
+def update_bonus_settings(budget_override_usd):
+    """Update bonus settings in database."""
+    db = get_db()
+    try:
+        settings = db.query(BonusSettings).first()
+        if not settings:
+            settings = BonusSettings()
+            db.add(settings)
+
+        settings.budget_override_usd = budget_override_usd
+        settings.last_updated = datetime.now()
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        raise e
     finally:
         db.close()
 
@@ -142,6 +178,32 @@ def get_tenets():
         return jsonify({'error': 'Tenets configuration file not found'}), 404
     except json.JSONDecodeError:
         return jsonify({'error': 'Invalid JSON in tenets configuration file'}), 500
+
+
+@app.route('/api/bonus-settings', methods=['GET', 'POST'])
+def bonus_settings_api():
+    """API endpoint to get or update bonus calculation settings."""
+    if request.method == 'GET':
+        settings = get_bonus_settings()
+        return jsonify(settings.to_dict())
+
+    elif request.method == 'POST':
+        data = request.get_json()
+        budget_override_usd = data.get('budget_override_usd')
+
+        if budget_override_usd is None:
+            return jsonify({'error': 'Missing budget_override_usd'}), 400
+
+        try:
+            budget_override_usd = float(budget_override_usd)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid budget_override_usd value'}), 400
+
+        try:
+            update_bonus_settings(budget_override_usd)
+            return jsonify({'success': True, 'message': 'Budget override saved successfully'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
 
 @app.route('/analytics')
@@ -422,10 +484,15 @@ def analytics():
                          org_tenets_summary=org_tenets_summary)
 
 
-def calculate_bonus_for_employees(employees, params):
+def calculate_bonus_for_employees(employees, params, budget_override_usd=0.0):
     """
     Calculate bonuses for a given set of employees.
     Returns dict with results, normalization factor, and metadata.
+
+    Args:
+        employees: List of employee dicts
+        params: Dict with upside_exponent and downside_exponent
+        budget_override_usd: Additional budget (can be negative) to add to total pool
     """
     # Calculate total bonus pool (sum of all bonus targets in USD)
     total_pool = 0
@@ -473,8 +540,11 @@ def calculate_bonus_for_employees(employees, params):
             'raw_share': raw_share
         })
 
-    # Normalization: Calculate value per share
-    value_per_share = total_pool / total_raw_shares if total_raw_shares > 0 else 0
+    # Apply budget override to create adjusted pool
+    adjusted_pool = total_pool + budget_override_usd
+
+    # Normalization: Calculate value per share using adjusted pool
+    value_per_share = adjusted_pool / total_raw_shares if total_raw_shares > 0 else 0
 
     # Calculate final bonuses
     total_allocated = 0
@@ -489,7 +559,9 @@ def calculate_bonus_for_employees(employees, params):
     return {
         'results': bonus_results,
         'results_by_id': results_by_id,
-        'total_pool': total_pool,
+        'base_pool': total_pool,
+        'budget_override_usd': budget_override_usd,
+        'total_pool': adjusted_pool,
         'total_allocated': total_allocated,
         'value_per_share': value_per_share,
         'employees_without_bonus_target': employees_without_bonus_target
@@ -511,6 +583,10 @@ def bonus_calculation():
         'downside_exponent': float(request.args.get('downside_exponent', default_params['downside_exponent']))
     }
 
+    # Get budget override from database
+    settings = get_bonus_settings()
+    budget_override_usd = settings.budget_override_usd
+
     team_data = get_all_employees()
 
     # Filter to only rated employees
@@ -520,6 +596,8 @@ def bonus_calculation():
         return render_template('bonus_calculation.html',
                              team=[],
                              params=params,
+                             base_pool=0,
+                             budget_override_usd=budget_override_usd,
                              total_pool=0,
                              total_allocated=0,
                              has_data=False,
@@ -535,8 +613,8 @@ def bonus_calculation():
 
     is_multi_team = len(unique_orgs) > 1
 
-    # Calculate organization-level bonuses (always)
-    org_level_calc = calculate_bonus_for_employees(rated_employees, params)
+    # Calculate organization-level bonuses (always) with budget override
+    org_level_calc = calculate_bonus_for_employees(rated_employees, params, budget_override_usd)
 
     # If multi-team, also calculate per-team bonuses for comparison
     team_comparisons = []
@@ -588,10 +666,12 @@ def bonus_calculation():
             })
 
     # Check if we have any valid bonus data
-    if not org_level_calc['results'] or org_level_calc['total_pool'] == 0:
+    if not org_level_calc['results'] or org_level_calc['base_pool'] == 0:
         return render_template('bonus_calculation.html',
                              team=[],
                              params=params,
+                             base_pool=0,
+                             budget_override_usd=budget_override_usd,
                              total_pool=0,
                              total_allocated=0,
                              has_data=False,
@@ -604,6 +684,8 @@ def bonus_calculation():
     return render_template('bonus_calculation.html',
                          team=org_level_calc['results'],
                          params=params,
+                         base_pool=org_level_calc['base_pool'],
+                         budget_override_usd=org_level_calc['budget_override_usd'],
                          total_pool=org_level_calc['total_pool'],
                          total_allocated=org_level_calc['total_allocated'],
                          value_per_share=org_level_calc['value_per_share'],

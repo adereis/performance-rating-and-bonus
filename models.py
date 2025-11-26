@@ -10,6 +10,22 @@ import os
 Base = declarative_base()
 
 
+class BonusSettings(Base):
+    """Global bonus calculation settings."""
+    __tablename__ = 'bonus_settings'
+
+    id = Column(Integer, primary_key=True)
+    budget_override_usd = Column(Float, default=0.0)
+    last_updated = Column(DateTime)
+
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization."""
+        return {
+            'budget_override_usd': self.budget_override_usd,
+            'last_updated': self.last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.last_updated else ''
+        }
+
+
 class Employee(Base):
     __tablename__ = 'employees'
 
