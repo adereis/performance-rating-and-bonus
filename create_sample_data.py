@@ -5,7 +5,7 @@ This generates fictitious Workday employee data (no ratings/tenets).
 
 Usage:
     python3 create_sample_data.py          # Creates small team (12 employees, 1 manager)
-    python3 create_sample_data.py --large  # Creates large org (50 employees, 5 managers)
+    python3 create_sample_data.py --large  # Creates large org (55 employees: 5 managers + 50 ICs)
 
 Note: This generates ONLY Workday export data (salaries, bonus targets, org structure).
       To add sample ratings/tenets, use populate_sample_ratings.py after import.
@@ -92,9 +92,12 @@ def get_small_team_data():
 
 def get_large_org_data():
     """
-    Large org: 50 employees across 5 managers.
+    Large org: 55 employees across 5 managers (50 ICs + 5 managers).
     Tests multi-manager/multi-org scenario with international employees.
     Matches Workday export format where Supervisory Organization = "Supervisory Organization (Manager Name)"
+
+    The 5 managers (Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone) are included
+    in the employee database and report to a VP (not in database).
     """
     # Manager names from Gemini 3
     # Format matches Workday: "Supervisory Organization (Manager Name)"
@@ -105,6 +108,9 @@ def get_large_org_data():
         'Agie Enda': 'Supervisory Organization (Agie Enda)',
         'Mai Stone': 'Supervisory Organization (Mai Stone)'
     }
+
+    # Director who manages the managers (not included in employee list - would be rated separately)
+    director_org = 'Supervisory Organization (Director)'
 
     # Tech-themed employee names
     names = [
@@ -126,14 +132,12 @@ def get_large_org_data():
     # Job profiles per team (Workday data only - no ratings/justifications)
     # Format: (job, salary, grade, bonus_pct) for USD employees
     #         (job, salary_usd, grade, bonus_pct, currency, salary_local) for international
-    # NOTE: In large org, Engineering Managers are included because a higher-level manager
-    #       (e.g., Director) would be rating them along with their teams.
     # NOTE: Bonus percentages are QUARTERLY (annual / 4): IC2=2.5%, IC3=3%, IC4=3.75%, IC5=5%, M3=4.5%
     team_configs = {
         'Supervisory Organization (Della Gate)': [
             ('Principal Software Developer', 220000, 'IC5', 5),
-            ('Engineering Manager', 190000, 'M3', 4.5),
             ('Staff Software Developer', 180000, 'IC4', 3.75),
+            ('Staff Software Developer', 175000, 'IC4', 3.75),
             ('Senior Software Developer', 150000, 'IC3', 3),
             ('Senior Software Developer', 145000, 'IC3', 3),
             ('Software Developer', 120000, 'IC2', 2.5),
@@ -144,7 +148,7 @@ def get_large_org_data():
         ],
         'Supervisory Organization (Rhoda Map)': [
             ('Staff Software Developer', 175000, 'IC4', 3.75),
-            ('Engineering Manager', 185000, 'M3', 4.5),
+            ('Staff Software Developer', 172000, 'IC4', 3.75),
             ('Senior Software Developer', 155000, 'IC3', 3),
             ('Senior Software Developer', 149000, 'IC3', 3),
             ('Software Developer', 110000, 'IC2', 2.5),
@@ -157,7 +161,7 @@ def get_large_org_data():
         'Supervisory Organization (Kay P. Eye)': [
             ('Principal Software Developer', 215000, 'IC5', 5),
             ('Staff Software Developer', 182000, 'IC4', 3.75),
-            ('Engineering Manager', 188000, 'M3', 4.5),
+            ('Staff Software Developer', 178000, 'IC4', 3.75),
             ('Senior Software Developer', 158000, 'IC3', 3),
             ('Senior Software Developer', 152000, 'IC3', 3),
             ('Software Developer', 128000, 'IC2', 2.5),
@@ -170,7 +174,7 @@ def get_large_org_data():
             ('Senior SRE', 132911, 'IC3', 3, 'GBP', 105000),
             ('SRE', 98734, 'IC2', 2.5, 'GBP', 78000),
             ('Staff SRE', 185000, 'IC4', 3.75),
-            ('Engineering Manager', 192000, 'M3', 4.5),
+            ('Staff SRE', 183000, 'IC4', 3.75),
             ('Senior SRE', 155000, 'IC3', 3),
             ('Senior SRE', 152000, 'IC3', 3),
             ('SRE', 125000, 'IC2', 2.5),
@@ -180,7 +184,7 @@ def get_large_org_data():
         ],
         'Supervisory Organization (Mai Stone)': [
             ('Staff SRE', 188000, 'IC4', 3.75),
-            ('Engineering Manager', 195000, 'M3', 4.5),
+            ('Staff SRE', 186000, 'IC4', 3.75),
             ('Senior SRE', 160000, 'IC3', 3),
             ('Senior SRE', 156000, 'IC3', 3),
             ('Senior SRE', 153000, 'IC3', 3),
@@ -195,8 +199,23 @@ def get_large_org_data():
     result = []
     name_idx = 0
 
-    for manager_name, teams in managers.items():
-        org = teams
+    # First, add the 5 managers themselves as employees reporting to Director
+    manager_salaries = [210000, 205000, 215000, 208000, 212000]  # M3 level salaries
+    for idx, (manager_name, org) in enumerate(managers.items()):
+        result.append({
+            'associate': manager_name,
+            'supervisory_organization': director_org,
+            'job_profile': 'Engineering Manager',
+            'salary': manager_salaries[idx],
+            'salary_local': manager_salaries[idx],
+            'currency': 'USD',
+            'grade': 'M3',
+            'bonus_pct': 4.5,  # Quarterly bonus target for M3 managers
+            'associate_id': f'MGR{100 + idx}'
+        })
+
+    # Then add all the ICs (individual contributors) reporting to each manager
+    for manager_name, org in managers.items():
         configs = team_configs[org]
 
         for config in configs:
@@ -272,7 +291,7 @@ def create_sample_xlsx(size='small'):
     Create sample-data.xlsx with fictitious Workday employee data (no ratings/tenets).
 
     Args:
-        size: 'small' for 12 employees (1 manager), 'large' for 50 employees (5 managers)
+        size: 'small' for 12 employees (1 manager), 'large' for 55 employees (5 managers + 50 ICs)
     """
     wb = Workbook()
     sheet = wb.active
@@ -286,7 +305,7 @@ def create_sample_xlsx(size='small'):
     else:
         employees = get_large_org_data()
         filename = 'sample-data-large.xlsx'
-        description = "50 employees across 5 managers"
+        description = "55 employees (5 managers + 50 ICs)"
 
     write_employee_data(sheet, employees)
 
