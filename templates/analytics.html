@@ -190,6 +190,45 @@
         content: '↓';
         opacity: 1;
     }
+
+    /* Tab styles */
+    .tabs {
+        display: flex;
+        gap: 5px;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 0;
+    }
+
+    .tab-button {
+        padding: 12px 24px;
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        color: #666;
+        transition: all 0.2s;
+    }
+
+    .tab-button:hover {
+        color: #667eea;
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .tab-button.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
 </style>
 {% endblock %}
 
@@ -237,6 +276,18 @@
 {% if total_rated > 0 %}
 <div class="card">
     <h2>Distribution Calibration Guide</h2>
+
+    <!-- Tab Navigation (only if multi-team) -->
+    {% if is_multi_team %}
+    <div class="tabs" style="margin-bottom: 20px;">
+        <button class="tab-button active" data-tab="org-calibration">Organization Overview</button>
+        <button class="tab-button" data-tab="team-calibrations">Per-Team Calibration</button>
+        <button class="tab-button" data-tab="team-comparison">Team Comparison</button>
+    </div>
+    {% endif %}
+
+    <!-- Tab 1: Organization Overview (current view) -->
+    <div class="tab-content {% if not is_multi_team or true %}active{% endif %}" id="org-calibration">
 
     <div class="calibration-disclaimer">
         <h4>ℹ️ This is guidance, not a requirement</h4>
@@ -326,6 +377,203 @@
             </tbody>
         </table>
     </div>
+
+    </div>
+    <!-- End Tab 1: Organization Overview -->
+
+    <!-- Tab 2: Per-Team Calibration -->
+    {% if is_multi_team %}
+    <div class="tab-content" id="team-calibrations">
+        <div class="calibration-disclaimer">
+            <h4>ℹ️ Per-Team Distribution Analysis</h4>
+            <p>
+                Each team's calibration is calculated independently. This helps identify teams with potential
+                rating inflation, deflation, or inconsistent standards compared to the organization-wide distribution.
+            </p>
+        </div>
+
+        {% for team_cal in team_calibrations %}
+        <div style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <h3 style="margin-top: 0;">{{ team_cal.team_name }}</h3>
+            <p style="color: #666; margin-bottom: 15px;">{{ team_cal.total_rated }} employees rated</p>
+
+            {% if team_cal.total_rated < 10 %}
+            <div class="small-team-warning" style="margin-bottom: 15px;">
+                ⚠️ <strong>Small team size:</strong> Percentage-based distributions are less meaningful for small teams.
+                Focus on individual performance rather than fitting a curve.
+            </div>
+            {% endif %}
+
+            <div style="overflow-x: auto;">
+                <table class="calibration-table">
+                    <thead>
+                        <tr>
+                            <th>Performance Band</th>
+                            <th>This Team</th>
+                            <th>Suggested Range</th>
+                            <th>Delta</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in team_cal.data %}
+                        <tr>
+                            <td>
+                                <strong>
+                                    {% if item.bucket == 'above_120' %}
+                                        Above 120%
+                                    {% elif item.bucket == '90_to_120' %}
+                                        90-120%
+                                    {% elif item.bucket == '60_to_90' %}
+                                        60-90%
+                                    {% else %}
+                                        Below 60%
+                                    {% endif %}
+                                </strong>
+                                <br>
+                                <span style="font-size: 12px; color: #666;">
+                                    {% if item.bucket == 'above_120' %}
+                                        Exceptional performers
+                                    {% elif item.bucket == '90_to_120' %}
+                                        Solid performers
+                                    {% elif item.bucket == '60_to_90' %}
+                                        Needs improvement
+                                    {% else %}
+                                        Significant concerns
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <strong>{{ item.percentage }}%</strong>
+                                <span style="color: #666; font-size: 13px;">({{ item.count }} people)</span>
+                            </td>
+                            <td>
+                                {{ item.suggested_min }}-{{ item.suggested_max }}%
+                                <span style="color: #666; font-size: 13px;">({{ item.suggested_min_people }}-{{ item.suggested_max_people }} people)</span>
+                            </td>
+                            <td>
+                                <span class="delta-value delta-{{ item.status }}">
+                                    {% if item.delta > 0 %}+{% endif %}{{ "%.1f"|format(item.delta) }}%
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge {{ item.status }}">
+                                    {% if item.status == 'good' %}
+                                        ✓ Within Range
+                                    {% elif item.status == 'warning' %}
+                                        ⚠ Slightly Off
+                                    {% else %}
+                                        ⚠️ Off Target
+                                    {% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <!-- End Tab 2: Per-Team Calibration -->
+
+    <!-- Tab 3: Team Comparison Matrix -->
+    {% if is_multi_team %}
+    <div class="tab-content" id="team-comparison">
+        <div class="calibration-disclaimer">
+            <h4>ℹ️ Cross-Team Calibration Comparison</h4>
+            <p>
+                Compare calibration distributions across all teams to identify potential inconsistencies in
+                rating standards. Teams significantly outside suggested ranges may benefit from calibration discussions.
+            </p>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="calibration-table">
+                <thead>
+                    <tr>
+                        <th>Team</th>
+                        <th>Size</th>
+                        <th>Avg Rating</th>
+                        <th>Std Dev</th>
+                        <th>Above 120%</th>
+                        <th>90-120%</th>
+                        <th>60-90%</th>
+                        <th>Below 60%</th>
+                        <th>Calibration Health</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for team in team_comparisons %}
+                    <tr>
+                        <td><strong>{{ team.team_name }}</strong></td>
+                        <td>{{ team.size }}</td>
+                        <td>{{ team.avg_rating }}%</td>
+                        <td>{{ team.std_dev }}%</td>
+                        {% for bucket in ['above_120', '90_to_120', '60_to_90', 'below_60'] %}
+                        <td style="{% if team.buckets[bucket].status != 'good' %}background: #fff3cd;{% endif %}">
+                            {{ team.buckets[bucket].percentage }}%
+                            {% if team.buckets[bucket].status != 'good' %}
+                            <span style="color: #856404;">⚠</span>
+                            {% else %}
+                            <span style="color: #155724;">✓</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                        <td>
+                            <span class="status-badge {{ team.calibration_health }}">
+                                {% if team.calibration_health == 'good' %}
+                                    ✓ Good
+                                {% elif team.calibration_health == 'warning' %}
+                                    ⚠ Review
+                                {% else %}
+                                    ⚠️ Issues
+                                {% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Calibration Insights -->
+        <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;">
+            <h4 style="margin: 0 0 10px 0; color: #1976D2;">📊 Calibration Insights</h4>
+            <ul style="margin: 0; padding-left: 20px; color: #555;">
+                {% set max_avg = team_comparisons | map(attribute='avg_rating') | max %}
+                {% set min_avg = team_comparisons | map(attribute='avg_rating') | min %}
+                {% set avg_spread = max_avg - min_avg %}
+
+                {% if avg_spread > 30 %}
+                <li><strong>Large rating variance:</strong> {{ "%.1f"|format(avg_spread) }}% spread between highest ({{ "%.1f"|format(max_avg) }}%) and lowest ({{ "%.1f"|format(min_avg) }}%) average teams. Consider calibration discussion.</li>
+                {% elif avg_spread > 20 %}
+                <li><strong>Moderate rating variance:</strong> {{ "%.1f"|format(avg_spread) }}% spread across teams. Monitor for consistency.</li>
+                {% else %}
+                <li><strong>Consistent ratings:</strong> Teams show similar average ratings ({{ "%.1f"|format(avg_spread) }}% spread). Well-calibrated organization.</li>
+                {% endif %}
+
+                {% set high_variance_teams = team_comparisons | selectattr('std_dev', '>', 20) | list %}
+                {% if high_variance_teams | length > 0 %}
+                <li><strong>High variance within teams:</strong> {{ high_variance_teams | map(attribute='team_name') | join(', ') }} show high standard deviation (>20%). Wide range of performance levels.</li>
+                {% endif %}
+
+                {% set problematic_teams = team_comparisons | selectattr('calibration_health', 'equalto', 'alert') | list %}
+                {% if problematic_teams | length > 0 %}
+                <li><strong>Calibration attention needed:</strong> {{ problematic_teams | map(attribute='team_name') | join(', ') }} have multiple buckets outside suggested ranges.</li>
+                {% endif %}
+
+                {% set good_teams = team_comparisons | selectattr('calibration_health', 'equalto', 'good') | list %}
+                {% if good_teams | length == team_comparisons | length %}
+                <li><strong>✓ All teams well-calibrated:</strong> Every team falls within suggested distribution ranges.</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+    <!-- End Tab 3: Team Comparison Matrix -->
+
 </div>
 {% endif %}
 
@@ -814,6 +1062,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Set initial sort indicator
     document.querySelector('th[data-sort="rating"]').classList.add('desc');
+
+    // Tab switching for multi-team calibration views
+    {% if is_multi_team %}
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetTab = this.getAttribute('data-tab');
+
+            // Remove active class from all buttons and content
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Add active class to clicked button and corresponding content
+            this.classList.add('active');
+            document.getElementById(targetTab).classList.add('active');
+        });
+    });
+    {% endif %}
 });
 </script>
 {% endblock %}

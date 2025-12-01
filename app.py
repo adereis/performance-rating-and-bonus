@@ -206,6 +206,95 @@ def bonus_settings_api():
             return jsonify({'error': str(e)}), 500
 
 
+def calculate_calibration_for_employees(employees, team_name=None):
+    """
+    Calculate calibration distribution for a group of employees.
+
+    Args:
+        employees: List of employee dicts (must have performance_rating_percent)
+        team_name: Optional name of team for display purposes
+
+    Returns:
+        Dict with calibration data, total_rated, and team_name
+    """
+    total_rated = len(employees)
+
+    calibration_buckets = {
+        'above_120': {'count': 0, 'suggested_min': 10, 'suggested_max': 20},
+        '90_to_120': {'count': 0, 'suggested_min': 60, 'suggested_max': 80},
+        '60_to_90': {'count': 0, 'suggested_min': 5, 'suggested_max': 15},
+        'below_60': {'count': 0, 'suggested_min': 2, 'suggested_max': 5}
+    }
+
+    for emp in employees:
+        rating = emp.get('performance_rating_percent')
+        if rating:
+            try:
+                rating = float(rating)
+                if rating > 120:
+                    calibration_buckets['above_120']['count'] += 1
+                elif rating >= 90:
+                    calibration_buckets['90_to_120']['count'] += 1
+                elif rating >= 60:
+                    calibration_buckets['60_to_90']['count'] += 1
+                else:
+                    calibration_buckets['below_60']['count'] += 1
+            except (ValueError, TypeError):
+                continue
+
+    # Calculate percentages and deltas
+    calibration_data = []
+    for bucket_key, bucket_data in calibration_buckets.items():
+        count = bucket_data['count']
+        percentage = round((count / total_rated * 100), 1) if total_rated > 0 else 0
+        suggested_min = bucket_data['suggested_min']
+        suggested_max = bucket_data['suggested_max']
+        suggested_mid = (suggested_min + suggested_max) / 2
+
+        # Calculate suggested people counts based on percentages
+        suggested_min_people = round(suggested_min * total_rated / 100) if total_rated > 0 else 0
+        suggested_max_people = round(suggested_max * total_rated / 100) if total_rated > 0 else 0
+
+        # Determine if within range
+        within_range = suggested_min <= percentage <= suggested_max
+
+        # Calculate delta from range limits (0 if within range, otherwise distance from nearest limit)
+        if percentage < suggested_min:
+            delta = percentage - suggested_min  # Negative value (below range)
+        elif percentage > suggested_max:
+            delta = percentage - suggested_max  # Positive value (above range)
+        else:
+            delta = 0  # Within range
+
+        # Determine status: green (within), yellow (slightly off), orange (significantly off)
+        if within_range:
+            status = 'good'
+        elif abs(delta) <= 10:
+            status = 'warning'
+        else:
+            status = 'alert'
+
+        calibration_data.append({
+            'bucket': bucket_key,
+            'count': count,
+            'percentage': percentage,
+            'suggested_min': suggested_min,
+            'suggested_max': suggested_max,
+            'suggested_mid': suggested_mid,
+            'suggested_min_people': suggested_min_people,
+            'suggested_max_people': suggested_max_people,
+            'delta': delta,
+            'within_range': within_range,
+            'status': status
+        })
+
+    return {
+        'data': calibration_data,
+        'total_rated': total_rated,
+        'team_name': team_name
+    }
+
+
 @app.route('/analytics')
 def analytics():
     """Analytics and reports page."""
@@ -275,74 +364,9 @@ def analytics():
     rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
     total_rated = len(rated_employees)
 
-    calibration_buckets = {
-        'above_120': {'count': 0, 'suggested_min': 10, 'suggested_max': 20},
-        '90_to_120': {'count': 0, 'suggested_min': 60, 'suggested_max': 80},
-        '60_to_90': {'count': 0, 'suggested_min': 5, 'suggested_max': 15},
-        'below_60': {'count': 0, 'suggested_min': 2, 'suggested_max': 5}
-    }
-
-    for emp in rated_employees:
-        rating = emp.get('performance_rating_percent')
-        if rating:
-            try:
-                rating = float(rating)
-                if rating > 120:
-                    calibration_buckets['above_120']['count'] += 1
-                elif rating >= 90:
-                    calibration_buckets['90_to_120']['count'] += 1
-                elif rating >= 60:
-                    calibration_buckets['60_to_90']['count'] += 1
-                else:
-                    calibration_buckets['below_60']['count'] += 1
-            except (ValueError, TypeError):
-                continue
-
-    # Calculate percentages and deltas
-    calibration_data = []
-    for bucket_key, bucket_data in calibration_buckets.items():
-        count = bucket_data['count']
-        percentage = round((count / total_rated * 100), 1) if total_rated > 0 else 0
-        suggested_min = bucket_data['suggested_min']
-        suggested_max = bucket_data['suggested_max']
-        suggested_mid = (suggested_min + suggested_max) / 2
-
-        # Calculate suggested people counts based on percentages
-        suggested_min_people = round(suggested_min * total_rated / 100) if total_rated > 0 else 0
-        suggested_max_people = round(suggested_max * total_rated / 100) if total_rated > 0 else 0
-
-        # Determine if within range
-        within_range = suggested_min <= percentage <= suggested_max
-
-        # Calculate delta from range limits (0 if within range, otherwise distance from nearest limit)
-        if percentage < suggested_min:
-            delta = percentage - suggested_min  # Negative value (below range)
-        elif percentage > suggested_max:
-            delta = percentage - suggested_max  # Positive value (above range)
-        else:
-            delta = 0  # Within range
-
-        # Determine status: green (within), yellow (slightly off), orange (significantly off)
-        if within_range:
-            status = 'good'
-        elif abs(delta) <= 10:
-            status = 'warning'
-        else:
-            status = 'alert'
-
-        calibration_data.append({
-            'bucket': bucket_key,
-            'count': count,
-            'percentage': percentage,
-            'suggested_min': suggested_min,
-            'suggested_max': suggested_max,
-            'suggested_mid': suggested_mid,
-            'suggested_min_people': suggested_min_people,
-            'suggested_max_people': suggested_max_people,
-            'delta': delta,
-            'within_range': within_range,
-            'status': status
-        })
+    # Calculate org-level calibration using helper function
+    org_calibration = calculate_calibration_for_employees(rated_employees, "Organization")
+    calibration_data = org_calibration['data']
 
     # Load tenets configuration
     tenets_file = 'tenets.json' if os.path.exists('tenets.json') else 'tenets-sample.json'
@@ -482,6 +506,59 @@ def analytics():
         }
     }
 
+    # Detect multi-team scenario by checking unique supervisory organizations
+    unique_orgs = set()
+    for emp in rated_employees:
+        org = emp.get('Supervisory Organization')
+        if org:
+            unique_orgs.add(org)
+
+    is_multi_team = len(unique_orgs) > 1
+
+    # If multi-team, calculate per-team calibrations and comparisons
+    team_calibrations = []
+    team_comparisons = []
+
+    if is_multi_team:
+        # Group employees by supervisory organization
+        teams_by_org = {}
+        for emp in rated_employees:
+            org = emp.get('Supervisory Organization', 'Unknown')
+            if org not in teams_by_org:
+                teams_by_org[org] = []
+            teams_by_org[org].append(emp)
+
+        # Calculate calibration for each team
+        for org_name, team_employees in teams_by_org.items():
+            team_cal = calculate_calibration_for_employees(team_employees, org_name)
+            team_calibrations.append(team_cal)
+
+            # Calculate team stats for comparison
+            ratings = [float(e.get('performance_rating_percent', 0)) for e in team_employees]
+            avg_rating = sum(ratings) / len(ratings) if ratings else 0
+            std_dev = (sum((r - avg_rating) ** 2 for r in ratings) / len(ratings)) ** 0.5 if len(ratings) > 1 else 0
+
+            # Count issues (buckets outside range)
+            issues = sum(1 for item in team_cal['data'] if item['status'] != 'good')
+
+            # Determine calibration health
+            if issues == 0:
+                calibration_health = 'good'
+            elif issues <= 2:
+                calibration_health = 'warning'
+            else:
+                calibration_health = 'alert'
+
+            team_comparisons.append({
+                'team_name': org_name,
+                'size': len(team_employees),
+                'avg_rating': round(avg_rating, 1),
+                'std_dev': round(std_dev, 1),
+                'issues_count': issues,
+                'calibration_health': calibration_health,
+                'buckets': {item['bucket']: item for item in team_cal['data']}
+            })
+
     return render_template('analytics.html',
                          team=sorted_team,
                          chart_data=chart_data,
@@ -492,7 +569,10 @@ def analytics():
                          total_employees=len(team_data),
                          tenets_summary=tenets_summary,
                          employees_with_tenets=employees_with_tenets,
-                         org_tenets_summary=org_tenets_summary)
+                         org_tenets_summary=org_tenets_summary,
+                         is_multi_team=is_multi_team,
+                         team_calibrations=team_calibrations,
+                         team_comparisons=team_comparisons)
 
 
 def calculate_bonus_for_employees(employees, params, budget_override_usd=0.0):
