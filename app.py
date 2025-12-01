@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file, make_response
 import os
 import json
+import csv
+import io
 from datetime import datetime
 from collections import defaultdict
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
 from models import Employee, BonusSettings, init_db, get_db
 
 app = Flask(__name__)
@@ -812,6 +816,384 @@ def bonus_calculation():
                          is_multi_team=is_multi_team,
                          team_comparisons=team_comparisons,
                          teams_data=teams_data)
+
+
+@app.route('/export')
+def export_page():
+    """Export page for Workday bonus allocation."""
+    team_data = get_all_employees()
+
+    # Filter to rated employees only
+    rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
+
+    if not rated_employees:
+        return render_template('export.html',
+                             export_data=[],
+                             has_data=False)
+
+    # Get bonus calculation settings
+    params = {
+        'upside_exponent': float(request.args.get('upside_exponent', 1.35)),
+        'downside_exponent': float(request.args.get('downside_exponent', 1.9))
+    }
+
+    # Get budget override
+    settings = get_bonus_settings()
+    budget_override_usd = settings.budget_override_usd if settings else 0.0
+
+    # Calculate bonuses for all rated employees
+    bonus_calc = calculate_bonus_for_employees(rated_employees, params, budget_override_usd)
+
+    # Load tenets configuration
+    tenets_config = None
+    tenets_map = {}
+    if os.path.exists('tenets-sample.json'):
+        try:
+            with open('tenets-sample.json', 'r') as f:
+                tenets_config = json.load(f)
+                tenets_map = {t['id']: t['name'] for t in tenets_config.get('tenets', [])}
+        except Exception as e:
+            print(f"Error loading tenets: {e}")
+
+    # Format export data
+    export_data = []
+    for result in bonus_calc['results']:
+        employee = result['employee']
+
+        # Parse tenets
+        strengths = []
+        improvements = []
+        try:
+            if employee.get('tenets_strengths'):
+                strength_ids = json.loads(employee['tenets_strengths']) if isinstance(employee['tenets_strengths'], str) else employee['tenets_strengths']
+                strengths = [tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map]
+            if employee.get('tenets_improvements'):
+                improvement_ids = json.loads(employee['tenets_improvements']) if isinstance(employee['tenets_improvements'], str) else employee['tenets_improvements']
+                improvements = [tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map]
+        except Exception as e:
+            print(f"Error parsing tenets for {employee.get('Associate')}: {e}")
+
+        # Build structured description text (human-readable and machine-parseable)
+        description_lines = []
+
+        # Performance rating
+        if employee.get('performance_rating_percent'):
+            description_lines.append(f"Performance Rating: {employee['performance_rating_percent']}%")
+
+        # Justification
+        if employee.get('justification'):
+            description_lines.append(f"Justification: {employee['justification']}")
+
+        # Mentor/Mentee
+        if employee.get('mentor'):
+            description_lines.append(f"Mentor: {employee['mentor']}")
+        if employee.get('mentees'):
+            description_lines.append(f"Mentees: {employee['mentees']}")
+
+        # Tenets
+        if strengths:
+            description_lines.append(f"Strengths: {', '.join(strengths)}")
+        if improvements:
+            description_lines.append(f"Areas for Improvement: {', '.join(improvements)}")
+
+        description_text = '\n'.join(description_lines)
+
+        # Calculate bonus percent of target
+        bonus_percent_of_target = result['bonus_percent_of_target']
+
+        export_data.append({
+            'employee': employee,
+            'bonus_percent': round(bonus_percent_of_target, 1),
+            'description': description_text,
+            'final_bonus': result['final_bonus'],
+            'rating': result['rating']
+        })
+
+    # Sort by employee name
+    export_data.sort(key=lambda x: x['employee']['Associate'])
+
+    return render_template('export.html',
+                         export_data=export_data,
+                         has_data=True,
+                         total_employees=len(export_data))
+
+
+@app.route('/export/csv')
+def export_csv():
+    """Export employee data as CSV (same content as Excel)."""
+    team_data = get_all_employees()
+
+    # Load tenets for description
+    tenets_map = {}
+    if os.path.exists('tenets-sample.json'):
+        try:
+            with open('tenets-sample.json', 'r') as f:
+                tenets_config = json.load(f)
+                tenets_map = {t['id']: t['name'] for t in tenets_config.get('tenets', [])}
+        except Exception as e:
+            print(f"Error loading tenets: {e}")
+
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write header (matching Excel export)
+    writer.writerow([
+        'Associate ID',
+        'Associate',
+        'Supervisory Organization',
+        'Current Job Profile',
+        'Photo',
+        'Errors',
+        'Current Base Pay - All Countries',
+        'Current Base Pay - All Countries (USD)',
+        'Currency',
+        'Grade',
+        'Annual Bonus Target %',
+        'Last Bonus Allocation %',
+        'Bonus Target - Local Currency',
+        'Bonus Target - Local Currency (USD)',
+        'Proposed Bonus Amount',
+        'Proposed Bonus Amount (USD)',
+        'Proposed % of Target Bonus',
+        'Notes',
+        'Zero Bonus Allocated',
+        'Performance Rating %',
+        'Justification',
+        'Mentor',
+        'Mentees',
+        'Tenets - Strengths',
+        'Tenets - Improvements',
+        'Description'
+    ])
+
+    # Write data rows
+    for employee in team_data:
+        # Parse tenets
+        strengths_text = ''
+        improvements_text = ''
+        description_parts = []
+
+        try:
+            if employee.get('tenets_strengths'):
+                strength_ids = json.loads(employee['tenets_strengths']) if isinstance(employee['tenets_strengths'], str) else employee['tenets_strengths']
+                strengths = [tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map]
+                strengths_text = ', '.join(strengths)
+
+            if employee.get('tenets_improvements'):
+                improvement_ids = json.loads(employee['tenets_improvements']) if isinstance(employee['tenets_improvements'], str) else employee['tenets_improvements']
+                improvements = [tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map]
+                improvements_text = ', '.join(improvements)
+        except Exception as e:
+            print(f"Error parsing tenets: {e}")
+
+        # Build description
+        if employee.get('performance_rating_percent'):
+            description_parts.append(f"Performance Rating: {employee['performance_rating_percent']}%")
+        if employee.get('justification'):
+            description_parts.append(f"Justification: {employee['justification']}")
+        if employee.get('mentor'):
+            description_parts.append(f"Mentor: {employee['mentor']}")
+        if employee.get('mentees'):
+            description_parts.append(f"Mentees: {employee['mentees']}")
+        if strengths_text:
+            description_parts.append(f"Strengths: {strengths_text}")
+        if improvements_text:
+            description_parts.append(f"Areas for Improvement: {improvements_text}")
+
+        description = '\n'.join(description_parts)
+
+        writer.writerow([
+            employee.get('Associate ID', ''),
+            employee.get('Associate', ''),
+            employee.get('Supervisory Organization', ''),
+            employee.get('Current Job Profile', ''),
+            employee.get('Photo', ''),
+            employee.get('Errors', ''),
+            employee.get('Current Base Pay - All Countries', ''),
+            employee.get('Current Base Pay - All Countries (USD)', ''),
+            employee.get('Currency', ''),
+            employee.get('Grade', ''),
+            employee.get('Annual Bonus Target %', ''),
+            employee.get('Last Bonus Allocation %', ''),
+            employee.get('Bonus Target - Local Currency', ''),
+            employee.get('Bonus Target - Local Currency (USD)', ''),
+            employee.get('Proposed Bonus Amount', ''),
+            employee.get('Proposed Bonus Amount (USD)', ''),
+            employee.get('Proposed % of Target Bonus', ''),
+            employee.get('Notes', ''),
+            employee.get('Zero Bonus Allocated', ''),
+            employee.get('performance_rating_percent', ''),
+            employee.get('justification', ''),
+            employee.get('mentor', ''),
+            employee.get('mentees', ''),
+            strengths_text,
+            improvements_text,
+            description
+        ])
+
+    # Create response
+    output.seek(0)
+    response = make_response(output.getvalue())
+    response.headers['Content-Type'] = 'text/csv'
+    response.headers['Content-Disposition'] = 'attachment; filename=performance_export.csv'
+    return response
+
+
+@app.route('/export/xlsx')
+def export_xlsx():
+    """Export employee data as Excel file with all fields."""
+    team_data = get_all_employees()
+
+    # Create workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Employee Data"
+
+    # Define headers (matching import format plus our custom fields)
+    headers = [
+        'Associate ID',
+        'Associate',
+        'Supervisory Organization',
+        'Current Job Profile',
+        'Photo',
+        'Errors',
+        'Current Base Pay - All Countries',
+        'Current Base Pay - All Countries (USD)',
+        'Currency',
+        'Grade',
+        'Annual Bonus Target %',
+        'Last Bonus Allocation %',
+        'Bonus Target - Local Currency',
+        'Bonus Target - Local Currency (USD)',
+        'Proposed Bonus Amount',
+        'Proposed Bonus Amount (USD)',
+        'Proposed % of Target Bonus',
+        'Notes',
+        'Zero Bonus Allocated',
+        # Our custom fields
+        'Performance Rating %',
+        'Justification',
+        'Mentor',
+        'Mentees',
+        'Tenets - Strengths',
+        'Tenets - Improvements',
+        'Description'  # Combined description field
+    ]
+
+    # Style header row
+    header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    header_font = Font(bold=True, color='FFFFFF')
+
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Load tenets for description
+    tenets_map = {}
+    if os.path.exists('tenets-sample.json'):
+        try:
+            with open('tenets-sample.json', 'r') as f:
+                tenets_config = json.load(f)
+                tenets_map = {t['id']: t['name'] for t in tenets_config.get('tenets', [])}
+        except Exception as e:
+            print(f"Error loading tenets: {e}")
+
+    # Write data rows
+    for row_num, employee in enumerate(team_data, 2):
+        # Parse tenets
+        strengths_text = ''
+        improvements_text = ''
+        description_parts = []
+
+        try:
+            if employee.get('tenets_strengths'):
+                strength_ids = json.loads(employee['tenets_strengths']) if isinstance(employee['tenets_strengths'], str) else employee['tenets_strengths']
+                strengths = [tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map]
+                strengths_text = ', '.join(strengths)
+
+            if employee.get('tenets_improvements'):
+                improvement_ids = json.loads(employee['tenets_improvements']) if isinstance(employee['tenets_improvements'], str) else employee['tenets_improvements']
+                improvements = [tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map]
+                improvements_text = ', '.join(improvements)
+        except Exception as e:
+            print(f"Error parsing tenets: {e}")
+
+        # Build description
+        if employee.get('performance_rating_percent'):
+            description_parts.append(f"Performance Rating: {employee['performance_rating_percent']}%")
+        if employee.get('justification'):
+            description_parts.append(f"Justification: {employee['justification']}")
+        if employee.get('mentor'):
+            description_parts.append(f"Mentor: {employee['mentor']}")
+        if employee.get('mentees'):
+            description_parts.append(f"Mentees: {employee['mentees']}")
+        if strengths_text:
+            description_parts.append(f"Strengths: {strengths_text}")
+        if improvements_text:
+            description_parts.append(f"Areas for Improvement: {improvements_text}")
+
+        description = '\n'.join(description_parts)
+
+        row_data = [
+            employee.get('Associate ID', ''),
+            employee.get('Associate', ''),
+            employee.get('Supervisory Organization', ''),
+            employee.get('Current Job Profile', ''),
+            employee.get('Photo', ''),
+            employee.get('Errors', ''),
+            employee.get('Current Base Pay - All Countries', ''),
+            employee.get('Current Base Pay - All Countries (USD)', ''),
+            employee.get('Currency', ''),
+            employee.get('Grade', ''),
+            employee.get('Annual Bonus Target %', ''),
+            employee.get('Last Bonus Allocation %', ''),
+            employee.get('Bonus Target - Local Currency', ''),
+            employee.get('Bonus Target - Local Currency (USD)', ''),
+            employee.get('Proposed Bonus Amount', ''),
+            employee.get('Proposed Bonus Amount (USD)', ''),
+            employee.get('Proposed % of Target Bonus', ''),
+            employee.get('Notes', ''),
+            employee.get('Zero Bonus Allocated', ''),
+            # Our custom fields
+            employee.get('performance_rating_percent', ''),
+            employee.get('justification', ''),
+            employee.get('mentor', ''),
+            employee.get('mentees', ''),
+            strengths_text,
+            improvements_text,
+            description
+        ]
+
+        for col_num, value in enumerate(row_data, 1):
+            ws.cell(row=row_num, column=col_num, value=value)
+
+    # Auto-adjust column widths
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)  # Cap at 50
+        ws.column_dimensions[column_letter].width = adjusted_width
+
+    # Save to BytesIO
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='performance_export.xlsx'
+    )
 
 
 if __name__ == '__main__':

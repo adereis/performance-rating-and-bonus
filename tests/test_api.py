@@ -336,3 +336,26 @@ class TestAnalyticsDashboard:
 
         response = client.get('/analytics')
         assert response.status_code == 200
+
+
+class TestExportPage:
+    """Test export page functionality."""
+
+    def test_export_page_route(self, client, populated_db):
+        """Test the export page route."""
+        response = client.get('/export')
+        assert response.status_code == 200
+        assert b'Export Data' in response.data
+
+    def test_export_page_with_no_employees(self, client, db_session):
+        """Test export page with no employees."""
+        response = client.get('/export')
+        assert response.status_code == 200
+        assert b'No Data Available' in response.data or b'No rated employees' in response.data
+
+    def test_export_page_renders_successfully(self, client, populated_db):
+        """Test that export page renders without errors."""
+        response = client.get('/export')
+        assert response.status_code == 200
+        # Page should have export-related content
+        assert b'Workday' in response.data or b'Export' in response.data

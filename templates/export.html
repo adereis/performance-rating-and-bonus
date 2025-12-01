@@ -1,0 +1,397 @@
+{% extends "base.html" %}
+
+{% block title %}Export Data - Quarterly Performance Rating{% endblock %}
+
+{% block extra_css %}
+<style>
+    .export-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    .export-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #2c3e50;
+        border-bottom: 2px solid #e0e0e0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .export-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: top;
+    }
+
+    .export-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .export-table th.right, .export-table td.right {
+        text-align: right;
+    }
+
+    .description-cell {
+        position: relative;
+        max-width: 600px;
+    }
+
+    .description-text {
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+        padding: 12px;
+        background: #f8f9fa;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        line-height: 1.6;
+        margin-bottom: 8px;
+        color: #2c3e50;
+    }
+
+    .copy-btn {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+        background: #5568d3;
+    }
+
+    .copy-btn.copied {
+        background: #27ae60;
+    }
+
+    .bonus-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 15px;
+    }
+
+    .bonus-high {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .bonus-mid {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .bonus-low {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .export-formats {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 25px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        align-items: center;
+    }
+
+    .export-formats h4 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 14px;
+        font-weight: 600;
+        margin-right: 15px;
+    }
+
+    .export-format-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: white;
+        border: 2px solid #667eea;
+        color: #667eea;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .export-format-btn:hover {
+        background: #667eea;
+        color: white;
+    }
+
+    .export-format-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .no-data-message {
+        text-align: center;
+        padding: 60px 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        color: #666;
+    }
+
+    .no-data-message h3 {
+        font-size: 20px;
+        margin-bottom: 10px;
+        color: #2c3e50;
+    }
+
+    .stats-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+    }
+
+    .stat-card h4 {
+        margin: 0 0 8px 0;
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+    }
+
+    .stat-card .value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    th.sortable {
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+        padding-right: 25px;
+    }
+
+    th.sortable:hover {
+        background: #e8e9ea;
+    }
+
+    th.sortable::after {
+        content: '⇅';
+        position: absolute;
+        right: 8px;
+        opacity: 0.3;
+        font-size: 12px;
+    }
+
+    th.sortable.asc::after {
+        content: '↑';
+        opacity: 1;
+    }
+
+    th.sortable.desc::after {
+        content: '↓';
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Export Data</h2>
+
+    {% if has_data %}
+    <div class="export-formats">
+        <h4>Export Formats:</h4>
+        <a href="{{ url_for('export_csv') }}" class="export-format-btn" download>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download CSV
+        </a>
+        <a href="{{ url_for('export_xlsx') }}" class="export-format-btn" download>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download Excel
+        </a>
+    </div>
+
+    <div class="stats-summary">
+        <div class="stat-card">
+            <h4>Total Employees</h4>
+            <div class="value">{{ total_employees }}</div>
+        </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table class="export-table">
+            <thead>
+                <tr>
+                    <th class="sortable" data-sort="name">Employee Name</th>
+                    <th class="right sortable" data-sort="bonus">Bonus %</th>
+                    <th>Single Description</th>
+                </tr>
+            </thead>
+            <tbody id="exportTableBody">
+                {% for item in export_data %}
+                <tr data-name="{{ item.employee.Associate }}"
+                    data-bonus="{{ item.bonus_percent }}">
+                    <td>
+                        <strong>
+                            <span class="employee-name" data-employee-name="{{ item.employee.Associate }}">
+                                {{ item.employee.Associate }}
+                            </span>
+                        </strong>
+                    </td>
+                    <td class="right">
+                        <span class="bonus-badge
+                            {% if item.bonus_percent >= 110 %}bonus-high
+                            {% elif item.bonus_percent >= 90 %}bonus-mid
+                            {% else %}bonus-low{% endif %}">
+                            {{ item.bonus_percent }}%
+                        </span>
+                    </td>
+                    <td class="description-cell">
+                        <div class="description-text" id="desc_{{ loop.index }}">{{ item.description }}</div>
+                        <button class="copy-btn" onclick="copyDescription('desc_{{ loop.index }}', this)">
+                            Copy Description
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <div class="no-data-message">
+        <h3>No Data Available</h3>
+        <p>No rated employees found. Please rate employees first.</p>
+        <p style="margin-top: 15px;">
+            <a href="{{ url_for('rate_page') }}" class="btn">Go to Rating Page</a>
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Copy to clipboard functionality
+    function copyDescription(elementId, button) {
+        const descElement = document.getElementById(elementId);
+        const text = descElement.textContent;
+
+        // Use modern clipboard API
+        navigator.clipboard.writeText(text).then(() => {
+            // Show success feedback
+            const originalText = button.textContent;
+            button.textContent = '✓ Copied!';
+            button.classList.add('copied');
+
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('copied');
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                const originalText = button.textContent;
+                button.textContent = '✓ Copied!';
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                alert('Failed to copy to clipboard');
+            }
+            document.body.removeChild(textArea);
+        });
+    }
+
+    // Table sorting
+    document.addEventListener('DOMContentLoaded', function() {
+        const headers = document.querySelectorAll('th.sortable');
+        let currentSort = { column: 'name', direction: 'asc' };
+
+        headers.forEach(header => {
+            header.addEventListener('click', function() {
+                const sortKey = this.getAttribute('data-sort');
+                sortExportTable(sortKey);
+            });
+        });
+
+        function sortExportTable(column) {
+            const tbody = document.getElementById('exportTableBody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Toggle direction if same column, otherwise default to ascending
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = (column === 'bonus') ? 'desc' : 'asc';
+            }
+
+            // Update header classes
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('asc', 'desc');
+            });
+            document.querySelector(`th[data-sort="${column}"]`).classList.add(currentSort.direction);
+
+            // Sort rows
+            rows.sort((a, b) => {
+                let aVal = a.getAttribute(`data-${column}`);
+                let bVal = b.getAttribute(`data-${column}`);
+
+                // For bonus, convert to numbers
+                if (column === 'bonus') {
+                    aVal = parseFloat(aVal);
+                    bVal = parseFloat(bVal);
+                } else {
+                    // For text, case-insensitive comparison
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+
+                if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            // Re-append rows in sorted order
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // Set initial sort indicator
+        document.querySelector('th[data-sort="name"]').classList.add('asc');
+    });
+</script>
+{% endblock %}
