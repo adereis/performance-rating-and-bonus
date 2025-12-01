@@ -206,6 +206,29 @@ def bonus_settings_api():
             return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/employee/<associate_name>', methods=['GET'])
+def get_employee_details(associate_name):
+    """API endpoint to get details for a specific employee by name."""
+    try:
+        employee = get_employee_by_name(associate_name)
+
+        if not employee:
+            return jsonify({
+                'success': False,
+                'error': f'Employee not found: {associate_name}'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'employee': employee.to_dict()
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 def calculate_calibration_for_employees(employees, team_name=None):
     """
     Calculate calibration distribution for a group of employees.

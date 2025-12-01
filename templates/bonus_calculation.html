@@ -462,7 +462,7 @@
                     data-perf-mult="{{ result.perf_multiplier }}"
                     data-final="{{ result.final_bonus }}"
                     data-percent="{{ result.bonus_percent_of_target }}">
-                    <td><strong>{{ result.employee.Associate }}</strong></td>
+                    <td><strong><span class="employee-name" data-employee-name="{{ result.employee.Associate }}">{{ result.employee.Associate }}</span></strong></td>
                     <td>{{ result.employee['Current Job Profile'] }}</td>
                     <td class="right">
                         <span class="performance-badge
@@ -634,7 +634,7 @@
                     {% set org_bonus = team.org_level_calc.results_by_id[emp_id].final_bonus %}
                     {% set diff = org_bonus - team_bonus %}
                     <tr>
-                        <td><strong>{{ emp.Associate }}</strong></td>
+                        <td><strong><span class="employee-name" data-employee-name="{{ emp.Associate }}">{{ emp.Associate }}</span></strong></td>
                         <td class="right">{{ "%.0f"|format(emp.performance_rating_percent) }}%</td>
                         <td class="right">${{ "{:,.0f}".format(team_bonus) }}</td>
                         <td class="right">${{ "{:,.0f}".format(org_bonus) }}</td>

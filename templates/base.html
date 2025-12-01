@@ -163,6 +163,302 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+
+        /* Employee name clickable style */
+        .employee-name {
+            cursor: pointer;
+            color: #667eea;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .employee-name:hover {
+            color: #5568d3;
+            text-decoration: underline;
+        }
+
+        /* Employee detail modal */
+        .employee-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.2s;
+        }
+
+        .employee-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .employee-modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .employee-modal-header {
+            padding: 20px 25px;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .employee-modal-header h3 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .employee-modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #666;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .employee-modal-close:hover {
+            background: #e0e0e0;
+            color: #2c3e50;
+        }
+
+        .employee-modal-body {
+            padding: 25px;
+        }
+
+        .employee-modal-section {
+            margin-bottom: 25px;
+        }
+
+        .employee-modal-section h4 {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .employee-modal-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .employee-modal-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .employee-modal-field.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .employee-modal-field label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .employee-modal-field .value {
+            font-size: 14px;
+            color: #2c3e50;
+            padding: 8px 0;
+        }
+
+        .employee-modal-field input,
+        .employee-modal-field textarea {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .employee-modal-field input:focus,
+        .employee-modal-field textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .employee-modal-field textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .employee-modal-field input.invalid {
+            border-color: #e74c3c;
+            background-color: #fee;
+        }
+
+        .employee-modal-field .error {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 3px;
+        }
+
+        .employee-modal-footer {
+            padding: 15px 25px;
+            border-top: 2px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            background: #f8f9fa;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .employee-modal-footer button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .employee-modal-footer .btn-cancel {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .employee-modal-footer .btn-cancel:hover {
+            background: #d0d0d0;
+        }
+
+        .employee-modal-footer .btn-save {
+            background: #667eea;
+            color: white;
+        }
+
+        .employee-modal-footer .btn-save:hover {
+            background: #5568d3;
+        }
+
+        .employee-modal-footer .btn-save:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .employee-modal-loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .employee-modal-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Modal tenets styling */
+        .modal-tenets-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .modal-tenet-column {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .modal-tenet-column h5 {
+            font-size: 12px;
+            color: #666;
+            margin: 0 0 10px 0;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .modal-tenet-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 0;
+            font-size: 12px;
+        }
+
+        .modal-tenet-item input[type="checkbox"] {
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .modal-tenet-item label {
+            cursor: pointer;
+            flex: 1;
+            font-size: 12px;
+            font-weight: normal;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .modal-tenet-item.disabled {
+            opacity: 0.5;
+        }
+
+        .modal-tenet-count {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .modal-tenet-count.warning {
+            color: #e74c3c;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -182,6 +478,439 @@
     <div class="container">
         {% block content %}{% endblock %}
     </div>
+
+    <!-- Employee Detail Modal -->
+    <div id="employeeModal" class="employee-modal">
+        <div class="employee-modal-content">
+            <div class="employee-modal-header">
+                <h3 id="employeeModalTitle">Employee Details</h3>
+                <button class="employee-modal-close" onclick="closeEmployeeModal()">&times;</button>
+            </div>
+            <div class="employee-modal-body" id="employeeModalBody">
+                <div class="employee-modal-loading">
+                    <div class="employee-modal-spinner"></div>
+                    <div>Loading employee details...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Employee Modal Functions
+        let currentEmployeeId = null;
+        let originalEmployeeData = null;
+        let modalTenetsConfig = null;
+
+        // Load tenets configuration for modal
+        function loadModalTenets() {
+            if (modalTenetsConfig) {
+                return Promise.resolve(modalTenetsConfig);
+            }
+            return fetch('/api/tenets')
+                .then(response => response.json())
+                .then(data => {
+                    modalTenetsConfig = data;
+                    return data;
+                })
+                .catch(error => {
+                    console.error('Error loading tenets:', error);
+                    return null;
+                });
+        }
+
+        function openEmployeeModal(employeeName) {
+            const modal = document.getElementById('employeeModal');
+            const modalBody = document.getElementById('employeeModalBody');
+            const modalTitle = document.getElementById('employeeModalTitle');
+
+            // Show loading state
+            modalBody.innerHTML = `
+                <div class="employee-modal-loading">
+                    <div class="employee-modal-spinner"></div>
+                    <div>Loading employee details...</div>
+                </div>
+            `;
+            modalTitle.textContent = 'Employee Details';
+            modal.classList.add('active');
+
+            // Load tenets and employee data in parallel
+            Promise.all([
+                loadModalTenets(),
+                fetch(`/api/employee/${encodeURIComponent(employeeName)}`).then(r => r.json())
+            ])
+            .then(([tenets, data]) => {
+                if (data.success) {
+                    renderEmployeeModal(data.employee);
+                } else {
+                    modalBody.innerHTML = `
+                        <div style="padding: 40px; text-align: center; color: #e74c3c;">
+                            <p>Error loading employee data: ${data.error}</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                modalBody.innerHTML = `
+                    <div style="padding: 40px; text-align: center; color: #e74c3c;">
+                        <p>Network error: ${error.message}</p>
+                    </div>
+                `;
+            });
+        }
+
+        function renderEmployeeModal(employee) {
+            currentEmployeeId = employee['Associate ID'];
+            originalEmployeeData = {...employee};
+
+            const modalTitle = document.getElementById('employeeModalTitle');
+            const modalBody = document.getElementById('employeeModalBody');
+
+            modalTitle.textContent = employee.Associate;
+
+            // Parse existing tenets
+            let existingStrengths = [];
+            let existingImprovements = [];
+            try {
+                if (employee.tenets_strengths) {
+                    existingStrengths = typeof employee.tenets_strengths === 'string'
+                        ? JSON.parse(employee.tenets_strengths)
+                        : employee.tenets_strengths;
+                }
+                if (employee.tenets_improvements) {
+                    existingImprovements = typeof employee.tenets_improvements === 'string'
+                        ? JSON.parse(employee.tenets_improvements)
+                        : employee.tenets_improvements;
+                }
+            } catch (e) {
+                console.error('Error parsing tenets:', e);
+            }
+
+            // Generate tenets HTML
+            let tenetsHTML = '';
+            if (modalTenetsConfig && modalTenetsConfig.tenets) {
+                const activeTenets = modalTenetsConfig.tenets.filter(t => t.active);
+                const strengthsHTML = activeTenets.map(tenet => `
+                    <div class="modal-tenet-item">
+                        <input type="checkbox"
+                               id="modal_strength_${tenet.id}"
+                               value="${tenet.id}"
+                               data-tenet-type="strengths"
+                               ${existingStrengths.includes(tenet.id) ? 'checked' : ''}>
+                        <label for="modal_strength_${tenet.id}">${tenet.name}</label>
+                    </div>
+                `).join('');
+
+                const improvementsHTML = activeTenets.map(tenet => `
+                    <div class="modal-tenet-item">
+                        <input type="checkbox"
+                               id="modal_improvement_${tenet.id}"
+                               value="${tenet.id}"
+                               data-tenet-type="improvements"
+                               ${existingImprovements.includes(tenet.id) ? 'checked' : ''}>
+                        <label for="modal_improvement_${tenet.id}">${tenet.name}</label>
+                    </div>
+                `).join('');
+
+                tenetsHTML = `
+                    <div class="employee-modal-section">
+                        <h4>Team Tenets (Select 3 of each)</h4>
+                        <div class="modal-tenets-grid">
+                            <div class="modal-tenet-column">
+                                <h5>Strengths</h5>
+                                ${strengthsHTML}
+                                <div class="modal-tenet-count" id="modal_strengths_count">${existingStrengths.length} / 3 selected</div>
+                            </div>
+                            <div class="modal-tenet-column">
+                                <h5>Areas for Improvement</h5>
+                                ${improvementsHTML}
+                                <div class="modal-tenet-count" id="modal_improvements_count">${existingImprovements.length} / 3 selected</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            modalBody.innerHTML = `
+                <div class="employee-modal-section">
+                    <h4>Basic Information</h4>
+                    <div class="employee-modal-grid">
+                        <div class="employee-modal-field">
+                            <label>Associate ID</label>
+                            <div class="value">${employee['Associate ID']}</div>
+                        </div>
+                        <div class="employee-modal-field">
+                            <label>Job Profile</label>
+                            <div class="value">${employee['Current Job Profile'] || 'N/A'}</div>
+                        </div>
+                        <div class="employee-modal-field">
+                            <label>Supervisory Organization</label>
+                            <div class="value">${employee['Supervisory Organization'] || 'N/A'}</div>
+                        </div>
+                        <div class="employee-modal-field">
+                            <label>Currency</label>
+                            <div class="value">${employee.Currency || 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="employee-modal-section">
+                    <h4>Performance Rating</h4>
+                    <div class="employee-modal-grid">
+                        <div class="employee-modal-field">
+                            <label>Rating % (0-200)</label>
+                            <input type="number"
+                                   id="modal_rating_percent"
+                                   min="0"
+                                   max="200"
+                                   step="1"
+                                   value="${employee.performance_rating_percent || ''}"
+                                   placeholder="0-200">
+                            <span class="error" id="modal_rating_error"></span>
+                        </div>
+                        <div class="employee-modal-field">
+                            <label>Last Updated</label>
+                            <div class="value">${employee.last_updated || 'Not yet rated'}</div>
+                        </div>
+                        <div class="employee-modal-field full-width">
+                            <label>Justification</label>
+                            <textarea id="modal_justification" placeholder="Explain the rating...">${employee.justification || ''}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="employee-modal-section">
+                    <h4>Development & Mentoring</h4>
+                    <div class="employee-modal-grid">
+                        <div class="employee-modal-field">
+                            <label>Mentor</label>
+                            <input type="text"
+                                   id="modal_mentor"
+                                   value="${employee.mentor || ''}"
+                                   placeholder="Who is mentoring this person?">
+                        </div>
+                        <div class="employee-modal-field">
+                            <label>Mentee(s)</label>
+                            <input type="text"
+                                   id="modal_mentees"
+                                   value="${employee.mentees || ''}"
+                                   placeholder="Who is this person mentoring?">
+                        </div>
+                    </div>
+                </div>
+
+                ${tenetsHTML}
+
+                <div class="employee-modal-footer">
+                    <button class="btn-cancel" onclick="closeEmployeeModal()">Close</button>
+                    <button class="btn-save" onclick="saveEmployeeModal()">Save Changes</button>
+                </div>
+            `;
+
+            // Add validation listener
+            const ratingInput = document.getElementById('modal_rating_percent');
+            ratingInput.addEventListener('input', validateModalRating);
+
+            // Add tenets listeners
+            if (modalTenetsConfig) {
+                setupModalTenetsListeners();
+            }
+        }
+
+        function setupModalTenetsListeners() {
+            const strengthCheckboxes = document.querySelectorAll('input[data-tenet-type="strengths"]');
+            const improvementCheckboxes = document.querySelectorAll('input[data-tenet-type="improvements"]');
+
+            const updateTenetCounts = () => {
+                const strengthsChecked = Array.from(strengthCheckboxes).filter(cb => cb.checked);
+                const improvementsChecked = Array.from(improvementCheckboxes).filter(cb => cb.checked);
+
+                const strengthsCount = document.getElementById('modal_strengths_count');
+                const improvementsCount = document.getElementById('modal_improvements_count');
+
+                if (strengthsCount) {
+                    strengthsCount.textContent = `${strengthsChecked.length} / 3 selected`;
+                    strengthsCount.className = 'modal-tenet-count';
+                    if (strengthsChecked.length > 0 && strengthsChecked.length !== 3) {
+                        strengthsCount.classList.add('warning');
+                    }
+                }
+
+                if (improvementsCount) {
+                    improvementsCount.textContent = `${improvementsChecked.length} / 3 selected`;
+                    improvementsCount.className = 'modal-tenet-count';
+                    if (improvementsChecked.length > 0 && improvementsChecked.length !== 3) {
+                        improvementsCount.classList.add('warning');
+                    }
+                }
+
+                // Disable checkboxes if already selected in other list
+                const strengthValues = new Set(strengthsChecked.map(cb => cb.value));
+                const improvementValues = new Set(improvementsChecked.map(cb => cb.value));
+
+                strengthCheckboxes.forEach(cb => {
+                    const item = cb.closest('.modal-tenet-item');
+                    if (improvementValues.has(cb.value) && !cb.checked) {
+                        cb.disabled = true;
+                        item.classList.add('disabled');
+                    } else if (strengthsChecked.length >= 3 && !cb.checked) {
+                        cb.disabled = true;
+                        item.classList.add('disabled');
+                    } else {
+                        cb.disabled = false;
+                        item.classList.remove('disabled');
+                    }
+                });
+
+                improvementCheckboxes.forEach(cb => {
+                    const item = cb.closest('.modal-tenet-item');
+                    if (strengthValues.has(cb.value) && !cb.checked) {
+                        cb.disabled = true;
+                        item.classList.add('disabled');
+                    } else if (improvementsChecked.length >= 3 && !cb.checked) {
+                        cb.disabled = true;
+                        item.classList.add('disabled');
+                    } else {
+                        cb.disabled = false;
+                        item.classList.remove('disabled');
+                    }
+                });
+            };
+
+            strengthCheckboxes.forEach(cb => cb.addEventListener('change', updateTenetCounts));
+            improvementCheckboxes.forEach(cb => cb.addEventListener('change', updateTenetCounts));
+
+            // Initial update
+            updateTenetCounts();
+        }
+
+        function validateModalRating() {
+            const ratingInput = document.getElementById('modal_rating_percent');
+            const errorSpan = document.getElementById('modal_rating_error');
+            const value = ratingInput.value.trim();
+
+            ratingInput.classList.remove('invalid');
+            errorSpan.textContent = '';
+
+            if (value === '') {
+                return true;
+            }
+
+            const numValue = parseFloat(value);
+
+            if (isNaN(numValue)) {
+                ratingInput.classList.add('invalid');
+                errorSpan.textContent = 'Must be a number';
+                return false;
+            }
+
+            if (numValue < 0 || numValue > 200) {
+                ratingInput.classList.add('invalid');
+                errorSpan.textContent = 'Must be between 0 and 200';
+                return false;
+            }
+
+            return true;
+        }
+
+        function saveEmployeeModal() {
+            if (!validateModalRating()) {
+                return;
+            }
+
+            const saveButton = document.querySelector('.employee-modal-footer .btn-save');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+
+            // Collect selected tenets
+            const strengthCheckboxes = document.querySelectorAll('input[data-tenet-type="strengths"]:checked');
+            const improvementCheckboxes = document.querySelectorAll('input[data-tenet-type="improvements"]:checked');
+
+            const tenetsStrengths = Array.from(strengthCheckboxes).map(cb => cb.value);
+            const tenetsImprovements = Array.from(improvementCheckboxes).map(cb => cb.value);
+
+            const data = {
+                associate_name: originalEmployeeData.Associate,
+                rating_percent: document.getElementById('modal_rating_percent').value,
+                justification: document.getElementById('modal_justification').value,
+                mentor: document.getElementById('modal_mentor').value,
+                mentees: document.getElementById('modal_mentees').value,
+                tenets_strengths: tenetsStrengths,
+                tenets_improvements: tenetsImprovements
+            };
+
+            fetch('/api/rate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // Show success and close modal
+                    saveButton.textContent = 'Saved!';
+                    setTimeout(() => {
+                        closeEmployeeModal();
+                        // Reload page to reflect changes
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    saveButton.disabled = false;
+                    saveButton.textContent = 'Save Changes';
+                    alert('Error saving: ' + (result.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Changes';
+                alert('Network error: ' + error.message);
+            });
+        }
+
+        function closeEmployeeModal() {
+            const modal = document.getElementById('employeeModal');
+            modal.classList.remove('active');
+            currentEmployeeId = null;
+            originalEmployeeData = null;
+        }
+
+        // Close modal when clicking outside of it
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('employeeModal');
+            if (event.target === modal) {
+                closeEmployeeModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const modal = document.getElementById('employeeModal');
+                if (modal.classList.contains('active')) {
+                    closeEmployeeModal();
+                }
+            }
+        });
+
+        // Global function to make employee names clickable
+        function makeEmployeeNamesClickable() {
+            const employeeNameElements = document.querySelectorAll('.employee-name');
+            employeeNameElements.forEach(element => {
+                element.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const employeeName = this.getAttribute('data-employee-name');
+                    if (employeeName) {
+                        openEmployeeModal(employeeName);
+                    }
+                });
+            });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', makeEmployeeNamesClickable);
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

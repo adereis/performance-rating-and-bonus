@@ -253,6 +253,29 @@ class TestAPIEndpoints:
         assert employee.justification == 'Work in progress'
         assert employee.mentor == 'Alice Johnson'
 
+    def test_get_employee_details_success(self, client, populated_db):
+        """Test getting employee details by name."""
+        response = client.get('/api/employee/Diana%20Prince')
+
+        assert response.status_code == 200
+        result = json.loads(response.data)
+        assert result['success'] is True
+        assert 'employee' in result
+
+        employee = result['employee']
+        assert employee['Associate'] == 'Diana Prince'
+        assert employee['Associate ID'] == 'EMP004'
+        assert 'Current Job Profile' in employee
+
+    def test_get_employee_details_not_found(self, client, populated_db):
+        """Test getting details for non-existent employee."""
+        response = client.get('/api/employee/Nonexistent%20Person')
+
+        assert response.status_code == 404
+        result = json.loads(response.data)
+        assert result['success'] is False
+        assert 'not found' in result['error'].lower()
+
 
 class TestDashboardStatistics:
     """Test dashboard statistics calculations."""
