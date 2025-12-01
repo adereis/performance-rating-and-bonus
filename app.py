@@ -307,6 +307,10 @@ def analytics():
         suggested_max = bucket_data['suggested_max']
         suggested_mid = (suggested_min + suggested_max) / 2
 
+        # Calculate suggested people counts based on percentages
+        suggested_min_people = round(suggested_min * total_rated / 100) if total_rated > 0 else 0
+        suggested_max_people = round(suggested_max * total_rated / 100) if total_rated > 0 else 0
+
         # Determine if within range
         within_range = suggested_min <= percentage <= suggested_max
 
@@ -328,6 +332,8 @@ def analytics():
             'suggested_min': suggested_min,
             'suggested_max': suggested_max,
             'suggested_mid': suggested_mid,
+            'suggested_min_people': suggested_min_people,
+            'suggested_max_people': suggested_max_people,
             'delta': delta,
             'within_range': within_range,
             'status': status
