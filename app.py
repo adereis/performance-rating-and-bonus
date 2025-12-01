@@ -611,6 +611,7 @@ def bonus_calculation():
                              budget_override_usd=budget_override_usd,
                              total_pool=0,
                              total_allocated=0,
+                             value_per_share=1.0,
                              has_data=False,
                              missing_bonus_data=False,
                              is_multi_team=False)
@@ -685,6 +686,7 @@ def bonus_calculation():
                              budget_override_usd=budget_override_usd,
                              total_pool=0,
                              total_allocated=0,
+                             value_per_share=1.0,
                              has_data=False,
                              missing_bonus_data=True,
                              is_multi_team=False)

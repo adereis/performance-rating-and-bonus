@@ -674,6 +674,7 @@
     // Configuration from parameters
     const UPSIDE_EXP = {{ params.upside_exponent }};
     const DOWNSIDE_EXP = {{ params.downside_exponent }};
+    const VALUE_PER_SHARE = {{ value_per_share | default(1.0) }};
 
     // Calculate performance multiplier (matches app.py algorithm)
     function calcPerfMultiplier(rating) {
@@ -686,19 +687,15 @@
 
     // Extract team data from bonus results
     const teamResults = {{ team | tojson }};
-    const ratings = teamResults.map(r => r.rating);
-
-    // Calculate normalization factor
-    const rawShares = ratings.map(r => calcPerfMultiplier(r));
-    const totalRawShares = rawShares.reduce((a, b) => a + b, 0);
-    const normFactor = ratings.length / totalRawShares;
 
     // Generate curve data (0-200%)
+    // Payout % = perf_multiplier * value_per_share * 100
+    // This matches the backend calculation: (bonus_target * perf_multiplier * value_per_share) / bonus_target * 100
     const curveRatings = [];
     const curvePayouts = [];
     for (let r = 0; r <= 200; r += 2) {
         curveRatings.push(r);
-        const payout = calcPerfMultiplier(r) * normFactor * 100;
+        const payout = calcPerfMultiplier(r) * VALUE_PER_SHARE * 100;
         curvePayouts.push(payout);
     }
 
@@ -706,7 +703,7 @@
     const teamPointsMap = new Map();
     teamResults.forEach(result => {
         const rating = result.rating;
-        const payout = calcPerfMultiplier(rating) * normFactor * 100;
+        const payout = calcPerfMultiplier(rating) * VALUE_PER_SHARE * 100;
         const key = rating.toString();
 
         if (!teamPointsMap.has(key)) {
@@ -848,7 +845,7 @@
                 },
                 title: {
                     display: true,
-                    text: `Performance-to-Bonus Curve (Normalization Factor: ${normFactor.toFixed(3)})`,
+                    text: 'Performance-to-Bonus Curve',
                     font: {
                         size: 16,
                         weight: 'bold'
