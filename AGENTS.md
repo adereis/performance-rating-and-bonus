@@ -755,6 +755,17 @@ python3 -m pytest tests/ --cov=. --cov-report=html
 **Should Never Happen**: Manager fields are explicitly preserved (see tests/test_import.py)
 **Debug**: Check `convert_xlsx.py` lines handling existing employee updates
 
+### Note: Dual Field Naming Convention
+**Pattern**: Database fields use different names depending on context
+**Example**: Supervisory organization field has three representations:
+- **Database column**: `supervisory_organization` (snake_case)
+- **Python attribute**: `employee.supervisory_organization` (snake_case)
+- **Dictionary key**: `emp.get('Supervisory Organization')` (Title Case, from `to_dict()`)
+
+**Why**: The `to_dict()` method in `models.py` converts snake_case database fields to Title Case with spaces to match the Workday export column headers. This allows dictionaries to be used interchangeably whether they come from database objects or direct Excel imports.
+
+**When it matters**: When writing SQL queries or accessing employee data as dictionaries in `app.py`. Use `'Supervisory Organization'` (with space) for dictionary keys, `supervisory_organization` for database/ORM access.
+
 ---
 
 ## Future Enhancements
