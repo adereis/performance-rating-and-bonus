@@ -314,8 +314,13 @@ def analytics():
         # Determine if within range
         within_range = suggested_min <= percentage <= suggested_max
 
-        # Calculate delta from midpoint of suggested range
-        delta = percentage - suggested_mid
+        # Calculate delta from range limits (0 if within range, otherwise distance from nearest limit)
+        if percentage < suggested_min:
+            delta = percentage - suggested_min  # Negative value (below range)
+        elif percentage > suggested_max:
+            delta = percentage - suggested_max  # Positive value (above range)
+        else:
+            delta = 0  # Within range
 
         # Determine status: green (within), yellow (slightly off), orange (significantly off)
         if within_range:
