@@ -71,10 +71,152 @@ def update_bonus_settings(budget_override_usd):
         db.close()
 
 
+def get_filter_params():
+    """
+    Extract filter parameters from URL query string.
+
+    Returns dict with:
+    {
+        'exclude_managers': bool,
+        'exclude_titles': [str],
+        'exclude_names': [str]
+    }
+    """
+    return {
+        'exclude_managers': request.args.get('exclude_managers', '').lower() == 'true',
+        'exclude_titles': [t.strip() for t in request.args.get('exclude_titles', '').split(',') if t.strip()],
+        'exclude_names': [n.strip() for n in request.args.get('exclude_names', '').split(',') if n.strip()]
+    }
+
+
+def has_direct_reports(employee, all_employees):
+    """
+    Check if an employee has direct reports (is a manager).
+
+    A manager is someone whose name appears in other employees'
+    "Supervisory Organization" field.
+
+    Args:
+        employee: Employee dict to check
+        all_employees: List of all employee dicts
+
+    Returns:
+        bool: True if employee has direct reports
+    """
+    employee_name = employee.get('Associate', '')
+    if not employee_name:
+        return False
+
+    # Check if this employee's name appears in any other employee's supervisory org
+    for other_emp in all_employees:
+        if other_emp.get('Associate ID') == employee.get('Associate ID'):
+            continue  # Skip self
+
+        supervisory_org = other_emp.get('Supervisory Organization', '')
+        if employee_name in supervisory_org:
+            return True
+
+    return False
+
+
+def apply_employee_filters(employees, filter_params):
+    """
+    Apply filters to employee list and return filter metadata.
+
+    Args:
+        employees: List of ALL employee dicts (unfiltered)
+        filter_params: Dict with filter criteria from get_filter_params()
+
+    Returns:
+        tuple: (filtered_employees, filter_info)
+
+        filter_info includes:
+        {
+            'active': bool,              # Any filters active?
+            'total_count': int,          # Original count
+            'filtered_count': int,       # After filtering
+            'hidden_count': int,         # How many hidden
+            'params': filter_params,     # For UI state
+            'available_titles': [str],   # All unique job titles
+            'available_names': [str],    # All employee names
+        }
+    """
+    filtered = employees.copy()
+
+    # Apply manager exclusion
+    if filter_params.get('exclude_managers'):
+        filtered = [emp for emp in filtered if not has_direct_reports(emp, employees)]
+
+    # Apply title exclusion
+    if filter_params.get('exclude_titles'):
+        exclude_titles = filter_params['exclude_titles']
+        filtered = [emp for emp in filtered
+                   if emp.get('Current Job Profile') not in exclude_titles]
+
+    # Apply name exclusion
+    if filter_params.get('exclude_names'):
+        exclude_names = filter_params['exclude_names']
+        filtered = [emp for emp in filtered
+                   if emp.get('Associate') not in exclude_names]
+
+    # Build available options from ALL employees (unfiltered)
+    available_titles = sorted(set(
+        emp.get('Current Job Profile', '')
+        for emp in employees
+        if emp.get('Current Job Profile')
+    ))
+
+    available_names = sorted(
+        emp.get('Associate', '')
+        for emp in employees
+        if emp.get('Associate')
+    )
+
+    # Build manager list (names of employees with direct reports)
+    managers = [
+        emp.get('Associate', '')
+        for emp in employees
+        if has_direct_reports(emp, employees)
+    ]
+
+    # Build employee -> job title mapping
+    employee_titles = {
+        emp.get('Associate', ''): emp.get('Current Job Profile', '')
+        for emp in employees
+        if emp.get('Associate')
+    }
+
+    # Build filter info
+    filter_info = {
+        'active': any([
+            filter_params.get('exclude_managers'),
+            filter_params.get('exclude_titles'),
+            filter_params.get('exclude_names')
+        ]),
+        'total_count': len(employees),
+        'filtered_count': len(filtered),
+        'hidden_count': len(employees) - len(filtered),
+        'params': filter_params,
+        'available_titles': available_titles,
+        'available_names': available_names,
+        'managers': managers,
+        'employee_titles': employee_titles,
+    }
+
+    return filtered, filter_info
+
+
 @app.route('/')
 def index():
     """Main dashboard page."""
-    team_data = get_all_employees()
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     total_employees = len(team_data)
     rated_employees = sum(1 for emp in team_data if emp.get('performance_rating_percent'))
@@ -86,14 +228,22 @@ def index():
         'unrated': unrated_employees
     }
 
-    return render_template('index.html', team=team_data, stats=stats)
+    return render_template('index.html', team=team_data, stats=stats, filter_info=filter_info)
 
 
 @app.route('/rate')
 def rate_page():
     """Rating form page."""
-    team_data = get_all_employees()
-    return render_template('rate.html', team=team_data)
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
+
+    return render_template('rate.html', team=team_data, filter_info=filter_info)
 
 
 @app.route('/api/rate', methods=['POST'])
@@ -325,7 +475,14 @@ def calculate_calibration_for_employees(employees, team_name=None):
 @app.route('/analytics')
 def analytics():
     """Analytics and reports page."""
-    team_data = get_all_employees()
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     # Rating distribution by buckets
     rating_buckets = {
@@ -599,7 +756,8 @@ def analytics():
                          org_tenets_summary=org_tenets_summary,
                          is_multi_team=is_multi_team,
                          team_calibrations=team_calibrations,
-                         team_comparisons=team_comparisons)
+                         team_comparisons=team_comparisons,
+                         filter_info=filter_info)
 
 
 def calculate_bonus_for_employees(employees, params, budget_override_usd=0.0):
@@ -705,7 +863,14 @@ def bonus_calculation():
     settings = get_bonus_settings()
     budget_override_usd = settings.budget_override_usd
 
-    team_data = get_all_employees()
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     # Filter to only rated employees
     rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
@@ -815,13 +980,21 @@ def bonus_calculation():
                          employees_without_bonus_target=org_level_calc['employees_without_bonus_target'],
                          is_multi_team=is_multi_team,
                          team_comparisons=team_comparisons,
-                         teams_data=teams_data)
+                         teams_data=teams_data,
+                         filter_info=filter_info)
 
 
 @app.route('/export')
 def export_page():
     """Export page for Workday bonus allocation."""
-    team_data = get_all_employees()
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     # Filter to rated employees only
     rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
@@ -829,7 +1002,8 @@ def export_page():
     if not rated_employees:
         return render_template('export.html',
                              export_data=[],
-                             has_data=False)
+                             has_data=False,
+                             filter_info=filter_info)
 
     # Get bonus calculation settings
     params = {
@@ -915,13 +1089,21 @@ def export_page():
     return render_template('export.html',
                          export_data=export_data,
                          has_data=True,
-                         total_employees=len(export_data))
+                         total_employees=len(export_data),
+                         filter_info=filter_info)
 
 
 @app.route('/export/csv')
 def export_csv():
     """Export employee data as CSV (same content as Excel)."""
-    team_data = get_all_employees()
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     # Load tenets for description
     tenets_map = {}
@@ -1043,7 +1225,14 @@ def export_csv():
 @app.route('/export/xlsx')
 def export_xlsx():
     """Export employee data as Excel file with all fields."""
-    team_data = get_all_employees()
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     # Create workbook
     wb = Workbook()

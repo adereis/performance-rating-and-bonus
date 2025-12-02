@@ -459,6 +459,200 @@
         .modal-tenet-count.warning {
             color: #e74c3c;
         }
+
+        /* Filter Panel Styles */
+        .filter-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.2s;
+        }
+
+        .filter-toggle:hover {
+            background: #5568d3;
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+        }
+
+        .filter-toggle.active {
+            background: #ff9800;
+        }
+
+        .filter-panel {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            width: 350px;
+            max-height: calc(100vh - 100px);
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 9998;
+            display: none;
+            overflow-y: auto;
+        }
+
+        .filter-panel.show {
+            display: block;
+            animation: slideInRight 0.3s;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .filter-panel-header {
+            padding: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            background: #f8f9fa;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .filter-panel-header h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+
+        .filter-panel-body {
+            padding: 20px;
+        }
+
+        .filter-section {
+            margin-bottom: 20px;
+        }
+
+        .filter-section label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .filter-section .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .filter-section .checkbox-label:hover {
+            background: #e8e9ea;
+        }
+
+        .filter-section .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .filter-section select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            max-height: 150px;
+        }
+
+        .filter-section select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .filter-preview {
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #2c3e50;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .filter-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-actions .btn-apply {
+            background: #667eea;
+            color: white;
+        }
+
+        .filter-actions .btn-apply:hover {
+            background: #5568d3;
+        }
+
+        .filter-actions .btn-clear {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .filter-actions .btn-clear:hover {
+            background: #d0d0d0;
+        }
+
+        /* Filter Banner */
+        .filter-banner {
+            background: #ff9800;
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .filter-banner a {
+            color: white;
+            text-decoration: underline;
+            font-weight: 600;
+        }
+
+        .filter-banner a:hover {
+            text-decoration: none;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -476,7 +670,85 @@
         </div>
     </header>
 
+    <!-- Filter Toggle Button -->
+    <button class="filter-toggle {% if filter_info is defined and filter_info.active %}active{% endif %}"
+            onclick="toggleFilterPanel()"
+            id="filterToggle">
+        🔍 Filters{% if filter_info is defined and filter_info.active %} ({{ filter_info.hidden_count }}){% endif %}
+    </button>
+
+    <!-- Filter Panel -->
+    <div class="filter-panel" id="filterPanel">
+        <div class="filter-panel-header">
+            <h3>Filter Employees</h3>
+        </div>
+        <div class="filter-panel-body">
+            <!-- Quick filter: Exclude managers -->
+            <div class="filter-section">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="excludeManagers"
+                           {% if filter_info is defined and filter_info.params.exclude_managers %}checked{% endif %}>
+                    <span>Exclude managers (people with direct reports)</span>
+                </label>
+            </div>
+
+            <!-- Filter by job title -->
+            <div class="filter-section">
+                <label for="titleSelect">Exclude by Job Title:</label>
+                <select id="titleSelect" multiple size="6">
+                    {% if filter_info is defined %}
+                        {% for title in filter_info.available_titles %}
+                        <option value="{{ title }}"
+                                {% if title in filter_info.params.exclude_titles %}selected{% endif %}>
+                            {{ title }}
+                        </option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+
+            <!-- Filter by name -->
+            <div class="filter-section">
+                <label for="nameSelect">Exclude by Name:</label>
+                <select id="nameSelect" multiple size="6">
+                    {% if filter_info is defined %}
+                        {% for name in filter_info.available_names %}
+                        <option value="{{ name }}"
+                                {% if name in filter_info.params.exclude_names %}selected{% endif %}
+                                data-employee-name="{{ name }}">
+                            {{ name }}
+                        </option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+
+            <!-- Preview -->
+            <div class="filter-preview" id="filterPreview">
+                {% if filter_info is defined %}
+                    Preview: {{ filter_info.hidden_count }} hidden ({{ filter_info.filtered_count }} shown)
+                {% else %}
+                    Select filters to preview
+                {% endif %}
+            </div>
+
+            <!-- Actions -->
+            <div class="filter-actions">
+                <button class="btn-apply" onclick="applyFilters()">Apply Filters</button>
+                <button class="btn-clear" onclick="clearFilters()">Clear All</button>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
+        <!-- Filter Banner -->
+        {% if filter_info is defined and filter_info.active %}
+        <div class="filter-banner">
+            ⚠️ Filters Active: {{ filter_info.hidden_count }} employee(s) hidden
+            <a href="#" onclick="clearFilters(); return false;">Clear filters</a>
+        </div>
+        {% endif %}
+
         {% block content %}{% endblock %}
     </div>
 
@@ -497,6 +769,20 @@
     </div>
 
     <script>
+        // Filter employee metadata for UI updates
+        {% if filter_info is defined %}
+        const filterEmployeeMetadata = {
+            {% for name in filter_info.available_names %}
+            "{{ name }}": {
+                isManager: {{ 'true' if name in filter_info.get('managers', []) else 'false' }},
+                jobTitle: "{{ filter_info.get('employee_titles', {}).get(name, '') }}"
+            }{{ ',' if not loop.last else '' }}
+            {% endfor %}
+        };
+        {% else %}
+        const filterEmployeeMetadata = {};
+        {% endif %}
+
         // Employee Modal Functions
         let currentEmployeeId = null;
         let originalEmployeeData = null;
@@ -911,6 +1197,201 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', makeEmployeeNamesClickable);
+
+        // Filter Panel Management
+        function toggleFilterPanel() {
+            const panel = document.getElementById('filterPanel');
+            panel.classList.toggle('show');
+
+            // Update indicators when opening panel
+            if (panel.classList.contains('show')) {
+                updateNameDropdownIndicators();
+            }
+        }
+
+        // Update name dropdown with visual indicators
+        function updateNameDropdownIndicators() {
+            const nameSelect = document.getElementById('nameSelect');
+            const excludeManagers = document.getElementById('excludeManagers');
+            const titleSelect = document.getElementById('titleSelect');
+
+            if (!nameSelect || !excludeManagers || !titleSelect) return;
+
+            // Get currently manually selected names to preserve selection
+            const selectedNames = Array.from(nameSelect.selectedOptions).map(o => o.value);
+
+            // Get excluded titles
+            const excludedTitles = Array.from(titleSelect.selectedOptions).map(o => o.value);
+
+            // Rebuild options with indicators and auto-selection
+            const options = Array.from(nameSelect.options).map(option => {
+                const name = option.value;
+                const metadata = filterEmployeeMetadata[name];
+
+                if (!metadata) return {
+                    value: name,
+                    text: name,
+                    selected: selectedNames.includes(name)
+                };
+
+                const indicators = [];
+                let autoSelected = false;
+
+                // Check if affected by manager filter
+                if (excludeManagers.checked && metadata.isManager) {
+                    indicators.push('manager');
+                    autoSelected = true;
+                }
+
+                // Check if affected by title filter
+                if (metadata.jobTitle && excludedTitles.includes(metadata.jobTitle)) {
+                    indicators.push(metadata.jobTitle);
+                    autoSelected = true;
+                }
+
+                // Build display text
+                let displayText = name;
+                if (indicators.length > 0) {
+                    displayText += ` (${indicators.join(', ')})`;
+                }
+
+                return {
+                    value: name,
+                    text: displayText,
+                    selected: autoSelected || selectedNames.includes(name)
+                };
+            });
+
+            // Clear and rebuild
+            nameSelect.innerHTML = '';
+            options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.text = opt.text;
+                option.selected = opt.selected;
+                option.setAttribute('data-employee-name', opt.value);
+                nameSelect.appendChild(option);
+            });
+        }
+
+        function applyFilters() {
+            const params = new URLSearchParams();
+
+            // Manager exclusion
+            const excludeManagers = document.getElementById('excludeManagers');
+            if (excludeManagers && excludeManagers.checked) {
+                params.set('exclude_managers', 'true');
+            }
+
+            // Title exclusion
+            const titleSelect = document.getElementById('titleSelect');
+            if (titleSelect) {
+                const titles = Array.from(titleSelect.selectedOptions).map(o => o.value);
+                if (titles.length) {
+                    params.set('exclude_titles', titles.join(','));
+                }
+            }
+
+            // Name exclusion
+            const nameSelect = document.getElementById('nameSelect');
+            if (nameSelect) {
+                const names = Array.from(nameSelect.selectedOptions).map(o => o.value);
+                if (names.length) {
+                    params.set('exclude_names', names.join(','));
+                }
+            }
+
+            // Save to sessionStorage
+            sessionStorage.setItem('filters', JSON.stringify({
+                exclude_managers: excludeManagers ? excludeManagers.checked : false,
+                exclude_titles: titleSelect ? Array.from(titleSelect.selectedOptions).map(o => o.value) : [],
+                exclude_names: nameSelect ? Array.from(nameSelect.selectedOptions).map(o => o.value) : []
+            }));
+
+            // Reload with params
+            window.location.search = params.toString();
+        }
+
+        function clearFilters() {
+            // Clear sessionStorage
+            sessionStorage.removeItem('filters');
+
+            // Reload without params
+            window.location.href = window.location.pathname;
+        }
+
+        // Restore filters from sessionStorage on navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Only restore if no URL params present (navigating from another page)
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasUrlFilters = urlParams.has('exclude_managers') ||
+                                urlParams.has('exclude_titles') ||
+                                urlParams.has('exclude_names');
+
+            if (!hasUrlFilters) {
+                const savedFilters = sessionStorage.getItem('filters');
+                if (savedFilters) {
+                    try {
+                        const filters = JSON.parse(savedFilters);
+
+                        // Apply filters via URL
+                        const params = new URLSearchParams();
+
+                        if (filters.exclude_managers) {
+                            params.set('exclude_managers', 'true');
+                        }
+
+                        if (filters.exclude_titles && filters.exclude_titles.length) {
+                            params.set('exclude_titles', filters.exclude_titles.join(','));
+                        }
+
+                        if (filters.exclude_names && filters.exclude_names.length) {
+                            params.set('exclude_names', filters.exclude_names.join(','));
+                        }
+
+                        // Only reload if there are filters to apply
+                        if (params.toString()) {
+                            window.location.search = params.toString();
+                        }
+                    } catch (e) {
+                        console.error('Error restoring filters:', e);
+                    }
+                }
+            }
+        });
+
+        // Close filter panel when clicking outside
+        document.addEventListener('click', function(event) {
+            const panel = document.getElementById('filterPanel');
+            const toggle = document.getElementById('filterToggle');
+
+            if (panel && toggle &&
+                !panel.contains(event.target) &&
+                !toggle.contains(event.target) &&
+                panel.classList.contains('show')) {
+                panel.classList.remove('show');
+            }
+        });
+
+        // Initialize filter UI listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const excludeManagers = document.getElementById('excludeManagers');
+            const titleSelect = document.getElementById('titleSelect');
+
+            // Listen for changes to update name dropdown indicators
+            if (excludeManagers) {
+                excludeManagers.addEventListener('change', updateNameDropdownIndicators);
+            }
+
+            if (titleSelect) {
+                titleSelect.addEventListener('change', updateNameDropdownIndicators);
+            }
+
+            // Initial update if filter panel data exists
+            if (Object.keys(filterEmployeeMetadata).length > 0) {
+                updateNameDropdownIndicators();
+            }
+        });
     </script>
 
     {% block extra_js %}{% endblock %}
