@@ -1103,8 +1103,9 @@
             if (mentorInput) mentorInput.addEventListener('input', markDirty);
             if (menteesInput) menteesInput.addEventListener('input', markDirty);
 
-            // Track tenet checkboxes
-            const tenetCheckboxes = document.querySelectorAll('input[data-tenet-type]');
+            // Track tenet checkboxes (only within modal, not from rate page)
+            const modal = document.getElementById('employeeModal');
+            const tenetCheckboxes = modal.querySelectorAll('input[data-tenet-type]');
             tenetCheckboxes.forEach(cb => cb.addEventListener('change', markDirty));
         }
 
@@ -1146,9 +1147,10 @@
             saveButton.disabled = true;
             saveButton.textContent = 'Saving...';
 
-            // Collect selected tenets
-            const strengthCheckboxes = document.querySelectorAll('input[data-tenet-type="strengths"]:checked');
-            const improvementCheckboxes = document.querySelectorAll('input[data-tenet-type="improvements"]:checked');
+            // Collect selected tenets (only from modal, not from rate page cards)
+            const modal = document.getElementById('employeeModal');
+            const strengthCheckboxes = modal.querySelectorAll('input[data-tenet-type="strengths"]:checked');
+            const improvementCheckboxes = modal.querySelectorAll('input[data-tenet-type="improvements"]:checked');
 
             const tenetsStrengths = Array.from(strengthCheckboxes).map(cb => cb.value);
             const tenetsImprovements = Array.from(improvementCheckboxes).map(cb => cb.value);
