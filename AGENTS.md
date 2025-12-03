@@ -126,6 +126,10 @@ To achieve similar results with AI assistance:
 - Chart.js for data visualizations
 - **Sortable tables**: Use `.sortable` class on headers with `data-sort` attributes
 - **Data attributes**: Store sortable values on table rows as `data-{column}` attributes
+- **Employee identification**: Always use `data-employee-id` attribute (never `data-employee-name`)
+  - Employee names can be duplicated; `associate_id` is the unique primary key
+  - All clickable employee names must have: `<span class="employee-name" data-employee-id="{{ employee['Associate ID'] }}">`
+  - All API endpoints use IDs, not names
 
 ### Visualization Patterns
 - **Chart.js** for standard charts (bar, line, pie)
@@ -147,6 +151,18 @@ To achieve similar results with AI assistance:
 - Import flow: Workday XLSX → `convert_xlsx.py` → SQLite → Flask API → Web UI
 
 ### Key Design Decisions
+
+#### Employee Identification by ID (Not Name)
+- **Primary key**: `associate_id` is the unique identifier for all employees
+- **Why**: Employee names can be duplicated (e.g., two "John Smith"s in different departments)
+- **Everywhere IDs are used**:
+  - API endpoints: `/api/employee/<associate_id>` (not name)
+  - Filter system: `exclude_ids` parameter (not `exclude_names`)
+  - Employee modal: Opens by ID, saves by ID
+  - Frontend: All clickable names use `data-employee-id` attribute
+  - JavaScript: All fetch calls use IDs to identify employees
+- **Display**: Names are shown to users, but IDs are used for all data operations
+- **Critical**: Never use employee names as identifiers in URLs, API calls, or data attributes
 
 #### Local-First Architecture
 - **No cloud dependencies**: SQLite only, no external databases

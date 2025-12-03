@@ -509,12 +509,12 @@
                 <tbody id="compact-table-body">
                     {% for employee in team %}
                     <tr class="{% if employee.performance_rating_percent %}has-rating{% endif %}"
-                        data-associate="{{ employee.Associate }}"
+                        data-associate-id="{{ employee['Associate ID'] }}"
                         data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}"
                         data-name="{{ employee.Associate }}"
                         data-job="{{ employee['Current Job Profile'] }}"
                         data-rating="{{ employee.performance_rating_percent or 0 }}">
-                        <td><strong><span class="employee-name" data-employee-name="{{ employee.Associate }}">{{ employee.Associate }}</span></strong></td>
+                        <td><strong><span class="employee-name" data-employee-id="{{ employee['Associate ID'] }}">{{ employee.Associate }}</span></strong></td>
                         <td>{{ employee['Current Job Profile'] }}</td>
                         <td>
                             <input type="number"
@@ -524,11 +524,11 @@
                                    placeholder="0-200"
                                    value="{{ employee.performance_rating_percent }}"
                                    class="compact-rating-input"
-                                   data-associate="{{ employee.Associate }}">
+                                   data-associate-id="{{ employee['Associate ID'] }}">
                             <span class="validation-error" style="display: none;"></span>
                         </td>
                         <td>
-                            <span class="compact-save-indicator" data-associate="{{ employee.Associate }}">
+                            <span class="compact-save-indicator" data-associate-id="{{ employee['Associate ID'] }}">
                                 {% if employee.last_updated %}✓ {{ employee.last_updated }}{% endif %}
                             </span>
                         </td>
@@ -543,13 +543,13 @@
     <div class="rating-form" id="detailed-view">
         {% for employee in team %}
         <div class="employee-card {% if employee.performance_rating_percent %}rated{% endif %}"
-             data-associate="{{ employee.Associate }}"
+             data-associate-id="{{ employee['Associate ID'] }}"
              data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}">
 
             <div class="employee-header">
                 <div>
                     <label>Name</label>
-                    <span class="employee-name" data-employee-name="{{ employee.Associate }}">{{ employee.Associate }}</span>
+                    <span class="employee-name" data-employee-id="{{ employee['Associate ID'] }}">{{ employee.Associate }}</span>
                 </div>
                 <div>
                     <label>Job Profile</label>
@@ -630,15 +630,15 @@
 // Auto-save functionality
 const autoSaveTimers = {};
 
-function autoSave(associateName, card) {
+function autoSave(associateId, card) {
     // Clear existing timer for this employee
-    if (autoSaveTimers[associateName]) {
-        clearTimeout(autoSaveTimers[associateName]);
+    if (autoSaveTimers[associateId]) {
+        clearTimeout(autoSaveTimers[associateId]);
     }
 
     // Set new timer - save after 2 seconds of inactivity
-    autoSaveTimers[associateName] = setTimeout(() => {
-        saveRating(associateName, card);
+    autoSaveTimers[associateId] = setTimeout(() => {
+        saveRating(associateId, card);
     }, 2000);
 }
 
@@ -673,7 +673,7 @@ function validateRating(ratingInput) {
     return true;
 }
 
-function saveRating(associateName, card) {
+function saveRating(associateId, card) {
     const inputs = card.querySelectorAll('[data-field]');
 
     // Validate rating input first
@@ -684,7 +684,7 @@ function saveRating(associateName, card) {
     }
 
     const data = {
-        associate_name: associateName,
+        associate_id: associateId,
         rating_percent: '',
         justification: '',
         mentor: '',
@@ -842,7 +842,7 @@ function validateCompactRating(input) {
 
 const compactSaveTimers = {};
 
-function saveCompactRating(associateName, input) {
+function saveCompactRating(associateId, input) {
     if (!validateCompactRating(input)) {
         return;
     }
@@ -855,7 +855,7 @@ function saveCompactRating(associateName, input) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            associate_name: associateName,
+            associate_id: associateId,
             rating_percent: ratingValue,
             justification: '',
             mentor: '',
@@ -865,7 +865,7 @@ function saveCompactRating(associateName, input) {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            const indicator = document.querySelector(`.compact-save-indicator[data-associate="${associateName}"]`);
+            const indicator = document.querySelector(`.compact-save-indicator[data-associate-id="${associateId}"]`);
             const now = new Date();
             const timestamp = now.toLocaleTimeString();
             indicator.textContent = `✓ ${timestamp}`;
@@ -894,13 +894,13 @@ function saveCompactRating(associateName, input) {
     });
 }
 
-function autoSaveCompact(associateName, input) {
-    if (compactSaveTimers[associateName]) {
-        clearTimeout(compactSaveTimers[associateName]);
+function autoSaveCompact(associateId, input) {
+    if (compactSaveTimers[associateId]) {
+        clearTimeout(compactSaveTimers[associateId]);
     }
 
-    compactSaveTimers[associateName] = setTimeout(() => {
-        saveCompactRating(associateName, input);
+    compactSaveTimers[associateId] = setTimeout(() => {
+        saveCompactRating(associateId, input);
     }, 2000);
 }
 
@@ -969,7 +969,7 @@ function renderTenets() {
     const cards = document.querySelectorAll('.employee-card');
 
     cards.forEach(card => {
-        const associateName = card.getAttribute('data-associate');
+        const associateId = card.getAttribute('data-associate-id');
         const loadingEl = card.querySelector('.loading-tenets');
         const tenetsGrid = card.querySelector('.tenets-grid');
         const strengthsContainer = card.querySelector('.tenet-items[data-tenet-type="strengths"]');
@@ -977,7 +977,7 @@ function renderTenets() {
 
         // Get existing selections from employee data
         const employeeData = {{ team | tojson }};
-        const employee = employeeData.find(e => e.Associate === associateName);
+        const employee = employeeData.find(e => e['Associate ID'] === associateId);
         let existingStrengths = [];
         let existingImprovements = [];
 
@@ -1047,7 +1047,7 @@ function createTenetCheckbox(tenet, type, checked) {
 }
 
 function setupTenetListeners(card) {
-    const associateName = card.getAttribute('data-associate');
+    const associateId = card.getAttribute('data-associate-id');
     const strengthCheckboxes = card.querySelectorAll('input[data-tenet-type="strengths"]');
     const improvementCheckboxes = card.querySelectorAll('input[data-tenet-type="improvements"]');
 
@@ -1091,7 +1091,7 @@ function setupTenetListeners(card) {
         });
 
         // Auto-save on change
-        autoSave(associateName, card);
+        autoSave(associateId, card);
     };
 
     const handleAnyTenetChange = () => {
@@ -1114,19 +1114,19 @@ function setupTenetListeners(card) {
 // Save all pending changes before page unload
 window.addEventListener('beforeunload', function(e) {
     // Clear all pending timers and save immediately
-    Object.keys(autoSaveTimers).forEach(associateName => {
-        clearTimeout(autoSaveTimers[associateName]);
-        const card = document.querySelector(`.employee-card[data-associate="${associateName}"]`);
+    Object.keys(autoSaveTimers).forEach(associateId => {
+        clearTimeout(autoSaveTimers[associateId]);
+        const card = document.querySelector(`.employee-card[data-associate-id="${associateId}"]`);
         if (card) {
-            saveRating(associateName, card);
+            saveRating(associateId, card);
         }
     });
 
-    Object.keys(compactSaveTimers).forEach(associateName => {
-        clearTimeout(compactSaveTimers[associateName]);
-        const input = document.querySelector(`.compact-rating-input[data-associate="${associateName}"]`);
+    Object.keys(compactSaveTimers).forEach(associateId => {
+        clearTimeout(compactSaveTimers[associateId]);
+        const input = document.querySelector(`.compact-rating-input[data-associate-id="${associateId}"]`);
         if (input) {
-            saveCompactRating(associateName, input);
+            saveCompactRating(associateId, input);
         }
     });
 });
@@ -1149,26 +1149,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const cards = document.querySelectorAll('.employee-card');
 
     cards.forEach(card => {
-        const associateName = card.getAttribute('data-associate');
+        const associateId = card.getAttribute('data-associate-id');
         const inputs = card.querySelectorAll('[data-field]');
 
         inputs.forEach(input => {
             // Auto-save on blur (when leaving a field)
             input.addEventListener('blur', () => {
-                autoSave(associateName, card);
+                autoSave(associateId, card);
             });
 
             // Real-time validation for rating input
             if (input.getAttribute('data-field') === 'rating_percent') {
                 input.addEventListener('input', () => {
                     validateRating(input);
-                    autoSave(associateName, card);
+                    autoSave(associateId, card);
                 });
             }
             // Also auto-save on input for text fields (with debounce)
             else if (input.tagName === 'TEXTAREA' || input.type === 'text' || input.type === 'number') {
                 input.addEventListener('input', () => {
-                    autoSave(associateName, card);
+                    autoSave(associateId, card);
                 });
             }
         });
@@ -1178,15 +1178,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const compactInputs = document.querySelectorAll('.compact-rating-input');
 
     compactInputs.forEach(input => {
-        const associateName = input.getAttribute('data-associate');
+        const associateId = input.getAttribute('data-associate-id');
 
         input.addEventListener('input', () => {
             validateCompactRating(input);
-            autoSaveCompact(associateName, input);
+            autoSaveCompact(associateId, input);
         });
 
         input.addEventListener('blur', () => {
-            autoSaveCompact(associateName, input);
+            autoSaveCompact(associateId, input);
         });
     });
 });

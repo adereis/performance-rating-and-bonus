@@ -712,11 +712,12 @@
                 <label for="nameSelect">Exclude by Name:</label>
                 <select id="nameSelect" multiple size="6">
                     {% if filter_info is defined %}
-                        {% for name in filter_info.available_names %}
-                        <option value="{{ name }}"
-                                {% if name in filter_info.params.exclude_names %}selected{% endif %}
-                                data-employee-name="{{ name }}">
-                            {{ name }}
+                        {% for employee in filter_info.available_employees %}
+                        <option value="{{ employee.id }}"
+                                {% if employee.id in filter_info.params.exclude_ids %}selected{% endif %}
+                                data-employee-id="{{ employee.id }}"
+                                data-employee-name="{{ employee.name }}">
+                            {{ employee.name }}
                         </option>
                         {% endfor %}
                     {% endif %}
@@ -772,18 +773,19 @@
         // Filter employee metadata for UI updates
         {% if filter_info is defined %}
         const filterEmployeeMetadata = {
-            {% for name in filter_info.available_names %}
-            {{ name|tojson }}: {
-                isManager: {{ 'true' if name in filter_info.get('managers', []) else 'false' }},
-                jobTitle: {{ filter_info.get('employee_titles', {}).get(name, '')|tojson }}
+            {% for employee in filter_info.available_employees %}
+            {{ employee.id|tojson }}: {
+                name: {{ employee.name|tojson }},
+                isManager: {{ 'true' if employee.id in filter_info.get('manager_ids', []) else 'false' }},
+                jobTitle: {{ filter_info.get('employee_titles', {}).get(employee.id, '')|tojson }}
             }{{ ',' if not loop.last else '' }}
             {% endfor %}
         };
 
         // Store initial URL param selections (the "true" manual selections to preserve)
         const initialManualSelections = new Set([
-            {% for name in filter_info.params.exclude_names %}
-            {{ name|tojson }}{{ ',' if not loop.last else '' }}
+            {% for employee_id in filter_info.params.exclude_ids %}
+            {{ employee_id|tojson }}{{ ',' if not loop.last else '' }}
             {% endfor %}
         ]);
         {% else %}
@@ -814,7 +816,7 @@
                 });
         }
 
-        function openEmployeeModal(employeeName) {
+        function openEmployeeModal(employeeId) {
             const modal = document.getElementById('employeeModal');
             const modalBody = document.getElementById('employeeModalBody');
             const modalTitle = document.getElementById('employeeModalTitle');
@@ -832,7 +834,7 @@
             // Load tenets and employee data in parallel
             Promise.all([
                 loadModalTenets(),
-                fetch(`/api/employee/${encodeURIComponent(employeeName)}`).then(r => r.json())
+                fetch(`/api/employee/${encodeURIComponent(employeeId)}`).then(r => r.json())
             ])
             .then(([tenets, data]) => {
                 if (data.success) {
@@ -1151,7 +1153,7 @@
             const tenetsImprovements = Array.from(improvementCheckboxes).map(cb => cb.value);
 
             const data = {
-                associate_name: originalEmployeeData.Associate,
+                associate_id: originalEmployeeData['Associate ID'],
                 rating_percent: document.getElementById('modal_rating_percent').value,
                 justification: document.getElementById('modal_justification').value,
                 mentor: document.getElementById('modal_mentor').value,
@@ -1234,9 +1236,9 @@
                 element.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    const employeeName = this.getAttribute('data-employee-name');
-                    if (employeeName) {
-                        openEmployeeModal(employeeName);
+                    const employeeId = this.getAttribute('data-employee-id');
+                    if (employeeId) {
+                        openEmployeeModal(employeeId);
                     }
                 });
             });
@@ -1270,15 +1272,15 @@
             // Rebuild options with indicators and auto-selection
             // Preserve both auto-selections AND manual selections from URL params
             const options = Array.from(nameSelect.options).map(option => {
-                const name = option.value;
-                const metadata = filterEmployeeMetadata[name];
+                const employeeId = option.value;
+                const metadata = filterEmployeeMetadata[employeeId];
 
-                // Check if this name was manually selected (from URL params)
-                const isManuallySelected = initialManualSelections.has(name);
+                // Check if this employee was manually selected (from URL params)
+                const isManuallySelected = initialManualSelections.has(employeeId);
 
                 if (!metadata) return {
-                    value: name,
-                    text: name,
+                    value: employeeId,
+                    text: option.getAttribute('data-employee-name') || employeeId,
                     selected: isManuallySelected
                 };
 
@@ -1298,14 +1300,15 @@
                 }
 
                 // Build display text
-                let displayText = name;
+                let displayText = metadata.name;
                 if (indicators.length > 0) {
                     displayText += ` (${indicators.join(', ')})`;
                 }
 
                 return {
-                    value: name,
+                    value: employeeId,
                     text: displayText,
+                    name: metadata.name,
                     selected: autoSelected || isManuallySelected
                 };
             });
@@ -1317,7 +1320,8 @@
                 option.value = opt.value;
                 option.text = opt.text;
                 option.selected = opt.selected;
-                option.setAttribute('data-employee-name', opt.value);
+                option.setAttribute('data-employee-id', opt.value);
+                option.setAttribute('data-employee-name', opt.name || opt.text);
                 nameSelect.appendChild(option);
             });
         }
@@ -1340,12 +1344,12 @@
                 }
             }
 
-            // Name exclusion
+            // ID exclusion
             const nameSelect = document.getElementById('nameSelect');
             if (nameSelect) {
-                const names = Array.from(nameSelect.selectedOptions).map(o => o.value);
-                if (names.length) {
-                    params.set('exclude_names', names.join(','));
+                const ids = Array.from(nameSelect.selectedOptions).map(o => o.value);
+                if (ids.length) {
+                    params.set('exclude_ids', ids.join(','));
                 }
             }
 
@@ -1353,7 +1357,7 @@
             sessionStorage.setItem('filters', JSON.stringify({
                 exclude_managers: excludeManagers ? excludeManagers.checked : false,
                 exclude_titles: titleSelect ? Array.from(titleSelect.selectedOptions).map(o => o.value) : [],
-                exclude_names: nameSelect ? Array.from(nameSelect.selectedOptions).map(o => o.value) : []
+                exclude_ids: nameSelect ? Array.from(nameSelect.selectedOptions).map(o => o.value) : []
             }));
 
             // Reload with params
@@ -1374,7 +1378,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const hasUrlFilters = urlParams.has('exclude_managers') ||
                                 urlParams.has('exclude_titles') ||
-                                urlParams.has('exclude_names');
+                                urlParams.has('exclude_ids');
 
             if (!hasUrlFilters) {
                 const savedFilters = sessionStorage.getItem('filters');
@@ -1393,8 +1397,8 @@
                             params.set('exclude_titles', filters.exclude_titles.join(','));
                         }
 
-                        if (filters.exclude_names && filters.exclude_names.length) {
-                            params.set('exclude_names', filters.exclude_names.join(','));
+                        if (filters.exclude_ids && filters.exclude_ids.length) {
+                            params.set('exclude_ids', filters.exclude_ids.join(','));
                         }
 
                         // Only reload if there are filters to apply

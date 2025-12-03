@@ -29,7 +29,7 @@ class TestAPIEndpoints:
     def test_rate_employee_success(self, client, populated_db):
         """Test successfully rating an employee."""
         data = {
-            'associate_name': 'Diana Prince',
+            'associate_id': 'EMP004',
             'rating_percent': '110',
             'justification': 'Great work on product launch',
             'mentor': 'Bob Smith',
@@ -59,7 +59,7 @@ class TestAPIEndpoints:
     def test_rate_employee_update_existing_rating(self, client, populated_db):
         """Test updating an existing rating."""
         data = {
-            'associate_name': 'Alice Johnson',
+            'associate_id': 'EMP001',
             'rating_percent': '130',
             'justification': 'Updated justification',
             'mentor': 'New mentor',
@@ -94,12 +94,12 @@ class TestAPIEndpoints:
         assert response.status_code == 400
         result = json.loads(response.data)
         assert 'error' in result
-        assert result['error'] == 'Missing associate name'
+        assert result['error'] == 'Missing associate ID'
 
     def test_rate_employee_not_found(self, client, populated_db):
         """Test rating non-existent employee."""
         data = {
-            'associate_name': 'Nonexistent Person',
+            'associate_id': 'NONEXISTENT',
             'rating_percent': '100'
         }
 
@@ -115,7 +115,7 @@ class TestAPIEndpoints:
     def test_rate_employee_invalid_rating_too_high(self, client, populated_db):
         """Test rating validation - value too high."""
         data = {
-            'associate_name': 'Alice Johnson',
+            'associate_id': 'EMP001',
             'rating_percent': '250'
         }
 
@@ -131,7 +131,7 @@ class TestAPIEndpoints:
     def test_rate_employee_invalid_rating_negative(self, client, populated_db):
         """Test rating validation - negative value."""
         data = {
-            'associate_name': 'Alice Johnson',
+            'associate_id': 'EMP001',
             'rating_percent': '-10'
         }
 
@@ -147,7 +147,7 @@ class TestAPIEndpoints:
     def test_rate_employee_invalid_rating_format(self, client, populated_db):
         """Test rating validation - invalid format."""
         data = {
-            'associate_name': 'Alice Johnson',
+            'associate_id': 'EMP001',
             'rating_percent': 'abc'
         }
 
@@ -163,7 +163,7 @@ class TestAPIEndpoints:
     def test_rate_employee_empty_rating(self, client, populated_db):
         """Test rating with empty rating value (valid - unrating)."""
         data = {
-            'associate_name': 'Alice Johnson',
+            'associate_id': 'EMP001',
             'rating_percent': '',
             'justification': 'Removing rating temporarily'
         }
@@ -186,7 +186,7 @@ class TestAPIEndpoints:
         """Test rating with boundary values 0 and 200."""
         # Test 0
         data = {
-            'associate_name': 'Alice Johnson',
+            'associate_id': 'EMP001',
             'rating_percent': '0'
         }
 
@@ -213,7 +213,7 @@ class TestAPIEndpoints:
     def test_rate_employee_decimal_rating(self, client, populated_db):
         """Test rating with decimal values."""
         data = {
-            'associate_name': 'Alice Johnson',
+            'associate_id': 'EMP001',
             'rating_percent': '123.5'
         }
 
@@ -232,7 +232,7 @@ class TestAPIEndpoints:
     def test_rate_employee_only_manager_fields(self, client, populated_db):
         """Test updating only manager input fields without rating."""
         data = {
-            'associate_name': 'Diana Prince',
+            'associate_id': 'EMP004',
             'rating_percent': '',
             'justification': 'Work in progress',
             'mentor': 'Alice Johnson',
@@ -254,8 +254,8 @@ class TestAPIEndpoints:
         assert employee.mentor == 'Alice Johnson'
 
     def test_get_employee_details_success(self, client, populated_db):
-        """Test getting employee details by name."""
-        response = client.get('/api/employee/Diana%20Prince')
+        """Test getting employee details by ID."""
+        response = client.get('/api/employee/EMP004')
 
         assert response.status_code == 200
         result = json.loads(response.data)
@@ -269,7 +269,7 @@ class TestAPIEndpoints:
 
     def test_get_employee_details_not_found(self, client, populated_db):
         """Test getting details for non-existent employee."""
-        response = client.get('/api/employee/Nonexistent%20Person')
+        response = client.get('/api/employee/NONEXISTENT')
 
         assert response.status_code == 404
         result = json.loads(response.data)

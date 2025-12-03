@@ -26,11 +26,11 @@ def get_all_employees():
         db.close()
 
 
-def get_employee_by_name(associate_name):
-    """Get a single employee by name."""
+def get_employee_by_id(associate_id):
+    """Get a single employee by ID."""
     db = get_db()
     try:
-        return db.query(Employee).filter(Employee.associate == associate_name).first()
+        return db.query(Employee).filter(Employee.associate_id == associate_id).first()
     finally:
         db.close()
 
@@ -79,13 +79,13 @@ def get_filter_params():
     {
         'exclude_managers': bool,
         'exclude_titles': [str],
-        'exclude_names': [str]
+        'exclude_ids': [str]
     }
     """
     return {
         'exclude_managers': request.args.get('exclude_managers', '').lower() == 'true',
         'exclude_titles': [t.strip() for t in request.args.get('exclude_titles', '').split(',') if t.strip()],
-        'exclude_names': [n.strip() for n in request.args.get('exclude_names', '').split(',') if n.strip()]
+        'exclude_ids': [i.strip() for i in request.args.get('exclude_ids', '').split(',') if i.strip()]
     }
 
 
@@ -132,13 +132,15 @@ def apply_employee_filters(employees, filter_params):
 
         filter_info includes:
         {
-            'active': bool,              # Any filters active?
-            'total_count': int,          # Original count
-            'filtered_count': int,       # After filtering
-            'hidden_count': int,         # How many hidden
-            'params': filter_params,     # For UI state
-            'available_titles': [str],   # All unique job titles
-            'available_names': [str],    # All employee names
+            'active': bool,                     # Any filters active?
+            'total_count': int,                 # Original count
+            'filtered_count': int,              # After filtering
+            'hidden_count': int,                # How many hidden
+            'params': filter_params,            # For UI state
+            'available_titles': [str],          # All unique job titles
+            'available_employees': [dict],      # All employees [{id, name}]
+            'manager_ids': [str],               # IDs of managers
+            'employee_titles': {id: title},     # ID -> job title mapping
         }
     """
     filtered = employees.copy()
@@ -153,11 +155,11 @@ def apply_employee_filters(employees, filter_params):
         filtered = [emp for emp in filtered
                    if emp.get('Current Job Profile') not in exclude_titles]
 
-    # Apply name exclusion
-    if filter_params.get('exclude_names'):
-        exclude_names = filter_params['exclude_names']
+    # Apply ID exclusion
+    if filter_params.get('exclude_ids'):
+        exclude_ids = filter_params['exclude_ids']
         filtered = [emp for emp in filtered
-                   if emp.get('Associate') not in exclude_names]
+                   if emp.get('Associate ID') not in exclude_ids]
 
     # Build available options from ALL employees (unfiltered)
     available_titles = sorted(set(
@@ -166,24 +168,26 @@ def apply_employee_filters(employees, filter_params):
         if emp.get('Current Job Profile')
     ))
 
-    available_names = sorted(
-        emp.get('Associate', '')
-        for emp in employees
-        if emp.get('Associate')
+    # Build list of employees with ID, name pairs (sorted by name for UI)
+    available_employees = sorted(
+        [{'id': emp.get('Associate ID', ''), 'name': emp.get('Associate', '')}
+         for emp in employees
+         if emp.get('Associate ID') and emp.get('Associate')],
+        key=lambda x: x['name']
     )
 
-    # Build manager list (names of employees with direct reports)
-    managers = [
-        emp.get('Associate', '')
+    # Build manager list (IDs of employees with direct reports)
+    manager_ids = [
+        emp.get('Associate ID', '')
         for emp in employees
         if has_direct_reports(emp, employees)
     ]
 
-    # Build employee -> job title mapping
+    # Build employee ID -> job title mapping
     employee_titles = {
-        emp.get('Associate', ''): emp.get('Current Job Profile', '')
+        emp.get('Associate ID', ''): emp.get('Current Job Profile', '')
         for emp in employees
-        if emp.get('Associate')
+        if emp.get('Associate ID')
     }
 
     # Build filter info
@@ -191,15 +195,15 @@ def apply_employee_filters(employees, filter_params):
         'active': any([
             filter_params.get('exclude_managers'),
             filter_params.get('exclude_titles'),
-            filter_params.get('exclude_names')
+            filter_params.get('exclude_ids')
         ]),
         'total_count': len(employees),
         'filtered_count': len(filtered),
         'hidden_count': len(employees) - len(filtered),
         'params': filter_params,
         'available_titles': available_titles,
-        'available_names': available_names,
-        'managers': managers,
+        'available_employees': available_employees,
+        'manager_ids': manager_ids,
         'employee_titles': employee_titles,
     }
 
@@ -250,7 +254,7 @@ def rate_page():
 def rate_employee():
     """API endpoint to rate an employee and save additional manager inputs."""
     data = request.get_json()
-    associate_name = data.get('associate_name')
+    associate_id = data.get('associate_id')
     rating_percent = data.get('rating_percent')
     justification = data.get('justification', '')
     mentor = data.get('mentor', '')
@@ -258,8 +262,8 @@ def rate_employee():
     tenets_strengths = data.get('tenets_strengths', [])
     tenets_improvements = data.get('tenets_improvements', [])
 
-    if not associate_name:
-        return jsonify({'error': 'Missing associate name'}), 400
+    if not associate_id:
+        return jsonify({'error': 'Missing associate ID'}), 400
 
     # Validate rating percent
     if rating_percent is not None and rating_percent != '':
@@ -291,7 +295,7 @@ def rate_employee():
 
     db = get_db()
     try:
-        employee = db.query(Employee).filter(Employee.associate == associate_name).first()
+        employee = db.query(Employee).filter(Employee.associate_id == associate_id).first()
 
         if not employee:
             return jsonify({'error': 'Employee not found'}), 404
@@ -360,16 +364,16 @@ def bonus_settings_api():
             return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/employee/<associate_name>', methods=['GET'])
-def get_employee_details(associate_name):
-    """API endpoint to get details for a specific employee by name."""
+@app.route('/api/employee/<associate_id>', methods=['GET'])
+def get_employee_details(associate_id):
+    """API endpoint to get details for a specific employee by ID."""
     try:
-        employee = get_employee_by_name(associate_name)
+        employee = get_employee_by_id(associate_id)
 
         if not employee:
             return jsonify({
                 'success': False,
-                'error': f'Employee not found: {associate_name}'
+                'error': f'Employee not found: {associate_id}'
             }), 404
 
         return jsonify({

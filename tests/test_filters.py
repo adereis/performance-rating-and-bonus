@@ -61,7 +61,7 @@ class TestFilterApplication:
         filter_params = {
             'exclude_managers': False,
             'exclude_titles': [],
-            'exclude_names': []
+            'exclude_ids': []
         }
 
         filtered, info = apply_employee_filters(employees, filter_params)
@@ -82,7 +82,7 @@ class TestFilterApplication:
         filter_params = {
             'exclude_managers': True,
             'exclude_titles': [],
-            'exclude_names': []
+            'exclude_ids': []
         }
 
         filtered, info = apply_employee_filters(employees, filter_params)
@@ -104,7 +104,7 @@ class TestFilterApplication:
         filter_params = {
             'exclude_managers': False,
             'exclude_titles': ['Senior Engineer'],
-            'exclude_names': []
+            'exclude_ids': []
         }
 
         filtered, info = apply_employee_filters(employees, filter_params)
@@ -125,7 +125,7 @@ class TestFilterApplication:
         filter_params = {
             'exclude_managers': False,
             'exclude_titles': [],
-            'exclude_names': ['Alice', 'Charlie']
+            'exclude_ids': ['E001', 'E003']  # Alice and Charlie IDs
         }
 
         filtered, info = apply_employee_filters(employees, filter_params)
@@ -147,7 +147,7 @@ class TestFilterApplication:
         filter_params = {
             'exclude_managers': True,      # Excludes Alice
             'exclude_titles': ['Principal Engineer'],  # Excludes Charlie
-            'exclude_names': ['Diana IC']  # Excludes Diana
+            'exclude_ids': ['E003']  # Excludes Diana IC
         }
 
         filtered, info = apply_employee_filters(employees, filter_params)
@@ -169,7 +169,7 @@ class TestFilterApplication:
         filter_params = {
             'exclude_managers': False,
             'exclude_titles': [],
-            'exclude_names': ['Alice']  # Filter out Alice
+            'exclude_ids': ['E001']  # Filter out Alice
         }
 
         filtered, info = apply_employee_filters(employees, filter_params)
@@ -177,10 +177,11 @@ class TestFilterApplication:
         # Alice should be filtered out
         assert len(filtered) == 2
 
-        # But Alice should still appear in available_names
-        assert 'Alice' in info['available_names']
-        assert 'Bob' in info['available_names']
-        assert 'Charlie' in info['available_names']
+        # But Alice should still appear in available_employees
+        employee_names = [emp['name'] for emp in info['available_employees']]
+        assert 'Alice' in employee_names
+        assert 'Bob' in employee_names
+        assert 'Charlie' in employee_names
 
         # All titles should be available
         assert 'Engineer' in info['available_titles']
@@ -196,7 +197,7 @@ class TestFilterApplication:
         filter_params = {
             'exclude_managers': False,
             'exclude_titles': [],
-            'exclude_names': []
+            'exclude_ids': []
         }
 
         filtered, info = apply_employee_filters(employees, filter_params)
@@ -208,7 +209,7 @@ class TestFilterApplication:
         assert 'hidden_count' in info
         assert 'params' in info
         assert 'available_titles' in info
-        assert 'available_names' in info
+        assert 'available_employees' in info
 
         # Check types
         assert isinstance(info['active'], bool)
@@ -217,7 +218,7 @@ class TestFilterApplication:
         assert isinstance(info['hidden_count'], int)
         assert isinstance(info['params'], dict)
         assert isinstance(info['available_titles'], list)
-        assert isinstance(info['available_names'], list)
+        assert isinstance(info['available_employees'], list)
 
 
 class TestFilterIntegration:
