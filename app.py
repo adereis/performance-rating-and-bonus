@@ -71,6 +71,30 @@ def update_bonus_settings(budget_override_usd):
         db.close()
 
 
+def load_tenets_config():
+    """
+    Load tenets configuration from file.
+    Prefers tenets.json, falls back to tenets-sample.json.
+
+    Returns:
+        tuple: (tenets_config dict, tenets_map dict mapping id->name)
+               Returns (None, {}) if no config found
+    """
+    tenets_file = 'tenets.json' if os.path.exists('tenets.json') else 'tenets-sample.json'
+
+    if not os.path.exists(tenets_file):
+        return None, {}
+
+    try:
+        with open(tenets_file, 'r') as f:
+            tenets_config = json.load(f)
+            tenets_map = {t['id']: t['name'] for t in tenets_config.get('tenets', [])}
+            return tenets_config, tenets_map
+    except Exception as e:
+        print(f"Error loading tenets from {tenets_file}: {e}")
+        return None, {}
+
+
 def get_filter_params():
     """
     Extract filter parameters from URL query string.
@@ -322,20 +346,10 @@ def rate_employee():
 @app.route('/api/tenets', methods=['GET'])
 def get_tenets():
     """API endpoint to serve tenets configuration."""
-    tenets_file = 'tenets.json'
-
-    # Fallback to sample file if organization-specific file doesn't exist
-    if not os.path.exists(tenets_file):
-        tenets_file = 'tenets-sample.json'
-
-    try:
-        with open(tenets_file, 'r') as f:
-            tenets_data = json.load(f)
-        return jsonify(tenets_data)
-    except FileNotFoundError:
+    tenets_config, _ = load_tenets_config()
+    if tenets_config is None:
         return jsonify({'error': 'Tenets configuration file not found'}), 404
-    except json.JSONDecodeError:
-        return jsonify({'error': 'Invalid JSON in tenets configuration file'}), 500
+    return jsonify(tenets_config)
 
 
 @app.route('/api/bonus-settings', methods=['GET', 'POST'])
@@ -557,17 +571,10 @@ def analytics():
     calibration_data = org_calibration['data']
 
     # Load tenets configuration
-    tenets_file = 'tenets.json' if os.path.exists('tenets.json') else 'tenets-sample.json'
-    tenets_config = {}
-    tenets_map = {}
-    try:
-        with open(tenets_file, 'r') as f:
-            tenets_config = json.load(f)
-            # Create a map of tenet ID to tenet data
-            for tenet in tenets_config.get('tenets', []):
-                tenets_map[tenet['id']] = tenet
-    except (FileNotFoundError, json.JSONDecodeError):
-        pass
+    tenets_config, _ = load_tenets_config()
+    tenets_config = tenets_config or {}
+    # Create a map of tenet ID to full tenet data (for analytics display)
+    tenets_map = {t['id']: t for t in tenets_config.get('tenets', [])}
 
     # Analyze tenets data - Overall
     strength_counts = defaultdict(int)
@@ -1023,15 +1030,7 @@ def export_page():
     bonus_calc = calculate_bonus_for_employees(rated_employees, params, budget_override_usd)
 
     # Load tenets configuration
-    tenets_config = None
-    tenets_map = {}
-    if os.path.exists('tenets-sample.json'):
-        try:
-            with open('tenets-sample.json', 'r') as f:
-                tenets_config = json.load(f)
-                tenets_map = {t['id']: t['name'] for t in tenets_config.get('tenets', [])}
-        except Exception as e:
-            print(f"Error loading tenets: {e}")
+    _, tenets_map = load_tenets_config()
 
     # Format export data
     export_data = []
@@ -1110,14 +1109,7 @@ def export_csv():
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     # Load tenets for description
-    tenets_map = {}
-    if os.path.exists('tenets-sample.json'):
-        try:
-            with open('tenets-sample.json', 'r') as f:
-                tenets_config = json.load(f)
-                tenets_map = {t['id']: t['name'] for t in tenets_config.get('tenets', [])}
-        except Exception as e:
-            print(f"Error loading tenets: {e}")
+    _, tenets_map = load_tenets_config()
 
     # Create CSV in memory
     output = io.StringIO()
@@ -1285,14 +1277,7 @@ def export_xlsx():
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
     # Load tenets for description
-    tenets_map = {}
-    if os.path.exists('tenets-sample.json'):
-        try:
-            with open('tenets-sample.json', 'r') as f:
-                tenets_config = json.load(f)
-                tenets_map = {t['id']: t['name'] for t in tenets_config.get('tenets', [])}
-        except Exception as e:
-            print(f"Error loading tenets: {e}")
+    _, tenets_map = load_tenets_config()
 
     # Write data rows
     for row_num, employee in enumerate(team_data, 2):
