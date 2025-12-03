@@ -189,7 +189,7 @@ To achieve similar results with AI assistance:
 - More aggressive penalties than rewards (intentional asymmetry)
 
 ### Don't Break These
-- **Never commit** `ratings.db` or `bonus-from-wd.xlsx` (privacy - already in .gitignore)
+- **Never commit** `ratings.db` or real Workday export files (privacy - already in .gitignore)
 - **Never change bonus algorithm** without updating BONUS_CALCULATION_README.md
 - **Preserve backward compatibility** with existing Workday export format
 - **Never store calculated bonuses** in database (keep ephemeral)
@@ -441,7 +441,7 @@ These fields are **preserved** across Workday re-imports:
 - ❌ Add configuration files that need git tracking
 
 #### Data & Privacy
-- ❌ Commit `ratings.db`, `bonus-from-wd.xlsx`, or any real employee data
+- ❌ Commit `ratings.db`, real Workday export files, or any real employee data
 - ❌ Log sensitive employee information (names, salaries, ratings)
 - ❌ Add telemetry or analytics that phone home
 
@@ -459,7 +459,7 @@ SAFE - Auto-generated fictitious data:
 - ✅ Safe to use in examples, documentation, tests, and git commits
 
 PRIVATE - Real Workday exports:
-- `bonus-from-wd.xlsx` - bonus export (already in .gitignore)
+- `real-*.xlsx` - Workday exports (automatically ignored by git)
 - `Compensation_Spreadsheet.xlsx` - compensation export (real data)
 - Any XLSX file imported from Workday containing real employee data
 - Files with actual employee names, salaries, ratings, or compensation
@@ -640,7 +640,7 @@ Keep these separate and don't duplicate content.
 These files are in `.gitignore` and should **never** be committed:
 - `ratings.db` - Active database with employee data
 - `sample-data-*.xlsx` - Generated sample files
-- `bonus-from-wd.xlsx` - User's Workday export
+- `real-*.xlsx` - User's Workday exports
 - `ratings_export_*.csv` - Legacy pattern (feature removed, kept for historical .gitignore compatibility)
 - `__pycache__/` - Python bytecode
 - `.pytest_cache/` - Pytest cache

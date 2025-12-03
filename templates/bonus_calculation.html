@@ -513,8 +513,8 @@
         <p>Bonus calculation requires employee bonus target information from Workday.</p>
         <p style="margin-top: 15px;">To set up bonus data:</p>
         <ol style="text-align: left; display: inline-block; margin-top: 10px;">
-            <li>Export your team data from Workday as <code>bonus-from-wd.xlsx</code></li>
-            <li>Run: <code>python convert_xlsx.py</code> to import the data</li>
+            <li>Export your team data from Workday (save with any filename starting with <code>real-</code>, e.g., <code>real-workday-export.xlsx</code>)</li>
+            <li>Run: <code>python convert_xlsx.py real-workday-export.xlsx</code> to import the data</li>
             <li>Return to this page to calculate bonuses</li>
         </ol>
         {% else %}

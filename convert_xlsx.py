@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Convert bonus-from-wd.xlsx to SQLite database.
+Convert Workday export XLSX to SQLite database.
 This script reads the HR export and imports all data into the database.
+Default file: real-workday-export.xlsx (or any file starting with 'real-' which is automatically ignored by git)
 """
 import openpyxl
 import csv
 import os
 from models import Employee, init_db, get_db
 
-def convert_xlsx_to_db(xlsx_file='bonus-from-wd.xlsx'):
+def convert_xlsx_to_db(xlsx_file='real-workday-export.xlsx'):
     """Convert XLSX file directly to database."""
 
     if not os.path.exists(xlsx_file):
@@ -142,7 +143,7 @@ if __name__ == '__main__':
     import sys
 
     # Allow specifying a different file via command line
-    xlsx_file = sys.argv[1] if len(sys.argv) > 1 else 'bonus-from-wd.xlsx'
+    xlsx_file = sys.argv[1] if len(sys.argv) > 1 else 'real-workday-export.xlsx'
 
     print(f"Converting {xlsx_file} to database...")
     convert_xlsx_to_db(xlsx_file)
