@@ -1021,8 +1021,9 @@
         }
 
         function setupModalTenetsListeners() {
-            const strengthCheckboxes = document.querySelectorAll('input[data-tenet-type="strengths"]');
-            const improvementCheckboxes = document.querySelectorAll('input[data-tenet-type="improvements"]');
+            const modal = document.getElementById('employeeModal');
+            const strengthCheckboxes = modal.querySelectorAll('input[data-tenet-type="strengths"]');
+            const improvementCheckboxes = modal.querySelectorAll('input[data-tenet-type="improvements"]');
 
             const updateTenetCounts = () => {
                 const strengthsChecked = Array.from(strengthCheckboxes).filter(cb => cb.checked);
