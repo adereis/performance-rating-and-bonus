@@ -49,6 +49,9 @@ The Performance Rating System was built through an iterative collaboration betwe
 - ✅ Workday Excel import functionality
 - ✅ Sample data generation for demo purposes
 - ✅ Team tenets evaluation with inline editing UI
+- ✅ Historical data preservation with period archiving
+- ✅ Employee rating history with trend visualization
+- ✅ Period-over-period comparison in Analytics
 
 ### Human Oversight
 
@@ -154,8 +157,9 @@ To achieve similar results with AI assistance:
 - **Workday is source of truth** for employee data (salary, bonus targets, org structure)
 - **Manager ratings are local-only** and preserved across Workday updates
 - **Bonus calculations are ephemeral** (recalculated on demand, never stored in database)
-- **Historical snapshots** preserve rating data across periods (RatingSnapshot table)
+- **Historical snapshots** preserve rating data across periods (`RatingPeriod` + `EmployeeSnapshot` tables)
 - Import flow: Workday XLSX → Import UI → `xlsx_utils.py` → SQLite → Flask API → Web UI
+- Archive flow: Dashboard → Archive Period → Snapshots created → Current ratings cleared
 
 ### Key Design Decisions
 
@@ -296,6 +300,43 @@ For editable fields in summary stats or cards:
    - Reload page if values affect displayed data
 
 4. **Examples**: Rating percentages on `/rate`, budget override on `/bonus-calculation`
+
+### Working with Historical Data
+
+#### Archiving a Period
+1. User clicks "Archive Period" on Dashboard
+2. API creates new `RatingPeriod` record with period_id and name
+3. For each employee with ratings, creates `EmployeeSnapshot` with:
+   - Reference to period and employee
+   - Snapshot of current rating data (rating, justification, tenets, mentors)
+   - Snapshot of context (job profile, org at time of snapshot)
+4. Clears all current ratings from `Employee` table
+5. Returns success with count of archived employees
+
+#### Displaying Employee History
+1. Click employee name → Modal opens with "History" tab
+2. API `/api/employee/<id>/history` returns all snapshots ordered by period
+3. Trend chart shows ratings over time with:
+   - Solid lines for consecutive periods
+   - Dashed lines bridging gaps (partial/missing data)
+   - Trend indicator (improving/stable/declining) using linear regression
+4. Expandable cards show period details (justification, tenets, context)
+
+#### Period Comparison (Analytics)
+1. Dropdown populated from `/api/periods` (all archived periods)
+2. Selection triggers `/api/period-comparison/<period_id>`
+3. Comparison logic:
+   - Match employees by `associate_id` across current and historical
+   - Calculate change: `current_rating - historical_rating`
+   - Categorize: improved (>5%), declined (<-5%), stable, new, departed
+4. Display summary stats and per-employee comparison table
+
+#### Historical Import
+1. Upload old Workday export with Notes field containing rating data
+2. Select "Historical Period" import type, provide period_id and name
+3. Parser extracts from Notes: rating, justification, tenets, mentors
+4. Creates `RatingPeriod` and `EmployeeSnapshot` records
+5. Does NOT modify current `Employee` table ratings
 
 ### UI Design Iteration
 
@@ -561,6 +602,11 @@ Keep these separate and don't duplicate content.
 - SQLAlchemy ORM models
 - Database schema definitions
 - Model methods for data conversion (`to_dict()`)
+- **Models**:
+  - `Employee` - Current employee data and ratings
+  - `RatingPeriod` - Archived periods (period_id, name, archived_at)
+  - `EmployeeSnapshot` - Historical rating snapshots linked to periods
+  - `BonusSettings` - Persisted bonus calculation settings
 - **Do not add**: Business logic or calculations (belongs in app.py)
 
 #### `xlsx_utils.py` (Workday XLSX Parsing)
@@ -618,10 +664,16 @@ Keep these separate and don't duplicate content.
 - Navigation tabs
 - Common CSS and JavaScript includes
 - Header and footer
+- **Employee Modal**: Shared modal for viewing/editing employee details
+  - "Current Period" tab: Rating, justification, tenets, mentors
+  - "History" tab: Trend chart + expandable period cards
+  - Auto-save with unsaved changes warning
+- **Filter Panel**: Global employee filtering (managers, titles, individuals)
 
 #### `templates/index.html` (Dashboard)
 - Team overview statistics
 - Summary of rated/unrated employees
+- **Archive Period**: Button to snapshot current ratings and clear for next period
 - Quick navigation to other features
 
 #### `templates/rate.html` (Rating Interface)
@@ -634,8 +686,11 @@ Keep these separate and don't duplicate content.
 - Performance distribution charts (Chart.js)
 - Team tenets diverging bar chart (custom butterfly chart)
 - Distribution calibration guidance (informational)
+- **Period-over-Period Comparison**: Dropdown to compare current vs historical periods
+  - Summary stats: improved/stable/declined counts, average change
+  - Comparison table with trend badges
 - Team rankings table (sortable)
-- **Section order**: Performance Distribution → Team Tenets → Calibration → Rankings
+- **Section order**: Distribution → Tenets → Calibration → Period Comparison → Rankings
 
 #### `templates/bonus_calculation.html` (Bonus Calculator)
 - Parameter configuration (upside/downside exponents)
@@ -734,6 +789,25 @@ python3 -m pytest tests/ --cov=. --cov-report=html
 3. Use individual charts per row with CSS Grid for precise layout
 4. Simpler is better - don't force a library to do what it wasn't designed for
 
+### Chart.js Segment Styling (Gap Handling)
+**Use case**: Trend charts with missing data points (e.g., partial historical records)
+**Solution**: Use `segment` callbacks with `spanGaps: true` for dashed bridging lines
+
+```javascript
+segment: {
+    borderDash: function(segCtx) {
+        // Chart.js 4.x uses flat property names: p0DataIndex, p1DataIndex
+        // NOT p0.dataIndex (that's undefined in v4)
+        if (ratings[segCtx.p0DataIndex] == null || ratings[segCtx.p1DataIndex] == null) {
+            return [6, 4];  // Dashed for segments touching null values
+        }
+        return undefined;  // Solid for normal segments
+    }
+}
+```
+
+**Key gotcha**: With `spanGaps: true`, Chart.js iterates through ALL indices including null points, so check if either endpoint is null (not if there are nulls "between" indices).
+
 ### Feature Rollout
 **Pattern**: When adding major features (like tenets):
 1. Start with data model (add database fields)
@@ -829,11 +903,8 @@ python3 -m pytest tests/ --cov=. --cov-report=html
 
 Potential areas for expansion (not yet implemented):
 
-- [ ] CSV export from Bonus Calculation page
 - [ ] Save multiple parameter configurations
-- [ ] Historical rating comparison (period-over-period)
 - [ ] Bulk edit capabilities
-- [ ] PDF export for HR submission
 - [ ] Read-only sharing mode for calibration sessions
 - [ ] Database migration system (Alembic)
 - [ ] API documentation (Swagger/OpenAPI)

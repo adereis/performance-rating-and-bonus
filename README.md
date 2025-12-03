@@ -9,11 +9,42 @@ A web-based tool for managers to conduct performance reviews and calculate team 
 - **Analytics Dashboard**: View team performance distribution with calibration guidance
 - **Bonus Calculation**: Algorithmic bonus allocation with configurable parameters
 - **Fixed Pool Guarantee**: Total bonuses always equal your budget (sum of targets)
+- **Historical Tracking**: Archive periods and view employee rating history over time
+- **Period Comparison**: Compare current ratings with any historical period
+- **Trend Analysis**: See performance trends with charts and improving/stable/declining indicators
 - **International Support**: Handles multiple currencies (USD, GBP, EUR, CAD, INR)
 - **Privacy-Focused**: SQLite database, runs locally, no cloud dependencies
 
 ![Bonus Calculation Curve](screenshot-bonus-curve.png)
 *Performance-to-bonus allocation curve showing how ratings translate to bonuses with proportional scaling*
+
+## Design Philosophy: Workday as Source of Truth
+
+This tool is designed as a **local companion** to your HR system (Workday, or similar), not a replacement. The architecture maintains a clear separation:
+
+**What comes FROM Workday (import):**
+- Employee roster and identifiers
+- Salaries and bonus targets
+- Job profiles and org structure
+- Currency information
+
+**What stays LOCAL (manager-entered):**
+- Performance ratings (0-200%)
+- Justifications explaining ratings
+- Team tenets evaluation
+- Mentor/mentee relationships
+
+**What goes BACK to Workday (export):**
+- Final bonus allocations
+- Rating justifications (for HR records)
+
+**Why this matters:**
+- **No duplicate data entry**: Employee info is maintained in one place (your HR system)
+- **Safe re-imports**: Refreshing from Workday updates salaries and org changes without overwriting your ratings
+- **Audit trail**: Your HR system remains the official record; this tool helps you get there
+- **Portability**: Works with any HR system that can export to Excel
+
+The workflow is: **Import → Rate → Calculate → Export**. Your HR system handles the before (employee data) and after (final allocations). This tool handles the middle (the actual performance evaluation work).
 
 ## Quick Start with Sample Data
 
@@ -57,6 +88,27 @@ python3 populate_sample_ratings.py large
 - **Small**: 12 employees (Software Developers & SREs), 1 manager (Della Gate)
 - **Large**: 50 employees across 5 managers (Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone)
 - Both include international employees (GBP) for testing multi-currency support
+
+### Option 3: With Historical Data (Testing History Features)
+Generate sample historical data to test period-over-period comparison and employee history features.
+
+```bash
+# Generate large org plus 6 quarters of historical data
+python3 create_sample_data.py --large --historical
+
+# This creates:
+# - sample-data-large.xlsx (current period)
+# - sample-historical-2023-Q3.xlsx through sample-historical-2024-Q4.xlsx
+```
+
+**To test historical features:**
+1. Start server and import `sample-data-large.xlsx` as **Current Period**
+2. Populate current ratings: `python3 populate_sample_ratings.py large`
+3. Import each historical file as **Historical Period** (oldest first):
+   - Upload `sample-historical-2023-Q3.xlsx`, enter Period ID `2023-Q3` and Period Name `Q3 2023`
+   - Repeat for 2023-Q4, 2024-Q1, 2024-Q2, 2024-Q3, 2024-Q4
+4. Click any employee name to view their **History** tab with trend chart
+5. Visit **Analytics** to see **Period-over-Period Comparison**
 
 **Architecture Note**: Sample data generation follows the same pattern as real usage:
 1. **Workday export** (create_sample_data.py) contains ONLY HR data: salaries, bonus targets, org structure
@@ -149,7 +201,33 @@ Navigate to **Rate Team** to begin entering performance ratings.
 - Click **Recalculate** to see results
 - Review individual bonuses and % of target
 
-### 4. Export Results
+### 4. Archive the Period
+When you've completed ratings for a period:
+- Navigate to **Dashboard**
+- Click **Archive Period** button
+- Enter a Period ID (e.g., `2024-H2`) and Name (e.g., `Second Half 2024`)
+- Click **Archive Period**
+
+This:
+- Creates a snapshot of all current ratings
+- Clears all ratings to prepare for the next period
+- Preserves historical data for comparison
+
+### 5. View Historical Data
+- Click any employee name to open their detail modal
+- Switch to the **History** tab to see:
+  - Performance trend chart across periods
+  - Trend indicator (improving/stable/declining)
+  - Period-by-period breakdown with justifications
+
+### 6. Compare Periods
+- Navigate to **Analytics** tab
+- In the **Period-over-Period Comparison** section:
+  - Select a historical period from the dropdown
+  - View who improved, declined, or stayed stable
+  - See average rating changes across the team
+
+### 7. Export Results
 
 Currently manual (copy from UI). Future versions will support CSV export.
 

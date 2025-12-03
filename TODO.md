@@ -4,15 +4,6 @@ This file tracks future enhancements and feature requests for the Performance Ra
 
 ---
 
-## Planned Features
-
-### Historical Data Preservation
-**Priority:** High
-**Status:** In Design
-**Description:** Preserve rating data across evaluation periods to provide historical context and trend visibility when evaluating team members.
-
----
-
 ## Backlog Features
 
 ### Save Multiple Parameter Configurations
@@ -84,6 +75,22 @@ This file tracks future enhancements and feature requests for the Performance Ra
 ---
 
 ## Completed Features
+
+### Historical Data Preservation
+**Completed:** 2025-12-03
+**Description:** Preserve rating data across evaluation periods to provide historical context and trend visibility when evaluating team members.
+
+**Implementation:**
+- Database: `RatingPeriod` and `EmployeeSnapshot` tables for archival storage
+- Archive Period: Dashboard button creates period snapshot, clears current ratings
+- Employee History: Modal "History" tab shows all past ratings with expandable details
+- Trend Visualization: Chart.js line graph with trend indicator (improving/stable/declining)
+- Gap Handling: Dashed lines bridge periods with partial/missing data
+- Period Comparison: Analytics page dropdown to compare current vs historical periods
+- Historical Import: Import old Workday exports as archived periods (parses Notes field)
+- API endpoints: `/api/periods`, `/api/period-comparison/<id>`, `/api/employee/<id>/history`
+
+---
 
 ### Export Functionality (CSV and Excel)
 **Completed:** 2025-11-28
