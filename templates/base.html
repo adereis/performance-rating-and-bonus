@@ -779,8 +779,16 @@
             }{{ ',' if not loop.last else '' }}
             {% endfor %}
         };
+
+        // Store initial URL param selections (the "true" manual selections to preserve)
+        const initialManualSelections = new Set([
+            {% for name in filter_info.params.exclude_names %}
+            {{ name|tojson }}{{ ',' if not loop.last else '' }}
+            {% endfor %}
+        ]);
         {% else %}
         const filterEmployeeMetadata = {};
+        const initialManualSelections = new Set();
         {% endif %}
 
         // Employee Modal Functions
@@ -1256,21 +1264,22 @@
 
             if (!nameSelect || !excludeManagers || !titleSelect) return;
 
-            // Get currently manually selected names to preserve selection
-            const selectedNames = Array.from(nameSelect.selectedOptions).map(o => o.value);
-
             // Get excluded titles
             const excludedTitles = Array.from(titleSelect.selectedOptions).map(o => o.value);
 
             // Rebuild options with indicators and auto-selection
+            // Preserve both auto-selections AND manual selections from URL params
             const options = Array.from(nameSelect.options).map(option => {
                 const name = option.value;
                 const metadata = filterEmployeeMetadata[name];
 
+                // Check if this name was manually selected (from URL params)
+                const isManuallySelected = initialManualSelections.has(name);
+
                 if (!metadata) return {
                     value: name,
                     text: name,
-                    selected: selectedNames.includes(name)
+                    selected: isManuallySelected
                 };
 
                 const indicators = [];
@@ -1297,7 +1306,7 @@
                 return {
                     value: name,
                     text: displayText,
-                    selected: autoSelected || selectedNames.includes(name)
+                    selected: autoSelected || isManuallySelected
                 };
             });
 
