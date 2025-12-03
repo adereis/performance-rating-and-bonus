@@ -931,6 +931,20 @@
             id="filterToggle">
         🔍 Filters{% if filter_info is defined and filter_info.active %} ({{ filter_info.hidden_count }}){% endif %}
     </button>
+    <script>
+    // Immediately check sessionStorage to style button before render completes
+    (function() {
+        var saved = sessionStorage.getItem('filters');
+        if (saved) {
+            try {
+                var f = JSON.parse(saved);
+                if (f.exclude_managers || (f.exclude_titles && f.exclude_titles.length) || (f.exclude_ids && f.exclude_ids.length)) {
+                    document.getElementById('filterToggle').classList.add('active');
+                }
+            } catch(e) {}
+        }
+    })();
+    </script>
     {% endif %}
 
     <!-- Filter Panel (hidden on pages where filtering doesn't apply) -->
