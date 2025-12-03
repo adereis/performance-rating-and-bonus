@@ -510,7 +510,7 @@
                 <tbody id="compact-table-body">
                     {% for employee in team %}
                     {% set has_tenets = (employee.tenets_strengths and employee.tenets_strengths != '[]') or (employee.tenets_improvements and employee.tenets_improvements != '[]') %}
-                    {% set is_incomplete = employee.performance_rating_percent and (not employee.justification or not has_tenets or not employee.mentor or not employee.mentees) %}
+                    {% set is_incomplete = not employee.performance_rating_percent or not employee.justification or not has_tenets or not employee.mentor or not employee.mentees %}
                     <tr class="{% if employee.performance_rating_percent %}has-rating{% endif %}"
                         data-associate-id="{{ employee['Associate ID'] }}"
                         data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}"
@@ -547,7 +547,7 @@
     <div class="rating-form" id="detailed-view">
         {% for employee in team %}
         {% set has_tenets = (employee.tenets_strengths and employee.tenets_strengths != '[]') or (employee.tenets_improvements and employee.tenets_improvements != '[]') %}
-        {% set is_incomplete = employee.performance_rating_percent and (not employee.justification or not has_tenets or not employee.mentor or not employee.mentees) %}
+        {% set is_incomplete = not employee.performance_rating_percent or not employee.justification or not has_tenets or not employee.mentor or not employee.mentees %}
         <div class="employee-card {% if employee.performance_rating_percent %}rated{% endif %}"
              data-associate-id="{{ employee['Associate ID'] }}"
              data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}"
@@ -862,6 +862,7 @@ function saveCompactRating(associateId, input) {
 
     const ratingValue = input.value.trim();
 
+    // Only send rating - don't overwrite other fields
     fetch('/api/rate', {
         method: 'POST',
         headers: {
@@ -869,10 +870,7 @@ function saveCompactRating(associateId, input) {
         },
         body: JSON.stringify({
             associate_id: associateId,
-            rating_percent: ratingValue,
-            justification: '',
-            mentor: '',
-            mentees: ''
+            rating_percent: ratingValue
         })
     })
     .then(response => response.json())
