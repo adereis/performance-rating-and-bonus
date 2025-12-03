@@ -773,9 +773,9 @@
         {% if filter_info is defined %}
         const filterEmployeeMetadata = {
             {% for name in filter_info.available_names %}
-            "{{ name }}": {
+            {{ name|tojson }}: {
                 isManager: {{ 'true' if name in filter_info.get('managers', []) else 'false' }},
-                jobTitle: "{{ filter_info.get('employee_titles', {}).get(name, '') }}"
+                jobTitle: {{ filter_info.get('employee_titles', {}).get(name, '')|tojson }}
             }{{ ',' if not loop.last else '' }}
             {% endfor %}
         };
