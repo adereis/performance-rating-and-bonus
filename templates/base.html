@@ -911,7 +911,7 @@
 
                 tenetsHTML = `
                     <div class="employee-modal-section">
-                        <h4>Team Tenets (Select 3 of each)</h4>
+                        <h4>Team Tenets (Select 3 strengths and 2-3 improvements)</h4>
                         <div class="modal-tenets-grid">
                             <div class="modal-tenet-column">
                                 <h5>Strengths</h5>
@@ -921,7 +921,7 @@
                             <div class="modal-tenet-column">
                                 <h5>Areas for Improvement</h5>
                                 ${improvementsHTML}
-                                <div class="modal-tenet-count" id="modal_improvements_count">${existingImprovements.length} / 3 selected</div>
+                                <div class="modal-tenet-count" id="modal_improvements_count">${existingImprovements.length} / 2-3 selected</div>
                             </div>
                         </div>
                     </div>
@@ -1041,9 +1041,9 @@
                 }
 
                 if (improvementsCount) {
-                    improvementsCount.textContent = `${improvementsChecked.length} / 3 selected`;
+                    improvementsCount.textContent = `${improvementsChecked.length} / 2-3 selected`;
                     improvementsCount.className = 'modal-tenet-count';
-                    if (improvementsChecked.length > 0 && improvementsChecked.length !== 3) {
+                    if (improvementsChecked.length > 0 && (improvementsChecked.length < 2 || improvementsChecked.length > 3)) {
                         improvementsCount.classList.add('warning');
                     }
                 }

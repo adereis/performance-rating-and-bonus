@@ -608,7 +608,7 @@
                 </div>
 
                 <div class="tenets-section">
-                    <h5>Team Tenets Evaluation (Select 3 strengths and 3 areas for improvement)</h5>
+                    <h5>Team Tenets Evaluation (Select 3 strengths and 2-3 areas for improvement)</h5>
                     <div class="loading-tenets">Loading tenets...</div>
                     <div class="tenets-grid" style="display: none;">
                         <div class="tenet-category">
@@ -617,9 +617,9 @@
                             <div class="tenet-count-warning" data-warning-type="strengths">Please select exactly 3 strengths</div>
                         </div>
                         <div class="tenet-category">
-                            <h6>Areas for Improvement (Select 3)</h6>
+                            <h6>Areas for Improvement (Select 2-3)</h6>
                             <div class="tenet-items" data-tenet-type="improvements"></div>
-                            <div class="tenet-count-warning" data-warning-type="improvements">Please select exactly 3 areas for improvement</div>
+                            <div class="tenet-count-warning" data-warning-type="improvements">Please select 2 or 3 areas for improvement</div>
                         </div>
                     </div>
                 </div>
@@ -1075,27 +1075,38 @@ function setupTenetListeners(card) {
 
         const warning = card.querySelector(`.tenet-count-warning[data-warning-type="${type}"]`);
 
-        // Show warning if not exactly 3
-        if (checked.length > 0 && checked.length !== 3) {
-            warning.classList.add('show');
-        } else {
-            warning.classList.remove('show');
+        // Show warning based on type-specific rules
+        if (type === 'strengths') {
+            // Strengths: exactly 3 required
+            if (checked.length > 0 && checked.length !== 3) {
+                warning.classList.add('show');
+            } else {
+                warning.classList.remove('show');
+            }
+        } else if (type === 'improvements') {
+            // Improvements: 2-3 required
+            if (checked.length > 0 && (checked.length < 2 || checked.length > 3)) {
+                warning.classList.add('show');
+            } else {
+                warning.classList.remove('show');
+            }
         }
 
-        // Disable unchecked boxes if 3 are already selected OR if selected in other list
+        // Disable unchecked boxes based on type-specific limits
         checkboxes.forEach(cb => {
             const isInOtherList = otherCheckedValues.has(cb.value);
+            const maxSelections = 3; // Both types max at 3
 
             if (isInOtherList && !cb.checked) {
                 // Disable if already selected in the other list
                 cb.disabled = true;
                 cb.parentElement.style.opacity = '0.5';
                 cb.parentElement.title = 'Already selected in other category';
-            } else if (checked.length >= 3 && !cb.checked) {
-                // Disable if 3 already selected in this list
+            } else if (checked.length >= maxSelections && !cb.checked) {
+                // Disable if max already selected in this list
                 cb.disabled = true;
                 cb.parentElement.style.opacity = '0.5';
-                cb.parentElement.title = 'Maximum 3 selections';
+                cb.parentElement.title = `Maximum ${maxSelections} selections`;
             } else {
                 cb.disabled = false;
                 cb.parentElement.style.opacity = '1';

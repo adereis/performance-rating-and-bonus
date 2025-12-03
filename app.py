@@ -282,11 +282,11 @@ def rate_employee():
     if tenets_improvements and not isinstance(tenets_improvements, list):
         return jsonify({'error': 'Tenets improvements must be an array'}), 400
 
-    # Validate count (exactly 3 of each if provided, or empty)
+    # Validate count (exactly 3 strengths, 2-3 improvements if provided, or empty)
     if tenets_strengths and len(tenets_strengths) != 3:
         return jsonify({'error': 'Must select exactly 3 strength tenets'}), 400
-    if tenets_improvements and len(tenets_improvements) != 3:
-        return jsonify({'error': 'Must select exactly 3 improvement tenets'}), 400
+    if tenets_improvements and (len(tenets_improvements) < 2 or len(tenets_improvements) > 3):
+        return jsonify({'error': 'Must select 2 or 3 improvement tenets'}), 400
 
     # Validate no duplicates between lists
     if tenets_strengths and tenets_improvements:
