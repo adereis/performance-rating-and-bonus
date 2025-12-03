@@ -253,10 +253,15 @@ def index():
     rated_employees = sum(1 for emp in team_data if emp.get('performance_rating_percent'))
     unrated_employees = total_employees - rated_employees
 
+    # Calculate average rating
+    ratings = [emp.get('performance_rating_percent') for emp in team_data if emp.get('performance_rating_percent')]
+    avg_rating = sum(ratings) / len(ratings) if ratings else None
+
     stats = {
         'total': total_employees,
         'rated': rated_employees,
-        'unrated': unrated_employees
+        'unrated': unrated_employees,
+        'avg_rating': avg_rating
     }
 
     return render_template('index.html', team=team_data, stats=stats, filter_info=filter_info)
@@ -279,43 +284,49 @@ def rate_page():
 
 @app.route('/api/rate', methods=['POST'])
 def rate_employee():
-    """API endpoint to rate an employee and save additional manager inputs."""
+    """API endpoint to rate an employee and save additional manager inputs.
+
+    Only updates fields that are explicitly provided in the request.
+    This allows partial updates (e.g., compact view only sends rating).
+    """
     data = request.get_json()
     associate_id = data.get('associate_id')
-    rating_percent = data.get('rating_percent')
-    justification = data.get('justification', '')
-    mentor = data.get('mentor', '')
-    mentees = data.get('mentees', '')
-    tenets_strengths = data.get('tenets_strengths', [])
-    tenets_improvements = data.get('tenets_improvements', [])
 
     if not associate_id:
         return jsonify({'error': 'Missing associate ID'}), 400
 
-    # Validate rating percent
-    if rating_percent is not None and rating_percent != '':
-        try:
-            rating_percent = float(rating_percent)
-            if rating_percent < 0 or rating_percent > 200:
-                return jsonify({'error': 'Rating must be between 0 and 200'}), 400
-        except ValueError:
-            return jsonify({'error': 'Invalid rating value'}), 400
-    else:
-        rating_percent = None
+    # Validate rating percent if provided
+    rating_percent = None
+    if 'rating_percent' in data:
+        rating_value = data.get('rating_percent')
+        if rating_value is not None and rating_value != '':
+            try:
+                rating_percent = float(rating_value)
+                if rating_percent < 0 or rating_percent > 200:
+                    return jsonify({'error': 'Rating must be between 0 and 200'}), 400
+            except ValueError:
+                return jsonify({'error': 'Invalid rating value'}), 400
 
-    # Validate tenets data
-    if tenets_strengths and not isinstance(tenets_strengths, list):
-        return jsonify({'error': 'Tenets strengths must be an array'}), 400
-    if tenets_improvements and not isinstance(tenets_improvements, list):
-        return jsonify({'error': 'Tenets improvements must be an array'}), 400
+    # Get optional fields (only if provided in request)
+    tenets_strengths = data.get('tenets_strengths', []) if 'tenets_strengths' in data else None
+    tenets_improvements = data.get('tenets_improvements', []) if 'tenets_improvements' in data else None
 
-    # Validate count (exactly 3 strengths, 2-3 improvements if provided, or empty)
-    if tenets_strengths and len(tenets_strengths) != 3:
-        return jsonify({'error': 'Must select exactly 3 strength tenets'}), 400
-    if tenets_improvements and (len(tenets_improvements) < 2 or len(tenets_improvements) > 3):
-        return jsonify({'error': 'Must select 2 or 3 improvement tenets'}), 400
+    # Validate tenets data if provided
+    if tenets_strengths is not None:
+        if tenets_strengths and not isinstance(tenets_strengths, list):
+            return jsonify({'error': 'Tenets strengths must be an array'}), 400
+        # Validate count (exactly 3 strengths if provided and non-empty)
+        if tenets_strengths and len(tenets_strengths) != 3:
+            return jsonify({'error': 'Must select exactly 3 strength tenets'}), 400
 
-    # Validate no duplicates between lists
+    if tenets_improvements is not None:
+        if tenets_improvements and not isinstance(tenets_improvements, list):
+            return jsonify({'error': 'Tenets improvements must be an array'}), 400
+        # Validate count (2-3 improvements if provided and non-empty)
+        if tenets_improvements and (len(tenets_improvements) < 2 or len(tenets_improvements) > 3):
+            return jsonify({'error': 'Must select 2 or 3 improvement tenets'}), 400
+
+    # Validate no duplicates between lists (if both provided)
     if tenets_strengths and tenets_improvements:
         if set(tenets_strengths) & set(tenets_improvements):
             return jsonify({'error': 'Cannot select the same tenet as both strength and improvement'}), 400
@@ -327,13 +338,20 @@ def rate_employee():
         if not employee:
             return jsonify({'error': 'Employee not found'}), 404
 
-        # Update employee fields
-        employee.performance_rating_percent = rating_percent
-        employee.justification = justification
-        employee.mentor = mentor
-        employee.mentees = mentees
-        employee.tenets_strengths = json.dumps(tenets_strengths) if tenets_strengths else None
-        employee.tenets_improvements = json.dumps(tenets_improvements) if tenets_improvements else None
+        # Only update fields that were explicitly provided in the request
+        if 'rating_percent' in data:
+            employee.performance_rating_percent = rating_percent
+        if 'justification' in data:
+            employee.justification = data.get('justification', '')
+        if 'mentor' in data:
+            employee.mentor = data.get('mentor', '')
+        if 'mentees' in data:
+            employee.mentees = data.get('mentees', '')
+        if tenets_strengths is not None:
+            employee.tenets_strengths = json.dumps(tenets_strengths) if tenets_strengths else None
+        if tenets_improvements is not None:
+            employee.tenets_improvements = json.dumps(tenets_improvements) if tenets_improvements else None
+
         employee.last_updated = datetime.now()
 
         db.commit()
@@ -1677,6 +1695,122 @@ def import_historical():
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
+
+@app.route('/api/archive-period', methods=['POST'])
+def archive_period():
+    """
+    Archive the current period's ratings to historical snapshots.
+
+    Creates a Period record and RatingSnapshot for each rated employee.
+    Clears all ratings after successful archive.
+    """
+    data = request.get_json()
+    period_id = data.get('period_id', '').strip()
+    period_name = data.get('period_name', '').strip()
+    notes = data.get('notes', '').strip()
+
+    if not period_id or not period_name:
+        return jsonify({'success': False, 'error': 'Period ID and name are required'}), 400
+
+    # Load tenets config for converting IDs to names
+    _, tenets_map = load_tenets_config()
+
+    db = get_db()
+    try:
+        # Check if period already exists
+        existing_period = db.query(Period).filter(Period.id == period_id).first()
+        if existing_period:
+            return jsonify({
+                'success': False,
+                'error': f'Period "{period_id}" already exists. Choose a different ID or delete the existing period first.'
+            }), 400
+
+        # Create period
+        period = Period(
+            id=period_id,
+            name=period_name,
+            notes=notes if notes else None,
+            archived_at=datetime.now()
+        )
+        db.add(period)
+
+        # Get all employees
+        employees = db.query(Employee).all()
+        archived_count = 0
+        skipped_unrated = 0
+
+        for emp in employees:
+            # Skip unrated employees
+            if emp.performance_rating_percent is None:
+                skipped_unrated += 1
+                continue
+
+            # Convert tenet IDs to human-readable names
+            strengths_names = None
+            improvements_names = None
+
+            if emp.tenets_strengths:
+                try:
+                    strength_ids = json.loads(emp.tenets_strengths)
+                    strength_names_list = [tenets_map.get(tid, tid) for tid in strength_ids]
+                    strengths_names = ', '.join(strength_names_list)
+                except (json.JSONDecodeError, TypeError):
+                    strengths_names = emp.tenets_strengths  # Keep as-is if not valid JSON
+
+            if emp.tenets_improvements:
+                try:
+                    improvement_ids = json.loads(emp.tenets_improvements)
+                    improvement_names_list = [tenets_map.get(tid, tid) for tid in improvement_ids]
+                    improvements_names = ', '.join(improvement_names_list)
+                except (json.JSONDecodeError, TypeError):
+                    improvements_names = emp.tenets_improvements  # Keep as-is if not valid JSON
+
+            # Create snapshot
+            snapshot = RatingSnapshot(
+                period_id=period_id,
+                associate_id=emp.associate_id,
+                performance_rating=emp.performance_rating_percent,
+                bonus_allocation=None,  # Could calculate if needed
+                justification=emp.justification,
+                tenets_strengths=strengths_names,
+                tenets_improvements=improvements_names,
+                mentors=emp.mentor,
+                mentees=emp.mentees,
+                snapshot_name=emp.associate,
+                snapshot_org=emp.supervisory_organization,
+                snapshot_job_profile=emp.current_job_profile,
+                snapshot_bonus_target_usd=emp.bonus_target_local_currency_usd or emp.bonus_target_local_currency,
+                archived_at=datetime.now(),
+                has_full_details=True
+            )
+            db.add(snapshot)
+            archived_count += 1
+
+        # Clear ratings from all employees
+        for emp in employees:
+            emp.performance_rating_percent = None
+            emp.justification = None
+            emp.mentor = None
+            emp.mentees = None
+            emp.tenets_strengths = None
+            emp.tenets_improvements = None
+            emp.last_updated = None
+
+        db.commit()
+
+        return jsonify({
+            'success': True,
+            'archived_count': archived_count,
+            'skipped_unrated': skipped_unrated,
+            'period_id': period_id
+        })
+
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
 
 
 if __name__ == '__main__':

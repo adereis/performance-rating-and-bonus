@@ -32,6 +32,182 @@
         content: '↓';
         opacity: 1;
     }
+
+    /* Archive Modal Styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-overlay.visible {
+        display: flex;
+    }
+
+    .modal {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal h3 {
+        margin: 0 0 20px 0;
+        color: #2c3e50;
+    }
+
+    .modal .form-group {
+        margin-bottom: 20px;
+    }
+
+    .modal label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .modal input[type="text"],
+    .modal textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    .modal input:focus,
+    .modal textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .modal .hint {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .modal .summary-box {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .modal .summary-box h4 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: #666;
+    }
+
+    .modal .summary-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+    }
+
+    .modal .summary-item .label {
+        color: #666;
+    }
+
+    .modal .summary-item .value {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .modal .warning-box {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .modal .warning-box p {
+        margin: 0;
+        color: #856404;
+        font-size: 14px;
+    }
+
+    .modal .actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 25px;
+    }
+
+    .modal .btn-secondary {
+        background: white;
+        color: #666;
+        border: 1px solid #ddd;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .modal .btn-secondary:hover {
+        background: #f5f5f5;
+    }
+
+    .modal .btn-primary {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .modal .btn-primary:hover {
+        background: #5568d3;
+    }
+
+    .modal .btn-primary:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    .btn-archive {
+        background: #e67e22;
+        color: white;
+    }
+
+    .btn-archive:hover {
+        background: #d35400;
+    }
+
+    .modal .success-message {
+        text-align: center;
+        padding: 20px;
+    }
+
+    .modal .success-message svg {
+        width: 64px;
+        height: 64px;
+        color: #27ae60;
+        margin-bottom: 15px;
+    }
+
+    .modal .success-message h4 {
+        color: #27ae60;
+        margin-bottom: 10px;
+    }
 </style>
 {% endblock %}
 
@@ -90,6 +266,72 @@
     <h2>Quick Actions</h2>
     <a href="{{ url_for('rate_page') }}" class="btn">Rate Team Members</a>
     <a href="{{ url_for('analytics') }}" class="btn">View Analytics</a>
+    <button class="btn btn-archive" onclick="openArchiveModal()" {% if stats.rated == 0 %}disabled title="No rated employees to archive"{% endif %}>Archive Period</button>
+</div>
+
+<!-- Archive Period Modal -->
+<div class="modal-overlay" id="archiveModal">
+    <div class="modal">
+        <div id="archiveForm">
+            <h3>Archive Current Period</h3>
+            <p style="color: #666; margin-bottom: 20px;">Save a snapshot of all current ratings before starting a new period.</p>
+
+            <div class="form-group">
+                <label for="periodId">Period ID</label>
+                <input type="text" id="periodId" placeholder="e.g., 2025-H1" required>
+                <div class="hint">Format: YYYY-HN (half) or YYYY-QN (quarter)</div>
+            </div>
+
+            <div class="form-group">
+                <label for="periodName">Period Name</label>
+                <input type="text" id="periodName" placeholder="e.g., First Half 2025" required>
+                <div class="hint">Human-readable name for this period</div>
+            </div>
+
+            <div class="form-group">
+                <label for="periodNotes">Notes (optional)</label>
+                <textarea id="periodNotes" rows="2" placeholder="Any notes about this period..."></textarea>
+            </div>
+
+            <div class="summary-box">
+                <h4>Summary</h4>
+                <div class="summary-item">
+                    <span class="label">Employees to archive</span>
+                    <span class="value" id="archiveRatedCount">{{ stats.rated }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">Unrated (will be skipped)</span>
+                    <span class="value" id="archiveUnratedCount">{{ stats.unrated }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">Average rating</span>
+                    <span class="value" id="archiveAvgRating">{{ "%.1f"|format(stats.avg_rating) if stats.avg_rating else 'N/A' }}%</span>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <p><strong>After archiving:</strong> All current ratings will be cleared to prepare for the next period. This cannot be undone, but the archived data can be viewed in employee history.</p>
+            </div>
+
+            <div class="actions">
+                <button class="btn-secondary" onclick="closeArchiveModal()">Cancel</button>
+                <button class="btn-primary" id="archiveBtn" onclick="archivePeriod()">Archive Period</button>
+            </div>
+        </div>
+
+        <div id="archiveSuccess" style="display: none;">
+            <div class="success-message">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h4>Period Archived Successfully</h4>
+                <p id="archiveResultMessage"></p>
+            </div>
+            <div class="actions" style="justify-content: center;">
+                <button class="btn-primary" onclick="closeArchiveModal(); location.reload();">Done</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -152,5 +394,74 @@ function sortTable(column) {
     // Re-append rows in sorted order
     rows.forEach(row => tbody.appendChild(row));
 }
+
+// Archive Modal Functions
+function openArchiveModal() {
+    document.getElementById('archiveModal').classList.add('visible');
+    document.getElementById('archiveForm').style.display = 'block';
+    document.getElementById('archiveSuccess').style.display = 'none';
+    // Suggest period ID based on current date
+    const now = new Date();
+    const year = now.getFullYear();
+    const half = now.getMonth() < 6 ? 'H1' : 'H2';
+    document.getElementById('periodId').value = `${year}-${half}`;
+    document.getElementById('periodName').value = `${half === 'H1' ? 'First' : 'Second'} Half ${year}`;
+}
+
+function closeArchiveModal() {
+    document.getElementById('archiveModal').classList.remove('visible');
+}
+
+async function archivePeriod() {
+    const periodId = document.getElementById('periodId').value.trim();
+    const periodName = document.getElementById('periodName').value.trim();
+    const periodNotes = document.getElementById('periodNotes').value.trim();
+
+    if (!periodId || !periodName) {
+        alert('Please enter both Period ID and Period Name');
+        return;
+    }
+
+    const btn = document.getElementById('archiveBtn');
+    btn.disabled = true;
+    btn.textContent = 'Archiving...';
+
+    try {
+        const response = await fetch('/api/archive-period', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                period_id: periodId,
+                period_name: periodName,
+                notes: periodNotes
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('archiveForm').style.display = 'none';
+            document.getElementById('archiveSuccess').style.display = 'block';
+            document.getElementById('archiveResultMessage').textContent =
+                `Archived ${data.archived_count} employee ratings for period "${periodName}". ` +
+                (data.skipped_unrated > 0 ? `${data.skipped_unrated} unrated employees were skipped.` : '');
+        } else {
+            alert('Error archiving period: ' + data.error);
+            btn.disabled = false;
+            btn.textContent = 'Archive Period';
+        }
+    } catch (error) {
+        alert('Error archiving period: ' + error.message);
+        btn.disabled = false;
+        btn.textContent = 'Archive Period';
+    }
+}
+
+// Close modal on overlay click
+document.getElementById('archiveModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeArchiveModal();
+    }
+});
 </script>
 {% endblock %}
