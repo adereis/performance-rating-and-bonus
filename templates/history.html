@@ -1,0 +1,623 @@
+{% extends "base.html" %}
+
+{% block title %}Period History - Performance Rating{% endblock %}
+
+{% block extra_css %}
+<style>
+    .period-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .period-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .period-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+
+    .period-card.active {
+        border: 2px solid #667eea;
+    }
+
+    .period-card-header {
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .period-card-header h3 {
+        margin: 0 0 5px 0;
+        font-size: 18px;
+    }
+
+    .period-card-header .period-id {
+        font-size: 13px;
+        opacity: 0.9;
+    }
+
+    .period-card-body {
+        padding: 20px;
+    }
+
+    .period-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        text-align: center;
+    }
+
+    .period-stat .value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .period-stat .label {
+        font-size: 11px;
+        color: #666;
+        text-transform: uppercase;
+    }
+
+    .period-card-footer {
+        padding: 15px 20px;
+        background: #f8f9fa;
+        font-size: 12px;
+        color: #666;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    /* Period Detail View */
+    .period-detail {
+        display: none;
+    }
+
+    .period-detail.visible {
+        display: block;
+    }
+
+    .period-detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .period-detail-header h2 {
+        margin: 0;
+    }
+
+    .back-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    .period-summary-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+
+    .summary-stat {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .summary-stat .value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .summary-stat .label {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+        margin-top: 5px;
+    }
+
+    .summary-stat.highlight {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .summary-stat.highlight .value,
+    .summary-stat.highlight .label {
+        color: white;
+    }
+
+    /* Distribution Chart */
+    .distribution-container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
+    }
+
+    .distribution-container h3 {
+        margin: 0 0 15px 0;
+        font-size: 16px;
+        color: #2c3e50;
+    }
+
+    .chart-wrapper {
+        height: 200px;
+    }
+
+    /* Snapshots Table */
+    .snapshots-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .snapshots-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #2c3e50;
+        border-bottom: 2px solid #e0e0e0;
+    }
+
+    .snapshots-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .snapshots-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .partial-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        background: #fff3cd;
+        color: #856404;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .rating-value {
+        font-weight: 600;
+        color: #27ae60;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+
+    .empty-state svg {
+        width: 64px;
+        height: 64px;
+        color: #ccc;
+        margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+    }
+
+    .empty-state p {
+        margin: 0;
+        font-size: 14px;
+    }
+
+    /* Sortable headers */
+    th.sortable {
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+        padding-right: 25px;
+    }
+
+    th.sortable:hover {
+        background: #e8e9ea;
+    }
+
+    th.sortable::after {
+        content: '⇅';
+        position: absolute;
+        right: 8px;
+        opacity: 0.3;
+        font-size: 12px;
+    }
+
+    th.sortable.asc::after {
+        content: '↑';
+        opacity: 1;
+    }
+
+    th.sortable.desc::after {
+        content: '↓';
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Period List View -->
+<div id="periodListView">
+    <div class="card">
+        <h2>Archived Periods</h2>
+
+        {% if periods %}
+        <div class="period-grid">
+            {% for period in periods %}
+            <div class="period-card" onclick="loadPeriodDetail('{{ period.id }}')">
+                <div class="period-card-header">
+                    <h3>{{ period.name }}</h3>
+                    <div class="period-id">{{ period.period_id }}</div>
+                </div>
+                <div class="period-card-body">
+                    <div class="period-stats">
+                        <div class="period-stat">
+                            <div class="value">{{ period.snapshot_count }}</div>
+                            <div class="label">Employees</div>
+                        </div>
+                        <div class="period-stat">
+                            <div class="value">{{ "%.0f"|format(period.avg_rating) if period.avg_rating else "-" }}%</div>
+                            <div class="label">Avg Rating</div>
+                        </div>
+                        <div class="period-stat">
+                            <div class="value">{{ period.full_details_count }}</div>
+                            <div class="label">Full Details</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="period-card-footer">
+                    Archived {{ period.archived_at }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3>No Archived Periods</h3>
+            <p>Archive your first period from the Dashboard to start tracking history.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Period Detail View -->
+<div id="periodDetailView" class="period-detail">
+    <div class="card">
+        <div class="period-detail-header">
+            <div>
+                <a href="#" class="back-link" onclick="showPeriodList(); return false;">
+                    ← Back to Periods
+                </a>
+                <h2 id="detailPeriodName">Period Details</h2>
+            </div>
+        </div>
+
+        <div id="periodDetailContent">
+            <div class="empty-state">
+                <div class="employee-modal-spinner" style="border-top-color: #667eea;"></div>
+                <p>Loading period details...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    let currentPeriodChart = null;
+
+    function showPeriodList() {
+        document.getElementById('periodListView').style.display = 'block';
+        document.getElementById('periodDetailView').classList.remove('visible');
+        // Update URL without page reload
+        history.pushState({}, '', '/history');
+    }
+
+    function loadPeriodDetail(periodId) {
+        const listView = document.getElementById('periodListView');
+        const detailView = document.getElementById('periodDetailView');
+        const content = document.getElementById('periodDetailContent');
+
+        // Show loading state
+        listView.style.display = 'none';
+        detailView.classList.add('visible');
+        content.innerHTML = `
+            <div class="empty-state">
+                <div class="employee-modal-spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+                <p>Loading period details...</p>
+            </div>
+        `;
+
+        // Update URL
+        history.pushState({}, '', `/history?period=${encodeURIComponent(periodId)}`);
+
+        // Fetch period details
+        fetch(`/api/period/${encodeURIComponent(periodId)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderPeriodDetail(data);
+                } else {
+                    content.innerHTML = `
+                        <div class="empty-state">
+                            <p style="color: #e74c3c;">Error: ${data.error}</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <p style="color: #e74c3c;">Error loading period: ${error.message}</p>
+                    </div>
+                `;
+            });
+    }
+
+    function renderPeriodDetail(data) {
+        const period = data.period;
+        const snapshots = data.snapshots;
+        const stats = data.stats;
+
+        document.getElementById('detailPeriodName').textContent = `${period.name} (${period.period_id})`;
+
+        // Calculate distribution
+        const distribution = {
+            'below_60': 0,
+            '60_to_90': 0,
+            '90_to_120': 0,
+            'above_120': 0
+        };
+
+        snapshots.forEach(s => {
+            if (s.performance_rating !== null) {
+                if (s.performance_rating < 60) distribution.below_60++;
+                else if (s.performance_rating < 90) distribution['60_to_90']++;
+                else if (s.performance_rating < 120) distribution['90_to_120']++;
+                else distribution.above_120++;
+            }
+        });
+
+        const content = document.getElementById('periodDetailContent');
+        content.innerHTML = `
+            <div class="period-summary-stats">
+                <div class="summary-stat highlight">
+                    <div class="value">${stats.total_employees}</div>
+                    <div class="label">Employees</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="value">${stats.avg_rating !== null ? stats.avg_rating.toFixed(1) + '%' : '-'}</div>
+                    <div class="label">Avg Rating</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="value">${stats.full_details}</div>
+                    <div class="label">Full Details</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="value">${stats.partial}</div>
+                    <div class="label">Partial Records</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="value">${stats.min_rating !== null ? stats.min_rating + '%' : '-'}</div>
+                    <div class="label">Min Rating</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="value">${stats.max_rating !== null ? stats.max_rating + '%' : '-'}</div>
+                    <div class="label">Max Rating</div>
+                </div>
+            </div>
+
+            <div class="distribution-container">
+                <h3>Rating Distribution</h3>
+                <div class="chart-wrapper">
+                    <canvas id="periodDistributionChart"></canvas>
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="snapshots-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="name">Name</th>
+                            <th class="sortable" data-sort="job">Job Profile</th>
+                            <th class="sortable" data-sort="rating">Rating</th>
+                            <th>Justification</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="snapshotsTableBody">
+                        ${snapshots.map(s => `
+                            <tr data-name="${escapeAttr(s.snapshot_name || '')}"
+                                data-job="${escapeAttr(s.snapshot_job_profile || '')}"
+                                data-rating="${s.performance_rating !== null ? s.performance_rating : -1}">
+                                <td>
+                                    <span class="employee-name" data-employee-id="${escapeAttr(s.associate_id)}" style="cursor: pointer; color: #667eea; font-weight: 600;">
+                                        ${escapeHtml(s.snapshot_name || s.associate_id)}
+                                    </span>
+                                </td>
+                                <td>${escapeHtml(s.snapshot_job_profile || '-')}</td>
+                                <td>
+                                    ${s.performance_rating !== null
+                                        ? `<span class="rating-value">${s.performance_rating}%</span>`
+                                        : '<span style="color: #999;">-</span>'}
+                                </td>
+                                <td style="max-width: 300px; font-size: 13px;">
+                                    ${s.justification
+                                        ? escapeHtml(s.justification.substring(0, 100)) + (s.justification.length > 100 ? '...' : '')
+                                        : '<span style="color: #999;">-</span>'}
+                                </td>
+                                <td>
+                                    ${s.has_full_details
+                                        ? '<span style="color: #27ae60;">Full</span>'
+                                        : '<span class="partial-badge">Partial</span>'}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        // Render distribution chart
+        renderDistributionChart(distribution);
+
+        // Setup table sorting
+        setupTableSorting();
+
+        // Make employee names clickable
+        if (typeof makeEmployeeNamesClickable === 'function') {
+            makeEmployeeNamesClickable();
+        }
+    }
+
+    function renderDistributionChart(distribution) {
+        const ctx = document.getElementById('periodDistributionChart');
+        if (!ctx) return;
+
+        if (currentPeriodChart) {
+            currentPeriodChart.destroy();
+        }
+
+        currentPeriodChart = new Chart(ctx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Below 60%', '60-90%', '90-120%', 'Above 120%'],
+                datasets: [{
+                    data: [
+                        distribution.below_60,
+                        distribution['60_to_90'],
+                        distribution['90_to_120'],
+                        distribution.above_120
+                    ],
+                    backgroundColor: ['#e74c3c', '#f39c12', '#3498db', '#27ae60'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    }
+
+    function setupTableSorting() {
+        const headers = document.querySelectorAll('.snapshots-table th.sortable');
+        let currentSort = { column: 'rating', direction: 'desc' };
+
+        headers.forEach(header => {
+            header.addEventListener('click', function() {
+                const column = this.getAttribute('data-sort');
+                sortTable(column);
+            });
+        });
+
+        function sortTable(column) {
+            const tbody = document.getElementById('snapshotsTableBody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+
+            // Update header classes
+            document.querySelectorAll('.snapshots-table th.sortable').forEach(th => {
+                th.classList.remove('asc', 'desc');
+            });
+            document.querySelector(`th[data-sort="${column}"]`).classList.add(currentSort.direction);
+
+            rows.sort((a, b) => {
+                let aVal = a.getAttribute(`data-${column}`);
+                let bVal = b.getAttribute(`data-${column}`);
+
+                if (column === 'rating') {
+                    aVal = parseFloat(aVal);
+                    bVal = parseFloat(bVal);
+                } else {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+
+                if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // Set initial sort indicator
+        document.querySelector('th[data-sort="rating"]').classList.add('desc');
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function escapeAttr(text) {
+        if (!text) return '';
+        return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // Handle browser back/forward
+    window.addEventListener('popstate', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const periodId = urlParams.get('period');
+        if (periodId) {
+            loadPeriodDetail(periodId);
+        } else {
+            showPeriodList();
+        }
+    });
+
+    // Check URL on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const periodId = urlParams.get('period');
+        if (periodId) {
+            loadPeriodDetail(periodId);
+        }
+    });
+</script>
+{% endblock %}

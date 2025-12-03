@@ -52,6 +52,7 @@ The Performance Rating System was built through an iterative collaboration betwe
 - ✅ Historical data preservation with period archiving
 - ✅ Employee rating history with trend visualization
 - ✅ Period-over-period comparison in Analytics
+- ✅ Period Browser for viewing archived periods
 
 ### Human Oversight
 
@@ -714,6 +715,15 @@ Keep these separate and don't duplicate content.
   - Period ID and name fields
 - Pre-import analysis (employee count, bonus column detection)
 - Overwrite warning for existing periods
+
+#### `templates/history.html` (Period Browser)
+- Period cards grid showing all archived periods
+- Click period to view detail with:
+  - Summary stats (avg, min, max, full/partial counts)
+  - Rating distribution chart
+  - Sortable employee snapshot table
+- Partial record indicator for historical imports without Notes data
+- Deep linking support (/history?period=2024-H2)
 
 ### Generated/Temporary Files (Never Commit)
 

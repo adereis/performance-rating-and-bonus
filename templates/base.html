@@ -919,6 +919,7 @@
                 <a href="{{ url_for('bonus_calculation') }}" {% if request.endpoint == 'bonus_calculation' %}class="active"{% endif %}>Bonus Calculation</a>
                 <a href="{{ url_for('export_page') }}" {% if request.endpoint == 'export_page' %}class="active"{% endif %}>Export</a>
                 <a href="{{ url_for('import_page') }}" {% if request.endpoint == 'import_page' %}class="active"{% endif %}>Import</a>
+                <a href="{{ url_for('history_page') }}" {% if request.endpoint == 'history_page' %}class="active"{% endif %}>History</a>
             </nav>
         </div>
     </header>

@@ -1436,6 +1436,41 @@ def import_page():
     return render_template('import.html')
 
 
+@app.route('/history')
+def history_page():
+    """Period history browser page."""
+    db = get_db()
+    try:
+        periods = db.query(Period).order_by(Period.archived_at.desc()).all()
+
+        period_data = []
+        for period in periods:
+            # Get snapshots for this period
+            snapshots = db.query(RatingSnapshot).filter(
+                RatingSnapshot.period_id == period.id
+            ).all()
+
+            # Calculate stats
+            ratings = [s.performance_rating for s in snapshots if s.performance_rating is not None]
+            avg_rating = sum(ratings) / len(ratings) if ratings else None
+            full_details_count = sum(1 for s in snapshots if s.has_full_details)
+
+            period_data.append({
+                'id': period.id,
+                'period_id': period.id,
+                'name': period.name,
+                'archived_at': period.archived_at.strftime('%Y-%m-%d') if period.archived_at else 'Unknown',
+                'snapshot_count': len(snapshots),
+                'avg_rating': avg_rating,
+                'full_details_count': full_details_count
+            })
+
+        return render_template('history.html', periods=period_data)
+
+    finally:
+        db.close()
+
+
 @app.route('/api/import/analyze', methods=['POST'])
 def analyze_import():
     """
@@ -1877,6 +1912,82 @@ def list_periods():
         return jsonify({
             'success': True,
             'periods': result
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@app.route('/api/period/<period_id>')
+def get_period_detail(period_id):
+    """
+    Get detailed information about a specific archived period.
+
+    Returns period info, all snapshots, and statistics.
+    """
+    db = get_db()
+    try:
+        # Get period
+        period = db.query(Period).filter(Period.id == period_id).first()
+        if not period:
+            return jsonify({'success': False, 'error': f'Period "{period_id}" not found'}), 404
+
+        # Get all snapshots for this period
+        snapshots = db.query(RatingSnapshot).filter(
+            RatingSnapshot.period_id == period_id
+        ).order_by(RatingSnapshot.performance_rating.desc().nullslast()).all()
+
+        # Build snapshot data
+        snapshot_data = []
+        ratings = []
+        full_details_count = 0
+        partial_count = 0
+
+        for snap in snapshots:
+            snapshot_data.append({
+                'associate_id': snap.associate_id,
+                'snapshot_name': snap.snapshot_name,
+                'snapshot_job_profile': snap.snapshot_job_profile,
+                'snapshot_org': snap.snapshot_org,
+                'performance_rating': snap.performance_rating,
+                'bonus_allocation': snap.bonus_allocation,
+                'justification': snap.justification,
+                'tenets_strengths': snap.tenets_strengths,
+                'tenets_improvements': snap.tenets_improvements,
+                'has_full_details': snap.has_full_details
+            })
+
+            if snap.performance_rating is not None:
+                ratings.append(snap.performance_rating)
+
+            if snap.has_full_details:
+                full_details_count += 1
+            else:
+                partial_count += 1
+
+        # Calculate statistics
+        stats = {
+            'total_employees': len(snapshots),
+            'avg_rating': round(sum(ratings) / len(ratings), 1) if ratings else None,
+            'min_rating': min(ratings) if ratings else None,
+            'max_rating': max(ratings) if ratings else None,
+            'full_details': full_details_count,
+            'partial': partial_count
+        }
+
+        return jsonify({
+            'success': True,
+            'period': {
+                'id': period.id,
+                'period_id': period.id,
+                'name': period.name,
+                'notes': period.notes,
+                'archived_at': period.archived_at.isoformat() if period.archived_at else None
+            },
+            'snapshots': snapshot_data,
+            'stats': stats
         })
 
     except Exception as e:
