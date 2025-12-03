@@ -92,7 +92,7 @@ To achieve similar results with AI assistance:
 - **AI Model**: Claude Sonnet 4.5 (claude-sonnet-4-5@20250929)
 - **Platform**: Claude Code CLI (Anthropic)
 - **Development Period**: November 2025
-- **Total Test Coverage**: 86 unit tests
+- **Total Test Coverage**: 139 unit tests
 - **Lines of Code**: ~3,000 (application + tests)
 
 ---
@@ -154,7 +154,8 @@ To achieve similar results with AI assistance:
 - **Workday is source of truth** for employee data (salary, bonus targets, org structure)
 - **Manager ratings are local-only** and preserved across Workday updates
 - **Bonus calculations are ephemeral** (recalculated on demand, never stored in database)
-- Import flow: Workday XLSX → `convert_xlsx.py` → SQLite → Flask API → Web UI
+- **Historical snapshots** preserve rating data across periods (RatingSnapshot table)
+- Import flow: Workday XLSX → Import UI → `xlsx_utils.py` → SQLite → Flask API → Web UI
 
 ### Key Design Decisions
 
@@ -562,13 +563,18 @@ Keep these separate and don't duplicate content.
 - Model methods for data conversion (`to_dict()`)
 - **Do not add**: Business logic or calculations (belongs in app.py)
 
-#### `convert_xlsx.py` (Workday Import)
+#### `xlsx_utils.py` (Workday XLSX Parsing)
 - Excel file reading with openpyxl
-- Workday column mapping
+- Workday column mapping and detection
 - Data transformation and cleaning
-- Manager name extraction from org field
-- Database population with Workday data
-- **Preserves**: Existing manager-entered fields (ratings, justifications)
+- Reusable parsing functions for import endpoints
+- Functions: `analyze_xlsx()`, `parse_xlsx_employees()`, `find_column_indices()`
+
+#### `notes_parser.py` (Notes Field Parser)
+- Parses structured Notes/Single Description field from Workday exports
+- Extracts: performance rating, justification, mentors, mentees, tenets
+- Used for historical imports to reconstruct rating data
+- Functions: `parse_notes_field()`, `format_notes_field()`
 
 ### Data Generation & Sample Data
 
@@ -593,15 +599,17 @@ Keep these separate and don't duplicate content.
 - **Use these fixtures** in all new tests
 
 #### `tests/test_*.py` (Test Modules)
-- `test_models.py` - Employee model and database operations (14 tests)
-- `test_api.py` - Flask routes and API endpoints (22 tests)
-- `test_import.py` - Excel import functionality (6 tests)
+- `test_models.py` - Employee, Period, RatingSnapshot models (25 tests)
+- `test_api.py` - Flask routes and API endpoints (25 tests)
+- `test_import_api.py` - Browser-based import API (17 tests)
 - `test_multi_org.py` - Multi-organization scenarios (16 tests)
 - `test_workday_format.py` - Workday column format validation (13 tests)
 - `test_tenets.py` - Team tenets evaluation system (16 tests)
+- `test_notes_parser.py` - Notes field parsing (15 tests)
+- `test_filters.py` - Employee filtering (12 tests)
 - Follow naming convention for pytest discovery
 
-**Important**: When writing import tests, never use `convert_xlsx_to_db()` directly as it writes to the production `ratings.db`. Instead, simulate the import logic using test database fixtures to avoid polluting the real database.
+**Important**: Always use test fixtures from `conftest.py` for database operations. Never access production `ratings.db` in tests.
 
 ### Templates (HTML/UI)
 
@@ -640,6 +648,17 @@ Keep these separate and don't duplicate content.
   - Tab 3: Detailed Breakdown (per-employee side-by-side comparison)
   - Auto-detects multi-team scenario by counting unique supervisory organizations
   - Shows budget flow between teams (gains/losses from normalization)
+
+#### `templates/import.html` (Workday Import)
+- Drag-and-drop file upload zone
+- Import type selection (Current Period vs Historical Period)
+- **Current Period**: Updates Employee table, preserves ratings
+  - "Clear existing data" checkbox for switching from test to real data
+- **Historical Period**: Creates Period and RatingSnapshot records
+  - Parses Notes field for rating data
+  - Period ID and name fields
+- Pre-import analysis (employee count, bonus column detection)
+- Overwrite warning for existing periods
 
 ### Generated/Temporary Files (Never Commit)
 

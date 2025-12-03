@@ -8,7 +8,10 @@ from datetime import datetime
 from collections import defaultdict
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
-from models import Employee, BonusSettings, init_db, get_db
+from models import Employee, BonusSettings, Period, RatingSnapshot, init_db, get_db
+from xlsx_utils import analyze_xlsx, parse_xlsx_employees
+from notes_parser import parse_notes_field
+import tempfile
 
 app = Flask(__name__)
 
@@ -1372,6 +1375,308 @@ def export_xlsx():
         as_attachment=True,
         download_name='performance_export.xlsx'
     )
+
+
+@app.route('/import')
+def import_page():
+    """Import data page."""
+    return render_template('import.html')
+
+
+@app.route('/api/import/analyze', methods=['POST'])
+def analyze_import():
+    """
+    Analyze an uploaded XLSX file and return metadata.
+
+    Returns counts of employees, whether bonus column exists,
+    and checks if the period already exists (for historical imports).
+    """
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file uploaded'}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'success': False, 'error': 'No file selected'}), 400
+
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        return jsonify({'success': False, 'error': 'File must be an Excel file (.xlsx or .xls)'}), 400
+
+    import_type = request.form.get('import_type', 'current')
+    period_id = request.form.get('period_id', '')
+
+    # Save to temp file for analysis
+    temp_dir = os.path.expanduser('~/tmp')
+    os.makedirs(temp_dir, exist_ok=True)
+
+    temp_path = os.path.join(temp_dir, f'import_analyze_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
+    try:
+        file.save(temp_path)
+
+        # Analyze the file
+        analysis = analyze_xlsx(temp_path)
+
+        if not analysis['success']:
+            return jsonify({'success': False, 'error': analysis.get('error', 'Analysis failed')}), 400
+
+        result = {
+            'success': True,
+            'employee_count': analysis['employee_count'],
+            'has_bonus_column': analysis['has_bonus_column'],
+            'notes_count': analysis['notes_count'],
+            'partial_count': analysis['partial_count'],
+            'period_exists': False,
+            'existing_count': 0,
+            'period_id': None
+        }
+
+        # For historical imports, check if period exists
+        if import_type == 'historical' and period_id:
+            db = get_db()
+            try:
+                existing_period = db.query(Period).filter(Period.id == period_id).first()
+                if existing_period:
+                    result['period_exists'] = True
+                    result['period_id'] = period_id
+                    # Count existing snapshots for this period
+                    result['existing_count'] = db.query(RatingSnapshot).filter(
+                        RatingSnapshot.period_id == period_id
+                    ).count()
+            finally:
+                db.close()
+
+        return jsonify(result)
+
+    finally:
+        # Clean up temp file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+@app.route('/api/import/current', methods=['POST'])
+def import_current():
+    """
+    Import XLSX as current period data.
+
+    Updates the Employee table with fresh Workday data.
+    Preserves existing ratings and justifications unless clear_existing is set.
+    """
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file uploaded'}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'success': False, 'error': 'No file selected'}), 400
+
+    clear_existing = request.form.get('clear_existing', '').lower() == 'true'
+
+    # Save to temp file
+    temp_dir = os.path.expanduser('~/tmp')
+    os.makedirs(temp_dir, exist_ok=True)
+
+    temp_path = os.path.join(temp_dir, f'import_current_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
+    try:
+        file.save(temp_path)
+
+        # Parse the file
+        success, employees, error = parse_xlsx_employees(temp_path)
+        if not success:
+            return jsonify({'success': False, 'error': error}), 400
+
+        db = get_db()
+        try:
+            # Clear existing employees if requested
+            cleared = 0
+            if clear_existing:
+                cleared = db.query(Employee).count()
+                db.query(Employee).delete()
+
+            imported = 0
+            updated = 0
+
+            for emp_data in employees:
+                associate_id = emp_data['associate_id']
+
+                # Check if employee exists
+                existing = db.query(Employee).filter(Employee.associate_id == associate_id).first()
+
+                if existing:
+                    employee = existing
+                    updated += 1
+                else:
+                    employee = Employee(associate_id=associate_id)
+                    imported += 1
+
+                # Update Workday fields
+                employee.associate = emp_data['associate']
+                employee.supervisory_organization = emp_data['supervisory_organization']
+                employee.current_job_profile = emp_data['current_job_profile']
+                employee.photo = emp_data['photo']
+                employee.errors = emp_data['errors']
+                employee.current_base_pay_all_countries = emp_data['current_base_pay_all_countries']
+                employee.current_base_pay_all_countries_usd = emp_data['current_base_pay_all_countries_usd']
+                employee.currency = emp_data['currency']
+                employee.grade = emp_data['grade']
+                employee.annual_bonus_target_percent = emp_data['annual_bonus_target_percent']
+                employee.last_bonus_allocation_percent = emp_data['last_bonus_allocation_percent']
+                employee.bonus_target_local_currency = emp_data['bonus_target_local_currency']
+                employee.bonus_target_local_currency_usd = emp_data['bonus_target_local_currency_usd']
+                employee.proposed_bonus_amount = emp_data['proposed_bonus_amount']
+                employee.proposed_bonus_amount_usd = emp_data['proposed_bonus_amount_usd']
+                employee.proposed_percent_of_target_bonus = emp_data['proposed_percent_of_target_bonus']
+                employee.notes = emp_data['notes']
+                employee.zero_bonus_allocated = emp_data['zero_bonus_allocated']
+
+                # Initialize manager input fields as empty if new employee
+                if not existing:
+                    employee.performance_rating_percent = None
+                    employee.tenets_strengths = None
+                    employee.tenets_improvements = None
+                    employee.justification = ''
+                    employee.mentor = ''
+                    employee.mentees = ''
+                    employee.last_updated = None
+                    db.add(employee)
+
+            db.commit()
+
+            result = {
+                'success': True,
+                'imported': imported,
+                'updated': updated
+            }
+            if clear_existing:
+                result['cleared'] = cleared
+            return jsonify(result)
+
+        except Exception as e:
+            db.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            db.close()
+
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+@app.route('/api/import/historical', methods=['POST'])
+def import_historical():
+    """
+    Import XLSX as a historical period snapshot.
+
+    Creates Period and RatingSnapshot records.
+    Parses Notes field for rating data.
+    """
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file uploaded'}), 400
+
+    file = request.files['file']
+    period_id = request.form.get('period_id', '').strip()
+    period_name = request.form.get('period_name', '').strip()
+
+    if not period_id or not period_name:
+        return jsonify({'success': False, 'error': 'Period ID and name are required'}), 400
+
+    if not file.filename:
+        return jsonify({'success': False, 'error': 'No file selected'}), 400
+
+    # Save to temp file
+    temp_dir = os.path.expanduser('~/tmp')
+    os.makedirs(temp_dir, exist_ok=True)
+
+    temp_path = os.path.join(temp_dir, f'import_historical_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
+    try:
+        file.save(temp_path)
+
+        # Parse the file
+        success, employees, error = parse_xlsx_employees(temp_path)
+        if not success:
+            return jsonify({'success': False, 'error': error}), 400
+
+        db = get_db()
+        try:
+            # Create or update period
+            period = db.query(Period).filter(Period.id == period_id).first()
+            if not period:
+                period = Period(id=period_id, name=period_name, archived_at=datetime.now())
+                db.add(period)
+            else:
+                period.name = period_name
+                period.archived_at = datetime.now()
+
+            imported = 0
+            updated = 0
+            full_details_count = 0
+
+            for emp_data in employees:
+                associate_id = emp_data['associate_id']
+
+                # Parse notes for rating data
+                notes_data = parse_notes_field(emp_data.get('notes', ''))
+
+                # Get bonus allocation from Workday column
+                bonus_allocation = emp_data.get('proposed_percent_of_target_bonus')
+
+                # Check if snapshot exists
+                existing = db.query(RatingSnapshot).filter(
+                    RatingSnapshot.period_id == period_id,
+                    RatingSnapshot.associate_id == associate_id
+                ).first()
+
+                if existing:
+                    snapshot = existing
+                    updated += 1
+                else:
+                    snapshot = RatingSnapshot(
+                        period_id=period_id,
+                        associate_id=associate_id
+                    )
+                    imported += 1
+
+                # Update snapshot fields
+                snapshot.performance_rating = notes_data.get('performance_rating')
+                snapshot.bonus_allocation = bonus_allocation
+                snapshot.justification = notes_data.get('justification')
+                snapshot.tenets_strengths = notes_data.get('tenets_strengths')
+                snapshot.tenets_improvements = notes_data.get('tenets_improvements')
+                snapshot.mentors = notes_data.get('mentors')
+                snapshot.mentees = notes_data.get('mentees')
+
+                # Snapshot employee context
+                snapshot.snapshot_name = emp_data['associate']
+                snapshot.snapshot_org = emp_data['supervisory_organization']
+                snapshot.snapshot_job_profile = emp_data['current_job_profile']
+                snapshot.snapshot_bonus_target_usd = emp_data.get('bonus_target_local_currency_usd')
+
+                snapshot.archived_at = datetime.now()
+
+                # Mark if we have full details (performance rating parsed from notes)
+                has_full = notes_data.get('performance_rating') is not None
+                snapshot.has_full_details = has_full
+                if has_full:
+                    full_details_count += 1
+
+                if not existing:
+                    db.add(snapshot)
+
+            db.commit()
+
+            return jsonify({
+                'success': True,
+                'imported': imported,
+                'updated': updated,
+                'full_details': full_details_count
+            })
+
+        except Exception as e:
+            db.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            db.close()
+
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
 if __name__ == '__main__':

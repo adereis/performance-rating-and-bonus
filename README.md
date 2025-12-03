@@ -29,16 +29,15 @@ pip install -r requirements.txt
 # 2. Generate small team Workday data (salaries, bonus targets, org structure)
 python3 create_sample_data.py
 
-# 3. Import Workday data to database
-python3 convert_xlsx.py sample-data-small.xlsx
-
-# 4. Populate sample ratings and justifications
-python3 populate_sample_ratings.py small
-
-# 5. Start the web server
+# 3. Start the web server
 python3 app.py
 
-# 6. Open browser to http://localhost:5000
+# 4. Open browser to http://localhost:5000
+
+# 5. Go to Import tab, upload sample-data-small.xlsx
+
+# 6. Populate sample ratings and justifications
+python3 populate_sample_ratings.py small
 ```
 
 ### Option 2: Large Multi-Manager Organization
@@ -48,13 +47,10 @@ Test multi-org scenarios - 50 employees across 5 managers with sample ratings.
 # 2. Generate large org Workday data
 python3 create_sample_data.py --large
 
-# 3. Import Workday data to database
-python3 convert_xlsx.py sample-data-large.xlsx
+# 3-5. Start server, import sample-data-large.xlsx via Import tab
 
-# 4. Populate sample ratings and justifications
+# 6. Populate sample ratings and justifications
 python3 populate_sample_ratings.py large
-
-# (Continue with steps 5-6 above)
 ```
 
 **Sample Data Details:**
@@ -109,36 +105,24 @@ Export your team data from Workday with these required columns:
 
 Save the export as `real-workday-export.xlsx` (or any name starting with `real-` - these are automatically ignored by git to protect your data)
 
-### Step 2: Clear Sample Data (if used)
+### Step 2: Import Your Data
 
-If you previously imported sample data:
-
-```bash
-# Remove the sample database
-rm ratings.db
-
-# Or keep it as backup
-mv ratings.db ratings-sample.db
-```
-
-### Step 3: Import Your Data
-
-```bash
-python3 convert_xlsx.py real-workday-export.xlsx
-```
+1. Start the web server: `python3 app.py`
+2. Open http://localhost:5000
+3. Navigate to **Import** tab
+4. Upload your Workday export file
+5. Choose **Current Period** import type
+6. If switching from sample data, check **"Clear existing data before import"**
+7. Click **Import Data**
 
 This will:
-- Create a new SQLite database (`ratings.db`)
 - Import all employee records from Workday
 - Initialize empty performance rating fields
+- Optionally clear any existing sample data
 
-### Step 4: Start Rating
+### Step 3: Start Rating
 
-```bash
-python3 app.py
-```
-
-Open http://localhost:5000 and navigate to **Rate Team** to begin.
+Navigate to **Rate Team** to begin entering performance ratings.
 
 ## Workflow
 
@@ -208,7 +192,8 @@ See [BONUS_CALCULATION_README.md](BONUS_CALCULATION_README.md) for detailed expl
 bonuses/
 ├── app.py                          # Flask application (main server)
 ├── models.py                       # SQLAlchemy database models
-├── convert_xlsx.py                 # Workday import script
+├── xlsx_utils.py                   # Workday XLSX parsing utilities
+├── notes_parser.py                 # Notes field parser for historical imports
 ├── create_sample_data.py           # Sample data generator
 ├── requirements.txt                # Python dependencies
 ├── README.md                       # This file
@@ -223,9 +208,11 @@ bonuses/
 │   ├── index.html                  # Dashboard
 │   ├── rate.html                   # Rating interface
 │   ├── analytics.html              # Analytics & calibration
-│   └── bonus_calculation.html      # Bonus calculator
+│   ├── bonus_calculation.html      # Bonus calculator
+│   ├── export.html                 # Export to Workday
+│   └── import.html                 # Import from Workday
 └── tests/                          # Unit tests
-    └── test_app.py                 # Test suite (42 tests)
+    └── test_*.py                   # Test suite
 ```
 
 ## Testing
@@ -236,17 +223,7 @@ Run the test suite:
 python3 -m pytest tests/ -v
 ```
 
-Current coverage: 70 tests covering:
-- Database operations
-- Employee CRUD
-- Rating validation
-- Analytics calculations
-- Distribution calibration
-- Bonus algorithm
-- Multi-organization scenarios
-- Workday export format validation
-- USD vs international employee handling
-- Bonus calculations
+Tests cover database operations, rating validation, bonus calculations, multi-org scenarios, Workday import/export, and historical data preservation.
 
 ## Privacy & Security
 
@@ -261,7 +238,7 @@ Current coverage: 70 tests covering:
 
 ### "No such file or directory" when importing Workday data
 - You need to export from Workday first, OR
-- Use sample data: `python3 create_sample_data.py && python3 convert_xlsx.py sample-data-small.xlsx`
+- Use sample data: `python3 create_sample_data.py` then import via the Import tab
 
 ### "Only 6 employees showing in bonus calculation"
 - Employees need bonus target data in Workday export
@@ -281,12 +258,13 @@ Current coverage: 70 tests covering:
 
 To refresh data from Workday:
 
-```bash
-# Re-run the import (preserves existing ratings)
-python3 convert_xlsx.py real-workday-export.xlsx
-```
+1. Export fresh data from Workday
+2. Navigate to **Import** tab
+3. Upload the new export file
+4. Choose **Current Period** (do NOT check "Clear existing data")
+5. Click **Import Data**
 
-**Important**: Re-importing updates Workday fields (salary, job title, etc.) but **preserves** your performance ratings and justifications. Only ratings for employees in the new export will be kept.
+**Important**: Re-importing updates Workday fields (salary, job title, etc.) but **preserves** your performance ratings and justifications.
 
 ## Future Enhancements
 
