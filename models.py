@@ -1,13 +1,94 @@
 """
 SQLAlchemy models for the performance rating system.
 """
-from sqlalchemy import create_engine, Column, String, Float, DateTime, Integer
+from sqlalchemy import create_engine, Column, String, Float, DateTime, Integer, Boolean, Text, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 import os
 
 Base = declarative_base()
+
+
+class Period(Base):
+    """
+    Represents a rating period (e.g., "2024-H1", "2025-Q1").
+    Periods are used to organize historical snapshots.
+    """
+    __tablename__ = 'periods'
+
+    id = Column(String, primary_key=True)  # e.g., "2024-H1", "2025-Q1"
+    name = Column(String, nullable=False)  # e.g., "First Half 2024"
+    archived_at = Column(DateTime)
+    notes = Column(Text)  # Manager notes about this period
+
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'archived_at': self.archived_at.strftime('%Y-%m-%d %H:%M:%S') if self.archived_at else None,
+            'notes': self.notes
+        }
+
+
+class RatingSnapshot(Base):
+    """
+    Historical snapshot of an employee's rating for a specific period.
+    Stores both the performance rating (input) and bonus allocation (output).
+    """
+    __tablename__ = 'rating_snapshots'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    period_id = Column(String, nullable=False, index=True)  # FK to periods.id
+    associate_id = Column(String, nullable=False, index=True)  # Employee identifier
+
+    # Rating vs Allocation (important distinction!)
+    performance_rating = Column(Float)  # Manager's assessment (0-200%), INPUT to algorithm
+    bonus_allocation = Column(Float)    # Final result from algorithm, OUTPUT
+
+    # Qualitative data (from Notes field, may be NULL for old imports)
+    justification = Column(Text)
+    tenets_strengths = Column(String)      # Human-readable names, comma-separated
+    tenets_improvements = Column(String)   # Human-readable names, comma-separated
+    mentors = Column(String)
+    mentees = Column(String)
+
+    # Snapshot of employee context at rating time
+    snapshot_name = Column(String)           # Employee name at time of snapshot
+    snapshot_org = Column(String)            # Supervisory org at time of snapshot
+    snapshot_job_profile = Column(String)    # Job profile at time of snapshot
+    snapshot_bonus_target_usd = Column(Float)  # Bonus target at time of snapshot
+
+    # Metadata
+    archived_at = Column(DateTime)
+    has_full_details = Column(Boolean, default=True)  # FALSE if only bonus allocation available
+
+    # Unique constraint: one snapshot per employee per period
+    __table_args__ = (
+        Index('ix_snapshot_period_employee', 'period_id', 'associate_id', unique=True),
+    )
+
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization."""
+        return {
+            'id': self.id,
+            'period_id': self.period_id,
+            'associate_id': self.associate_id,
+            'performance_rating': self.performance_rating,
+            'bonus_allocation': self.bonus_allocation,
+            'justification': self.justification,
+            'tenets_strengths': self.tenets_strengths,
+            'tenets_improvements': self.tenets_improvements,
+            'mentors': self.mentors,
+            'mentees': self.mentees,
+            'snapshot_name': self.snapshot_name,
+            'snapshot_org': self.snapshot_org,
+            'snapshot_job_profile': self.snapshot_job_profile,
+            'snapshot_bonus_target_usd': self.snapshot_bonus_target_usd,
+            'archived_at': self.archived_at.strftime('%Y-%m-%d %H:%M:%S') if self.archived_at else None,
+            'has_full_details': self.has_full_details
+        }
 
 
 class BonusSettings(Base):

@@ -1,9 +1,9 @@
 """
-Tests for the Employee model and database operations.
+Tests for the Employee, Period, and RatingSnapshot models and database operations.
 """
 import pytest
 from datetime import datetime
-from models import Employee
+from models import Employee, Period, RatingSnapshot
 
 
 class TestEmployeeModel:
@@ -236,3 +236,240 @@ class TestEmployeeModel:
         assert ordered[0].associate == 'Bob Smith'  # 140
         assert ordered[1].associate == 'Alice Johnson'  # 120
         assert ordered[2].associate == 'Charlie Brown'  # 85
+
+
+class TestPeriodModel:
+    """Test Period model CRUD operations."""
+
+    def test_create_period(self, db_session):
+        """Test creating a new period."""
+        period = Period(
+            id='2024-H1',
+            name='First Half 2024',
+            archived_at=datetime.now(),
+            notes='Initial rating period'
+        )
+        db_session.add(period)
+        db_session.commit()
+
+        assert period.id == '2024-H1'
+        assert period.name == 'First Half 2024'
+        assert period.archived_at is not None
+        assert period.notes == 'Initial rating period'
+
+    def test_period_to_dict(self, db_session):
+        """Test converting period to dictionary."""
+        archived_time = datetime(2024, 6, 30, 12, 0, 0)
+        period = Period(
+            id='2024-H1',
+            name='First Half 2024',
+            archived_at=archived_time,
+            notes='Test notes'
+        )
+        db_session.add(period)
+        db_session.commit()
+
+        period_dict = period.to_dict()
+
+        assert period_dict['id'] == '2024-H1'
+        assert period_dict['name'] == 'First Half 2024'
+        assert period_dict['archived_at'] == '2024-06-30 12:00:00'
+        assert period_dict['notes'] == 'Test notes'
+
+    def test_period_without_notes(self, db_session):
+        """Test period with optional fields null."""
+        period = Period(
+            id='2024-Q4',
+            name='Q4 2024'
+        )
+        db_session.add(period)
+        db_session.commit()
+
+        assert period.archived_at is None
+        assert period.notes is None
+
+    def test_query_periods(self, db_session):
+        """Test querying multiple periods."""
+        periods_data = [
+            {'id': '2024-H1', 'name': 'First Half 2024'},
+            {'id': '2024-H2', 'name': 'Second Half 2024'},
+            {'id': '2025-H1', 'name': 'First Half 2025'},
+        ]
+        for data in periods_data:
+            db_session.add(Period(**data))
+        db_session.commit()
+
+        all_periods = db_session.query(Period).order_by(Period.id).all()
+
+        assert len(all_periods) == 3
+        assert all_periods[0].id == '2024-H1'
+        assert all_periods[2].id == '2025-H1'
+
+
+class TestRatingSnapshotModel:
+    """Test RatingSnapshot model CRUD operations."""
+
+    def test_create_snapshot(self, db_session):
+        """Test creating a new rating snapshot."""
+        snapshot = RatingSnapshot(
+            period_id='2024-H1',
+            associate_id='EMP001',
+            performance_rating=125.0,
+            bonus_allocation=118.5,
+            justification='Excellent performance',
+            tenets_strengths='Leadership, Innovation',
+            tenets_improvements='Communication',
+            mentors='Alice Chen',
+            mentees='Bob Jones',
+            snapshot_name='John Doe',
+            snapshot_org='Engineering',
+            snapshot_job_profile='Senior Engineer',
+            snapshot_bonus_target_usd=20000.0,
+            archived_at=datetime.now(),
+            has_full_details=True
+        )
+        db_session.add(snapshot)
+        db_session.commit()
+
+        assert snapshot.id is not None
+        assert snapshot.period_id == '2024-H1'
+        assert snapshot.associate_id == 'EMP001'
+        assert snapshot.performance_rating == 125.0
+        assert snapshot.bonus_allocation == 118.5
+
+    def test_snapshot_to_dict(self, db_session):
+        """Test converting snapshot to dictionary."""
+        archived_time = datetime(2024, 6, 30, 12, 0, 0)
+        snapshot = RatingSnapshot(
+            period_id='2024-H1',
+            associate_id='EMP001',
+            performance_rating=130.0,
+            bonus_allocation=125.0,
+            justification='Great work',
+            snapshot_name='John Doe',
+            archived_at=archived_time,
+            has_full_details=True
+        )
+        db_session.add(snapshot)
+        db_session.commit()
+
+        snapshot_dict = snapshot.to_dict()
+
+        assert snapshot_dict['period_id'] == '2024-H1'
+        assert snapshot_dict['associate_id'] == 'EMP001'
+        assert snapshot_dict['performance_rating'] == 130.0
+        assert snapshot_dict['bonus_allocation'] == 125.0
+        assert snapshot_dict['archived_at'] == '2024-06-30 12:00:00'
+        assert snapshot_dict['has_full_details'] is True
+
+    def test_partial_snapshot(self, db_session):
+        """Test snapshot with only bonus allocation (no rating from Notes)."""
+        snapshot = RatingSnapshot(
+            period_id='2023-H2',
+            associate_id='EMP002',
+            performance_rating=None,  # Not available
+            bonus_allocation=105.0,   # From Workday column
+            snapshot_name='Jane Smith',
+            has_full_details=False
+        )
+        db_session.add(snapshot)
+        db_session.commit()
+
+        assert snapshot.performance_rating is None
+        assert snapshot.bonus_allocation == 105.0
+        assert snapshot.has_full_details is False
+
+    def test_unique_constraint(self, db_session):
+        """Test that period_id + associate_id is unique."""
+        snapshot1 = RatingSnapshot(
+            period_id='2024-H1',
+            associate_id='EMP001',
+            bonus_allocation=100.0,
+            snapshot_name='John Doe'
+        )
+        db_session.add(snapshot1)
+        db_session.commit()
+
+        # Attempting to add duplicate should raise error
+        snapshot2 = RatingSnapshot(
+            period_id='2024-H1',
+            associate_id='EMP001',
+            bonus_allocation=110.0,
+            snapshot_name='John Doe'
+        )
+        db_session.add(snapshot2)
+
+        with pytest.raises(Exception):  # IntegrityError
+            db_session.commit()
+
+    def test_query_by_period(self, db_session):
+        """Test querying snapshots by period."""
+        # Create snapshots for different periods
+        snapshots_data = [
+            {'period_id': '2024-H1', 'associate_id': 'EMP001', 'bonus_allocation': 100.0, 'snapshot_name': 'A'},
+            {'period_id': '2024-H1', 'associate_id': 'EMP002', 'bonus_allocation': 110.0, 'snapshot_name': 'B'},
+            {'period_id': '2024-H2', 'associate_id': 'EMP001', 'bonus_allocation': 120.0, 'snapshot_name': 'A'},
+        ]
+        for data in snapshots_data:
+            db_session.add(RatingSnapshot(**data))
+        db_session.commit()
+
+        h1_snapshots = db_session.query(RatingSnapshot).filter(
+            RatingSnapshot.period_id == '2024-H1'
+        ).all()
+
+        assert len(h1_snapshots) == 2
+
+    def test_query_by_employee(self, db_session):
+        """Test querying snapshots by employee across periods."""
+        snapshots_data = [
+            {'period_id': '2024-H1', 'associate_id': 'EMP001', 'performance_rating': 100.0, 'bonus_allocation': 98.0, 'snapshot_name': 'A'},
+            {'period_id': '2024-H2', 'associate_id': 'EMP001', 'performance_rating': 120.0, 'bonus_allocation': 115.0, 'snapshot_name': 'A'},
+            {'period_id': '2025-H1', 'associate_id': 'EMP001', 'performance_rating': 130.0, 'bonus_allocation': 125.0, 'snapshot_name': 'A'},
+        ]
+        for data in snapshots_data:
+            db_session.add(RatingSnapshot(**data))
+        db_session.commit()
+
+        emp_history = db_session.query(RatingSnapshot).filter(
+            RatingSnapshot.associate_id == 'EMP001'
+        ).order_by(RatingSnapshot.period_id).all()
+
+        assert len(emp_history) == 3
+        assert emp_history[0].performance_rating == 100.0
+        assert emp_history[1].performance_rating == 120.0
+        assert emp_history[2].performance_rating == 130.0
+
+    def test_upsert_snapshot(self, db_session):
+        """Test updating an existing snapshot (re-import scenario)."""
+        # Create initial snapshot
+        snapshot = RatingSnapshot(
+            period_id='2024-H1',
+            associate_id='EMP001',
+            bonus_allocation=100.0,
+            snapshot_name='John Doe',
+            has_full_details=False
+        )
+        db_session.add(snapshot)
+        db_session.commit()
+
+        # Simulate re-import with more data
+        existing = db_session.query(RatingSnapshot).filter(
+            RatingSnapshot.period_id == '2024-H1',
+            RatingSnapshot.associate_id == 'EMP001'
+        ).first()
+
+        existing.performance_rating = 125.0
+        existing.justification = 'Great work'
+        existing.has_full_details = True
+        db_session.commit()
+
+        # Verify update
+        updated = db_session.query(RatingSnapshot).filter(
+            RatingSnapshot.period_id == '2024-H1',
+            RatingSnapshot.associate_id == 'EMP001'
+        ).first()
+
+        assert updated.performance_rating == 125.0
+        assert updated.justification == 'Great work'
+        assert updated.has_full_details is True
