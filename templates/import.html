@@ -656,9 +656,71 @@
     });
 
     // Period field validation
-    document.getElementById('periodId').addEventListener('input', updateImportButton);
+    document.getElementById('periodId').addEventListener('input', function() {
+        // Clear period existence warning when period ID changes
+        clearPeriodExistenceWarning();
+        updateImportButton();
+        // Re-check period existence after a short delay (debounce)
+        checkPeriodExistenceDebounced();
+    });
     document.getElementById('periodName').addEventListener('input', updateImportButton);
     document.getElementById('confirmOverwrite').addEventListener('change', updateImportButton);
+
+    // Debounced period existence check
+    let periodCheckTimeout = null;
+    function checkPeriodExistenceDebounced() {
+        if (periodCheckTimeout) clearTimeout(periodCheckTimeout);
+        periodCheckTimeout = setTimeout(checkPeriodExistence, 500);
+    }
+
+    async function checkPeriodExistence() {
+        const periodId = document.getElementById('periodId').value.trim();
+        if (!periodId || !selectedFile) return;
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('import_type', 'historical');
+        formData.append('period_id', periodId);
+
+        try {
+            const response = await fetch('/api/import/analyze', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                // Update analysisData with new period existence info
+                if (analysisData) {
+                    analysisData.period_exists = data.period_exists;
+                    analysisData.period_id = data.period_id;
+                    analysisData.existing_count = data.existing_count;
+                }
+
+                // Show or hide warning based on new check
+                if (data.period_exists) {
+                    const warning = document.getElementById('overwriteWarning');
+                    warning.classList.add('visible');
+                    document.getElementById('overwriteMessage').textContent =
+                        `Period "${data.period_id}" already exists. ${data.existing_count} employees will be updated.`;
+                }
+                updateImportButton();
+            }
+        } catch (error) {
+            console.error('Period check error:', error);
+        }
+    }
+
+    function clearPeriodExistenceWarning() {
+        const warning = document.getElementById('overwriteWarning');
+        warning.classList.remove('visible');
+        document.getElementById('confirmOverwrite').checked = false;
+        if (analysisData) {
+            analysisData.period_exists = false;
+            analysisData.period_id = null;
+            analysisData.existing_count = 0;
+        }
+    }
 
     function handleFileSelect() {
         const file = fileInput.files[0];
@@ -820,6 +882,13 @@
         document.getElementById('fileName').textContent = '';
         uploadZone.classList.remove('has-file');
 
+        // Clear period fields
+        document.getElementById('periodId').value = '';
+        document.getElementById('periodName').value = '';
+
+        // Reset partial count display
+        document.getElementById('partialItem').style.display = 'none';
+
         document.getElementById('analysisResults').classList.remove('visible');
         document.getElementById('overwriteWarning').classList.remove('visible');
         document.getElementById('confirmOverwrite').checked = false;
@@ -827,6 +896,10 @@
         document.getElementById('uploadSection').style.display = 'block';
         document.getElementById('importProgress').classList.remove('visible');
         document.getElementById('importResults').classList.remove('visible', 'success', 'error');
+
+        // Reset results display for next import
+        document.getElementById('resultFullItem').style.display = 'none';
+        document.getElementById('resultUpdated').parentElement.style.display = 'block';
 
         document.getElementById('importBtn').disabled = true;
     }
