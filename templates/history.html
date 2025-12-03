@@ -255,10 +255,28 @@
         content: '↓';
         opacity: 1;
     }
+
+    /* Filter warning banner */
+    .history-filter-warning {
+        background: #dc3545;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- Warning banner when filters are active elsewhere -->
+<div id="filterWarningBanner" class="history-filter-warning" style="display: none;">
+    ⚠️ <strong>Filters are active</strong> but do not apply to historical data.
+    All employees are shown here, including those hidden on other pages.
+</div>
+
 <!-- Period List View -->
 <div id="periodListView">
     <div class="card">
@@ -617,6 +635,23 @@
         const periodId = urlParams.get('period');
         if (periodId) {
             loadPeriodDetail(periodId);
+        }
+
+        // Check if filters are active and show warning banner
+        const savedFilters = sessionStorage.getItem('filters');
+        if (savedFilters) {
+            try {
+                const filters = JSON.parse(savedFilters);
+                const hasActiveFilters = filters.exclude_managers ||
+                    (filters.exclude_titles && filters.exclude_titles.length > 0) ||
+                    (filters.exclude_ids && filters.exclude_ids.length > 0);
+
+                if (hasActiveFilters) {
+                    document.getElementById('filterWarningBanner').style.display = 'block';
+                }
+            } catch (e) {
+                // Ignore parse errors
+            }
         }
     });
 </script>
