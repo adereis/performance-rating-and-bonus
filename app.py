@@ -1387,7 +1387,7 @@ def export_xlsx():
 
 if __name__ == '__main__':
     print("\n" + "="*60)
-    print("Quarterly Performance Rating System")
+    print("Performance Rating System")
     print("="*60)
     print(f"Database: {os.getenv('DATABASE_URL', 'sqlite:///ratings.db')}")
     print(f"Starting web server at http://localhost:5000")

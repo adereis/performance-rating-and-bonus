@@ -1,3 +1,3 @@
 """
-Test suite for the Quarterly Performance Rating System.
+Test suite for the Performance Rating System.
 """

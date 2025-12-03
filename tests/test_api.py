@@ -13,7 +13,7 @@ class TestAPIEndpoints:
         """Test the main dashboard route."""
         response = client.get('/')
         assert response.status_code == 200
-        assert b'Quarterly Performance Rating' in response.data
+        assert b'Performance Rating' in response.data
 
     def test_rate_page_route(self, client, populated_db):
         """Test the rating page route."""

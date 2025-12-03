@@ -1,4 +1,4 @@
-# Test Suite for Quarterly Performance Rating System
+# Test Suite for Performance Rating System
 
 This directory contains comprehensive unit tests for the performance rating system.
 

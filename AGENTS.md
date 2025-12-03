@@ -19,7 +19,7 @@ This project was developed with the assistance of AI coding agents to accelerate
 
 ### Development Approach
 
-The Quarterly Performance Rating System was built through an iterative collaboration between human direction and AI implementation:
+The Performance Rating System was built through an iterative collaboration between human direction and AI implementation:
 
 1. **Requirements Definition**: Human-defined business requirements for performance rating and bonus calculation
 2. **AI Implementation**: Claude Code (Anthropic) implemented features, wrote tests, and created documentation
@@ -315,14 +315,14 @@ When adding new features, follow this pattern:
 - **90-110% is the "solid performer" range** (most employees should be here)
 - **130%+ is exceptional** (rare, reserved for truly outstanding work)
 - Most teams should center around 100%, not 130%
-- Ratings are **quarterly**, not annual (changed from original spec)
+- Ratings are **period-based**, not necessarily annual
 - Rating scale: 0-200% (enforced by validation)
 
 ### Bonus Target Philosophy
 
-- Targets are **quarterly percentages** of base pay (not annual)
-- Example: 20% quarterly target = 20% of quarterly base pay
-- This changed from annual to quarterly - update docs if referenced
+- Targets are **period-based percentages** of base pay
+- Example: 20% target = 20% of base pay for the rating period
+- The rating period can be defined by the organization (monthly, quarterly, semi-annual, annual, etc.)
 - International employees: bonus targets must be provided in both local currency and USD
 
 ### Workday Export Format
@@ -339,7 +339,7 @@ When adding new features, follow this pattern:
 - `"Current Job Profile"` - Job title/role
 - `"Current Base Pay All Countries"` - Salary in local currency
 - `"Currency"` - ISO currency code (USD, GBP, EUR, CAD, INR)
-- `"Annual Bonus Target Percent"` - Now interpreted as **quarterly** percentage
+- `"Annual Bonus Target Percent"` - Interpreted as the bonus target percentage for the rating period
 - `"Bonus Target - Local Currency"` - Calculated bonus target in local currency
 
 #### International Employee Handling
@@ -438,7 +438,7 @@ SAFE - Auto-generated fictitious data:
 - ✅ Safe to use in examples, documentation, tests, and git commits
 
 PRIVATE - Real Workday exports:
-- `bonus-from-wd.xlsx` - quarterly bonus export (already in .gitignore)
+- `bonus-from-wd.xlsx` - bonus export (already in .gitignore)
 - `Compensation_Spreadsheet.xlsx` - compensation export (real data)
 - Any XLSX file imported from Workday containing real employee data
 - Files with actual employee names, salaries, ratings, or compensation
@@ -783,7 +783,7 @@ Potential areas for expansion (not yet implemented):
 
 - [ ] CSV export from Bonus Calculation page
 - [ ] Save multiple parameter configurations
-- [ ] Historical rating comparison (quarter-over-quarter)
+- [ ] Historical rating comparison (period-over-period)
 - [ ] Bulk edit capabilities
 - [ ] PDF export for HR submission
 - [ ] Read-only sharing mode for calibration sessions

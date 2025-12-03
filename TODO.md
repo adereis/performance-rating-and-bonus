@@ -1,6 +1,6 @@
 # Project TODO List
 
-This file tracks future enhancements and feature requests for the Quarterly Performance Rating System.
+This file tracks future enhancements and feature requests for the Performance Rating System.
 
 ---
 
@@ -122,21 +122,21 @@ def export_ratings():
 ### Historical Rating Comparison
 **Priority:** Medium
 **Status:** Not Started
-**Description:** Track ratings across quarters and show trends/changes over time per employee.
+**Description:** Track ratings across periods and show trends/changes over time per employee.
 
 **Implementation Notes:**
-- Create `ratings_history` table with quarter/year tracking
-- Archive ratings at end of each quarter
+- Create `ratings_history` table with period/date tracking
+- Archive ratings at end of each rating period
 - Add "History" tab showing rating trends per employee
 - Chart.js line graph showing performance over time
-- Compare quarter-over-quarter changes
+- Compare period-over-period changes
 
 ---
 
 ### Bulk Edit Capabilities
 **Priority:** Low
 **Status:** Not Started
-**Description:** Allow bulk operations like "set all unrated to 100%" or "copy justifications from last quarter".
+**Description:** Allow bulk operations like "set all unrated to 100%" or "copy justifications from last period".
 
 **Implementation Notes:**
 - Add "Bulk Actions" dropdown in rate.html

@@ -30,13 +30,12 @@ CRITICAL WORKDAY FORMAT ASSUMPTIONS:
    - USD employees use their local column (which is already USD)
    - International employees use the USD conversion column
 
-4. Bonus Percentages:
-   - Annual bonus targets divided by 4 for quarterly bonuses
-   - IC2: 2.5% quarterly (10% annual)
-   - IC3: 3.0% quarterly (12% annual)
-   - IC4: 3.75% quarterly (15% annual)
-   - IC5: 5.0% quarterly (20% annual)
-   - M3: 4.5% quarterly (18% annual)
+4. Bonus Percentages (sample values used in tests):
+   - IC2: 2.5%
+   - IC3: 3.0%
+   - IC4: 3.75%
+   - IC5: 5.0%
+   - M3: 4.5%
 """
 import pytest
 from models import Employee
@@ -147,7 +146,7 @@ class TestBonusCalculationFallbackLogic:
             currency='USD',
             current_base_pay_all_countries=150000.0,
             current_base_pay_all_countries_usd=None,
-            bonus_target_local_currency=4500.0,  # 3% quarterly
+            bonus_target_local_currency=4500.0,  # 3% of base
             bonus_target_local_currency_usd=None,
             performance_rating_percent=100.0
         )
@@ -179,17 +178,17 @@ class TestBonusCalculationFallbackLogic:
         assert abs(total_pool - expected_pool) < 0.01
 
 
-class TestQuarterlyBonusPercentages:
-    """Test and document quarterly bonus percentage assumptions."""
+class TestBonusPercentages:
+    """Test and document bonus percentage assumptions."""
 
-    def test_ic2_quarterly_bonus_percentage(self, db_session):
-        """IC2 (Junior): 2.5% quarterly = 10% annual."""
+    def test_ic2_bonus_percentage(self, db_session):
+        """IC2 (Junior): 2.5% of base pay."""
         emp = Employee(
             associate_id='IC2_001',
             associate='Junior Dev',
             grade='IC2',
             current_base_pay_all_countries=120000.0,
-            annual_bonus_target_percent=2.5,  # Quarterly
+            annual_bonus_target_percent=2.5,
             bonus_target_local_currency=3000.0  # 120000 * 0.025
         )
         db_session.add(emp)
@@ -197,10 +196,9 @@ class TestQuarterlyBonusPercentages:
 
         assert emp.annual_bonus_target_percent == 2.5
         assert emp.bonus_target_local_currency == 3000.0
-        # Annual equivalent would be 3000 * 4 = 12000 (10% of salary)
 
-    def test_ic3_quarterly_bonus_percentage(self, db_session):
-        """IC3 (Senior): 3.0% quarterly = 12% annual."""
+    def test_ic3_bonus_percentage(self, db_session):
+        """IC3 (Senior): 3.0% of base pay."""
         emp = Employee(
             associate_id='IC3_001',
             associate='Senior Dev',
@@ -215,8 +213,8 @@ class TestQuarterlyBonusPercentages:
         assert emp.annual_bonus_target_percent == 3.0
         assert emp.bonus_target_local_currency == 4500.0
 
-    def test_ic4_quarterly_bonus_percentage(self, db_session):
-        """IC4 (Staff): 3.75% quarterly = 15% annual."""
+    def test_ic4_bonus_percentage(self, db_session):
+        """IC4 (Staff): 3.75% of base pay."""
         emp = Employee(
             associate_id='IC4_001',
             associate='Staff Engineer',
@@ -231,8 +229,8 @@ class TestQuarterlyBonusPercentages:
         assert emp.annual_bonus_target_percent == 3.75
         assert emp.bonus_target_local_currency == 6750.0
 
-    def test_ic5_quarterly_bonus_percentage(self, db_session):
-        """IC5 (Principal): 5.0% quarterly = 20% annual."""
+    def test_ic5_bonus_percentage(self, db_session):
+        """IC5 (Principal): 5.0% of base pay."""
         emp = Employee(
             associate_id='IC5_001',
             associate='Principal Engineer',
@@ -247,8 +245,8 @@ class TestQuarterlyBonusPercentages:
         assert emp.annual_bonus_target_percent == 5.0
         assert emp.bonus_target_local_currency == 11000.0
 
-    def test_m3_quarterly_bonus_percentage(self, db_session):
-        """M3 (Engineering Manager): 4.5% quarterly = 18% annual."""
+    def test_m3_bonus_percentage(self, db_session):
+        """M3 (Engineering Manager): 4.5% of base pay."""
         emp = Employee(
             associate_id='M3_001',
             associate='Engineering Manager',

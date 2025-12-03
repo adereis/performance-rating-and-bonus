@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Quarterly Performance Rating{% endblock %}</title>
+    <title>{% block title %}Performance Rating{% endblock %}</title>
     <style>
         * {
             margin: 0;
@@ -659,7 +659,7 @@
 <body>
     <header>
         <div class="container">
-            <h1>Quarterly Performance Rating System</h1>
+            <h1>Performance Rating System</h1>
             <nav>
                 <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Dashboard</a>
                 <a href="{{ url_for('rate_page') }}" {% if request.endpoint == 'rate_page' %}class="active"{% endif %}>Rate Team</a>

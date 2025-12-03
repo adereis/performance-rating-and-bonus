@@ -1,6 +1,6 @@
-# Quarterly Performance Rating System
+# Performance Rating System
 
-A web-based tool for managers to conduct quarterly performance reviews and calculate team bonuses with algorithmic fairness.
+A web-based tool for managers to conduct performance reviews and calculate team bonuses with algorithmic fairness.
 
 ## Features
 
@@ -246,7 +246,7 @@ Current coverage: 70 tests covering:
 - Multi-organization scenarios
 - Workday export format validation
 - USD vs international employee handling
-- Quarterly bonus calculations
+- Bonus calculations
 
 ## Privacy & Security
 
@@ -314,4 +314,4 @@ For issues or questions:
 
 ## Credits
 
-Built for engineering managers who need a fair, transparent, and efficient way to conduct quarterly performance reviews and bonus calculations.
+Built for engineering managers who need a fair, transparent, and efficient way to conduct performance reviews and bonus calculations.

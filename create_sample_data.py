@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Create sample demo data for the Quarterly Performance Rating System.
+Create sample demo data for the Performance Rating System.
 This generates fictitious Workday employee data (no ratings/tenets).
 
 Usage:
@@ -57,7 +57,7 @@ def get_small_team_data():
     manager = "Supervisory Organization (Della Gate)"
 
     # (name, job, salary, grade, bonus_pct)
-    # Bonus percentages are QUARTERLY (annual target / 4)
+    # Bonus percentages are for the rating period (configure as needed for your org)
     employees = [
         ('Paige Duty', 'Staff SRE', 180000, 'IC4', 3.75),
         ('Lee Latency', 'Senior Software Developer', 150000, 'IC3', 3.0),
@@ -132,7 +132,7 @@ def get_large_org_data():
     # Job profiles per team (Workday data only - no ratings/justifications)
     # Format: (job, salary, grade, bonus_pct) for USD employees
     #         (job, salary_usd, grade, bonus_pct, currency, salary_local) for international
-    # NOTE: Bonus percentages are QUARTERLY (annual / 4): IC2=2.5%, IC3=3%, IC4=3.75%, IC5=5%, M3=4.5%
+    # NOTE: Bonus percentages are for the rating period: IC2=2.5%, IC3=3%, IC4=3.75%, IC5=5%, M3=4.5%
     team_configs = {
         'Supervisory Organization (Della Gate)': [
             ('Principal Software Developer', 220000, 'IC5', 5),
@@ -210,7 +210,7 @@ def get_large_org_data():
             'salary_local': manager_salaries[idx],
             'currency': 'USD',
             'grade': 'M3',
-            'bonus_pct': 4.5,  # Quarterly bonus target for M3 managers
+            'bonus_pct': 4.5,  # Bonus target for M3 managers
             'associate_id': f'MGR{100 + idx}'
         })
 
@@ -258,7 +258,7 @@ def write_employee_data(sheet, employees):
             bonus_target_local = emp['salary_local'] * (emp['bonus_pct'] / 100)
             bonus_target_usd = emp['salary'] * (emp['bonus_pct'] / 100)
 
-        # Last bonus allocation (previous quarter)
+        # Last bonus allocation (previous period)
         last_bonus_pct = random.choice([None, None, None, 85, 90, 95, 100, 105, 110, 115])
 
         row = [
