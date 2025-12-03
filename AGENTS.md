@@ -359,10 +359,15 @@ When adding new features, follow this pattern:
 - `"Bonus Target - Local Currency"` - Calculated bonus target in local currency
 
 #### International Employee Handling
-- **USD employees**: Only need local currency columns (Currency = "USD")
+- **USD employees**: Only need `"Bonus Target - Local Currency"` column (which IS in USD for them)
+  - Workday quirk: The USD column `"Bonus Target - Local Currency (USD)"` is NULL/empty for USD employees
 - **International employees**: Require both:
-  - `"Bonus Target - Local Currency"` (e.g., in GBP)
+  - `"Bonus Target - Local Currency"` (e.g., in GBP, CAD)
   - `"Bonus Target - Local Currency (USD)"` (converted value)
+- **Automatic fallback logic**: Code uses `USD column OR local currency column` (app.py line 780)
+  - Tries `"Bonus Target - Local Currency (USD)"` first (for international employees)
+  - Falls back to `"Bonus Target - Local Currency"` if USD column is empty (for USD employees)
+  - This handles the Workday export quirk automatically
 - All calculations use USD values internally
 - Display uses local currency where appropriate
 
@@ -772,8 +777,10 @@ python3 -m pytest tests/ --cov=. --cov-report=html
 **Solution**: Verify sum of `bonus_target_usd` equals total pool, check for null values
 
 ### Issue: International Employees Missing from Bonus Calc
-**Cause**: Missing "Bonus Target - Local Currency (USD)" column
-**Solution**: Ensure Workday export includes USD conversion columns for non-USD employees
+**Cause**: Missing "Bonus Target - Local Currency (USD)" column for non-USD employees
+**Solution**: Ensure Workday export includes USD conversion column for international employees
+**Note**: USD employees are handled automatically - they only need the local currency column
+**How it works**: Code automatically falls back to local currency column if USD column is empty (see app.py line 780)
 
 ### Issue: Workday Re-Import Overwrites Ratings
 **Cause**: Bug in preserve logic in convert_xlsx.py
