@@ -787,6 +787,7 @@
         let currentEmployeeId = null;
         let originalEmployeeData = null;
         let modalTenetsConfig = null;
+        let modalHasUnsavedChanges = false;
 
         // Load tenets configuration for modal
         function loadModalTenets() {
@@ -993,6 +994,9 @@
                 </div>
             `;
 
+            // Reset dirty state
+            modalHasUnsavedChanges = false;
+
             // Add validation listener
             const ratingInput = document.getElementById('modal_rating_percent');
             ratingInput.addEventListener('input', validateModalRating);
@@ -1001,6 +1005,9 @@
             if (modalTenetsConfig) {
                 setupModalTenetsListeners();
             }
+
+            // Add change listeners to track unsaved changes
+            setupModalChangeTracking();
         }
 
         function setupModalTenetsListeners() {
@@ -1070,6 +1077,26 @@
             updateTenetCounts();
         }
 
+        function setupModalChangeTracking() {
+            // Mark form as dirty when any input changes
+            const markDirty = () => { modalHasUnsavedChanges = true; };
+
+            // Track text inputs and textareas
+            const ratingInput = document.getElementById('modal_rating_percent');
+            const justificationInput = document.getElementById('modal_justification');
+            const mentorInput = document.getElementById('modal_mentor');
+            const menteesInput = document.getElementById('modal_mentees');
+
+            if (ratingInput) ratingInput.addEventListener('input', markDirty);
+            if (justificationInput) justificationInput.addEventListener('input', markDirty);
+            if (mentorInput) mentorInput.addEventListener('input', markDirty);
+            if (menteesInput) menteesInput.addEventListener('input', markDirty);
+
+            // Track tenet checkboxes
+            const tenetCheckboxes = document.querySelectorAll('input[data-tenet-type]');
+            tenetCheckboxes.forEach(cb => cb.addEventListener('change', markDirty));
+        }
+
         function validateModalRating() {
             const ratingInput = document.getElementById('modal_rating_percent');
             const errorSpan = document.getElementById('modal_rating_error');
@@ -1135,6 +1162,8 @@
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
+                    // Reset dirty flag since changes are saved
+                    modalHasUnsavedChanges = false;
                     // Show success and close modal
                     saveButton.textContent = 'Saved!';
                     setTimeout(() => {
@@ -1156,10 +1185,20 @@
         }
 
         function closeEmployeeModal() {
+            // Check for unsaved changes
+            if (modalHasUnsavedChanges) {
+                const confirmClose = confirm('You have unsaved changes. Close without saving?');
+                if (!confirmClose) {
+                    return; // Don't close the modal
+                }
+            }
+
+            // Close the modal
             const modal = document.getElementById('employeeModal');
             modal.classList.remove('active');
             currentEmployeeId = null;
             originalEmployeeData = null;
+            modalHasUnsavedChanges = false; // Reset dirty flag
         }
 
         // Close modal when clicking outside of it
