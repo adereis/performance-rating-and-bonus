@@ -1848,6 +1848,197 @@ def archive_period():
         db.close()
 
 
+@app.route('/api/periods')
+def list_periods():
+    """
+    List all archived periods.
+
+    Returns list of periods with basic stats.
+    """
+    db = get_db()
+    try:
+        periods = db.query(Period).order_by(Period.archived_at.desc()).all()
+
+        result = []
+        for period in periods:
+            # Count snapshots for this period
+            snapshot_count = db.query(RatingSnapshot).filter(
+                RatingSnapshot.period_id == period.id
+            ).count()
+
+            result.append({
+                'id': period.id,
+                'name': period.name,
+                'notes': period.notes,
+                'archived_at': period.archived_at.isoformat() if period.archived_at else None,
+                'snapshot_count': snapshot_count
+            })
+
+        return jsonify({
+            'success': True,
+            'periods': result
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@app.route('/api/period-comparison/<period_id>')
+def period_comparison(period_id):
+    """
+    Compare current ratings with a historical period.
+
+    Returns employees with both current and historical ratings,
+    showing who improved, declined, or stayed stable.
+    """
+    db = get_db()
+    try:
+        # Verify period exists
+        period = db.query(Period).filter(Period.id == period_id).first()
+        if not period:
+            return jsonify({'success': False, 'error': f'Period "{period_id}" not found'}), 404
+
+        # Get all current employees with ratings
+        employees = db.query(Employee).all()
+        current_ratings = {
+            emp.associate_id: {
+                'name': emp.associate,
+                'rating': emp.performance_rating_percent,
+                'job_profile': emp.current_job_profile,
+                'org': emp.supervisory_organization
+            }
+            for emp in employees
+        }
+
+        # Get historical snapshots for this period
+        snapshots = db.query(RatingSnapshot).filter(
+            RatingSnapshot.period_id == period_id
+        ).all()
+        historical_ratings = {
+            snap.associate_id: {
+                'rating': snap.performance_rating,
+                'name': snap.snapshot_name,
+                'job_profile': snap.snapshot_job_profile,
+                'org': snap.snapshot_org
+            }
+            for snap in snapshots
+        }
+
+        # Build comparison data
+        comparison = []
+        improved_count = 0
+        declined_count = 0
+        stable_count = 0
+        new_employees = 0
+        departed_employees = 0
+
+        # Employees who exist in current data
+        for assoc_id, current in current_ratings.items():
+            historical = historical_ratings.get(assoc_id)
+
+            if historical and historical.get('rating') is not None:
+                current_rating = current.get('rating')
+                historical_rating = historical.get('rating')
+
+                if current_rating is not None:
+                    change = current_rating - historical_rating
+                    change_pct = round((change / historical_rating * 100), 1) if historical_rating else 0
+
+                    if change > 5:
+                        trend = 'improved'
+                        improved_count += 1
+                    elif change < -5:
+                        trend = 'declined'
+                        declined_count += 1
+                    else:
+                        trend = 'stable'
+                        stable_count += 1
+
+                    comparison.append({
+                        'associate_id': assoc_id,
+                        'name': current.get('name'),
+                        'job_profile': current.get('job_profile'),
+                        'current_rating': current_rating,
+                        'historical_rating': historical_rating,
+                        'change': round(change, 1),
+                        'change_pct': change_pct,
+                        'trend': trend
+                    })
+            else:
+                # New employee (not in historical period)
+                if current.get('rating') is not None:
+                    new_employees += 1
+                    comparison.append({
+                        'associate_id': assoc_id,
+                        'name': current.get('name'),
+                        'job_profile': current.get('job_profile'),
+                        'current_rating': current.get('rating'),
+                        'historical_rating': None,
+                        'change': None,
+                        'change_pct': None,
+                        'trend': 'new'
+                    })
+
+        # Employees who left (in historical but not current)
+        for assoc_id, historical in historical_ratings.items():
+            if assoc_id not in current_ratings:
+                departed_employees += 1
+                comparison.append({
+                    'associate_id': assoc_id,
+                    'name': historical.get('name'),
+                    'job_profile': historical.get('job_profile'),
+                    'current_rating': None,
+                    'historical_rating': historical.get('rating'),
+                    'change': None,
+                    'change_pct': None,
+                    'trend': 'departed'
+                })
+
+        # Sort by change (largest improvement first), with None values at end
+        comparison.sort(key=lambda x: (
+            x['change'] is None,
+            -(x['change'] or 0)
+        ))
+
+        # Calculate summary stats
+        current_avg = None
+        historical_avg = None
+        current_ratings_list = [c['current_rating'] for c in comparison if c['current_rating'] is not None and c['trend'] != 'new']
+        historical_ratings_list = [c['historical_rating'] for c in comparison if c['historical_rating'] is not None and c['trend'] != 'departed']
+
+        if current_ratings_list:
+            current_avg = round(sum(current_ratings_list) / len(current_ratings_list), 1)
+        if historical_ratings_list:
+            historical_avg = round(sum(historical_ratings_list) / len(historical_ratings_list), 1)
+
+        return jsonify({
+            'success': True,
+            'period': {
+                'id': period.id,
+                'name': period.name,
+                'archived_at': period.archived_at.isoformat() if period.archived_at else None
+            },
+            'comparison': comparison,
+            'summary': {
+                'improved': improved_count,
+                'declined': declined_count,
+                'stable': stable_count,
+                'new_employees': new_employees,
+                'departed_employees': departed_employees,
+                'current_avg': current_avg,
+                'historical_avg': historical_avg,
+                'avg_change': round(current_avg - historical_avg, 1) if current_avg and historical_avg else None
+            }
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
+
 if __name__ == '__main__':
     print("\n" + "="*60)
     print("Performance Rating System")

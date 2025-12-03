@@ -630,6 +630,88 @@
             color: #2c3e50;
         }
 
+        /* History Trend Chart */
+        .history-trend-container {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .history-trend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .history-trend-header h5 {
+            margin: 0;
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .history-trend-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .history-trend-indicator.improving {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .history-trend-indicator.declining {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .history-trend-indicator.stable {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .history-trend-indicator svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .history-trend-chart {
+            height: 120px;
+            position: relative;
+        }
+
+        .history-trend-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .history-trend-stat {
+            text-align: center;
+        }
+
+        .history-trend-stat .value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .history-trend-stat .label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
         /* Filter Panel Styles */
         .filter-toggle {
             position: fixed;
@@ -1319,6 +1401,171 @@
             if (targetContent) {
                 targetContent.classList.add('active');
             }
+
+            // Render trend chart when history tab is shown
+            if (tabName === 'history') {
+                renderHistoryTrendChart();
+            }
+        }
+
+        // Chart instance for history trend
+        let historyTrendChart = null;
+
+        function calculateTrend(history) {
+            // Get ratings with valid values, in chronological order (oldest first)
+            const ratings = history
+                .filter(item => item.snapshot.performance_rating != null)
+                .reverse()  // API returns newest first, we need oldest first for trend
+                .map(item => item.snapshot.performance_rating);
+
+            if (ratings.length < 2) {
+                return { trend: 'stable', change: 0 };
+            }
+
+            // Calculate trend using linear regression slope
+            const n = ratings.length;
+            const sumX = (n * (n - 1)) / 2;
+            const sumY = ratings.reduce((a, b) => a + b, 0);
+            const sumXY = ratings.reduce((sum, y, x) => sum + x * y, 0);
+            const sumX2 = (n * (n - 1) * (2 * n - 1)) / 6;
+
+            const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+
+            // Also look at recent change (last vs second-to-last)
+            const recentChange = ratings[ratings.length - 1] - ratings[ratings.length - 2];
+
+            // Determine trend based on slope
+            if (slope > 3) {
+                return { trend: 'improving', change: recentChange };
+            } else if (slope < -3) {
+                return { trend: 'declining', change: recentChange };
+            } else {
+                return { trend: 'stable', change: recentChange };
+            }
+        }
+
+        function getTrendIndicatorHTML(trendData) {
+            const icons = {
+                improving: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>',
+                declining: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>',
+                stable: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14" /></svg>'
+            };
+            const labels = {
+                improving: 'Improving',
+                declining: 'Declining',
+                stable: 'Stable'
+            };
+            return `
+                <div class="history-trend-indicator ${trendData.trend}">
+                    ${icons[trendData.trend]}
+                    <span>${labels[trendData.trend]}</span>
+                </div>
+            `;
+        }
+
+        function renderHistoryTrendChart() {
+            if (!currentEmployeeHistory || currentEmployeeHistory.length < 2) return;
+
+            const canvas = document.getElementById('historyTrendCanvas');
+            if (!canvas) return;
+
+            // Destroy existing chart
+            if (historyTrendChart) {
+                historyTrendChart.destroy();
+            }
+
+            // Prepare data - include ALL periods (oldest first), use null for missing ratings
+            // This ensures the x-axis timeline is accurate even when some periods have no data
+            const chartData = [...currentEmployeeHistory]
+                .reverse()  // Oldest first for chronological display
+                .map(item => ({
+                    period: item.period.name,
+                    rating: item.snapshot.performance_rating  // Will be null for partial records
+                }));
+
+            // Need at least 2 periods with actual data to show a meaningful chart
+            const periodsWithData = chartData.filter(d => d.rating != null);
+            if (periodsWithData.length < 2) return;
+
+            // Track which indices have null values for dashed line segments
+            const ratings = chartData.map(d => d.rating);
+
+            // Check if a segment is part of a gap (either endpoint is null)
+            const segmentIsGap = (startIdx, endIdx) => {
+                return ratings[startIdx] == null || ratings[endIdx] == null;
+            };
+
+            const ctx = canvas.getContext('2d');
+            historyTrendChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.map(d => d.period),
+                    datasets: [{
+                        label: 'Rating %',
+                        data: ratings,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        spanGaps: true,  // Connect across null values
+                        segment: {
+                            borderDash: function(segCtx) {
+                                if (segmentIsGap(segCtx.p0DataIndex, segCtx.p1DataIndex)) {
+                                    return [6, 4];  // Dashed for gap segments
+                                }
+                                return undefined;  // Solid for normal segments
+                            },
+                            borderColor: function(segCtx) {
+                                if (segmentIsGap(segCtx.p0DataIndex, segCtx.p1DataIndex)) {
+                                    return 'rgba(102, 126, 234, 0.5)';  // Lighter for gaps
+                                }
+                                return '#667eea';
+                            }
+                        },
+                        pointRadius: ratings.map(r => r != null ? 4 : 0),  // Hide points for null
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            filter: function(tooltipItem) {
+                                // Don't show tooltip for null values
+                                return tooltipItem.raw != null;
+                            },
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.raw == null) return 'No data';
+                                    return `Rating: ${context.raw}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 200,
+                            ticks: {
+                                stepSize: 50,
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
         }
 
         function renderHistoryTabContent() {
@@ -1334,7 +1581,51 @@
                 `;
             }
 
-            return currentEmployeeHistory.map((item, index) => {
+            // Build trend chart section (only if 2+ periods with ratings)
+            const ratingsWithData = currentEmployeeHistory.filter(item => item.snapshot.performance_rating != null);
+            let trendHTML = '';
+
+            if (ratingsWithData.length >= 2) {
+                const trendData = calculateTrend(currentEmployeeHistory);
+
+                // Calculate stats
+                const ratings = ratingsWithData.map(item => item.snapshot.performance_rating);
+                const avgRating = (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1);
+                const maxRating = Math.max(...ratings);
+                const minRating = Math.min(...ratings);
+
+                trendHTML = `
+                    <div class="history-trend-container">
+                        <div class="history-trend-header">
+                            <h5>Performance Trend</h5>
+                            ${getTrendIndicatorHTML(trendData)}
+                        </div>
+                        <div class="history-trend-chart">
+                            <canvas id="historyTrendCanvas"></canvas>
+                        </div>
+                        <div class="history-trend-stats">
+                            <div class="history-trend-stat">
+                                <div class="value">${avgRating}%</div>
+                                <div class="label">Average</div>
+                            </div>
+                            <div class="history-trend-stat">
+                                <div class="value">${maxRating}%</div>
+                                <div class="label">Highest</div>
+                            </div>
+                            <div class="history-trend-stat">
+                                <div class="value">${minRating}%</div>
+                                <div class="label">Lowest</div>
+                            </div>
+                            <div class="history-trend-stat">
+                                <div class="value">${ratingsWithData.length}</div>
+                                <div class="label">Periods</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const periodsHTML = currentEmployeeHistory.map((item, index) => {
                 const period = item.period;
                 const snapshot = item.snapshot;
 
@@ -1437,6 +1728,8 @@
                     </div>
                 `;
             }).join('');
+
+            return trendHTML + periodsHTML;
         }
 
         function toggleHistoryPeriod(header) {
@@ -1790,6 +2083,9 @@
             }
         });
     </script>
+
+    <!-- Chart.js for trend visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     {% block extra_js %}{% endblock %}
 </body>
