@@ -322,3 +322,141 @@ class TestArchiveButton:
         html = response.data.decode('utf-8')
         # Find the archive button - it should not have disabled attribute
         assert 'btn-archive' in html
+
+
+class TestEmployeeHistoryEndpoint:
+    """Tests for the /api/employee/<id>/history endpoint."""
+
+    def test_history_empty_for_new_employee(self, client, db_session):
+        """Test history returns empty list for employee with no snapshots."""
+        # Create employee
+        emp = Employee(
+            associate_id='EMP001',
+            associate='John Doe'
+        )
+        db_session.add(emp)
+        db_session.commit()
+
+        response = client.get('/api/employee/EMP001/history')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['associate_id'] == 'EMP001'
+        assert data['history'] == []
+
+    def test_history_returns_snapshots_with_period(self, client, db_session):
+        """Test history returns snapshots joined with period data."""
+        # Create period
+        period = Period(id='2024-H1', name='First Half 2024')
+        db_session.add(period)
+
+        # Create snapshot
+        snapshot = RatingSnapshot(
+            period_id='2024-H1',
+            associate_id='EMP001',
+            performance_rating=125.0,
+            justification='Excellent work',
+            snapshot_name='John Doe',
+            snapshot_org='Engineering',
+            has_full_details=True
+        )
+        db_session.add(snapshot)
+        db_session.commit()
+
+        response = client.get('/api/employee/EMP001/history')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        assert len(data['history']) == 1
+
+        item = data['history'][0]
+        assert item['period']['id'] == '2024-H1'
+        assert item['period']['name'] == 'First Half 2024'
+        assert item['snapshot']['performance_rating'] == 125.0
+        assert item['snapshot']['justification'] == 'Excellent work'
+
+    def test_history_returns_multiple_periods_sorted(self, client, db_session):
+        """Test history returns multiple periods in descending date order."""
+        from datetime import datetime, timedelta
+
+        # Create periods with different dates
+        now = datetime.now()
+        period1 = Period(id='2024-H1', name='First Half 2024', archived_at=now - timedelta(days=180))
+        period2 = Period(id='2024-H2', name='Second Half 2024', archived_at=now)
+        db_session.add_all([period1, period2])
+
+        # Create snapshots
+        snap1 = RatingSnapshot(
+            period_id='2024-H1',
+            associate_id='EMP001',
+            performance_rating=110.0
+        )
+        snap2 = RatingSnapshot(
+            period_id='2024-H2',
+            associate_id='EMP001',
+            performance_rating=125.0
+        )
+        db_session.add_all([snap1, snap2])
+        db_session.commit()
+
+        response = client.get('/api/employee/EMP001/history')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data['history']) == 2
+
+        # Should be sorted by archived_at descending (most recent first)
+        assert data['history'][0]['period']['id'] == '2024-H2'
+        assert data['history'][1]['period']['id'] == '2024-H1'
+
+    def test_history_shows_partial_record_indicator(self, client, db_session):
+        """Test history includes has_full_details flag for partial records."""
+        period = Period(id='2024-H1', name='First Half 2024')
+        db_session.add(period)
+
+        # Partial record (only bonus allocation, no performance rating)
+        snapshot = RatingSnapshot(
+            period_id='2024-H1',
+            associate_id='EMP001',
+            bonus_allocation=105.5,
+            has_full_details=False
+        )
+        db_session.add(snapshot)
+        db_session.commit()
+
+        response = client.get('/api/employee/EMP001/history')
+        data = response.get_json()
+        assert data['history'][0]['snapshot']['has_full_details'] is False
+        assert data['history'][0]['snapshot']['bonus_allocation'] == 105.5
+
+    def test_history_includes_context_snapshot(self, client, db_session):
+        """Test history includes job profile and org at time of snapshot."""
+        period = Period(id='2024-H1', name='First Half 2024')
+        db_session.add(period)
+
+        snapshot = RatingSnapshot(
+            period_id='2024-H1',
+            associate_id='EMP001',
+            performance_rating=120.0,
+            snapshot_name='John Doe',
+            snapshot_org='Engineering',
+            snapshot_job_profile='Senior Engineer',
+            snapshot_bonus_target_usd=15000
+        )
+        db_session.add(snapshot)
+        db_session.commit()
+
+        response = client.get('/api/employee/EMP001/history')
+        data = response.get_json()
+        snap = data['history'][0]['snapshot']
+        assert snap['snapshot_name'] == 'John Doe'
+        assert snap['snapshot_org'] == 'Engineering'
+        assert snap['snapshot_job_profile'] == 'Senior Engineer'
+        assert snap['snapshot_bonus_target_usd'] == 15000
+
+    def test_history_nonexistent_employee_returns_empty(self, client, db_session):
+        """Test history for nonexistent employee returns empty list (not error)."""
+        response = client.get('/api/employee/NONEXISTENT/history')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['history'] == []

@@ -422,6 +422,41 @@ def get_employee_details(associate_id):
         }), 500
 
 
+@app.route('/api/employee/<associate_id>/history', methods=['GET'])
+def get_employee_history(associate_id):
+    """API endpoint to get historical rating snapshots for an employee."""
+    db = get_db()
+    try:
+        # Get all snapshots for this employee, joined with period data
+        snapshots = db.query(RatingSnapshot, Period).join(
+            Period, RatingSnapshot.period_id == Period.id
+        ).filter(
+            RatingSnapshot.associate_id == associate_id
+        ).order_by(
+            Period.archived_at.desc()
+        ).all()
+
+        history = []
+        for snapshot, period in snapshots:
+            history.append({
+                'period': period.to_dict(),
+                'snapshot': snapshot.to_dict()
+            })
+
+        return jsonify({
+            'success': True,
+            'associate_id': associate_id,
+            'history': history
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        db.close()
+
+
 def calculate_calibration_for_employees(employees, team_name=None):
     """
     Calculate calibration distribution for a group of employees.

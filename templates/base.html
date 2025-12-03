@@ -460,6 +460,176 @@
             color: #e74c3c;
         }
 
+        /* Modal Tabs */
+        .employee-modal-tabs {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
+
+        .employee-modal-tab {
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            transition: color 0.2s;
+        }
+
+        .employee-modal-tab:hover {
+            color: #667eea;
+        }
+
+        .employee-modal-tab.active {
+            color: #667eea;
+        }
+
+        .employee-modal-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #667eea;
+        }
+
+        .employee-modal-tab-content {
+            display: none;
+        }
+
+        .employee-modal-tab-content.active {
+            display: block;
+        }
+
+        /* History Tab Styles */
+        .history-empty {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .history-empty svg {
+            width: 48px;
+            height: 48px;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+
+        .history-period {
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .history-period-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .history-period-header:hover {
+            background: #e9ecef;
+        }
+
+        .history-period-title {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .history-period-date {
+            font-size: 12px;
+            color: #666;
+            margin-top: 3px;
+        }
+
+        .history-period-summary {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .history-period-rating {
+            font-size: 18px;
+            font-weight: 700;
+            color: #27ae60;
+        }
+
+        .history-period-bonus {
+            font-size: 14px;
+            color: #667eea;
+        }
+
+        .history-period-partial {
+            font-size: 11px;
+            color: #e67e22;
+            background: #fff3cd;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .history-period-chevron {
+            color: #666;
+            transition: transform 0.2s;
+        }
+
+        .history-period.expanded .history-period-chevron {
+            transform: rotate(180deg);
+        }
+
+        .history-period-details {
+            display: none;
+            padding: 0 20px 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .history-period.expanded .history-period-details {
+            display: block;
+        }
+
+        .history-detail-row {
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .history-detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .history-detail-label {
+            width: 140px;
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .history-detail-value {
+            flex: 1;
+            font-size: 13px;
+            color: #2c3e50;
+        }
+
+        .history-context-info {
+            margin-top: 15px;
+            padding: 12px;
+            background: #e9ecef;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .history-context-info strong {
+            color: #2c3e50;
+        }
+
         /* Filter Panel Styles */
         .filter-toggle {
             position: fixed;
@@ -817,10 +987,16 @@
                 });
         }
 
+        // Cache for employee history data
+        let currentEmployeeHistory = null;
+
         function openEmployeeModal(employeeId) {
             const modal = document.getElementById('employeeModal');
             const modalBody = document.getElementById('employeeModalBody');
             const modalTitle = document.getElementById('employeeModalTitle');
+
+            // Reset history cache
+            currentEmployeeHistory = null;
 
             // Show loading state
             modalBody.innerHTML = `
@@ -832,13 +1008,18 @@
             modalTitle.textContent = 'Employee Details';
             modal.classList.add('active');
 
-            // Load tenets and employee data in parallel
+            // Load tenets, employee data, and history in parallel
             Promise.all([
                 loadModalTenets(),
-                fetch(`/api/employee/${encodeURIComponent(employeeId)}`).then(r => r.json())
+                fetch(`/api/employee/${encodeURIComponent(employeeId)}`).then(r => r.json()),
+                fetch(`/api/employee/${encodeURIComponent(employeeId)}/history`).then(r => r.json())
             ])
-            .then(([tenets, data]) => {
+            .then(([tenets, data, historyData]) => {
                 if (data.success) {
+                    // Cache history data
+                    if (historyData.success) {
+                        currentEmployeeHistory = historyData.history;
+                    }
                     renderEmployeeModal(data.employee);
                 } else {
                     modalBody.innerHTML = `
@@ -929,79 +1110,93 @@
                 `;
             }
 
+            // Generate history tab content
+            const historyHTML = renderHistoryTabContent();
+
             modalBody.innerHTML = `
-                <div class="employee-modal-section">
-                    <h4>Basic Information</h4>
-                    <div class="employee-modal-grid">
-                        <div class="employee-modal-field">
-                            <label>Associate ID</label>
-                            <div class="value">${employee['Associate ID']}</div>
+                <div class="employee-modal-tabs">
+                    <button class="employee-modal-tab active" onclick="switchModalTab('current')">Current Period</button>
+                    <button class="employee-modal-tab" onclick="switchModalTab('history')">History${currentEmployeeHistory && currentEmployeeHistory.length > 0 ? ` (${currentEmployeeHistory.length})` : ''}</button>
+                </div>
+
+                <div id="modal-tab-current" class="employee-modal-tab-content active">
+                    <div class="employee-modal-section">
+                        <h4>Basic Information</h4>
+                        <div class="employee-modal-grid">
+                            <div class="employee-modal-field">
+                                <label>Associate ID</label>
+                                <div class="value">${employee['Associate ID']}</div>
+                            </div>
+                            <div class="employee-modal-field">
+                                <label>Job Profile</label>
+                                <div class="value">${employee['Current Job Profile'] || 'N/A'}</div>
+                            </div>
+                            <div class="employee-modal-field">
+                                <label>Supervisory Organization</label>
+                                <div class="value">${employee['Supervisory Organization'] || 'N/A'}</div>
+                            </div>
+                            <div class="employee-modal-field">
+                                <label>Currency</label>
+                                <div class="value">${employee.Currency || 'N/A'}</div>
+                            </div>
                         </div>
-                        <div class="employee-modal-field">
-                            <label>Job Profile</label>
-                            <div class="value">${employee['Current Job Profile'] || 'N/A'}</div>
+                    </div>
+
+                    <div class="employee-modal-section">
+                        <h4>Performance Rating</h4>
+                        <div class="employee-modal-grid">
+                            <div class="employee-modal-field">
+                                <label>Rating % (0-200)</label>
+                                <input type="number"
+                                       id="modal_rating_percent"
+                                       min="0"
+                                       max="200"
+                                       step="1"
+                                       value="${employee.performance_rating_percent || ''}"
+                                       placeholder="0-200">
+                                <span class="error" id="modal_rating_error"></span>
+                            </div>
+                            <div class="employee-modal-field">
+                                <label>Last Updated</label>
+                                <div class="value">${employee.last_updated || 'Not yet rated'}</div>
+                            </div>
+                            <div class="employee-modal-field full-width">
+                                <label>Justification</label>
+                                <textarea id="modal_justification" placeholder="Explain the rating...">${employee.justification || ''}</textarea>
+                            </div>
                         </div>
-                        <div class="employee-modal-field">
-                            <label>Supervisory Organization</label>
-                            <div class="value">${employee['Supervisory Organization'] || 'N/A'}</div>
+                    </div>
+
+                    <div class="employee-modal-section">
+                        <h4>Development & Mentoring</h4>
+                        <div class="employee-modal-grid">
+                            <div class="employee-modal-field">
+                                <label>Mentor</label>
+                                <input type="text"
+                                       id="modal_mentor"
+                                       value="${employee.mentor || ''}"
+                                       placeholder="Who is mentoring this person?">
+                            </div>
+                            <div class="employee-modal-field">
+                                <label>Mentee(s)</label>
+                                <input type="text"
+                                       id="modal_mentees"
+                                       value="${employee.mentees || ''}"
+                                       placeholder="Who is this person mentoring?">
+                            </div>
                         </div>
-                        <div class="employee-modal-field">
-                            <label>Currency</label>
-                            <div class="value">${employee.Currency || 'N/A'}</div>
-                        </div>
+                    </div>
+
+                    ${tenetsHTML}
+
+                    <div class="employee-modal-footer">
+                        <button class="btn-cancel" onclick="closeEmployeeModal()">Close</button>
+                        <button class="btn-save" onclick="saveEmployeeModal()">Save Changes</button>
                     </div>
                 </div>
 
-                <div class="employee-modal-section">
-                    <h4>Performance Rating</h4>
-                    <div class="employee-modal-grid">
-                        <div class="employee-modal-field">
-                            <label>Rating % (0-200)</label>
-                            <input type="number"
-                                   id="modal_rating_percent"
-                                   min="0"
-                                   max="200"
-                                   step="1"
-                                   value="${employee.performance_rating_percent || ''}"
-                                   placeholder="0-200">
-                            <span class="error" id="modal_rating_error"></span>
-                        </div>
-                        <div class="employee-modal-field">
-                            <label>Last Updated</label>
-                            <div class="value">${employee.last_updated || 'Not yet rated'}</div>
-                        </div>
-                        <div class="employee-modal-field full-width">
-                            <label>Justification</label>
-                            <textarea id="modal_justification" placeholder="Explain the rating...">${employee.justification || ''}</textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="employee-modal-section">
-                    <h4>Development & Mentoring</h4>
-                    <div class="employee-modal-grid">
-                        <div class="employee-modal-field">
-                            <label>Mentor</label>
-                            <input type="text"
-                                   id="modal_mentor"
-                                   value="${employee.mentor || ''}"
-                                   placeholder="Who is mentoring this person?">
-                        </div>
-                        <div class="employee-modal-field">
-                            <label>Mentee(s)</label>
-                            <input type="text"
-                                   id="modal_mentees"
-                                   value="${employee.mentees || ''}"
-                                   placeholder="Who is this person mentoring?">
-                        </div>
-                    </div>
-                </div>
-
-                ${tenetsHTML}
-
-                <div class="employee-modal-footer">
-                    <button class="btn-cancel" onclick="closeEmployeeModal()">Close</button>
-                    <button class="btn-save" onclick="saveEmployeeModal()">Save Changes</button>
+                <div id="modal-tab-history" class="employee-modal-tab-content">
+                    ${historyHTML}
                 </div>
             `;
 
@@ -1108,6 +1303,152 @@
             const modal = document.getElementById('employeeModal');
             const tenetCheckboxes = modal.querySelectorAll('input[data-tenet-type]');
             tenetCheckboxes.forEach(cb => cb.addEventListener('change', markDirty));
+        }
+
+        function switchModalTab(tabName) {
+            // Update tab buttons
+            const tabs = document.querySelectorAll('.employee-modal-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update tab content
+            const contents = document.querySelectorAll('.employee-modal-tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+
+            const targetContent = document.getElementById(`modal-tab-${tabName}`);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        }
+
+        function renderHistoryTabContent() {
+            if (!currentEmployeeHistory || currentEmployeeHistory.length === 0) {
+                return `
+                    <div class="history-empty">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p>No historical data available</p>
+                        <p style="font-size: 12px; color: #999;">Past ratings will appear here after periods are archived.</p>
+                    </div>
+                `;
+            }
+
+            return currentEmployeeHistory.map((item, index) => {
+                const period = item.period;
+                const snapshot = item.snapshot;
+
+                // Format archived date
+                const archivedDate = period.archived_at ?
+                    new Date(period.archived_at).toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'short', day: 'numeric'
+                    }) : 'Unknown';
+
+                // Rating display
+                const ratingDisplay = snapshot.performance_rating != null ?
+                    `${snapshot.performance_rating}%` : 'N/A';
+
+                // Bonus allocation display
+                const bonusDisplay = snapshot.bonus_allocation != null ?
+                    `${snapshot.bonus_allocation.toFixed(1)}% of target` : '';
+
+                // Partial record indicator
+                const isPartial = !snapshot.has_full_details;
+
+                // Build detail rows
+                let detailsHTML = '';
+
+                if (snapshot.justification) {
+                    detailsHTML += `
+                        <div class="history-detail-row">
+                            <div class="history-detail-label">Justification</div>
+                            <div class="history-detail-value">${escapeHtml(snapshot.justification)}</div>
+                        </div>
+                    `;
+                }
+
+                if (snapshot.tenets_strengths) {
+                    detailsHTML += `
+                        <div class="history-detail-row">
+                            <div class="history-detail-label">Strengths</div>
+                            <div class="history-detail-value">${escapeHtml(snapshot.tenets_strengths)}</div>
+                        </div>
+                    `;
+                }
+
+                if (snapshot.tenets_improvements) {
+                    detailsHTML += `
+                        <div class="history-detail-row">
+                            <div class="history-detail-label">Improvements</div>
+                            <div class="history-detail-value">${escapeHtml(snapshot.tenets_improvements)}</div>
+                        </div>
+                    `;
+                }
+
+                if (snapshot.mentors) {
+                    detailsHTML += `
+                        <div class="history-detail-row">
+                            <div class="history-detail-label">Mentor</div>
+                            <div class="history-detail-value">${escapeHtml(snapshot.mentors)}</div>
+                        </div>
+                    `;
+                }
+
+                if (snapshot.mentees) {
+                    detailsHTML += `
+                        <div class="history-detail-row">
+                            <div class="history-detail-label">Mentees</div>
+                            <div class="history-detail-value">${escapeHtml(snapshot.mentees)}</div>
+                        </div>
+                    `;
+                }
+
+                // Context info (job profile, org at time of snapshot)
+                let contextHTML = '';
+                if (snapshot.snapshot_job_profile || snapshot.snapshot_org) {
+                    contextHTML = `
+                        <div class="history-context-info">
+                            <strong>Context at time of rating:</strong>
+                            ${snapshot.snapshot_job_profile ? `Job: ${escapeHtml(snapshot.snapshot_job_profile)}` : ''}
+                            ${snapshot.snapshot_job_profile && snapshot.snapshot_org ? ' | ' : ''}
+                            ${snapshot.snapshot_org ? `Org: ${escapeHtml(snapshot.snapshot_org)}` : ''}
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="history-period" data-period-id="${period.id}">
+                        <div class="history-period-header" onclick="toggleHistoryPeriod(this)">
+                            <div>
+                                <div class="history-period-title">${escapeHtml(period.name)}</div>
+                                <div class="history-period-date">Archived ${archivedDate}</div>
+                            </div>
+                            <div class="history-period-summary">
+                                ${isPartial ? '<span class="history-period-partial">Partial Record</span>' : ''}
+                                <span class="history-period-rating">${ratingDisplay}</span>
+                                ${bonusDisplay ? `<span class="history-period-bonus">${bonusDisplay}</span>` : ''}
+                                <span class="history-period-chevron">▼</span>
+                            </div>
+                        </div>
+                        <div class="history-period-details">
+                            ${detailsHTML || '<p style="color: #666; font-size: 13px;">No additional details available.</p>'}
+                            ${contextHTML}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleHistoryPeriod(header) {
+            const period = header.closest('.history-period');
+            period.classList.toggle('expanded');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function validateModalRating() {
