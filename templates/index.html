@@ -69,7 +69,7 @@
                     data-job="{{ employee['Current Job Profile'] }}"
                     data-rating="{{ employee.performance_rating_percent or 0 }}"
                     data-updated="{{ employee.last_updated or '' }}">
-                    <td><strong>{{ employee.Associate }}</strong></td>
+                    <td><span class="employee-name" data-employee-id="{{ employee['Associate ID'] }}">{{ employee.Associate }}</span></td>
                     <td>{{ employee['Current Job Profile'] }}</td>
                     <td>
                         {% if employee.performance_rating_percent %}
