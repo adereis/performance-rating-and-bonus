@@ -924,14 +924,17 @@
         </div>
     </header>
 
-    <!-- Filter Toggle Button -->
+    <!-- Filter Toggle Button (hidden on pages where filtering doesn't apply) -->
+    {% if request.endpoint not in ['history_page', 'import_page'] %}
     <button class="filter-toggle {% if filter_info is defined and filter_info.active %}active{% endif %}"
             onclick="toggleFilterPanel()"
             id="filterToggle">
         🔍 Filters{% if filter_info is defined and filter_info.active %} ({{ filter_info.hidden_count }}){% endif %}
     </button>
+    {% endif %}
 
-    <!-- Filter Panel -->
+    <!-- Filter Panel (hidden on pages where filtering doesn't apply) -->
+    {% if request.endpoint not in ['history_page', 'import_page'] %}
     <div class="filter-panel" id="filterPanel">
         <div class="filter-panel-header">
             <h3>Filter Employees</h3>
@@ -994,6 +997,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <div class="container">
         <!-- Filter Banner -->
@@ -2013,6 +2017,11 @@
 
         // Restore filters from sessionStorage on navigation
         document.addEventListener('DOMContentLoaded', function() {
+            // Skip filter restoration on pages where filters don't apply
+            if (!document.getElementById('filterToggle')) {
+                return;
+            }
+
             // Only restore if no URL params present (navigating from another page)
             const urlParams = new URLSearchParams(window.location.search);
             const hasUrlFilters = urlParams.has('exclude_managers') ||
