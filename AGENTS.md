@@ -81,6 +81,12 @@ To achieve similar results with AI assistance:
 
 **Git Commit Policy**: The AI agent performs git commits locally as work progresses, but only pushes to GitHub when explicitly instructed by the user. This allows for local version control while maintaining user control over what gets published to remote repositories.
 
+**Documentation Maintenance**: Keep TODO.md updated as features are implemented:
+- Move completed features from "Planned" or "Backlog" to "Completed" section
+- Add completion date and brief implementation summary
+- Remove or update features that are no longer relevant
+- Add new feature requests to appropriate section as they arise
+
 ### Model Information
 
 - **AI Model**: Claude Sonnet 4.5 (claude-sonnet-4-5@20250929)

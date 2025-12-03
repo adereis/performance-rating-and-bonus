@@ -6,105 +6,14 @@ This file tracks future enhancements and feature requests for the Performance Ra
 
 ## Planned Features
 
-_(No planned features at this time)_
+### Historical Data Preservation
+**Priority:** High
+**Status:** In Design
+**Description:** Preserve rating data across evaluation periods to provide historical context and trend visibility when evaluating team members.
 
 ---
 
 ## Backlog Features
-
-_(Features from original README.md Future Enhancements section)_
-
-### CSV Export Functionality
-**Priority:** High
-**Status:** Not Started (removed incomplete implementation)
-**Description:** Add proper browser-download CSV export for ratings and bonus calculations.
-
-**Previous Issue:**
-- Incomplete export feature was removed that saved files to ~/tmp without triggering browser download
-- Users had to manually retrieve files from server filesystem
-
-**Proper Implementation:**
-- Use Flask's `send_file()` with in-memory CSV generation
-- Trigger browser download (no server-side file accumulation)
-- Export buttons on:
-  - Dashboard: Export all ratings with justifications
-  - Bonus Calculation page: Export bonus results with all details
-- Include all relevant columns in exports
-- Timestamped filenames: `ratings_export_2025-11-24.csv`, `bonus_calculation_2025-11-24.csv`
-
-**Implementation Notes:**
-```python
-from flask import send_file
-from io import StringIO, BytesIO
-
-@app.route('/export/ratings')
-def export_ratings():
-    # Generate CSV in memory
-    output = StringIO()
-    writer = csv.DictWriter(output, fieldnames=...)
-    writer.writeheader()
-    writer.writerows(data)
-
-    # Convert to bytes for send_file
-    mem = BytesIO()
-    mem.write(output.getvalue().encode())
-    mem.seek(0)
-
-    return send_file(
-        mem,
-        mimetype='text/csv',
-        as_attachment=True,
-        download_name=f'ratings_export_{timestamp}.csv'
-    )
-```
-
----
-
-### Import Compa-Ratio Data from Workday
-**Priority:** Low (Deferred)
-**Status:** Not Started - Complex and potentially problematic
-**Description:** Add support for importing Compa-Ratio (CR) data from Workday to enable salary equity-based bonus adjustments.
-
-**Why Deferred:**
-
-1. **Export Complexity:**
-   - Workday export format for CR data is complex and inconsistent
-   - Would require importing from specialized compensation reports
-   - Multi-row format per employee (varies by country: 4-10 rows)
-   - Need to calculate CR from base pay and range midpoint fields
-
-2. **Per-Country Distortions:**
-   - CR values can be distorted in some countries due to outdated salary bands
-   - Example: Country with outdated bands shows inflated CRs (employees paid above "midpoint")
-   - These inflated CRs are compensation for band staleness, not actual overpayment
-   - Using CR as bonus drag in these cases would unfairly penalize employees
-   - Would require manual per-country CR adjustment factors to compensate
-   - Different countries have different band refresh cycles and market conditions
-
-3. **Business Logic Complexity:**
-   - Requires country-specific CR interpretation rules
-   - Need to identify which countries have distorted bands
-   - Must maintain per-country adjustment factors
-   - Adds significant complexity for marginal benefit
-   - Risk of unintended consequences in bonus distribution
-
-4. **Current Focus:**
-   - Bonus algorithm focuses on performance differentiation
-   - Team performance is the primary factor, not salary equity
-   - Simpler implementation is more maintainable and transparent
-
-**Potential Future Implementation (if needed):**
-- Import CR data from Workday compensation export
-- Calculate: `compa_ratio = base_pay_usd / range_midpoint_usd`
-- Add `compa_ratio` field to Employee model
-- Implement per-country CR adjustment configuration
-- Add CR Power parameter to bonus calculation
-- Apply CR multiplier: `1 / (CR^cr_power)` with country adjustments
-- Create country-specific rules for CR interpretation
-
-**Note:** This feature has been removed from the current implementation due to technical complexity and business logic concerns around per-country distortions. The bonus algorithm now focuses solely on performance-based differentiation, which is simpler, more transparent, and avoids unintended geographic biases.
-
----
 
 ### Save Multiple Parameter Configurations
 **Priority:** Low
@@ -113,23 +22,9 @@ def export_ratings():
 
 **Implementation Notes:**
 - Create `bonus_configs.json` or database table
-- Store named configs: `{"name": "Conservative", "upside": 1.1, "downside": 2.0, "cr_power": 0.5}`
+- Store named configs: `{"name": "Conservative", "upside": 1.1, "downside": 2.0}`
 - Add dropdown in bonus calculation page to select config
 - Include "Save Current" and "Load" buttons
-
----
-
-### Historical Rating Comparison
-**Priority:** Medium
-**Status:** Not Started
-**Description:** Track ratings across periods and show trends/changes over time per employee.
-
-**Implementation Notes:**
-- Create `ratings_history` table with period/date tracking
-- Archive ratings at end of each rating period
-- Add "History" tab showing rating trends per employee
-- Chart.js line graph showing performance over time
-- Compare period-over-period changes
 
 ---
 
@@ -143,20 +38,6 @@ def export_ratings():
 - Options: "Set all unrated to 100%", "Clear all ratings", "Apply template justification"
 - Confirmation dialog before applying
 - Update multiple records via `/api/bulk_rate` endpoint
-
----
-
-### PDF Export for HR Submission
-**Priority:** Medium
-**Status:** Not Started
-**Description:** Generate professional PDF reports with ratings, justifications, and bonus calculations for HR submission.
-
-**Implementation Notes:**
-- Use library like ReportLab or WeasyPrint
-- Include company branding, manager signature block
-- Sections: Team summary, individual ratings with justifications, bonus calculations
-- Generate via `/export_pdf` endpoint
-- Timestamped filename
 
 ---
 
@@ -204,31 +85,119 @@ def export_ratings():
 
 ## Completed Features
 
-### Team Tenets / Leadership Principles Evaluation
+### Export Functionality (CSV and Excel)
+**Completed:** 2025-11-28
+**Description:** Browser-download export for ratings and bonus calculations in CSV and Excel formats.
 
+**Implementation:**
+- `/export` page with data preview and sortable table
+- `/export/csv` endpoint for CSV download
+- `/export/xlsx` endpoint for Excel download
+- Uses Flask's `send_file()` with in-memory generation
+- Includes employee name, bonus %, and formatted description
+- Copy-to-clipboard for individual descriptions
+
+---
+
+### Multi-Team Bonus Calculation
+**Completed:** 2025-11-27
+**Description:** Tabbed interface showing organization-level vs team-level bonus calculations for multi-team scenarios.
+
+**Implementation:**
+- Auto-detects multi-team scenario by counting unique supervisory organizations
+- Tab 1: Overview (organization-level calculation)
+- Tab 2: Team Comparison (team-level vs org-level normalization)
+- Tab 3: Detailed Breakdown (per-employee side-by-side comparison)
+- Shows budget flow between teams (gains/losses from normalization)
+
+---
+
+### Multi-Team Analytics
+**Completed:** 2025-11-27
+**Description:** Per-team calibration views and cross-team comparison for organizations with multiple teams.
+
+**Implementation:**
+- Three tabs: Organization Overview, Per-Team Calibration, Team Comparison Matrix
+- Auto-generated insights: rating variance, calibration health, high-variance teams
+- Helps identify calibration inconsistencies across teams
+
+---
+
+### Employee Modal Detail View
+**Completed:** 2025-11-28
+**Description:** Clickable employee names throughout the app that open a modal with full details.
+
+**Implementation:**
+- Click any employee name to open modal
+- Shows all employee info, rating, justification, tenets
+- Inline editing within modal with auto-save
+- Unsaved changes warning on close
+
+---
+
+### Employee Filtering for Calibration
+**Completed:** 2025-11-28
+**Description:** Filter employees on rate page for focused calibration sessions.
+
+**Implementation:**
+- Filter by: All, Rated, Unrated, Incomplete Info
+- Exclude specific employees from view
+- Supports calibration calls focused on subsets of team
+
+---
+
+### Associate ID Refactoring
+**Completed:** 2025-11-29
+**Description:** System-wide refactor to use Associate ID instead of names for employee identification.
+
+**Implementation:**
+- All API endpoints use `associate_id` parameter
+- Frontend uses `data-employee-id` attributes
+- Handles duplicate names correctly
+- Filter system uses `exclude_ids` parameter
+
+---
+
+### Budget Override
+**Completed:** 2025-11-26
+**Description:** Allow managers to adjust total bonus pool with inline editing.
+
+**Implementation:**
+- Inline editable field in summary stats
+- Proportional scaling: all bonuses scale by `adjusted_pool / base_pool`
+- Persisted in `BonusSettings` table
+- Tooltip explains functionality
+
+---
+
+### Team Tenets / Leadership Principles Evaluation
 **Completed:** 2025-11-26
 **Description:** Configuration-driven system for evaluating employees against team-specific tenets.
 
 **Implementation:**
-- ✅ Database fields added: `tenets_strengths`, `tenets_improvements` (JSON arrays in Text fields)
-- ✅ Configuration file system: `tenets.json` (team-specific, gitignored)
-- ✅ Sample configuration: `tenets-sample.json` (committed to repo)
-- ✅ UI in `rate.html`: Checkbox-based selection with tooltips for tenet descriptions
-- ✅ Client-side validation: Exactly 3 strengths, 3 improvements, no duplicates between lists
-- ✅ Server-side validation: Count validation, duplicate detection, JSON validation
-- ✅ API endpoint: `/api/tenets` serves configuration dynamically
-- ✅ Auto-save: Tenet selections saved with 2-second debounce
-- ✅ Analytics: Overall and per-organization tenet analysis on analytics page
-- ✅ Workday import preservation: Tenets preserved on re-import (manager-entered data)
-- ✅ Sample data generation: `populate_sample_ratings.py` generates random tenet selections
-- ✅ Comprehensive test coverage: `tests/test_tenets.py` with 10 test cases
+- Database fields: `tenets_strengths`, `tenets_improvements` (JSON arrays)
+- Configuration file: `tenets.json` (team-specific, gitignored)
+- UI: Checkbox-based selection with tooltips
+- Validation: 3 strengths required, 2-3 improvements allowed
+- Analytics: Diverging butterfly chart visualization
+- Comprehensive test coverage in `tests/test_tenets.py`
 
-**Technical Details:**
-- Stores tenet IDs as JSON arrays: `["customer_obsession", "ownership", "bias_for_action"]`
-- Dynamic UI rendering from JSON configuration (no hardcoded tenets)
-- Real-time checkbox state management (disables selections after 3 chosen)
-- Prevents selecting same tenet in both strengths and improvements
-- Analytics shows most common strengths/improvements across team and per organization
+---
+
+## Won't Implement
+
+### Import Compa-Ratio Data from Workday
+**Status:** Removed from scope
+**Reason:** See AGENTS.md "Domain Knowledge" section for full rationale.
+
+Key issues:
+- Workday export format is complex and inconsistent
+- Per-country CR distortions due to outdated salary bands
+- Would require country-specific adjustment factors
+- Adds complexity for marginal benefit
+- Bonus algorithm focuses on performance, not salary equity
+
+The feature was prototyped and then removed (commit `a3f545d`) after discovering these issues.
 
 ---
 
