@@ -492,6 +492,7 @@
         <button class="filter-btn active" onclick="filterEmployees('all')">All ({{ team|length }})</button>
         <button class="filter-btn" onclick="filterEmployees('unrated')">Unrated Only</button>
         <button class="filter-btn" onclick="filterEmployees('rated')">Rated Only</button>
+        <button class="filter-btn" onclick="filterEmployees('incomplete')">Incomplete Info</button>
     </div>
 
     <!-- Compact view -->
@@ -508,9 +509,12 @@
                 </thead>
                 <tbody id="compact-table-body">
                     {% for employee in team %}
+                    {% set has_tenets = (employee.tenets_strengths and employee.tenets_strengths != '[]') or (employee.tenets_improvements and employee.tenets_improvements != '[]') %}
+                    {% set is_incomplete = employee.performance_rating_percent and (not employee.justification or not has_tenets or not employee.mentor or not employee.mentees) %}
                     <tr class="{% if employee.performance_rating_percent %}has-rating{% endif %}"
                         data-associate-id="{{ employee['Associate ID'] }}"
                         data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}"
+                        data-is-incomplete="{{ 'true' if is_incomplete else 'false' }}"
                         data-name="{{ employee.Associate }}"
                         data-job="{{ employee['Current Job Profile'] }}"
                         data-rating="{{ employee.performance_rating_percent or 0 }}">
@@ -542,9 +546,12 @@
     <!-- Detailed view -->
     <div class="rating-form" id="detailed-view">
         {% for employee in team %}
+        {% set has_tenets = (employee.tenets_strengths and employee.tenets_strengths != '[]') or (employee.tenets_improvements and employee.tenets_improvements != '[]') %}
+        {% set is_incomplete = employee.performance_rating_percent and (not employee.justification or not has_tenets or not employee.mentor or not employee.mentees) %}
         <div class="employee-card {% if employee.performance_rating_percent %}rated{% endif %}"
              data-associate-id="{{ employee['Associate ID'] }}"
-             data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}">
+             data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}"
+             data-is-incomplete="{{ 'true' if is_incomplete else 'false' }}">
 
             <div class="employee-header">
                 <div>
@@ -784,6 +791,7 @@ function filterEmployees(filter) {
     // Filter detailed view
     detailedCards.forEach(card => {
         const hasRating = card.getAttribute('data-has-rating') === 'true';
+        const isIncomplete = card.getAttribute('data-is-incomplete') === 'true';
 
         if (filter === 'all') {
             card.style.display = 'block';
@@ -791,12 +799,15 @@ function filterEmployees(filter) {
             card.style.display = hasRating ? 'none' : 'block';
         } else if (filter === 'rated') {
             card.style.display = hasRating ? 'block' : 'none';
+        } else if (filter === 'incomplete') {
+            card.style.display = isIncomplete ? 'block' : 'none';
         }
     });
 
     // Filter compact view
     compactRows.forEach(row => {
         const hasRating = row.getAttribute('data-has-rating') === 'true';
+        const isIncomplete = row.getAttribute('data-is-incomplete') === 'true';
 
         if (filter === 'all') {
             row.style.display = '';
@@ -804,6 +815,8 @@ function filterEmployees(filter) {
             row.style.display = hasRating ? 'none' : '';
         } else if (filter === 'rated') {
             row.style.display = hasRating ? '' : 'none';
+        } else if (filter === 'incomplete') {
+            row.style.display = isIncomplete ? '' : 'none';
         }
     });
 }
