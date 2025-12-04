@@ -7,8 +7,12 @@ This file tracks future enhancements and feature requests for the Performance Ra
 ## Backlog Features
 
 ### Save Multiple Parameter Configurations
-**Priority:** Low
-**Status:** Not Started
+
+| | |
+|---|---|
+| **Priority** | Low |
+| **Status** | Not Started |
+
 **Description:** Allow saving multiple bonus calculation parameter sets (e.g., "Conservative", "Aggressive", "Balanced") for quick switching.
 
 **Implementation Notes:**
@@ -20,8 +24,12 @@ This file tracks future enhancements and feature requests for the Performance Ra
 ---
 
 ### Bulk Edit Capabilities
-**Priority:** Low
-**Status:** Not Started
+
+| | |
+|---|---|
+| **Priority** | Low |
+| **Status** | Not Started |
+
 **Description:** Allow bulk operations like "set all unrated to 100%" or "copy justifications from last period".
 
 **Implementation Notes:**
@@ -33,8 +41,12 @@ This file tracks future enhancements and feature requests for the Performance Ra
 ---
 
 ### Read-Only Sharing Mode for Calibration Sessions
-**Priority:** Low
-**Status:** Not Started
+
+| | |
+|---|---|
+| **Priority** | Low |
+| **Status** | Not Started |
+
 **Description:** Generate read-only view links for calibration sessions with other managers (no database write access).
 
 **Implementation Notes:**
@@ -47,8 +59,12 @@ This file tracks future enhancements and feature requests for the Performance Ra
 ---
 
 ### Database Migration System
-**Priority:** Low
-**Status:** Not Started
+
+| | |
+|---|---|
+| **Priority** | Low |
+| **Status** | Not Started |
+
 **Description:** Implement Alembic or similar for managing database schema changes across versions.
 
 **Implementation Notes:**
@@ -61,8 +77,12 @@ This file tracks future enhancements and feature requests for the Performance Ra
 ---
 
 ### API Documentation
-**Priority:** Low
-**Status:** Not Started
+
+| | |
+|---|---|
+| **Priority** | Low |
+| **Status** | Not Started |
+
 **Description:** Create Swagger/OpenAPI documentation for all API endpoints.
 
 **Implementation Notes:**
