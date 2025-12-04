@@ -25,6 +25,7 @@ Credits:
 
 import matplotlib.pyplot as plt
 import numpy as np
+from collections import Counter
 from typing import List, Tuple
 
 
@@ -245,11 +246,14 @@ def generate_scenario_comparison_chart(output_file: str) -> None:
         ax.plot(ratings, ratings, linestyle='--', color='gray', alpha=0.3, label='Linear (1:1)')
         ax.plot(ratings, payout, color='#0056b3', linewidth=2.5, label=f'Norm = {norm_factor:.3f}')
 
-        # Add individual team member markers
-        for rating in team_ratings:
+        # Add individual team member markers with size proportional to count
+        rating_counts = Counter(team_ratings)
+        for rating, count in rating_counts.items():
             perf_mult = calculate_performance_multiplier(rating)
             final_payout = perf_mult * norm_factor * 100
-            ax.scatter([rating], [final_payout], color='#cc0000', s=50, alpha=0.7, zorder=5)
+            # Scale marker size by count (base 50, multiply by count)
+            size = 50 * count
+            ax.scatter([rating], [final_payout], color='#cc0000', s=size, alpha=0.7, zorder=5)
 
         # Reference lines
         ax.axvline(x=100, color='gray', linestyle=':', linewidth=1, alpha=0.5)
