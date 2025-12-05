@@ -83,7 +83,7 @@ def load_tenets_config():
         tuple: (tenets_config dict, tenets_map dict mapping id->name)
                Returns (None, {}) if no config found
     """
-    tenets_file = 'tenets.json' if os.path.exists('tenets.json') else 'tenets-sample.json'
+    tenets_file = 'tenets.json' if os.path.exists('tenets.json') else 'samples/tenets-sample.json'
 
     if not os.path.exists(tenets_file):
         return None, {}

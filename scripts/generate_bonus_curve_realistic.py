@@ -17,7 +17,7 @@ Usage:
     python3 generate_bonus_curve_realistic.py
 
 Output:
-    bonus-curve-realistic-scenarios.png - Multiple scenario comparison chart
+    docs/bonus-curve-realistic-scenarios.png - Multiple scenario comparison chart
 
 Credits:
     Developed by Claude Code (Anthropic) to align with actual app.py algorithm
@@ -288,7 +288,7 @@ if __name__ == '__main__':
     print("\n" + "="*70 + "\n")
 
     # Generate scenario comparison chart
-    generate_scenario_comparison_chart('bonus-curve-realistic-scenarios.png')
+    generate_scenario_comparison_chart('docs/bonus-curve-realistic-scenarios.png')
 
     print("\n" + "="*70)
     print("Chart generation complete!")

@@ -15,7 +15,7 @@ A web-based tool for managers to conduct performance reviews and calculate team 
 - **International Support**: Handles multiple currencies (USD, GBP, EUR, CAD, INR)
 - **Privacy-Focused**: SQLite database, runs locally, no cloud dependencies
 
-![Bonus Calculation Curve](screenshot-bonus-curve.png)
+![Bonus Calculation Curve](docs/screenshot-bonus-curve.png)
 *Performance-to-bonus allocation curve showing how ratings translate to bonuses with proportional scaling*
 
 ## Design Philosophy: Workday as Source of Truth
@@ -58,7 +58,7 @@ Perfect for learning the system - 12 employees under one manager with sample rat
 pip install -r requirements.txt
 
 # 2. Generate small team Workday data (salaries, bonus targets, org structure)
-python3 create_sample_data.py
+python3 scripts/create_sample_data.py
 
 # 3. Start the web server
 python3 app.py
@@ -68,7 +68,7 @@ python3 app.py
 # 5. Go to Import tab, upload sample-data-small.xlsx
 
 # 6. Populate sample ratings and justifications
-python3 populate_sample_ratings.py small
+python3 scripts/populate_sample_ratings.py small
 ```
 
 ### Option 2: Large Multi-Manager Organization
@@ -76,12 +76,12 @@ Test multi-org scenarios - 50 employees across 5 managers with sample ratings.
 
 ```bash
 # 2. Generate large org Workday data
-python3 create_sample_data.py --large
+python3 scripts/create_sample_data.py --large
 
 # 3-5. Start server, import sample-data-large.xlsx via Import tab
 
 # 6. Populate sample ratings and justifications
-python3 populate_sample_ratings.py large
+python3 scripts/populate_sample_ratings.py large
 ```
 
 **Sample Data Details:**
@@ -94,25 +94,25 @@ Generate sample historical data to test period-over-period comparison and employ
 
 ```bash
 # Generate large org plus 6 quarters of historical data
-python3 create_sample_data.py --large --historical
+python3 scripts/create_sample_data.py --large --historical
 
 # This creates:
 # - sample-data-large.xlsx (current period)
-# - sample-historical-2023-Q3.xlsx through sample-historical-2024-Q4.xlsx
+# - samples/sample-historical-2023-Q3.xlsx through samples/sample-historical-2024-Q4.xlsx
 ```
 
 **To test historical features:**
 1. Start server and import `sample-data-large.xlsx` as **Current Period**
-2. Populate current ratings: `python3 populate_sample_ratings.py large`
+2. Populate current ratings: `python3 scripts/populate_sample_ratings.py large`
 3. Import each historical file as **Historical Period** (oldest first):
-   - Upload `sample-historical-2023-Q3.xlsx`, enter Period ID `2023-Q3` and Period Name `Q3 2023`
+   - Upload `samples/sample-historical-2023-Q3.xlsx`, enter Period ID `2023-Q3` and Period Name `Q3 2023`
    - Repeat for 2023-Q4, 2024-Q1, 2024-Q2, 2024-Q3, 2024-Q4
 4. Click any employee name to view their **History** tab with trend chart
 5. Visit **Analytics** to see **Period-over-Period Comparison**
 
 **Architecture Note**: Sample data generation follows the same pattern as real usage:
-1. **Workday export** (create_sample_data.py) contains ONLY HR data: salaries, bonus targets, org structure
-2. **Manager ratings** (populate_sample_ratings.py) adds performance ratings and justifications to the DATABASE
+1. **Workday export** (scripts/create_sample_data.py) contains ONLY HR data: salaries, bonus targets, org structure
+2. **Manager ratings** (scripts/populate_sample_ratings.py) adds performance ratings and justifications to the DATABASE
 3. This separation mirrors reality: Workday data vs. local manager-entered ratings
 
 **What you get:**
@@ -243,12 +243,12 @@ Currently manual (copy from UI). Future versions will support CSV export.
 
 **Note**: 100% is the baseline for "met all expectations". Most solid performers should be in the 90-110% range.
 
-![Performance Calibration](screenshot-perf-calibration.png)
+![Performance Calibration](docs/screenshot-perf-calibration.png)
 *Analytics dashboard showing performance distribution with calibration guidance to help ensure fair ratings across the team*
 
 ## Bonus Calculation Algorithm
 
-See [BONUS_CALCULATION_README.md](BONUS_CALCULATION_README.md) for detailed explanation.
+See [BONUS_CALCULATION_README.md](docs/BONUS_CALCULATION_README.md) for detailed explanation.
 
 **Summary**:
 1. Total Pool = Sum of all bonus targets from Workday (USD)
@@ -272,15 +272,21 @@ bonuses/
 ├── models.py                       # SQLAlchemy database models
 ├── xlsx_utils.py                   # Workday XLSX parsing utilities
 ├── notes_parser.py                 # Notes field parser for historical imports
-├── create_sample_data.py           # Sample data generator
 ├── requirements.txt                # Python dependencies
 ├── README.md                       # This file
-├── BONUS_CALCULATION_README.md     # Manager's guide to bonuses
+├── docs/                           # Documentation and images
+│   ├── BONUS_CALCULATION_README.md # Manager's guide to bonuses
+│   └── *.png                       # Screenshots for README
 ├── AGENTS.md                       # Developer/AI guide and patterns
 ├── ratings.db                      # SQLite database (created on first run)
-├── sample-data-small.xlsx          # Generated by create_sample_data.py (not in repo)
-├── sample-data-large.xlsx          # Generated by create_sample_data.py --large (not in repo)
+├── sample-data-small.xlsx          # Generated sample data (not in repo)
 ├── real-workday-export.xlsx        # Your Workday export (not in repo)
+├── scripts/                        # Utility scripts
+│   ├── create_sample_data.py       # Sample data generator
+│   └── populate_sample_ratings.py  # Populate DB with sample ratings
+├── samples/                        # Sample data files
+│   ├── tenets-sample.json          # Example tenets configuration
+│   └── sample-historical-*.xlsx    # Generated historical data
 ├── templates/                      # HTML templates
 │   ├── base.html                   # Base layout
 │   ├── index.html                  # Dashboard
@@ -316,7 +322,7 @@ Tests cover database operations, rating validation, bonus calculations, multi-or
 
 ### "No such file or directory" when importing Workday data
 - You need to export from Workday first, OR
-- Use sample data: `python3 create_sample_data.py` then import via the Import tab
+- Use sample data: `python3 scripts/create_sample_data.py` then import via the Import tab
 
 ### "Only 6 employees showing in bonus calculation"
 - Employees need bonus target data in Workday export
@@ -364,7 +370,7 @@ MIT License - see LICENSE file for details
 ## Support
 
 For issues or questions:
-- Check this README and [BONUS_CALCULATION_README.md](BONUS_CALCULATION_README.md)
+- Check this README and [BONUS_CALCULATION_README.md](docs/BONUS_CALCULATION_README.md)
 - Review test suite for examples: `tests/test_app.py`
 - Open an issue on GitHub
 

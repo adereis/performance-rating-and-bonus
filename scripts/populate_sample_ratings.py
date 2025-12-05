@@ -101,9 +101,9 @@ LARGE_ORG_RATINGS = {
 
 
 def load_tenets():
-    """Load tenets configuration from tenets-sample.json."""
+    """Load tenets configuration from samples/tenets-sample.json."""
     try:
-        with open('tenets-sample.json', 'r') as f:
+        with open('samples/tenets-sample.json', 'r') as f:
             config = json.load(f)
             return [t['id'] for t in config.get('tenets', []) if t.get('active', True)]
     except (FileNotFoundError, json.JSONDecodeError):

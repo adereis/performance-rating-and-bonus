@@ -3,9 +3,14 @@ Tests for team tenets functionality.
 
 Tests the tenets evaluation system including import, storage, and analytics display.
 """
+import sys
+import os
 import pytest
 import json
 from models import Employee
+
+# Add scripts directory to path for importing populate_sample_ratings
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
 
 @pytest.fixture

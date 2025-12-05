@@ -714,7 +714,7 @@ def create_historical_xlsx():
         create_headers(sheet)
         write_historical_employee_data(sheet, employees, quarter, timelines)
 
-        filename = f'sample-historical-{quarter}.xlsx'
+        filename = f'samples/sample-historical-{quarter}.xlsx'
         wb.save(filename)
 
         # Count employees in this quarter
