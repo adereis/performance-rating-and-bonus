@@ -331,9 +331,10 @@ def create_sample_xlsx(size='small'):
     else:
         print(f"  - All US-based (USD)")
     print(f"\nNext steps:")
-    print(f"  1. python3 convert_xlsx.py {filename}")
-    print(f"  2. python3 populate_sample_ratings.py {size}")
-    print(f"  3. python3 app.py")
+    print(f"  1. python3 app.py")
+    print(f"  2. Open http://localhost:5000 and go to Import tab")
+    print(f"  3. Upload {filename}")
+    print(f"  4. python3 scripts/populate_sample_ratings.py {size}")
 
 
 def get_historical_employee_timelines():
