@@ -2155,8 +2155,14 @@ if __name__ == '__main__':
     print("Performance Rating System")
     print("="*60)
     print(f"Database: {os.getenv('DATABASE_URL', 'sqlite:///ratings.db')}")
-    print(f"Starting web server at http://localhost:5000")
+    
+    # Allow host to be configured via environment variable (for Docker)
+    host = os.getenv('FLASK_HOST', '127.0.0.1')
+    port = int(os.getenv('FLASK_PORT', '5000'))
+    debug = os.getenv('FLASK_ENV') == 'development'
+    
+    print(f"Starting web server at http://{host}:{port}")
     print("Press Ctrl+C to stop")
     print("="*60 + "\n")
 
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    app.run(debug=debug, host=host, port=port)

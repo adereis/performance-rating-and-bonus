@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: performance-rating-app
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount database directory for persistence
+      - ./data:/app/data
+      # Mount current directory for development (optional - comment out for production)
+      - .:/app
+    environment:
+      - DATABASE_URL=sqlite:////app/data/ratings.db
+      - FLASK_ENV=development
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+    restart: unless-stopped
+    # Override command for development (hot reload)
+    command: python app.py
+

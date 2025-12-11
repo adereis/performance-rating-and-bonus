@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Database files (will be mounted as volume)
+ratings.db
+ratings.db-journal
+data/
+
+# Sample data files (auto-generated)
+sample-data-*.xlsx
+
+# Real Workday exports (sensitive data)
+REAL-*.xlsx
+real-*.xlsx
+ratings_export_*.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation (optional - comment out if you want docs in image)
+# docs/
+# README.md
+# AGENTS.md
+# CLAUDE.md
+# TODO.md
+
+# Tests (optional - comment out if you want tests in image)
+# tests/
+
+# Scripts (optional - comment out if you want scripts in image)
+# scripts/
+
