@@ -46,28 +46,59 @@ This tool is designed as a **local companion** to your HR system (Workday, or si
 
 The workflow is: **Import → Rate → Calculate → Export**. Your HR system handles the before (employee data) and after (final allocations). This tool handles the middle (the actual performance evaluation work).
 
-## Quick Start with Sample Data
+## Quick Start
 
-Try the system immediately with fictitious demo data. Choose either:
+### 1. Clone and Run (macOS / Linux)
+
+```bash
+git clone https://github.com/adereis/performance-rating-and-bonus.git
+cd performance-rating-and-bonus
+./run.sh
+```
+
+The script automatically:
+- Checks for Python 3.9+
+- Creates a virtual environment
+- Installs dependencies
+- Starts the server and opens your browser
+
+### Windows Users
+
+```cmd
+git clone https://github.com/adereis/performance-rating-and-bonus.git
+cd performance-rating-and-bonus
+run.bat
+```
+
+### 2. Try with Sample Data
+
+Once the app is running, generate demo data to explore the features:
+
+```bash
+# In a new terminal, from the project directory:
+
+# macOS/Linux - activate the virtual environment first
+source .venv/bin/activate
+
+# Generate sample Workday export (12 employees)
+python3 scripts/create_sample_data.py
+
+# Then in the browser:
+# 1. Go to Import tab
+# 2. Upload sample-data-small.xlsx
+# 3. Start rating!
+
+# Optional: Pre-populate sample ratings to see all features
+python3 scripts/populate_sample_ratings.py small
+```
+
+## Sample Data Options
 
 ### Option 1: Small Team (Recommended for First-Time Users)
 Perfect for learning the system - 12 employees under one manager with sample ratings/justifications.
 
 ```bash
-# 1. Install dependencies
-pip install -r requirements.txt
-
-# 2. Generate small team Workday data (salaries, bonus targets, org structure)
 python3 scripts/create_sample_data.py
-
-# 3. Start the web server
-python3 app.py
-
-# 4. Open browser to http://localhost:5000
-
-# 5. Go to Import tab, upload sample-data-small.xlsx
-
-# 6. Populate sample ratings and justifications
 python3 scripts/populate_sample_ratings.py small
 ```
 
@@ -75,7 +106,6 @@ python3 scripts/populate_sample_ratings.py small
 Test multi-org scenarios - 50 employees across 5 managers with sample ratings.
 
 ```bash
-# 2. Generate large org Workday data
 python3 scripts/create_sample_data.py --large
 
 # 3-5. Start server, import sample-data-large.xlsx via Import tab
