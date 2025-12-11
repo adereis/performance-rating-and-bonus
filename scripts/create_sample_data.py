@@ -751,9 +751,43 @@ def create_historical_xlsx():
     print("  5. Import all 6 files in chronological order")
 
 
-if __name__ == '__main__':
-    if '--historical' in sys.argv:
+def main():
+    """Main entry point with argument parsing."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='Create sample demo data for the Performance Rating System.',
+        epilog='''
+Examples:
+  python3 scripts/create_sample_data.py              # Small team (12 employees)
+  python3 scripts/create_sample_data.py --large      # Large org (55 employees)
+  python3 scripts/create_sample_data.py --historical # Historical quarterly data
+
+Note: This generates Workday export data (salaries, bonus targets, org structure).
+      To add sample ratings/tenets, use populate_sample_ratings.py after import.
+        ''',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+
+    parser.add_argument(
+        '--large',
+        action='store_true',
+        help='Create large organization dataset (55 employees, 5 managers) instead of small team'
+    )
+    parser.add_argument(
+        '--historical',
+        action='store_true',
+        help='Create 6 quarterly historical spreadsheets (2023-Q3 through 2024-Q4)'
+    )
+
+    args = parser.parse_args()
+
+    if args.historical:
         create_historical_xlsx()
     else:
-        size = 'large' if '--large' in sys.argv else 'small'
+        size = 'large' if args.large else 'small'
         create_sample_xlsx(size)
+
+
+if __name__ == '__main__':
+    main()

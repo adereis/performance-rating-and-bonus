@@ -189,19 +189,40 @@ def populate_ratings(size='small', include_tenets=False):
         db.close()
 
 
+def main():
+    """Main entry point with argument parsing."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='Populate performance ratings, justifications, and tenets for sample data.',
+        epilog='''
+Examples:
+  python3 scripts/populate_sample_ratings.py small
+  python3 scripts/populate_sample_ratings.py large
+  python3 scripts/populate_sample_ratings.py small --with-tenets
+  python3 scripts/populate_sample_ratings.py large --with-tenets
+
+This script adds manager-entered data (ratings, justifications, tenets) to
+employees after Workday data has been imported. Run this after importing
+sample-data-small.xlsx or sample-data-large.xlsx.
+        ''',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+
+    parser.add_argument(
+        'size',
+        choices=['small', 'large'],
+        help='Dataset size: "small" for 12-employee team, "large" for 55-employee org'
+    )
+    parser.add_argument(
+        '--with-tenets',
+        action='store_true',
+        help='Also populate random tenets evaluation (requires tenets.json or samples/tenets-sample.json)'
+    )
+
+    args = parser.parse_args()
+    populate_ratings(args.size, args.with_tenets)
+
+
 if __name__ == '__main__':
-    # Parse arguments
-    if len(sys.argv) < 2:
-        print("Usage: python3 populate_sample_ratings.py [small|large] [--with-tenets]")
-        print("\nExamples:")
-        print("  python3 populate_sample_ratings.py small")
-        print("  python3 populate_sample_ratings.py large --with-tenets")
-        sys.exit(1)
-
-    size = sys.argv[1]
-    if size not in ['small', 'large']:
-        print("Error: Size must be 'small' or 'large'")
-        sys.exit(1)
-
-    include_tenets = '--with-tenets' in sys.argv
-    populate_ratings(size, include_tenets)
+    main()

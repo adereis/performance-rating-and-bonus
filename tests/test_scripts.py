@@ -165,3 +165,43 @@ class TestScriptImportPaths:
         # Should have the path manipulation for standalone execution
         assert 'sys.path.insert' in content
         assert 'os.path.dirname' in content
+
+
+class TestScriptHelpSupport:
+    """Test that scripts have proper --help support via argparse"""
+
+    def test_create_sample_data_has_main_function(self):
+        """Test that create_sample_data.py has a main() function with argparse"""
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
+        sys.path.insert(0, scripts_dir)
+
+        try:
+            import create_sample_data
+            assert hasattr(create_sample_data, 'main')
+
+            # Check that argparse is used
+            script_path = os.path.join(scripts_dir, 'create_sample_data.py')
+            with open(script_path, 'r') as f:
+                content = f.read()
+            assert 'argparse' in content
+            assert 'ArgumentParser' in content
+        finally:
+            sys.path.remove(scripts_dir)
+
+    def test_populate_sample_ratings_has_main_function(self):
+        """Test that populate_sample_ratings.py has a main() function with argparse"""
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
+        sys.path.insert(0, scripts_dir)
+
+        try:
+            import populate_sample_ratings
+            assert hasattr(populate_sample_ratings, 'main')
+
+            # Check that argparse is used
+            script_path = os.path.join(scripts_dir, 'populate_sample_ratings.py')
+            with open(script_path, 'r') as f:
+                content = f.read()
+            assert 'argparse' in content
+            assert 'ArgumentParser' in content
+        finally:
+            sys.path.remove(scripts_dir)
