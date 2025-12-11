@@ -17,6 +17,10 @@ import os
 import json
 import random
 from datetime import datetime
+
+# Add parent directory to path for imports when running as standalone script
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from models import Employee, get_db, init_db
 
 
