@@ -4,6 +4,123 @@
 
 {% block extra_css %}
 <style>
+    /* Empty State Styles */
+    .empty-state {
+        max-width: 600px;
+        margin: 60px auto;
+        text-align: center;
+        padding: 40px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .empty-state-icon {
+        width: 100px;
+        height: 100px;
+        margin: 0 auto 30px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .empty-state-icon svg {
+        width: 50px;
+        height: 50px;
+        color: white;
+    }
+
+    .empty-state h2 {
+        font-size: 28px;
+        color: #2c3e50;
+        margin-bottom: 15px;
+    }
+
+    .empty-state-description {
+        font-size: 16px;
+        color: #666;
+        margin-bottom: 35px;
+        line-height: 1.6;
+    }
+
+    .empty-state-actions {
+        margin-bottom: 30px;
+    }
+
+    .empty-state .btn-large {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 32px;
+        font-size: 16px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .empty-state .btn-large:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .empty-state-divider {
+        display: flex;
+        align-items: center;
+        margin: 30px 0;
+    }
+
+    .empty-state-divider::before,
+    .empty-state-divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #e0e0e0;
+    }
+
+    .empty-state-divider span {
+        padding: 0 20px;
+        color: #999;
+        font-size: 14px;
+    }
+
+    .empty-state-sample {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 25px;
+        text-align: left;
+    }
+
+    .empty-state-sample p {
+        margin: 0 0 12px;
+        color: #666;
+        font-size: 14px;
+    }
+
+    .empty-state-sample code {
+        display: block;
+        background: #2c3e50;
+        color: #27ae60;
+        padding: 12px 16px;
+        border-radius: 6px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 14px;
+        margin-bottom: 12px;
+    }
+
+    .empty-state-sample .hint {
+        color: #888;
+        font-size: 13px;
+        margin: 0;
+    }
+
+    /* Regular Dashboard Styles */
     th.sortable {
         cursor: pointer;
         user-select: none;
@@ -212,6 +329,38 @@
 {% endblock %}
 
 {% block content %}
+{% if stats.total == 0 %}
+<!-- Empty State: No employees imported yet -->
+<div class="empty-state">
+    <div class="empty-state-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+    </div>
+    <h2>Welcome to Performance Rating System</h2>
+    <p class="empty-state-description">Import your team data from Workday to get started with performance ratings and bonus calculations.</p>
+
+    <div class="empty-state-actions">
+        <a href="{{ url_for('import_page') }}" class="btn btn-primary btn-large">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            Import Team Data
+        </a>
+    </div>
+
+    <div class="empty-state-divider">
+        <span>or try with sample data</span>
+    </div>
+
+    <div class="empty-state-sample">
+        <p>Generate sample data to explore the system:</p>
+        <code>python3 scripts/create_sample_data.py</code>
+        <p class="hint">Then import the generated <strong>sample-data-small.xlsx</strong> file</p>
+    </div>
+</div>
+{% else %}
+<!-- Normal Dashboard: Has employees -->
 <div class="stats-grid">
     <div class="stat-card">
         <h3>Total Employees</h3>
@@ -333,6 +482,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <script>
 // Table sorting functionality
