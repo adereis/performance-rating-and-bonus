@@ -913,6 +913,38 @@ segment: {
 
 ---
 
+## Related Projects
+
+This project shares patterns and audience with **team-feedback-tool** (same author).
+
+### Shared Patterns
+Both projects follow these conventions for consistency:
+- **Project structure**: `app.py`, `models.py`, `templates/`, `scripts/`, `samples/`, `docs/`
+- **Documentation**: `AGENTS.md` as primary developer guide, `CLAUDE.md` as redirect
+- **Tenets system**: Same JSON structure in `samples/tenets-sample.json`
+- **Workday integration**: Local companion tools, not replacements
+- **Auto-save**: 2-second debounce on all editable fields
+- **Privacy-first**: SQLite, no cloud, no telemetry
+
+### Cross-Pollination Opportunities
+
+#### To team-feedback-tool:
+- **Historical data preservation**: Period archiving with snapshots for quarter-over-quarter comparison
+- **ID-based identification**: All employee lookups use unique IDs, not names (prevents duplicate name issues)
+- **Period comparison analytics**: View trends across rating periods
+- **Employee trend visualization**: Performance history with improving/stable/declining indicators
+
+#### From team-feedback-tool:
+- **PDF export pattern**: WeasyPrint + matplotlib for server-side report generation
+- **Workday XLSX import**: Flexible column detection with header-based mapping
+- **Two-column tenet layouts**: CSS Grid with JavaScript fallback for compact selection UI
+
+### Ports
+- **performance-rating-and-bonus**: Port 5000
+- **team-feedback-tool**: Port 5001 (can run simultaneously)
+
+---
+
 ## Future Enhancements
 
 Potential areas for expansion (not yet implemented):
