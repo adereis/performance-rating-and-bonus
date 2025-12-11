@@ -4,6 +4,7 @@ bonus-from-wd.xlsx
 ratings_export_*.csv
 ratings.db
 ratings.db-journal
+data/
 
 # REAL Workday exports (sensitive data)
 REAL-*.xlsx
