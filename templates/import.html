@@ -457,6 +457,334 @@
 {% endblock %}
 
 {% block content %}
+{% if demo_mode %}
+<!-- Demo Mode: Generate Demo Data Page (replaces Import) -->
+<div class="demo-generate-container">
+    <div class="card">
+        <h2>Generate Demo Data</h2>
+        <p class="demo-generate-intro">
+            This demo uses <strong>fictitious employee data</strong> for exploration.
+            Select a scenario to populate your demo session with sample data.
+        </p>
+
+        <div class="demo-scenario-grid">
+            <div class="demo-scenario-card" onclick="loadDemoData('small')">
+                <div class="scenario-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </div>
+                <h3>Small Team</h3>
+                <p class="scenario-description">12 employees under one manager</p>
+                <ul class="scenario-features">
+                    <li>Single supervisory organization</li>
+                    <li>Mix of senior and junior roles</li>
+                    <li>All employees have ratings</li>
+                    <li>Good for exploring the basics</li>
+                </ul>
+                <button class="btn btn-primary scenario-btn">Load Small Team</button>
+            </div>
+
+            <div class="demo-scenario-card" onclick="loadDemoData('large')">
+                <div class="scenario-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                </div>
+                <h3>Large Organization</h3>
+                <p class="scenario-description">50 employees across 5 managers</p>
+                <ul class="scenario-features">
+                    <li>Multi-manager calibration view</li>
+                    <li>Diverse performance distribution</li>
+                    <li>Includes outliers (45% to 185%)</li>
+                    <li>Good for testing analytics</li>
+                </ul>
+                <button class="btn btn-primary scenario-btn">Load Large Org</button>
+            </div>
+        </div>
+
+        <div class="demo-note">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Loading a scenario will replace any existing data in your session. You can switch scenarios at any time.</span>
+        </div>
+
+        <!-- Success State (hidden by default) -->
+        <div id="demoSuccess" class="demo-success" style="display: none;">
+            <div class="success-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h3>Demo Data Loaded</h3>
+            <p id="demoSuccessMessage">Your demo session is ready with sample employee data.</p>
+            <div class="success-actions">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Go to Dashboard</a>
+                <a href="{{ url_for('rate_page') }}" class="btn btn-primary">Start Rating</a>
+            </div>
+            <button class="btn-link" onclick="resetDemoForm()">Load a different scenario</button>
+        </div>
+    </div>
+
+    <div class="card demo-local-cta">
+        <h3>Want to use your own data?</h3>
+        <p>
+            This tool is designed for <strong>local use</strong> where your data stays completely private.
+            Import functionality is disabled in this public demo to protect your privacy.
+        </p>
+        <a href="https://github.com/adereis/performance-rating-and-bonus" target="_blank" class="btn btn-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+            Get the code on GitHub
+        </a>
+    </div>
+</div>
+
+<style>
+    .demo-generate-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .demo-generate-intro {
+        color: #666;
+        font-size: 16px;
+        margin-bottom: 30px;
+    }
+
+    .demo-scenario-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 25px;
+        margin-bottom: 25px;
+    }
+
+    .demo-scenario-card {
+        background: #f8f9fa;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .demo-scenario-card:hover {
+        border-color: #667eea;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .scenario-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .scenario-icon svg {
+        color: white;
+    }
+
+    .demo-scenario-card h3 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+        font-size: 22px;
+    }
+
+    .scenario-description {
+        color: #666;
+        font-size: 16px;
+        margin-bottom: 20px;
+    }
+
+    .scenario-features {
+        text-align: left;
+        list-style: none;
+        padding: 0;
+        margin: 0 0 25px 0;
+    }
+
+    .scenario-features li {
+        padding: 8px 0;
+        color: #555;
+        font-size: 14px;
+        border-bottom: 1px solid #e8e8e8;
+    }
+
+    .scenario-features li:last-child {
+        border-bottom: none;
+    }
+
+    .scenario-features li::before {
+        content: '✓ ';
+        color: #27ae60;
+        font-weight: bold;
+    }
+
+    .scenario-btn {
+        width: 100%;
+    }
+
+    .demo-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 15px 20px;
+        background: #e8f4fd;
+        border-radius: 8px;
+        color: #1976d2;
+        font-size: 14px;
+    }
+
+    .demo-note svg {
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .demo-success {
+        text-align: center;
+        padding: 40px 20px;
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border: 2px solid #27ae60;
+        border-radius: 12px;
+        margin-top: 30px;
+    }
+
+    .demo-success .success-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 20px;
+        background: #27ae60;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .demo-success .success-icon svg {
+        color: white;
+    }
+
+    .demo-success h3 {
+        color: #155724;
+        font-size: 24px;
+        margin: 0 0 10px 0;
+    }
+
+    .demo-success p {
+        color: #155724;
+        margin: 0 0 25px 0;
+    }
+
+    .success-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+
+    .btn-link {
+        background: none;
+        border: none;
+        color: #155724;
+        text-decoration: underline;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .btn-link:hover {
+        color: #0d3c14;
+    }
+
+    .demo-local-cta {
+        text-align: center;
+    }
+
+    .demo-local-cta h3 {
+        margin-bottom: 15px;
+    }
+
+    .demo-local-cta p {
+        color: #666;
+        margin-bottom: 20px;
+    }
+
+    .demo-local-cta .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+    }
+</style>
+
+<script>
+async function loadDemoData(type) {
+    try {
+        // Show loading state
+        document.querySelectorAll('.scenario-btn').forEach(btn => {
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+        });
+
+        const response = await fetch('/api/demo/reset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: type })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Show success state instead of redirecting
+            document.querySelector('.demo-scenario-grid').style.display = 'none';
+            document.querySelector('.demo-note').style.display = 'none';
+            document.querySelector('.demo-generate-intro').style.display = 'none';
+
+            const successDiv = document.getElementById('demoSuccess');
+            const message = type === 'small'
+                ? 'Loaded 12 employees under one manager. Your demo session is ready!'
+                : 'Loaded 50 employees across 5 managers. Your demo session is ready!';
+            document.getElementById('demoSuccessMessage').textContent = message;
+            successDiv.style.display = 'block';
+        } else {
+            alert('Failed to load demo data: ' + (data.message || 'Unknown error'));
+            // Reset buttons
+            document.querySelectorAll('.scenario-btn').forEach((btn, i) => {
+                btn.disabled = false;
+                btn.textContent = i === 0 ? 'Load Small Team' : 'Load Large Org';
+            });
+        }
+    } catch (error) {
+        alert('Error loading demo data: ' + error.message);
+        document.querySelectorAll('.scenario-btn').forEach((btn, i) => {
+            btn.disabled = false;
+            btn.textContent = i === 0 ? 'Load Small Team' : 'Load Large Org';
+        });
+    }
+}
+
+function resetDemoForm() {
+    // Show the scenario selection again
+    document.querySelector('.demo-scenario-grid').style.display = 'grid';
+    document.querySelector('.demo-note').style.display = 'flex';
+    document.querySelector('.demo-generate-intro').style.display = 'block';
+    document.getElementById('demoSuccess').style.display = 'none';
+
+    // Reset buttons
+    document.querySelectorAll('.scenario-btn').forEach((btn, i) => {
+        btn.disabled = false;
+        btn.textContent = i === 0 ? 'Load Small Team' : 'Load Large Org';
+    });
+}
+</script>
+{% else %}
+<!-- Normal Mode: Import Workday Data -->
 <div class="import-container">
     <div class="card">
         <h2>Import Workday Data</h2>
@@ -606,8 +934,10 @@
         </div>
     </div>
 </div>
+{% endif %}
 {% endblock %}
 
+{% if not demo_mode %}
 {% block extra_js %}
 <script>
     let selectedFile = null;
@@ -905,3 +1235,4 @@
     }
 </script>
 {% endblock %}
+{% endif %}

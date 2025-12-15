@@ -53,6 +53,8 @@ The Performance Rating System was built through an iterative collaboration betwe
 - ✅ Employee rating history with trend visualization
 - ✅ Period-over-period comparison in Analytics
 - ✅ Period Browser for viewing archived periods
+- ✅ Demo mode with session isolation for public deployment
+- ✅ Pre-built template databases with historical periods
 
 ### Human Oversight
 
@@ -181,6 +183,26 @@ To achieve similar results with AI assistance:
 - **No authentication**: Designed for single-user local execution
 - **Privacy-focused**: All sensitive data stays on user's machine
 - No telemetry or external API calls
+
+#### Demo Mode Architecture
+When `DEMO_MODE=true` environment variable is set:
+- **Session isolation**: Each visitor gets their own SQLite database (cookie-based session ID)
+- **Template databases**: Pre-built `demo-templates/*.db` files copied for new sessions
+- **No imports**: Import page replaced with "Generate Demo Data" page
+- **Export watermarks**: All exports include prominent "DEMO MODE - FICTITIOUS DATA" warnings
+- **Session cleanup**: Stale sessions cleaned up after timeout (default 1 hour)
+- **Startup cleanup**: All previous session databases cleared on app startup for fresh experience
+
+Key files:
+- `demo_mode.py`: Session management, template copying, cleanup
+- `demo-templates/small-team.db`: 12 employees, 1 manager, 2 historical periods
+- `demo-templates/large-team.db`: 50 employees, 5 managers, 3 historical periods
+- `scripts/create_demo_templates.py`: Regenerates template databases
+
+Environment variables:
+- `DEMO_MODE=true`: Enable demo mode
+- `SESSION_TIMEOUT_SECONDS`: Session expiration (default 3600)
+- `SESSION_DB_DIR`: Where session databases are stored (default /tmp/demo_sessions)
 
 #### Auto-Save Pattern
 - 2-second debounce on rating changes (defined in rate.html)

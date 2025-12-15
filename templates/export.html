@@ -210,12 +210,38 @@
         content: '↓';
         opacity: 1;
     }
+
+    .demo-export-warning {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 15px 20px;
+        background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+        border: 2px solid #e74c3c;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        color: #c0392b;
+    }
+
+    .demo-export-warning svg {
+        flex-shrink: 0;
+        color: #e74c3c;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="card">
     <h2>Export Data</h2>
+
+    {% if demo_mode %}
+    <div class="demo-export-warning">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span><strong>Demo Export:</strong> Downloaded files will contain fictitious sample data only. Do NOT use for real business decisions.</span>
+    </div>
+    {% endif %}
 
     {% if has_data %}
     <div class="export-formats">

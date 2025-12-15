@@ -8,6 +8,7 @@ from datetime import datetime
 from collections import defaultdict
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
+from sqlalchemy import text
 from models import Employee, BonusSettings, Period, RatingSnapshot, init_db, get_db
 from xlsx_utils import analyze_xlsx, parse_xlsx_employees
 from notes_parser import parse_notes_field
@@ -15,8 +16,102 @@ import tempfile
 
 app = Flask(__name__)
 
+# Demo mode configuration
+DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
+
 # Initialize database on startup
 init_db()
+
+# Start demo mode cleanup thread if enabled
+if DEMO_MODE:
+    from demo_mode import (
+        start_cleanup_thread, demo_response_wrapper, get_active_session_count,
+        get_session_id, initialize_session_from_template, session_has_data
+    )
+    start_cleanup_thread()
+    print("[Demo Mode] Session isolation enabled")
+
+
+@app.context_processor
+def inject_demo_mode():
+    """Make demo_mode available in all templates."""
+    return {'demo_mode': DEMO_MODE}
+
+
+@app.after_request
+def add_demo_session_cookie(response):
+    """Add session cookie in demo mode."""
+    if DEMO_MODE:
+        return demo_response_wrapper(response)
+    return response
+
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for load balancers and monitoring."""
+    status = {
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'demo_mode': DEMO_MODE
+    }
+
+    if DEMO_MODE:
+        status['active_sessions'] = get_active_session_count()
+
+    # Try a simple database operation to verify connectivity
+    try:
+        db = get_db()
+        db.execute(text('SELECT 1'))
+        db.close()
+        status['database'] = 'connected'
+    except Exception as e:
+        status['database'] = 'error'
+        status['database_error'] = str(e)
+        return jsonify(status), 503
+
+    return jsonify(status)
+
+
+@app.route('/demo/<demo_type>')
+def demo_init(demo_type):
+    """Initialize demo with specified dataset type."""
+    from flask import redirect, url_for
+
+    if not DEMO_MODE:
+        return redirect(url_for('index'))
+
+    if demo_type not in ('small', 'large'):
+        demo_type = 'small'
+
+    session_id = get_session_id()
+    success = initialize_session_from_template(session_id, demo_type)
+
+    if success:
+        return redirect(url_for('rate_page'))
+    else:
+        return redirect(url_for('index'))
+
+
+@app.route('/api/demo/reset', methods=['POST'])
+def demo_reset():
+    """Reset demo data to a fresh template."""
+    if not DEMO_MODE:
+        return jsonify({'success': False, 'error': 'Not in demo mode'}), 400
+
+    data = request.get_json() or {}
+    demo_type = data.get('type', 'small')
+
+    if demo_type not in ('small', 'large'):
+        demo_type = 'small'
+
+    session_id = get_session_id()
+    success = initialize_session_from_template(session_id, demo_type)
+
+    return jsonify({
+        'success': success,
+        'demo_type': demo_type,
+        'message': f'Demo reset to {demo_type} team dataset' if success else 'Failed to reset demo'
+    })
 
 
 def get_all_employees():
@@ -264,7 +359,7 @@ def index():
         'avg_rating': avg_rating
     }
 
-    return render_template('index.html', team=team_data, stats=stats, filter_info=filter_info)
+    return render_template('index.html', team=team_data, stats=stats, filter_info=filter_info, demo_mode=DEMO_MODE)
 
 
 @app.route('/rate')
@@ -1171,6 +1266,13 @@ def export_csv():
     output = io.StringIO()
     writer = csv.writer(output)
 
+    # Add demo mode warning header if in demo mode
+    if DEMO_MODE:
+        writer.writerow(['*** DEMO MODE - FICTITIOUS DATA ONLY ***'])
+        writer.writerow(['This export contains sample data for demonstration purposes.'])
+        writer.writerow(['Do NOT use this data for any real business decisions.'])
+        writer.writerow([])
+
     # Write header (matching Excel export)
     writer.writerow([
         'Associate ID',
@@ -1291,6 +1393,21 @@ def export_xlsx():
     ws = wb.active
     ws.title = "Employee Data"
 
+    # Add demo mode warning if in demo mode
+    demo_row_offset = 0
+    if DEMO_MODE:
+        demo_warning_fill = PatternFill(start_color='FF6B6B', end_color='FF6B6B', fill_type='solid')
+        demo_warning_font = Font(bold=True, color='FFFFFF', size=14)
+
+        ws.merge_cells('A1:Z1')
+        demo_cell = ws.cell(row=1, column=1, value='*** DEMO MODE - FICTITIOUS DATA ONLY - DO NOT USE FOR BUSINESS DECISIONS ***')
+        demo_cell.fill = demo_warning_fill
+        demo_cell.font = demo_warning_font
+        demo_cell.alignment = Alignment(horizontal='center', vertical='center')
+        ws.row_dimensions[1].height = 30
+
+        demo_row_offset = 2  # Skip 2 rows for demo header
+
     # Define headers (matching import format plus our custom fields)
     headers = [
         'Associate ID',
@@ -1326,8 +1443,9 @@ def export_xlsx():
     header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
     header_font = Font(bold=True, color='FFFFFF')
 
+    header_row = 1 + demo_row_offset
     for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_num, value=header)
+        cell = ws.cell(row=header_row, column=col_num, value=header)
         cell.fill = header_fill
         cell.font = header_font
         cell.alignment = Alignment(horizontal='center', vertical='center')
@@ -1336,7 +1454,8 @@ def export_xlsx():
     _, tenets_map = load_tenets_config()
 
     # Write data rows
-    for row_num, employee in enumerate(team_data, 2):
+    data_start_row = 2 + demo_row_offset
+    for row_num, employee in enumerate(team_data, data_start_row):
         # Parse tenets
         strengths_text = ''
         improvements_text = ''
@@ -1404,18 +1523,19 @@ def export_xlsx():
         for col_num, value in enumerate(row_data, 1):
             ws.cell(row=row_num, column=col_num, value=value)
 
-    # Auto-adjust column widths
-    for column in ws.columns:
+    # Auto-adjust column widths (skip merged cells which don't have column_letter)
+    from openpyxl.utils import get_column_letter
+    for col_idx, column in enumerate(ws.columns, 1):
         max_length = 0
-        column_letter = column[0].column_letter
         for cell in column:
             try:
-                if cell.value:
+                if cell.value and hasattr(cell, 'column_letter'):
                     max_length = max(max_length, len(str(cell.value)))
             except:
                 pass
-        adjusted_width = min(max_length + 2, 50)  # Cap at 50
-        ws.column_dimensions[column_letter].width = adjusted_width
+        if max_length > 0:
+            adjusted_width = min(max_length + 2, 50)  # Cap at 50
+            ws.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
 
     # Save to BytesIO
     output = io.BytesIO()
@@ -1433,7 +1553,7 @@ def export_xlsx():
 @app.route('/import')
 def import_page():
     """Import data page."""
-    return render_template('import.html')
+    return render_template('import.html', demo_mode=DEMO_MODE)
 
 
 @app.route('/history')
@@ -2154,14 +2274,20 @@ if __name__ == '__main__':
     print("\n" + "="*60)
     print("Performance Rating System")
     print("="*60)
-    print(f"Database: {os.getenv('DATABASE_URL', 'sqlite:///ratings.db')}")
-    
+
+    if DEMO_MODE:
+        print("Mode: DEMO (session isolation enabled)")
+        print(f"Session timeout: {os.getenv('SESSION_TIMEOUT_SECONDS', 3600)}s")
+    else:
+        print(f"Database: {os.getenv('DATABASE_URL', 'sqlite:///ratings.db')}")
+
     # Allow host to be configured via environment variable (for Docker)
     host = os.getenv('FLASK_HOST', '127.0.0.1')
     port = int(os.getenv('FLASK_PORT', '5000'))
     debug = os.getenv('FLASK_ENV') == 'development'
-    
+
     print(f"Starting web server at http://{host}:{port}")
+    print(f"Health check: http://{host}:{port}/health")
     print("Press Ctrl+C to stop")
     print("="*60 + "\n")
 

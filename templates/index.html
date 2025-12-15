@@ -329,8 +329,382 @@
 {% endblock %}
 
 {% block content %}
-{% if stats.total == 0 %}
-<!-- Empty State: No employees imported yet -->
+{% if demo_mode and stats.total == 0 %}
+<!-- Demo Mode Landing Page (shown only before selecting a scenario) -->
+<div class="demo-landing">
+    <div class="demo-banner">
+        <div class="demo-badge">DEMO MODE</div>
+        <h1>Performance Rating System</h1>
+        <p class="demo-subtitle">Explore this tool with fictitious sample data</p>
+    </div>
+
+    <div class="demo-features">
+        <h2>What You Can Explore</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                </div>
+                <h3>Rate Team Members</h3>
+                <p>See how the rating interface works with 0-200% performance scale</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                </div>
+                <h3>View Analytics</h3>
+                <p>Explore distribution charts and calibration guidance</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h3>Calculate Bonuses</h3>
+                <p>Try the algorithmic bonus calculation with fixed pool guarantee</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="demo-start-section">
+        <h2>Choose a Demo Scenario</h2>
+        <div class="demo-mode-buttons">
+            <a href="{{ url_for('demo_init', demo_type='small') }}" class="demo-mode-btn">
+                <div class="mode-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </div>
+                <div class="mode-text">
+                    <strong>Small Team</strong>
+                    <span>12 employees, 1 manager</span>
+                </div>
+            </a>
+            <a href="{{ url_for('demo_init', demo_type='large') }}" class="demo-mode-btn">
+                <div class="mode-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                </div>
+                <div class="mode-text">
+                    <strong>Large Organization</strong>
+                    <span>50 employees, 5 managers</span>
+                </div>
+            </a>
+        </div>
+        <p class="demo-session-note">Your session is isolated - changes you make won't affect other visitors.</p>
+    </div>
+
+    <div class="demo-local-info">
+        <h2>Want to Use This for Real?</h2>
+        <div class="local-info-content">
+            <div class="local-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+            </div>
+            <div class="local-details">
+                <p><strong>This tool is designed for local use.</strong> Run it on your own computer where your employee data stays completely private.</p>
+                <div class="local-features">
+                    <span class="local-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg> No cloud - SQLite database</span>
+                    <span class="local-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg> No telemetry</span>
+                    <span class="local-feature"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg> Data never leaves your machine</span>
+                </div>
+                <a href="https://github.com/adereis/performance-rating-and-bonus" target="_blank" class="github-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    Get the code on GitHub
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Demo Landing Page Styles */
+    .demo-landing {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .demo-banner {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .demo-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 1px;
+        margin-bottom: 15px;
+    }
+
+    .demo-banner h1 {
+        font-size: 36px;
+        color: #2c3e50;
+        margin: 0 0 10px 0;
+    }
+
+    .demo-subtitle {
+        font-size: 18px;
+        color: #666;
+        margin: 0;
+    }
+
+    .demo-features {
+        margin-bottom: 40px;
+    }
+
+    .demo-features h2 {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 25px;
+    }
+
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .feature-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    }
+
+    .feature-icon {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .feature-icon svg {
+        color: white;
+    }
+
+    .feature-card h3 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+        font-size: 18px;
+    }
+
+    .feature-card p {
+        margin: 0;
+        color: #666;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .demo-start-section {
+        text-align: center;
+        margin-bottom: 50px;
+    }
+
+    .demo-start-section h2 {
+        margin-bottom: 25px;
+        color: #2c3e50;
+    }
+
+    .demo-mode-buttons {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+
+    .demo-mode-btn {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 20px 30px;
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        text-decoration: none;
+        color: #2c3e50;
+        transition: all 0.2s;
+        min-width: 250px;
+    }
+
+    .demo-mode-btn:hover {
+        border-color: #27ae60;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(39, 174, 96, 0.2);
+    }
+
+    .mode-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .mode-icon svg {
+        color: white;
+    }
+
+    .mode-text {
+        text-align: left;
+    }
+
+    .mode-text strong {
+        display: block;
+        font-size: 18px;
+        margin-bottom: 4px;
+    }
+
+    .mode-text span {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .demo-start-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 18px 40px;
+        font-size: 18px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .demo-start-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(39, 174, 96, 0.4);
+    }
+
+    .demo-session-note {
+        margin-top: 15px;
+        color: #888;
+        font-size: 14px;
+    }
+
+    .demo-local-info {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 30px;
+    }
+
+    .demo-local-info h2 {
+        text-align: center;
+        color: #2c3e50;
+        margin: 0 0 25px 0;
+    }
+
+    .local-info-content {
+        display: flex;
+        gap: 25px;
+        align-items: flex-start;
+    }
+
+    .local-icon {
+        flex-shrink: 0;
+        width: 80px;
+        height: 80px;
+        background: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    }
+
+    .local-icon svg {
+        color: #667eea;
+    }
+
+    .local-details p {
+        margin: 0 0 15px 0;
+        color: #555;
+        line-height: 1.6;
+    }
+
+    .local-features {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .local-feature {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #27ae60;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .github-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #2c3e50;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 10px 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .github-link:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+
+    @media (max-width: 600px) {
+        .local-info-content {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .local-features {
+            justify-content: center;
+        }
+    }
+</style>
+{% elif stats.total == 0 %}
+<!-- Empty State: No employees imported yet (non-demo mode) -->
 <div class="empty-state">
     <div class="empty-state-icon">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">

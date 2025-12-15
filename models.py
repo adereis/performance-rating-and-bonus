@@ -176,18 +176,42 @@ class Employee(Base):
 
 # Database setup
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///ratings.db')
-engine = create_engine(DATABASE_URL, echo=False)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
+
+# Standard (non-demo) database engine
+_engine = None
+_SessionLocal = None
+
+
+def _get_standard_engine():
+    """Get or create the standard (non-demo) database engine."""
+    global _engine, _SessionLocal
+    if _engine is None:
+        _engine = create_engine(DATABASE_URL, echo=False)
+        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+    return _engine
 
 
 def init_db():
     """Initialize the database, creating all tables."""
+    if DEMO_MODE:
+        # In demo mode, databases are created per-session in demo_mode.py
+        print("[Demo Mode] Database initialization deferred to per-session setup")
+        return
+
+    engine = _get_standard_engine()
     Base.metadata.create_all(bind=engine)
 
 
 def get_db():
     """Get a database session."""
-    db = SessionLocal()
+    if DEMO_MODE:
+        # Import here to avoid circular imports
+        from demo_mode import get_demo_db
+        return get_demo_db()
+
+    _get_standard_engine()  # Ensure engine exists
+    db = _SessionLocal()
     try:
         return db
     except Exception:

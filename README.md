@@ -46,7 +46,24 @@ This tool is designed as a **local companion** to your HR system (Workday, or si
 
 The workflow is: **Import → Rate → Calculate → Export**. Your HR system handles the before (employee data) and after (final allocations). This tool handles the middle (the actual performance evaluation work).
 
-## Quick Start
+## Try the Live Demo
+
+The easiest way to explore this tool is through the **public demo**:
+
+**[Launch Demo](https://your-demo-url.azurewebsites.net)** *(coming soon)*
+
+The demo features:
+- **Session isolation**: Each visitor gets their own sandbox database
+- **Pre-built sample data**: Choose between small team (12 employees) or large organization (50 employees)
+- **Historical periods**: Demo includes 2-3 historical periods for testing trend analysis
+- **Full functionality**: All features work exactly as they would with real data
+- **No uploads**: Demo uses fictitious sample data only (import is replaced with "Generate Demo Data")
+
+Your demo session is completely isolated from other users and will be automatically cleaned up after 1 hour of inactivity.
+
+---
+
+## Quick Start (Local Installation)
 
 ### 1. Clone and Run (macOS / Linux)
 
@@ -395,11 +412,16 @@ bonuses/
 │   ├── BONUS_CALCULATION_README.md # Manager's guide to bonuses
 │   └── *.png                       # Screenshots for README
 ├── AGENTS.md                       # Developer/AI guide and patterns
+├── demo_mode.py                    # Demo mode session management
+├── demo-templates/                 # Pre-built demo databases
+│   ├── small-team.db               # 12 employees, 2 historical periods
+│   └── large-team.db               # 50 employees, 3 historical periods
 ├── ratings.db                      # SQLite database (created on first run)
 ├── sample-data-small.xlsx          # Generated sample data (not in repo)
 ├── real-workday-export.xlsx        # Your Workday export (not in repo)
 ├── scripts/                        # Utility scripts
 │   ├── create_sample_data.py       # Sample data generator
+│   ├── create_demo_templates.py    # Regenerate demo template databases
 │   └── populate_sample_ratings.py  # Populate DB with sample ratings
 ├── samples/                        # Sample data files
 │   ├── tenets-sample.json          # Example tenets configuration
