@@ -372,28 +372,18 @@
     </div>
 
     <div class="demo-start-section">
-        <h2>Choose a Demo Scenario</h2>
-        <div class="demo-mode-buttons">
-            <a href="{{ url_for('demo_init', demo_type='small') }}" class="demo-mode-btn">
+        <h2>Get Started</h2>
+        <p class="demo-start-description">Import sample data to explore the system. Choose between a small team (12 employees) or large organization (50 employees).</p>
+        <div class="demo-start-button">
+            <a href="{{ url_for('import_page') }}" class="demo-mode-btn demo-mode-btn-single">
                 <div class="mode-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                 </div>
                 <div class="mode-text">
-                    <strong>Small Team</strong>
-                    <span>12 employees, 1 manager</span>
-                </div>
-            </a>
-            <a href="{{ url_for('demo_init', demo_type='large') }}" class="demo-mode-btn">
-                <div class="mode-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                </div>
-                <div class="mode-text">
-                    <strong>Large Organization</strong>
-                    <span>50 employees, 5 managers</span>
+                    <strong>Import Demo Data</strong>
+                    <span>Load sample employees to explore features</span>
                 </div>
             </a>
         </div>
@@ -557,6 +547,25 @@
         border-color: #27ae60;
         transform: translateY(-3px);
         box-shadow: 0 8px 25px rgba(39, 174, 96, 0.2);
+    }
+
+    .demo-start-description {
+        color: #666;
+        font-size: 16px;
+        margin-bottom: 25px;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .demo-start-button {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+
+    .demo-mode-btn-single {
+        padding: 25px 50px;
     }
 
     .mode-icon {
