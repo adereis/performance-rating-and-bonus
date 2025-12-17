@@ -1,5 +1,6 @@
-# Use Python 3.11 slim image as base
-FROM python:3.11-slim
+# Use Fedora as base image
+# Fedora aligns with Red Hat ecosystem (relevant for OpenShift deployment)
+FROM registry.fedoraproject.org/fedora:41
 
 # Set working directory
 WORKDIR /app
@@ -10,18 +11,17 @@ ENV PYTHONUNBUFFERED=1 \
     FLASK_APP=app.py \
     FLASK_ENV=production
 
+# Install Python and dependencies
+# Note: gcc is needed for compiling some Python packages
+# We remove it after installation to reduce image size
+RUN dnf install -y python3 python3-pip gcc && \
+    dnf clean all
+
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install system dependencies and Python packages
-# Note: gcc is needed for compiling some Python packages (e.g., numpy)
-# We remove it after installation to reduce image size
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && pip install --no-cache-dir -r requirements.txt \
-    && apt-get purge -y gcc \
-    && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
+# Install Python packages
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
@@ -33,5 +33,5 @@ RUN mkdir -p /app/data
 EXPOSE 5000
 
 # Run the application
-CMD ["python", "app.py"]
+CMD ["python3", "app.py"]
 

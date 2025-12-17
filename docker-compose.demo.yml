@@ -1,0 +1,49 @@
+version: '3.8'
+
+# Docker Compose configuration for DEMO MODE
+# Use: docker-compose -f docker-compose.demo.yml up -d
+#
+# Demo mode features:
+# - Each visitor gets their own isolated database (session-based)
+# - Databases auto-seed with sample data
+# - Sessions timeout after 1 hour of inactivity
+# - Stale sessions are cleaned up automatically
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: performance-rating-demo
+    ports:
+      - "5000:5000"
+    volumes:
+      # Session databases stored here (can use tmpfs for ephemeral storage)
+      - demo_sessions:/tmp/demo_sessions
+    environment:
+      # Enable demo mode (session isolation)
+      - DEMO_MODE=true
+      - SESSION_TIMEOUT_SECONDS=3600
+      - SESSION_DB_DIR=/tmp/demo_sessions
+
+      # Flask configuration
+      - FLASK_ENV=production
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+
+      # Session security - generate with: python3 -c "import secrets; print(secrets.token_hex(32))"
+      # For demo, a static key is acceptable since sessions contain only fictitious data
+      - SECRET_KEY=demo-mode-secret-key-not-for-production-use
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  demo_sessions:
+    # Use tmpfs for ephemeral storage (sessions don't survive container restart)
+    # Uncomment the following for persistent sessions:
+    # driver: local

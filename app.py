@@ -16,6 +16,11 @@ import tempfile
 
 app = Flask(__name__)
 
+# Session security - required for secure cookies in production
+# In production, set SECRET_KEY environment variable to a random 32+ character string
+# Example: export SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
+app.secret_key = os.getenv('SECRET_KEY', 'dev-only-insecure-key-change-in-production')
+
 # Demo mode configuration
 DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
 
