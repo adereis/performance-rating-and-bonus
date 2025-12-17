@@ -77,6 +77,26 @@ def health_check():
     return jsonify(status)
 
 
+# Error handlers for cleaner error pages
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle internal server errors with a clean page."""
+    # Check if it's a database-related error
+    error_msg = str(error.original_exception) if hasattr(error, 'original_exception') else str(error)
+
+    # Log the full error for debugging
+    app.logger.error(f"Internal error: {error_msg}")
+
+    # Return a clean error page
+    return render_template('error.html',
+        error_code=500,
+        error_title="Something went wrong",
+        error_message="The server encountered an error. Please try refreshing the page.",
+        demo_mode=DEMO_MODE,
+        show_reset=DEMO_MODE  # Show reset button in demo mode
+    ), 500
+
+
 @app.route('/demo/<demo_type>')
 def demo_init(demo_type):
     """Initialize demo with specified dataset type."""

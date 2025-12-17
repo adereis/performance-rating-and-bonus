@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Error {{ error_code }} - Performance Rating{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="error-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+    </div>
+    <h1>{{ error_title }}</h1>
+    <p class="error-message">{{ error_message }}</p>
+
+    <div class="error-actions">
+        <a href="{{ url_for('index') }}" class="btn btn-primary">Go to Dashboard</a>
+        {% if show_reset %}
+        <button onclick="resetDemo()" class="btn btn-secondary">Reset Demo Session</button>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .error-page {
+        max-width: 500px;
+        margin: 80px auto;
+        text-align: center;
+        padding: 40px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    .error-icon {
+        color: #e74c3c;
+        margin-bottom: 20px;
+    }
+
+    .error-page h1 {
+        font-size: 28px;
+        color: #2c3e50;
+        margin-bottom: 15px;
+    }
+
+    .error-message {
+        color: #666;
+        font-size: 16px;
+        margin-bottom: 30px;
+    }
+
+    .error-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .error-actions .btn {
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+    }
+
+    .error-actions .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .error-actions .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .error-actions .btn-secondary {
+        background: #f8f9fa;
+        color: #2c3e50;
+        border: 1px solid #dee2e6;
+    }
+
+    .error-actions .btn-secondary:hover {
+        background: #e9ecef;
+    }
+</style>
+
+{% if show_reset %}
+<script>
+function resetDemo() {
+    fetch('/api/demo/reset', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({type: 'small'})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/rate';
+        } else {
+            alert('Failed to reset demo. Please try again.');
+        }
+    })
+    .catch(err => {
+        alert('Failed to reset demo. Please try again.');
+    });
+}
+</script>
+{% endif %}
+{% endblock %}
