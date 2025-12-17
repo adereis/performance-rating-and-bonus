@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from flask import request
+from flask import request, g
 
 
 # Configuration
@@ -33,10 +33,21 @@ _cleanup_lock = threading.Lock()
 
 
 def get_session_id():
-    """Get or create a session ID from cookie."""
+    """Get or create a session ID from cookie.
+
+    Uses Flask's g object to cache the session ID within a single request,
+    ensuring all calls return the same value (critical for cookie consistency).
+    """
+    # Return cached session ID if we already generated one this request
+    if hasattr(g, '_demo_session_id'):
+        return g._demo_session_id
+
     session_id = request.cookies.get(SESSION_COOKIE_NAME)
     if not session_id:
         session_id = str(uuid.uuid4())
+
+    # Cache for this request so all calls return the same ID
+    g._demo_session_id = session_id
     return session_id
 
 
