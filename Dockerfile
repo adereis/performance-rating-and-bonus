@@ -32,6 +32,9 @@ RUN mkdir -p /app/data
 # Expose port 5000
 EXPOSE 5000
 
-# Run the application
-CMD ["python3", "app.py"]
+# Run the application with Gunicorn (production WSGI server)
+# - workers: number of worker processes (2 is good for 2GB RAM)
+# - timeout: kill workers stuck longer than 120s (prevents memory leaks)
+# - access-logfile: log requests to stdout for container logging
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "app:app"]
 
