@@ -1,0 +1,113 @@
+#cloud-config
+#
+# Cloud-init script for Azure VM deployment (RHEL 9 + Podman)
+#
+# Prerequisites:
+#   - RHEL 9 VM image (RedHat:RHEL:9_7:latest)
+#   - DNS label configured on public IP (for HTTPS)
+#   - Ports 22, 80, 443 open in Azure NSG
+#
+# Usage:
+#   az vm create ... --image RedHat:RHEL:9_7:latest --custom-data @azure/cloud-init-podman.yaml
+#
+# What this script does:
+#   1. Enables EPEL repository (for podman-compose)
+#   2. Extends /home LVM partition (default is too small for containers)
+#   3. Installs Podman, podman-compose, nginx, certbot
+#   4. Configures firewalld and SELinux
+#   5. Clones repo and builds container
+#   6. Sets up nginx reverse proxy with HTTPS
+#
+# Why Podman instead of Docker?
+#   - Daemonless architecture (no background service required)
+#   - Rootless by default (better security)
+#   - Native to Red Hat ecosystem (what OpenShift uses)
+#   - Drop-in replacement for Docker CLI
+#
+
+package_update: true
+package_upgrade: true
+
+# Note: podman-compose is NOT in default RHEL repos, installed via EPEL below
+packages:
+  - podman
+  - git
+  - curl
+  - nginx
+  - python3-pip
+
+runcmd:
+  # ============================================
+  # 1. Enable EPEL repository for podman-compose
+  # ============================================
+  - subscription-manager repos --enable codeready-builder-for-rhel-9-$(arch)-rpms
+  - dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+  - dnf install -y podman-compose certbot python3-certbot-nginx
+
+  # ============================================
+  # 2. Extend /home partition (default 960MB is too small)
+  # ============================================
+  # Check if /home is an LVM volume and extend it
+  - |
+    if lvs /dev/mapper/rootvg-homelv &>/dev/null; then
+      # Get free space in VG
+      FREE_PE=$(vgs rootvg --noheadings -o vg_free --units g | tr -d ' g')
+      if [ "${FREE_PE%.*}" -gt 5 ]; then
+        lvextend -L +10G /dev/mapper/rootvg-homelv || true
+        xfs_growfs /home || true
+        echo "Extended /home partition" >> /var/log/cloud-init-output.log
+      fi
+    fi
+
+  # ============================================
+  # 3. Configure firewalld
+  # ============================================
+  - firewall-cmd --permanent --add-service=http
+  - firewall-cmd --permanent --add-service=https
+  - firewall-cmd --reload
+
+  # ============================================
+  # 4. Configure SELinux for nginx reverse proxy
+  # ============================================
+  - setsebool -P httpd_can_network_connect 1
+
+  # ============================================
+  # 5. Clone repository and build container
+  # ============================================
+  - git clone https://github.com/adereis/performance-rating-and-bonus.git /opt/performance-rating
+  - mkdir -p /opt/performance-rating/demo_sessions
+  - chown -R 1000:1000 /opt/performance-rating
+  - cd /opt/performance-rating && podman-compose -f docker-compose.demo.yml up -d --build
+
+  # ============================================
+  # 6. Configure nginx reverse proxy
+  # ============================================
+  - |
+    # Get the Azure DNS name from instance metadata
+    HOSTNAME=$(curl -s -H Metadata:true "http://169.254.169.254/metadata/instance/network/interface/0/ipv4/ipAddress/0/publicIpAddress?api-version=2021-02-01&format=text" 2>/dev/null || echo "_")
+
+    cat > /etc/nginx/conf.d/perf-rating.conf << NGINX_EOF
+    server {
+        listen 80;
+        server_name _;
+
+        location / {
+            proxy_pass http://127.0.0.1:5000;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
+    }
+    NGINX_EOF
+
+  - nginx -t && systemctl enable --now nginx
+
+  # ============================================
+  # 7. Log completion
+  # ============================================
+  - echo "Performance Rating System deployed in demo mode (Podman + nginx)" >> /var/log/cloud-init-output.log
+  - echo "Next steps:" >> /var/log/cloud-init-output.log
+  - echo "  1. Add DNS label to public IP in Azure" >> /var/log/cloud-init-output.log
+  - echo "  2. Update nginx server_name with your domain" >> /var/log/cloud-init-output.log
+  - echo "  3. Run: certbot --nginx -d your-domain.eastus.cloudapp.azure.com" >> /var/log/cloud-init-output.log
