@@ -12,9 +12,9 @@ ENV PYTHONUNBUFFERED=1 \
     FLASK_ENV=production
 
 # Install Python and dependencies
-# Note: gcc is needed for compiling some Python packages
-# We remove it after installation to reduce image size
-RUN dnf install -y python3 python3-pip gcc && \
+# - gcc: needed for compiling some Python packages
+# - curl: needed for healthcheck
+RUN dnf install -y python3 python3-pip gcc curl && \
     dnf clean all
 
 # Copy requirements first for better caching
