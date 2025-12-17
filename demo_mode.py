@@ -29,6 +29,7 @@ TEMPLATES_DIR = os.path.join(SCRIPT_DIR, 'demo-templates')
 # Session tracking
 _session_engines = {}
 _session_last_access = {}
+_session_db_mtime = {}  # Track DB file modification time to detect changes from other workers
 _cleanup_lock = threading.Lock()
 
 
@@ -145,10 +146,28 @@ def _create_sqlite_engine(db_path):
 
 
 def get_session_engine(session_id):
-    """Get or create a SQLAlchemy engine for a session."""
-    global _session_engines, _session_last_access
+    """Get or create a SQLAlchemy engine for a session.
+
+    Handles multi-worker scenarios by checking if the database file has been
+    modified since we created the engine (e.g., by another Gunicorn worker
+    copying a template). If so, we recreate the engine to pick up the changes.
+    """
+    global _session_engines, _session_last_access, _session_db_mtime
 
     db_path = get_session_db_path(session_id)
+
+    # Check if we need to recreate the engine (file was modified externally)
+    if session_id in _session_engines and os.path.exists(db_path):
+        current_mtime = os.path.getmtime(db_path)
+        cached_mtime = _session_db_mtime.get(session_id, 0)
+        if current_mtime > cached_mtime:
+            # Database was modified by another worker, recreate engine
+            try:
+                _session_engines[session_id].dispose()
+            except Exception:
+                pass
+            del _session_engines[session_id]
+            print(f"[Demo Mode] Recreating engine for {session_id[:8]}... (file changed)")
 
     if session_id not in _session_engines:
         # If database doesn't exist, create empty schema
@@ -163,6 +182,10 @@ def get_session_engine(session_id):
             # Database exists, just create engine
             engine = _create_sqlite_engine(db_path)
             _session_engines[session_id] = engine
+
+        # Track the file's mtime so we can detect changes
+        if os.path.exists(db_path):
+            _session_db_mtime[session_id] = os.path.getmtime(db_path)
 
     # Update last access time
     _session_last_access[session_id] = time.time()
