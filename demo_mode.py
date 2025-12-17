@@ -72,6 +72,17 @@ def session_has_data(session_id):
     return os.path.exists(db_path) and os.path.getsize(db_path) > 10000
 
 
+def _remove_session_files(db_path):
+    """Remove a session database and its WAL mode files (.db-wal, .db-shm)."""
+    for suffix in ['', '-wal', '-shm']:
+        file_path = db_path + suffix if suffix else db_path
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                print(f"[Demo Mode] Error removing {file_path}: {e}")
+
+
 def initialize_session_from_template(session_id, demo_type='small'):
     """
     Initialize a session database by copying a template.
@@ -83,7 +94,7 @@ def initialize_session_from_template(session_id, demo_type='small'):
     Returns:
         bool: True if successful, False otherwise
     """
-    global _session_engines
+    global _session_engines, _session_db_mtime
 
     template_path = get_template_path(demo_type)
     db_path = get_session_db_path(session_id)
@@ -96,13 +107,12 @@ def initialize_session_from_template(session_id, demo_type='small'):
             pass
         del _session_engines[session_id]
 
-    # Remove existing database
-    if os.path.exists(db_path):
-        try:
-            os.remove(db_path)
-        except Exception as e:
-            print(f"[Demo Mode] Error removing existing db: {e}")
-            return False
+    # Clear mtime tracking so next access creates fresh engine
+    if session_id in _session_db_mtime:
+        del _session_db_mtime[session_id]
+
+    # Remove existing database AND its WAL files
+    _remove_session_files(db_path)
 
     # Copy template
     if not os.path.exists(template_path):
@@ -237,14 +247,15 @@ def cleanup_stale_sessions():
                     _session_engines[session_id].dispose()
                     del _session_engines[session_id]
 
-                # Remove database file
+                # Remove database and WAL files
                 db_path = get_session_db_path(session_id)
-                if os.path.exists(db_path):
-                    os.remove(db_path)
+                _remove_session_files(db_path)
 
                 # Remove from tracking
                 if session_id in _session_last_access:
                     del _session_last_access[session_id]
+                if session_id in _session_db_mtime:
+                    del _session_db_mtime[session_id]
 
                 print(f"[Demo Mode] Cleaned up stale session: {session_id[:8]}...")
             except Exception as e:
@@ -253,7 +264,7 @@ def cleanup_stale_sessions():
 
 def clear_all_sessions():
     """Clear all session databases on startup for a fresh experience."""
-    global _session_engines, _session_last_access
+    global _session_engines, _session_last_access, _session_db_mtime
 
     if not DEMO_MODE:
         return
@@ -267,17 +278,16 @@ def clear_all_sessions():
 
     _session_engines = {}
     _session_last_access = {}
+    _session_db_mtime = {}
 
-    # Remove all session database files
+    # Remove all session database files (including WAL mode files)
     session_dir = Path(SESSION_DB_DIR)
     if session_dir.exists():
         count = 0
+        # Get all .db files, then remove them along with their WAL files
         for db_file in session_dir.glob('session_*.db'):
-            try:
-                db_file.unlink()
-                count += 1
-            except Exception as e:
-                print(f"[Demo Mode] Error removing {db_file.name}: {e}")
+            _remove_session_files(str(db_file))
+            count += 1
         if count > 0:
             print(f"[Demo Mode] Cleared {count} session(s) from previous run")
 
