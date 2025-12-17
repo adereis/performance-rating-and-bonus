@@ -1910,20 +1910,75 @@
         }
 
         function closeEmployeeModal() {
-            // Check for unsaved changes
+            // Auto-save if there are unsaved changes (consistent with auto-save elsewhere)
             if (modalHasUnsavedChanges) {
-                const confirmClose = confirm('You have unsaved changes. Close without saving?');
-                if (!confirmClose) {
-                    return; // Don't close the modal
+                // Validate before auto-saving
+                if (!validateModalRating()) {
+                    // Invalid rating - ask user what to do
+                    const discardChanges = confirm('Rating is invalid. Discard changes and close?');
+                    if (!discardChanges) {
+                        return; // Stay in modal to fix
+                    }
+                    // User chose to discard - fall through to close without saving
+                } else {
+                    // Valid data - auto-save and close
+                    autoSaveAndCloseModal();
+                    return;
                 }
             }
 
-            // Close the modal
+            // Close the modal (no changes, or user discarded invalid changes)
             const modal = document.getElementById('employeeModal');
             modal.classList.remove('active');
             currentEmployeeId = null;
             originalEmployeeData = null;
-            modalHasUnsavedChanges = false; // Reset dirty flag
+            modalHasUnsavedChanges = false;
+        }
+
+        function autoSaveAndCloseModal() {
+            // Collect data (same as saveEmployeeModal but with simpler feedback)
+            const modal = document.getElementById('employeeModal');
+            const strengthCheckboxes = modal.querySelectorAll('input[data-tenet-type="strengths"]:checked');
+            const improvementCheckboxes = modal.querySelectorAll('input[data-tenet-type="improvements"]:checked');
+
+            const tenetsStrengths = Array.from(strengthCheckboxes).map(cb => cb.value);
+            const tenetsImprovements = Array.from(improvementCheckboxes).map(cb => cb.value);
+
+            const data = {
+                associate_id: originalEmployeeData['Associate ID'],
+                rating_percent: document.getElementById('modal_rating_percent').value,
+                justification: document.getElementById('modal_justification').value,
+                mentor: document.getElementById('modal_mentor').value,
+                mentees: document.getElementById('modal_mentees').value,
+                tenets_strengths: tenetsStrengths,
+                tenets_improvements: tenetsImprovements
+            };
+
+            // Close modal immediately for snappy feel
+            modal.classList.remove('active');
+            const savedEmployeeId = currentEmployeeId;
+            currentEmployeeId = null;
+            originalEmployeeData = null;
+            modalHasUnsavedChanges = false;
+
+            // Save in background
+            fetch('/api/rate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // Reload to reflect changes
+                    window.location.reload();
+                } else {
+                    alert('Error saving changes: ' + (result.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                alert('Network error saving changes: ' + error.message);
+            });
         }
 
         // Close modal when clicking outside of it
