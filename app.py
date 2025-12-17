@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from flask import Flask, render_template, request, jsonify, send_file, make_response
 import os
+import sys
+import logging
 import json
 import csv
 import io
@@ -15,6 +17,19 @@ from notes_parser import parse_notes_field
 import tempfile
 
 app = Flask(__name__)
+
+# Configure logging to reduce noise from exceptions
+# Show only the error type and message, not full tracebacks for handled errors
+if os.getenv('FLASK_ENV') == 'production':
+    # In production, log errors concisely
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    # Reduce verbosity of werkzeug and SQLAlchemy loggers
+    logging.getLogger('werkzeug').setLevel(logging.WARNING)
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
 
 # Session security - required for secure cookies in production
 # In production, set SECRET_KEY environment variable to a random 32+ character string
@@ -77,15 +92,26 @@ def health_check():
     return jsonify(status)
 
 
-# Error handlers for cleaner error pages
-@app.errorhandler(500)
-def internal_error(error):
-    """Handle internal server errors with a clean page."""
-    # Check if it's a database-related error
-    error_msg = str(error.original_exception) if hasattr(error, 'original_exception') else str(error)
+# Error handlers for cleaner error pages and logs
+@app.errorhandler(Exception)
+def handle_exception(error):
+    """Handle all exceptions with clean logging and error page.
 
-    # Log the full error for debugging
-    app.logger.error(f"Internal error: {error_msg}")
+    Catches exceptions before Flask's default handler to prevent
+    verbose tracebacks in production logs.
+    """
+    from werkzeug.exceptions import HTTPException
+
+    # Pass through HTTP exceptions (404, etc.) to default handlers
+    if isinstance(error, HTTPException):
+        return error
+
+    # For other exceptions (database errors, etc.), log concisely
+    error_type = type(error).__name__
+    error_msg = str(error)
+
+    # One-line log: "DatabaseError: unable to open database file"
+    app.logger.error(f"{error_type}: {error_msg}")
 
     # Return a clean error page
     return render_template('error.html',
@@ -93,7 +119,22 @@ def internal_error(error):
         error_title="Something went wrong",
         error_message="The server encountered an error. Please try refreshing the page.",
         demo_mode=DEMO_MODE,
-        show_reset=DEMO_MODE  # Show reset button in demo mode
+        show_reset=DEMO_MODE
+    ), 500
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors (fallback if Exception handler doesn't catch)."""
+    error_msg = str(error.original_exception) if hasattr(error, 'original_exception') else str(error)
+    app.logger.error(f"Internal error: {error_msg}")
+
+    return render_template('error.html',
+        error_code=500,
+        error_title="Something went wrong",
+        error_message="The server encountered an error. Please try refreshing the page.",
+        demo_mode=DEMO_MODE,
+        show_reset=DEMO_MODE
     ), 500
 
 
