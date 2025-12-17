@@ -11,7 +11,7 @@ import threading
 import shutil
 from datetime import datetime
 from pathlib import Path
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from flask import request, g
 
@@ -118,6 +118,32 @@ def initialize_session_from_template(session_id, demo_type='small'):
         return False
 
 
+def _create_sqlite_engine(db_path):
+    """Create a SQLite engine with settings optimized for concurrency.
+
+    Uses WAL (Write-Ahead Logging) mode for better concurrent access:
+    - Multiple readers can access simultaneously
+    - Writers don't block readers
+    - Better performance under Gunicorn with multiple workers
+    """
+    engine = create_engine(
+        f'sqlite:///{db_path}',
+        echo=False,
+        connect_args={"check_same_thread": False},  # Required for multi-threaded access
+        pool_pre_ping=True,  # Verify connections before using
+    )
+
+    # Enable WAL mode for better concurrency
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")  # Wait up to 5s for locks
+        cursor.close()
+
+    return engine
+
+
 def get_session_engine(session_id):
     """Get or create a SQLAlchemy engine for a session."""
     global _session_engines, _session_last_access
@@ -129,13 +155,13 @@ def get_session_engine(session_id):
         # (Data will be populated when user selects demo type)
         if not os.path.exists(db_path):
             # Create empty database with schema
-            engine = create_engine(f'sqlite:///{db_path}', echo=False)
+            engine = _create_sqlite_engine(db_path)
             from models import Base
             Base.metadata.create_all(bind=engine)
             _session_engines[session_id] = engine
         else:
             # Database exists, just create engine
-            engine = create_engine(f'sqlite:///{db_path}', echo=False)
+            engine = _create_sqlite_engine(db_path)
             _session_engines[session_id] = engine
 
     # Update last access time
