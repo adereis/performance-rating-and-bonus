@@ -1062,7 +1062,8 @@ function setupTenetListeners(card) {
     const strengthCheckboxes = card.querySelectorAll('input[data-tenet-type="strengths"]');
     const improvementCheckboxes = card.querySelectorAll('input[data-tenet-type="improvements"]');
 
-    const handleTenetChange = (type) => {
+    // Update validation UI (warnings, disabled states) without triggering save
+    const updateTenetValidation = (type) => {
         const checkboxes = card.querySelectorAll(`input[data-tenet-type="${type}"]`);
         const otherType = type === 'strengths' ? 'improvements' : 'strengths';
         const otherCheckboxes = card.querySelectorAll(`input[data-tenet-type="${otherType}"]`);
@@ -1111,26 +1112,26 @@ function setupTenetListeners(card) {
                 cb.parentElement.title = '';
             }
         });
+    };
 
-        // Auto-save on change
+    // Handler for user-initiated changes - validates AND triggers save
+    const handleTenetChange = () => {
+        updateTenetValidation('strengths');
+        updateTenetValidation('improvements');
         autoSave(associateId, card);
     };
 
-    const handleAnyTenetChange = () => {
-        handleTenetChange('strengths');
-        handleTenetChange('improvements');
-    };
-
     strengthCheckboxes.forEach(cb => {
-        cb.addEventListener('change', handleAnyTenetChange);
+        cb.addEventListener('change', handleTenetChange);
     });
 
     improvementCheckboxes.forEach(cb => {
-        cb.addEventListener('change', handleAnyTenetChange);
+        cb.addEventListener('change', handleTenetChange);
     });
 
-    // Trigger initial validation
-    handleAnyTenetChange();
+    // Initial validation only - no save
+    updateTenetValidation('strengths');
+    updateTenetValidation('improvements');
 }
 
 // Save all pending changes before page unload
