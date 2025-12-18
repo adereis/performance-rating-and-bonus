@@ -196,7 +196,8 @@ def init_db():
     """Initialize the database, creating all tables."""
     if DEMO_MODE:
         # In demo mode, databases are created per-session in demo_mode.py
-        print("[Demo Mode] Database initialization deferred to per-session setup")
+        from demo_mode import _log
+        _log("Database initialization deferred to per-session setup")
         return
 
     engine = _get_standard_engine()

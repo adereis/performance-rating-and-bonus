@@ -16,11 +16,34 @@ from sqlalchemy.orm import sessionmaker
 from flask import request, g
 
 
+def _log(message):
+    """Log with timestamp and worker PID for debugging."""
+    timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+    pid = os.getpid()
+    print(f"[{timestamp}] [pid:{pid}] [Demo] {message}")
+
+
 # Configuration
 DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
 SESSION_TIMEOUT_SECONDS = int(os.getenv('SESSION_TIMEOUT_SECONDS', 3600))  # 1 hour default
+SESSION_CLEANUP_INTERVAL = int(os.getenv('SESSION_CLEANUP_INTERVAL', 300))  # 5 min default
 SESSION_COOKIE_NAME = 'demo_session_id'
-SESSION_DB_DIR = os.getenv('SESSION_DB_DIR', '/tmp/demo_sessions')
+SESSION_DB_DIR_BASE = os.getenv('SESSION_DB_DIR', '/tmp/demo_sessions')
+
+# Server instance ID - ensures multiple server instances don't share session files
+# Each server instance gets its own subdirectory under SESSION_DB_DIR_BASE
+# Can be set explicitly via environment, or derived from parent PID
+# Using parent PID ensures all Gunicorn workers share the same instance ID
+# (they all have the same master process as parent)
+def _get_server_instance_id():
+    env_id = os.getenv('SERVER_INSTANCE_ID')
+    if env_id:
+        return env_id
+    # Use parent PID - consistent across all workers under same Gunicorn master
+    return f'ppid_{os.getppid()}'
+
+SERVER_INSTANCE_ID = _get_server_instance_id()
+SESSION_DB_DIR = os.path.join(SESSION_DB_DIR_BASE, f'instance_{SERVER_INSTANCE_ID}')
 
 # Path to pre-built template databases
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -80,12 +103,15 @@ def _remove_session_files(db_path):
             try:
                 os.remove(file_path)
             except Exception as e:
-                print(f"[Demo Mode] Error removing {file_path}: {e}")
+                _log(f"Error removing {file_path}: {e}")
 
 
 def initialize_session_from_template(session_id, demo_type='small'):
     """
     Initialize a session database by copying a template.
+
+    Uses atomic rename to prevent race conditions where another worker
+    might create an empty database during the copy operation.
 
     Args:
         session_id: The session ID
@@ -99,6 +125,11 @@ def initialize_session_from_template(session_id, demo_type='small'):
     template_path = get_template_path(demo_type)
     db_path = get_session_db_path(session_id)
 
+    # Check template exists first
+    if not os.path.exists(template_path):
+        _log(f"Template not found: {template_path}")
+        return False
+
     # Close existing engine if any
     if session_id in _session_engines:
         try:
@@ -111,21 +142,35 @@ def initialize_session_from_template(session_id, demo_type='small'):
     if session_id in _session_db_mtime:
         del _session_db_mtime[session_id]
 
-    # Remove existing database AND its WAL files
-    _remove_session_files(db_path)
-
-    # Copy template
-    if not os.path.exists(template_path):
-        print(f"[Demo Mode] Template not found: {template_path}")
-        # Fall back to creating empty database
-        return False
-
     try:
-        shutil.copy2(template_path, db_path)
-        print(f"[Demo Mode] Initialized session {session_id[:8]}... with {demo_type} template")
+        # Use atomic approach: copy to temp, then rename
+        # This prevents race condition where another worker creates empty DB
+        # between our delete and copy operations
+        temp_path = db_path + '.tmp'
+
+        # Copy template to temp file (use copy, not copy2, to get fresh mtime)
+        shutil.copy(template_path, temp_path)
+
+        # Remove old database AND its WAL files
+        _remove_session_files(db_path)
+
+        # Atomic rename (on Linux, rename is atomic within same filesystem)
+        os.rename(temp_path, db_path)
+
+        # Ensure mtime is current so other workers detect the change
+        # (rename preserves mtime, so we touch the file explicitly)
+        os.utime(db_path, None)
+
+        _log(f"Session {session_id[:8]}: initialized with {demo_type} template ({os.path.getsize(db_path)} bytes)")
         return True
     except Exception as e:
-        print(f"[Demo Mode] Error copying template: {e}")
+        _log(f"Error copying template: {e}")
+        # Clean up temp file if it exists
+        if os.path.exists(db_path + '.tmp'):
+            try:
+                os.remove(db_path + '.tmp')
+            except Exception:
+                pass
         return False
 
 
@@ -166,36 +211,59 @@ def get_session_engine(session_id):
 
     db_path = get_session_db_path(session_id)
 
-    # Check if we need to recreate the engine (file was modified externally)
-    if session_id in _session_engines and os.path.exists(db_path):
-        current_mtime = os.path.getmtime(db_path)
-        cached_mtime = _session_db_mtime.get(session_id, 0)
-        if current_mtime > cached_mtime:
-            # Database was modified by another worker, recreate engine
+    sid = session_id[:8]
+    has_cached = session_id in _session_engines
+    file_exists = os.path.exists(db_path)
+
+    # Check if we need to recreate the engine (file was modified or deleted externally)
+    if has_cached:
+        if not file_exists:
+            # File was deleted (possibly during atomic template copy)
+            # Invalidate cached engine so we recreate when file reappears
+            _log(f"Session {sid}: file missing, invalidating cached engine")
             try:
                 _session_engines[session_id].dispose()
             except Exception:
                 pass
             del _session_engines[session_id]
-            print(f"[Demo Mode] Recreating engine for {session_id[:8]}... (file changed)")
+            if session_id in _session_db_mtime:
+                del _session_db_mtime[session_id]
+            has_cached = False
+        else:
+            current_mtime = os.path.getmtime(db_path)
+            cached_mtime = _session_db_mtime.get(session_id, 0)
+            if current_mtime > cached_mtime:
+                # Database was modified by another worker, recreate engine
+                _log(f"Session {sid}: mtime changed ({cached_mtime:.3f} -> {current_mtime:.3f}), recreating engine")
+                try:
+                    _session_engines[session_id].dispose()
+                except Exception:
+                    pass
+                del _session_engines[session_id]
+                has_cached = False
 
     if session_id not in _session_engines:
         # If database doesn't exist, create empty schema
         # (Data will be populated when user selects demo type)
         if not os.path.exists(db_path):
             # Create empty database with schema
+            _log(f"Session {sid}: creating NEW empty DB")
             engine = _create_sqlite_engine(db_path)
             from models import Base
             Base.metadata.create_all(bind=engine)
             _session_engines[session_id] = engine
         else:
             # Database exists, just create engine
+            file_size = os.path.getsize(db_path)
+            _log(f"Session {sid}: creating engine for EXISTING DB ({file_size} bytes)")
             engine = _create_sqlite_engine(db_path)
             _session_engines[session_id] = engine
 
         # Track the file's mtime so we can detect changes
         if os.path.exists(db_path):
-            _session_db_mtime[session_id] = os.path.getmtime(db_path)
+            mtime = os.path.getmtime(db_path)
+            _session_db_mtime[session_id] = mtime
+            _log(f"Session {sid}: cached mtime={mtime:.3f}")
 
     # Update last access time
     _session_last_access[session_id] = time.time()
@@ -257,9 +325,9 @@ def cleanup_stale_sessions():
                 if session_id in _session_db_mtime:
                     del _session_db_mtime[session_id]
 
-                print(f"[Demo Mode] Cleaned up stale session: {session_id[:8]}...")
+                _log(f"Cleaned up stale session: {session_id[:8]}...")
             except Exception as e:
-                print(f"[Demo Mode] Error cleaning session {session_id[:8]}: {e}")
+                _log(f"Error cleaning session {session_id[:8]}: {e}")
 
 
 def clear_all_sessions():
@@ -289,7 +357,7 @@ def clear_all_sessions():
             _remove_session_files(str(db_file))
             count += 1
         if count > 0:
-            print(f"[Demo Mode] Cleared {count} session(s) from previous run")
+            _log(f"Cleared {count} session(s) from previous run")
 
 
 def start_cleanup_thread():
@@ -297,17 +365,19 @@ def start_cleanup_thread():
     if not DEMO_MODE:
         return
 
-    # Clear old sessions on startup for fresh experience
-    clear_all_sessions()
+    # Note: We intentionally do NOT call clear_all_sessions() here.
+    # Workers may be recycled by Gunicorn (e.g., after idle timeout),
+    # and we don't want to wipe active user sessions on worker restart.
+    # Stale sessions are cleaned up by the cleanup thread instead.
 
     def cleanup_loop():
         while True:
-            time.sleep(300)  # Run every 5 minutes
+            time.sleep(SESSION_CLEANUP_INTERVAL)
             cleanup_stale_sessions()
 
     thread = threading.Thread(target=cleanup_loop, daemon=True)
     thread.start()
-    print("[Demo Mode] Started session cleanup thread")
+    _log(f"Instance {SERVER_INSTANCE_ID}: cleanup thread started (interval={SESSION_CLEANUP_INTERVAL}s, timeout={SESSION_TIMEOUT_SECONDS}s)")
 
 
 def demo_response_wrapper(response):

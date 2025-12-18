@@ -48,14 +48,24 @@ if DEMO_MODE:
         start_cleanup_thread, demo_response_wrapper, get_active_session_count,
         get_session_id, initialize_session_from_template, session_has_data
     )
+    from demo_mode import _log
     start_cleanup_thread()
-    print("[Demo Mode] Session isolation enabled")
+    _log("Session isolation enabled")
 
 
 @app.context_processor
 def inject_demo_mode():
     """Make demo_mode available in all templates."""
     return {'demo_mode': DEMO_MODE}
+
+
+@app.before_request
+def log_demo_request():
+    """Log requests in demo mode for debugging."""
+    if DEMO_MODE and request.endpoint not in ('static', 'health_check'):
+        from demo_mode import get_session_id, _log
+        sid = get_session_id()[:8]
+        _log(f">>> {request.method} {request.path} [session:{sid}]")
 
 
 @app.after_request
