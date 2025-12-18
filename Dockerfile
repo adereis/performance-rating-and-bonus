@@ -33,8 +33,8 @@ RUN mkdir -p /app/data
 EXPOSE 5000
 
 # Run the application with Gunicorn (production WSGI server)
-# - workers: number of worker processes (2 is good for 2GB RAM)
-# - timeout: kill workers stuck longer than 120s (prevents memory leaks)
+# - workers: 3 processes (max for 1 vCPU, handles concurrent demo users)
+# - timeout: 5s (demo mode has no uploads, all ops are fast)
 # - access-logfile: log requests to stdout for container logging
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "3", "--timeout", "5", "--access-logfile", "-", "app:app"]
 
