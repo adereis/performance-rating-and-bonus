@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: perf-rating
+  labels:
+    app: perf-rating
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: perf-rating
+  template:
+    metadata:
+      labels:
+        app: perf-rating
+    spec:
+      containers:
+      - name: perf-rating
+        image: perfratingdemoacr.azurecr.io/performance-rating:v1
+        ports:
+        - containerPort: 5000
+        env:
+        - name: DEMO_MODE
+          value: "true"
+        - name: SESSION_TIMEOUT_SECONDS
+          value: "3600"
+        - name: SESSION_DB_DIR
+          value: "/tmp/demo_sessions"
+        - name: FLASK_ENV
+          value: "production"
+        - name: FLASK_HOST
+          value: "0.0.0.0"
+        - name: FLASK_PORT
+          value: "5000"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        volumeMounts:
+        - name: session-storage
+          mountPath: /tmp/demo_sessions
+      volumes:
+      - name: session-storage
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: perf-rating
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 5000
+    protocol: TCP
+  selector:
+    app: perf-rating
