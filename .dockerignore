@@ -11,13 +11,21 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 *.egg-info/
 .pytest_cache/
+htmlcov/
+.coverage
+*.db-test
 
 # Database files (will be mounted as volume)
 ratings.db
 ratings.db-journal
 data/
+
+# Team data files (keep private per manager)
+team.csv
+bonus-from-wd.xlsx
 
 # Sample data files (auto-generated)
 sample-data-*.xlsx
@@ -25,7 +33,13 @@ sample-data-*.xlsx
 # Real Workday exports (sensitive data)
 REAL-*.xlsx
 real-*.xlsx
+REAL-*.csv
+real-*.csv
 ratings_export_*.csv
+
+# Organization-specific tenets
+tenets.json
+real-*.json
 
 # IDE
 .vscode/
