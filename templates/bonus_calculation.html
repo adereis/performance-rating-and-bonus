@@ -466,8 +466,8 @@
                     <td>{{ result.employee['Current Job Profile'] }}</td>
                     <td class="right">
                         <span class="performance-badge
-                            {% if result.rating >= 120 %}performance-high
-                            {% elif result.rating >= 90 %}performance-mid
+                            {% if result.rating >= rating_thresholds.high %}performance-high
+                            {% elif result.rating >= rating_thresholds.mid %}performance-mid
                             {% else %}performance-low{% endif %}">
                             {{ result.rating }}%
                         </span>

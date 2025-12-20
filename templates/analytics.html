@@ -447,13 +447,13 @@
                     <td>
                         <strong>
                             {% if item.bucket == 'above_120' %}
-                                Above 120%
+                                Above {{ rating_thresholds.high }}%
                             {% elif item.bucket == '90_to_120' %}
-                                90-120%
+                                {{ rating_thresholds.mid }}-{{ rating_thresholds.high }}%
                             {% elif item.bucket == '60_to_90' %}
-                                60-90%
+                                {{ rating_thresholds.low }}-{{ rating_thresholds.mid }}%
                             {% else %}
-                                Below 60%
+                                Below {{ rating_thresholds.low }}%
                             {% endif %}
                         </strong>
                         <br>
@@ -542,13 +542,13 @@
                             <td>
                                 <strong>
                                     {% if item.bucket == 'above_120' %}
-                                        Above 120%
+                                        Above {{ rating_thresholds.high }}%
                                     {% elif item.bucket == '90_to_120' %}
-                                        90-120%
+                                        {{ rating_thresholds.mid }}-{{ rating_thresholds.high }}%
                                     {% elif item.bucket == '60_to_90' %}
-                                        60-90%
+                                        {{ rating_thresholds.low }}-{{ rating_thresholds.mid }}%
                                     {% else %}
-                                        Below 60%
+                                        Below {{ rating_thresholds.low }}%
                                     {% endif %}
                                 </strong>
                                 <br>
@@ -618,10 +618,10 @@
                         <th>Size</th>
                         <th>Avg Rating</th>
                         <th>Std Dev</th>
-                        <th>Above 120%</th>
-                        <th>90-120%</th>
-                        <th>60-90%</th>
-                        <th>Below 60%</th>
+                        <th>Above {{ rating_thresholds.high }}%</th>
+                        <th>{{ rating_thresholds.mid }}-{{ rating_thresholds.high }}%</th>
+                        <th>{{ rating_thresholds.low }}-{{ rating_thresholds.mid }}%</th>
+                        <th>Below {{ rating_thresholds.low }}%</th>
                         <th>Calibration Health</th>
                     </tr>
                 </thead>
@@ -760,6 +760,13 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+// Rating thresholds from server config
+const RATING_THRESHOLDS = {
+    high: {{ rating_thresholds.high }},
+    mid: {{ rating_thresholds.mid }},
+    low: {{ rating_thresholds.low }}
+};
+
 const chartData = {{ chart_data | tojson }};
 
 // Rating Distribution Chart
@@ -900,10 +907,16 @@ new Chart(jobCtx, {
 const calibrationData = {{ calibration_data | tojson }};
 
 const calibrationCtx = document.getElementById('calibrationChart').getContext('2d');
+const calibrationLabels = [
+    `Above ${RATING_THRESHOLDS.high}%`,
+    `${RATING_THRESHOLDS.mid}-${RATING_THRESHOLDS.high}%`,
+    `${RATING_THRESHOLDS.low}-${RATING_THRESHOLDS.mid}%`,
+    `Below ${RATING_THRESHOLDS.low}%`
+];
 new Chart(calibrationCtx, {
     type: 'bar',
     data: {
-        labels: ['Above 120%', '90-120%', '60-90%', 'Below 60%'],
+        labels: calibrationLabels,
         datasets: [
             {
                 label: 'Your Team',

@@ -39,6 +39,16 @@ app.secret_key = os.getenv('SECRET_KEY', 'dev-only-insecure-key-change-in-produc
 # Demo mode configuration
 DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
 
+# Rating thresholds for color-coding and calibration buckets
+# These define the boundaries between performance categories:
+#   - High performers: rating >= RATING_THRESHOLD_HIGH (green)
+#   - Solid performers: RATING_THRESHOLD_MID <= rating < HIGH (yellow)
+#   - Needs improvement: RATING_THRESHOLD_LOW <= rating < MID (orange)
+#   - Below expectations: rating < LOW (red)
+RATING_THRESHOLD_HIGH = 120  # "Exceeds expectations" threshold
+RATING_THRESHOLD_MID = 90    # "Meets expectations" threshold
+RATING_THRESHOLD_LOW = 60    # "Needs improvement" threshold
+
 # Initialize database on startup
 init_db()
 
@@ -54,9 +64,16 @@ if DEMO_MODE:
 
 
 @app.context_processor
-def inject_demo_mode():
-    """Make demo_mode available in all templates."""
-    return {'demo_mode': DEMO_MODE}
+def inject_global_context():
+    """Make global config available in all templates."""
+    return {
+        'demo_mode': DEMO_MODE,
+        'rating_thresholds': {
+            'high': RATING_THRESHOLD_HIGH,
+            'mid': RATING_THRESHOLD_MID,
+            'low': RATING_THRESHOLD_LOW
+        }
+    }
 
 
 @app.before_request
@@ -653,11 +670,11 @@ def calculate_calibration_for_employees(employees, team_name=None):
         if rating:
             try:
                 rating = float(rating)
-                if rating > 120:
+                if rating > RATING_THRESHOLD_HIGH:
                     calibration_buckets['above_120']['count'] += 1
-                elif rating >= 90:
+                elif rating >= RATING_THRESHOLD_MID:
                     calibration_buckets['90_to_120']['count'] += 1
-                elif rating >= 60:
+                elif rating >= RATING_THRESHOLD_LOW:
                     calibration_buckets['60_to_90']['count'] += 1
                 else:
                     calibration_buckets['below_60']['count'] += 1

@@ -349,6 +349,13 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+    // Rating thresholds from server config
+    const RATING_THRESHOLDS = {
+        high: {{ rating_thresholds.high }},
+        mid: {{ rating_thresholds.mid }},
+        low: {{ rating_thresholds.low }}
+    };
+
     let currentPeriodChart = null;
 
     function showPeriodList() {
@@ -406,20 +413,20 @@
 
         document.getElementById('detailPeriodName').textContent = `${period.name} (${period.period_id})`;
 
-        // Calculate distribution
+        // Calculate distribution using centralized thresholds
         const distribution = {
-            'below_60': 0,
-            '60_to_90': 0,
-            '90_to_120': 0,
-            'above_120': 0
+            'below_low': 0,
+            'low_to_mid': 0,
+            'mid_to_high': 0,
+            'above_high': 0
         };
 
         snapshots.forEach(s => {
             if (s.performance_rating !== null) {
-                if (s.performance_rating < 60) distribution.below_60++;
-                else if (s.performance_rating < 90) distribution['60_to_90']++;
-                else if (s.performance_rating < 120) distribution['90_to_120']++;
-                else distribution.above_120++;
+                if (s.performance_rating < RATING_THRESHOLDS.low) distribution.below_low++;
+                else if (s.performance_rating < RATING_THRESHOLDS.mid) distribution.low_to_mid++;
+                else if (s.performance_rating < RATING_THRESHOLDS.high) distribution.mid_to_high++;
+                else distribution.above_high++;
             }
         });
 
@@ -523,16 +530,24 @@
             currentPeriodChart.destroy();
         }
 
+        // Generate labels from thresholds
+        const labels = [
+            `Below ${RATING_THRESHOLDS.low}%`,
+            `${RATING_THRESHOLDS.low}-${RATING_THRESHOLDS.mid}%`,
+            `${RATING_THRESHOLDS.mid}-${RATING_THRESHOLDS.high}%`,
+            `Above ${RATING_THRESHOLDS.high}%`
+        ];
+
         currentPeriodChart = new Chart(ctx.getContext('2d'), {
             type: 'bar',
             data: {
-                labels: ['Below 60%', '60-90%', '90-120%', 'Above 120%'],
+                labels: labels,
                 datasets: [{
                     data: [
-                        distribution.below_60,
-                        distribution['60_to_90'],
-                        distribution['90_to_120'],
-                        distribution.above_120
+                        distribution.below_low,
+                        distribution.low_to_mid,
+                        distribution.mid_to_high,
+                        distribution.above_high
                     ],
                     backgroundColor: ['#e74c3c', '#f39c12', '#3498db', '#27ae60'],
                     borderWidth: 0
