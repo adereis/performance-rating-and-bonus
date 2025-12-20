@@ -205,3 +205,169 @@ class TestScriptHelpSupport:
             assert 'ArgumentParser' in content
         finally:
             sys.path.remove(scripts_dir)
+
+
+class TestCreateDemoTemplates:
+    """Tests for scripts/create_demo_templates.py"""
+
+    def test_script_can_be_imported(self):
+        """Test that the script can be imported without errors"""
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
+        sys.path.insert(0, scripts_dir)
+
+        try:
+            import create_demo_templates
+            assert hasattr(create_demo_templates, 'get_small_team_employees')
+            assert hasattr(create_demo_templates, 'get_large_team_employees')
+            assert hasattr(create_demo_templates, 'create_template_database')
+        finally:
+            sys.path.remove(scripts_dir)
+
+    def test_small_team_structure(self):
+        """Test that small team data has correct structure and no manager as employee"""
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
+        sys.path.insert(0, scripts_dir)
+
+        try:
+            import create_demo_templates
+
+            employees = create_demo_templates.get_small_team_employees()
+
+            # Should have 12 employees
+            assert len(employees) == 12, f"Expected 12 employees, got {len(employees)}"
+
+            # Each employee should have required fields
+            required_fields = [
+                'associate_id', 'associate', 'supervisory_organization',
+                'current_job_profile', 'performance_rating_percent', 'justification'
+            ]
+            for emp in employees:
+                for field in required_fields:
+                    assert field in emp, f"Missing field {field} in employee {emp.get('associate', 'unknown')}"
+
+            # Manager (Della Gate) should NOT be an employee (she's the user)
+            employee_names = [emp['associate'] for emp in employees]
+            assert 'Della Gate' not in employee_names, \
+                "Della Gate should not be an employee - she is the manager using the system"
+
+            # All employees should belong to Della Gate's team
+            for emp in employees:
+                assert 'Della Gate' in emp['supervisory_organization'], \
+                    f"Employee {emp['associate']} should be under Della Gate's organization"
+
+        finally:
+            sys.path.remove(scripts_dir)
+
+    def test_large_team_structure(self):
+        """Test that large team data includes managers as employees"""
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
+        sys.path.insert(0, scripts_dir)
+
+        try:
+            import create_demo_templates
+
+            employees = create_demo_templates.get_large_team_employees()
+
+            # Should have 55 employees (10 ICs + 1 manager per team × 5 teams)
+            assert len(employees) == 55, f"Expected 55 employees, got {len(employees)}"
+
+            # Get all employee names
+            employee_names = [emp['associate'] for emp in employees]
+
+            # The 5 managers MUST be included as employees (director rates them)
+            expected_managers = ['Della Gate', 'Rhoda Map', 'Kay P. Eye', 'Agie Enda', 'Mai Stone']
+            for manager in expected_managers:
+                assert manager in employee_names, \
+                    f"Manager {manager} should be an employee in the large org (director rates them)"
+
+            # Managers should have manager job titles
+            for emp in employees:
+                if emp['associate'] in expected_managers:
+                    assert 'Manager' in emp['current_job_profile'], \
+                        f"{emp['associate']} should have a manager job title"
+
+        finally:
+            sys.path.remove(scripts_dir)
+
+    def test_large_team_managers_in_own_teams(self):
+        """Test that each manager is an employee in their own team"""
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
+        sys.path.insert(0, scripts_dir)
+
+        try:
+            import create_demo_templates
+
+            employees = create_demo_templates.get_large_team_employees()
+
+            # Map of manager name to expected team name substring
+            manager_team_map = {
+                'Della Gate': 'Della Gate',
+                'Rhoda Map': 'Rhoda Map',
+                'Kay P. Eye': 'Kay P. Eye',
+                'Agie Enda': 'Agie Enda',
+                'Mai Stone': 'Mai Stone',
+            }
+
+            for emp in employees:
+                if emp['associate'] in manager_team_map:
+                    expected_in_org = manager_team_map[emp['associate']]
+                    assert expected_in_org in emp['supervisory_organization'], \
+                        f"Manager {emp['associate']} should be in their own team"
+
+        finally:
+            sys.path.remove(scripts_dir)
+
+    def test_rating_distribution_expressive(self):
+        """Test that ratings span the full bonus curve range"""
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
+        sys.path.insert(0, scripts_dir)
+
+        try:
+            import create_demo_templates
+
+            # Check small team
+            small_employees = create_demo_templates.get_small_team_employees()
+            small_ratings = [emp['performance_rating_percent'] for emp in small_employees]
+
+            # Should have low performers (< 70%)
+            assert any(r < 70 for r in small_ratings), \
+                "Small team should have at least one low performer (< 70%)"
+
+            # Should have exceptional performers (> 125%)
+            assert any(r > 125 for r in small_ratings), \
+                "Small team should have at least one exceptional performer (> 125%)"
+
+            # Check large team
+            large_employees = create_demo_templates.get_large_team_employees()
+            large_ratings = [emp['performance_rating_percent'] for emp in large_employees]
+
+            # Should have full range
+            assert min(large_ratings) < 70, \
+                f"Large team should have low performers, min is {min(large_ratings)}"
+            assert max(large_ratings) > 130, \
+                f"Large team should have exceptional performers, max is {max(large_ratings)}"
+
+        finally:
+            sys.path.remove(scripts_dir)
+
+    def test_all_employees_have_ratings(self):
+        """Test that all demo employees have performance ratings assigned"""
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
+        sys.path.insert(0, scripts_dir)
+
+        try:
+            import create_demo_templates
+
+            for get_func, name in [
+                (create_demo_templates.get_small_team_employees, 'small team'),
+                (create_demo_templates.get_large_team_employees, 'large team'),
+            ]:
+                employees = get_func()
+                for emp in employees:
+                    assert emp.get('performance_rating_percent') is not None, \
+                        f"{emp['associate']} in {name} has no rating"
+                    assert emp.get('justification'), \
+                        f"{emp['associate']} in {name} has no justification"
+
+        finally:
+            sys.path.remove(scripts_dir)

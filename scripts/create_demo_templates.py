@@ -27,24 +27,41 @@ from models import Base, Employee, BonusSettings, Period, RatingSnapshot
 def get_small_team_employees():
     """
     Small team: 12 employees under single manager (Della Gate).
+    The user IS Della Gate (manager), so she is not included as an employee.
     Includes ratings and justifications.
+
+    Rating distribution designed to show expressive bonus curve:
+    - 1 low performer (~60%) - shows steep penalty
+    - 2-3 needs improvement (85-90%)
+    - 4-5 meeting expectations (95-105%)
+    - 2-3 high performers (110-120%)
+    - 1-2 exceptional (130-140%) - above linear line
     """
     manager = "Supervisory Organization (Della Gate)"
 
     # (name, job, salary, grade, bonus_pct, rating, justification)
     employees = [
-        ('Paige Duty', 'Staff SRE', 180000, 'IC4', 3.75, 130, 'Exceptional technical leadership and on-call reliability'),
-        ('Lee Latency', 'Senior Software Developer', 150000, 'IC3', 3.0, 120, 'Outstanding performance optimization work'),
-        ('Mona Torr', 'Senior SRE', 145000, 'IC3', 3.0, 110, 'Strong monitoring and observability contributions'),
-        ('Robin Rollback', 'Software Developer', 120000, 'IC2', 2.5, 105, 'Reliable deployment management'),
-        ('Kenny Canary', 'Software Developer', 115000, 'IC2', 2.5, 100, 'Solid canary testing and deployment work'),
-        ('Tracey Loggins', 'Senior SRE', 155000, 'IC3', 3.0, 115, 'Excellent logging infrastructure improvements'),
-        ('Sue Q. Ell', 'Senior Software Developer', 148000, 'IC3', 3.0, 125, 'Outstanding database optimization and query performance'),
-        ('Jason Blob', 'Software Developer', 118000, 'IC2', 2.5, 95, 'Good progress on unstructured data handling'),
-        ('Al Ert', 'Staff SRE', 175000, 'IC4', 3.75, 135, 'Critical alerting system improvements, exceptional work'),
-        ('Addie Min', 'Senior Software Developer', 152000, 'IC3', 3.0, 110, 'Solid access management and security work'),
-        ('Tim Out', 'Software Developer', 110000, 'IC2', 2.5, 85, 'Needs improvement in reliability and uptime'),
-        ('Barbie Que', 'Senior SRE', 149000, 'IC3', 3.0, 110, 'Strong message queue management'),
+        # Exceptional performers (above linear line on bonus curve)
+        ('Al Ert', 'Staff SRE', 175000, 'IC4', 3.75, 140, 'Exceptional alerting system overhaul, prevented 3 major outages'),
+        ('Paige Duty', 'Staff SRE', 180000, 'IC4', 3.75, 130, 'Outstanding technical leadership and on-call reliability'),
+
+        # High performers
+        ('Sue Q. Ell', 'Senior Software Developer', 148000, 'IC3', 3.0, 120, 'Excellent database optimization, 40% query improvement'),
+        ('Tracey Loggins', 'Senior SRE', 155000, 'IC3', 3.0, 110, 'Strong logging infrastructure improvements'),
+
+        # Meeting expectations (cluster around 100%)
+        ('Mona Torr', 'Senior SRE', 145000, 'IC3', 3.0, 105, 'Solid monitoring and observability contributions'),
+        ('Robin Rollback', 'Software Developer', 120000, 'IC2', 2.5, 100, 'Reliable deployment management, met all targets'),
+        ('Kenny Canary', 'Software Developer', 115000, 'IC2', 2.5, 100, 'Consistent canary testing and deployment work'),
+        ('Lee Latency', 'Senior Software Developer', 150000, 'IC3', 3.0, 95, 'Good performance work, some delays on key projects'),
+        ('Barbie Que', 'Senior SRE', 149000, 'IC3', 3.0, 95, 'Adequate message queue management'),
+
+        # Needs improvement
+        ('Jason Blob', 'Software Developer', 118000, 'IC2', 2.5, 85, 'Needs improvement on code quality and testing'),
+        ('Addie Min', 'Senior Software Developer', 152000, 'IC3', 3.0, 85, 'Security work incomplete, missed deadlines'),
+
+        # Low performer (shows steep penalty on curve)
+        ('Tim Out', 'Software Developer', 110000, 'IC2', 2.5, 60, 'Significant performance issues, on improvement plan'),
     ]
 
     result = []
@@ -72,69 +89,109 @@ def get_small_team_employees():
 
 def get_large_team_employees():
     """
-    Large org: 50 employees across 5 managers.
+    Large org: 55 employees across 5 teams (10 ICs + 1 manager per team).
+    The user is a director who manages the 5 team managers.
+    The 5 managers are included as employees that the director rates.
     Includes ratings and justifications with diverse performance levels.
+
+    Each team has a mix showing the full bonus curve:
+    - 1-2 exceptional (130-145%) - above linear line
+    - 2 high performers (115-125%)
+    - 3-4 meeting expectations (90-110%)
+    - 1-2 needs improvement (70-85%)
+    - 0-1 low performer (50-65%)
     """
     teams = {
         'Platform Engineering (Della Gate)': [
-            ('Paige Duty', 'Principal Engineer', 220000, 'IC5', 5.0, 140, 'Exceptional technical vision and platform architecture'),
-            ('Lee Latency', 'Staff Software Developer', 185000, 'IC4', 3.75, 135, 'Outstanding team leadership and delivery'),
-            ('Mona Torr', 'Staff SRE', 180000, 'IC4', 3.75, 130, 'Outstanding platform reliability improvements'),
-            ('Robin Rollback', 'Senior Software Developer', 155000, 'IC3', 3.0, 115, 'Strong API development work'),
-            ('Kenny Canary', 'Senior Software Developer', 150000, 'IC3', 3.0, 110, 'Solid infrastructure contributions'),
-            ('Tracey Loggins', 'Software Developer', 125000, 'IC2', 2.5, 105, 'Good platform integration work'),
-            ('Sue Q. Ell', 'Software Developer', 120000, 'IC2', 2.5, 100, 'Met expectations on service deployment'),
-            ('Jason Blob', 'Software Developer', 115000, 'IC2', 2.5, 95, 'Steady progress on platform features'),
-            ('Al Ert', 'Junior Software Developer', 95000, 'IC1', 2.0, 90, 'Needs more ownership of features'),
-            ('Addie Min', 'Senior Software Developer', 160000, 'IC3', 3.0, 110, 'Solid mentorship and code quality'),
+            # Manager
+            ('Della Gate', 'Engineering Manager', 210000, 'M2', 6.0, 110, 'Strong platform team leadership, delivered key infrastructure projects'),
+            # Exceptional - above linear bonus line
+            ('Paige Duty', 'Principal Engineer', 220000, 'IC5', 5.0, 145, 'Exceptional technical vision, led platform redesign saving $2M/year'),
+            ('Lee Latency', 'Staff Software Developer', 185000, 'IC4', 3.75, 130, 'Outstanding team leadership, zero production incidents'),
+            # High performers
+            ('Mona Torr', 'Staff SRE', 180000, 'IC4', 3.75, 120, 'Strong platform reliability, 99.99% uptime achieved'),
+            ('Robin Rollback', 'Senior Software Developer', 155000, 'IC3', 3.0, 115, 'Excellent API development and documentation'),
+            # Meeting expectations
+            ('Kenny Canary', 'Senior Software Developer', 150000, 'IC3', 3.0, 105, 'Solid infrastructure contributions'),
+            ('Tracey Loggins', 'Software Developer', 125000, 'IC2', 2.5, 100, 'Met expectations on platform integration'),
+            ('Sue Q. Ell', 'Software Developer', 120000, 'IC2', 2.5, 100, 'Reliable service deployment work'),
+            ('Addie Min', 'Senior Software Developer', 160000, 'IC3', 3.0, 95, 'Good mentorship, some project delays'),
+            # Needs improvement
+            ('Jason Blob', 'Software Developer', 115000, 'IC2', 2.5, 80, 'Code quality needs improvement, missed deadlines'),
+            ('Al Ert', 'Junior Software Developer', 95000, 'IC1', 2.0, 70, 'Struggling with ownership, needs more guidance'),
         ],
         'Frontend Experience (Rhoda Map)': [
-            ('Tim Out', 'Principal Engineer', 225000, 'IC5', 5.0, 185, 'Exceptional performance - transformational UI architecture work'),
-            ('Barbie Que', 'Staff Software Developer', 190000, 'IC4', 3.75, 130, 'Strong team growth and technical direction'),
-            ('Terry Byte', 'Senior Software Developer', 160000, 'IC3', 3.0, 120, 'Strong React component library work'),
-            ('Nole Pointer', 'Senior Software Developer', 155000, 'IC3', 3.0, 110, 'Solid accessibility improvements'),
-            ('Marge Conflict', 'Software Developer', 125000, 'IC2', 2.5, 45, 'Serious performance concerns - requires improvement plan'),
+            # Manager
+            ('Rhoda Map', 'Engineering Manager', 205000, 'M2', 6.0, 105, 'Good frontend team leadership, successful design system rollout'),
+            # Exceptional - includes one very high performer
+            ('Tim Out', 'Principal Engineer', 225000, 'IC5', 5.0, 140, 'Transformational UI architecture, 60% performance improvement'),
+            ('Barbie Que', 'Staff Software Developer', 190000, 'IC4', 3.75, 135, 'Outstanding team growth and design system'),
+            # High performers
+            ('Terry Byte', 'Senior Software Developer', 160000, 'IC3', 3.0, 120, 'Excellent React component library'),
+            ('Cody Ryder', 'Senior Software Developer', 158000, 'IC3', 3.0, 115, 'Strong state management refactoring'),
+            # Meeting expectations
+            ('Nole Pointer', 'Senior Software Developer', 155000, 'IC3', 3.0, 105, 'Solid accessibility improvements'),
             ('Bridget Branch', 'Software Developer', 120000, 'IC2', 2.5, 100, 'Good responsive design work'),
-            ('Cody Ryder', 'Senior Software Developer', 158000, 'IC3', 3.0, 115, 'Excellent state management refactoring'),
-            ('Cy Ferr', 'Software Developer', 118000, 'IC2', 2.5, 100, 'Solid component development'),
-            ('Phil Wall', 'Junior Software Developer', 92000, 'IC1', 2.0, 65, 'Below expectations - needs significant improvement'),
-            ('Lana Wan', 'Software Developer', 122000, 'IC2', 2.5, 85, 'Needs more proactive communication'),
+            ('Cy Ferr', 'Software Developer', 118000, 'IC2', 2.5, 95, 'Adequate component development'),
+            # Needs improvement
+            ('Lana Wan', 'Software Developer', 122000, 'IC2', 2.5, 85, 'Communication issues, missed sprint goals'),
+            ('Phil Wall', 'Junior Software Developer', 92000, 'IC1', 2.0, 70, 'Below expectations, struggling with React'),
+            # Low performer
+            ('Marge Conflict', 'Software Developer', 125000, 'IC2', 2.5, 55, 'Serious performance concerns, on PIP'),
         ],
         'Backend Services (Kay P. Eye)': [
+            # Manager
+            ('Kay P. Eye', 'Engineering Manager', 208000, 'M2', 6.0, 115, 'Excellent API team leadership, drove cross-team standards'),
+            # Exceptional
             ('Artie Ficial', 'Principal Engineer', 230000, 'IC5', 5.0, 140, 'Exceptional distributed systems architecture'),
-            ('Ruth Cause', 'Staff Software Developer', 188000, 'IC4', 3.75, 130, 'Outstanding microservices design'),
-            ('Matt Rick', 'Staff Software Developer', 185000, 'IC4', 3.75, 130, 'Excellent cross-team coordination and delivery'),
-            ('Cassie Cache', 'Senior Software Developer', 162000, 'IC3', 3.0, 120, 'Strong API design and implementation'),
-            ('Sue Do', 'Senior Software Developer', 158000, 'IC3', 3.0, 110, 'Solid service reliability work'),
-            ('Pat Ch', 'Software Developer', 128000, 'IC2', 2.5, 105, 'Good backend feature development'),
-            ('Devin Null', 'Software Developer', 124000, 'IC2', 2.5, 100, 'Met expectations on service development'),
-            ('Justin Time', 'Software Developer', 120000, 'IC2', 2.5, 95, 'Steady progress on REST API work'),
-            ("Annie O'Maly", 'Senior Software Developer', 165000, 'IC3', 3.0, 115, 'Strong database optimization'),
-            ('Sam Box', 'Junior Software Developer', 98000, 'IC1', 2.0, 90, 'Adequate progress on microservices'),
+            ('Ruth Cause', 'Staff Software Developer', 188000, 'IC4', 3.75, 130, 'Outstanding microservices redesign'),
+            # High performers
+            ('Matt Rick', 'Staff Software Developer', 185000, 'IC4', 3.75, 125, 'Excellent cross-team coordination'),
+            ('Cassie Cache', 'Senior Software Developer', 162000, 'IC3', 3.0, 115, 'Strong API design and caching strategy'),
+            # Meeting expectations
+            ("Annie O'Maly", 'Senior Software Developer', 165000, 'IC3', 3.0, 105, 'Good database optimization work'),
+            ('Sue Do', 'Senior Software Developer', 158000, 'IC3', 3.0, 100, 'Met expectations on service reliability'),
+            ('Pat Ch', 'Software Developer', 128000, 'IC2', 2.5, 100, 'Solid backend feature development'),
+            ('Devin Null', 'Software Developer', 124000, 'IC2', 2.5, 95, 'Steady progress on REST APIs'),
+            # Needs improvement
+            ('Justin Time', 'Software Developer', 120000, 'IC2', 2.5, 85, 'Frequently late on deliverables'),
+            ('Sam Box', 'Junior Software Developer', 98000, 'IC1', 2.0, 75, 'Needs more initiative on tasks'),
         ],
         'Infrastructure (Agie Enda)': [
-            ('Val Idation', 'Staff SRE', 195000, 'IC4', 3.75, 120, 'Outstanding infrastructure automation'),
-            ('Bill Ding', 'Senior SRE', 165000, 'IC3', 3.0, 105, 'Good deployment pipeline work'),
-            ('Ty Po', 'Principal Engineer', 235000, 'IC5', 5.0, 135, 'Exceptional infrastructure modernization'),
-            ('Mike Roservices', 'Staff SRE', 192000, 'IC4', 3.75, 130, 'Strong infrastructure team leadership'),
-            ('Lou Pe', 'Senior SRE', 168000, 'IC3', 3.0, 120, 'Outstanding CI/CD pipeline improvements'),
-            ('Connie Tainer', 'Senior SRE', 162000, 'IC3', 3.0, 110, 'Strong Kubernetes migration work'),
-            ('Noah Node', 'SRE', 130000, 'IC2', 2.5, 105, 'Good infrastructure automation'),
-            ('Sara Ver', 'SRE', 125000, 'IC2', 2.5, 100, 'Solid monitoring setup'),
-            ('Exa M. Elle', 'Senior SRE', 170000, 'IC3', 3.0, 115, 'Strong cloud cost optimization'),
-            ('Dee Ploi', 'SRE', 128000, 'IC2', 2.5, 95, 'Good disaster recovery planning'),
+            # Manager
+            ('Agie Enda', 'Engineering Manager', 212000, 'M2', 6.0, 120, 'Outstanding infrastructure team leadership, drove cloud migration'),
+            # Exceptional
+            ('Ty Po', 'Principal Engineer', 235000, 'IC5', 5.0, 140, 'Exceptional infrastructure modernization'),
+            ('Mike Roservices', 'Staff SRE', 192000, 'IC4', 3.75, 130, 'Outstanding container platform work'),
+            # High performers
+            ('Val Idation', 'Staff SRE', 195000, 'IC4', 3.75, 120, 'Excellent infrastructure automation'),
+            ('Lou Pe', 'Senior SRE', 168000, 'IC3', 3.0, 115, 'Strong CI/CD pipeline improvements'),
+            # Meeting expectations
+            ('Connie Tainer', 'Senior SRE', 162000, 'IC3', 3.0, 105, 'Good Kubernetes migration work'),
+            ('Exa M. Elle', 'Senior SRE', 170000, 'IC3', 3.0, 100, 'Met cloud cost optimization targets'),
+            ('Noah Node', 'SRE', 130000, 'IC2', 2.5, 100, 'Solid infrastructure automation'),
+            ('Sara Ver', 'SRE', 125000, 'IC2', 2.5, 95, 'Adequate monitoring setup'),
+            # Needs improvement
+            ('Bill Ding', 'Senior SRE', 165000, 'IC3', 3.0, 85, 'Deployment issues, needs more testing'),
+            ('Dee Ploi', 'SRE', 128000, 'IC2', 2.5, 65, 'DR planning incomplete, reliability gaps'),
         ],
         'Site Reliability (Mai Stone)': [
+            # Manager
+            ('Mai Stone', 'Engineering Manager', 215000, 'M2', 6.0, 100, 'Solid SRE team leadership, met reliability targets'),
+            # Exceptional
             ("Ray D. O'Button", 'Principal SRE', 228000, 'IC5', 5.0, 135, 'Outstanding SLO/SLI framework design'),
             ('Cam Elcase', 'Staff SRE', 198000, 'IC4', 3.75, 130, 'Excellent reliability culture building'),
-            ('Hashim Map', 'Staff SRE', 195000, 'IC4', 3.75, 125, 'Exceptional on-call process improvements'),
-            ('Ben Chmark', 'Senior SRE', 172000, 'IC3', 3.0, 120, 'Strong incident response leadership'),
-            ('Grace Full', 'Senior SRE', 168000, 'IC3', 3.0, 110, 'Solid observability improvements'),
-            ('Shel Script', 'Senior SRE', 165000, 'IC3', 3.0, 110, 'Strong monitoring and alerting work'),
-            ('Sal T. Hash', 'SRE', 135000, 'IC2', 2.5, 100, 'Good chaos engineering initiatives'),
-            ('Red Undancy', 'SRE', 132000, 'IC2', 2.5, 105, 'Solid failover testing'),
-            ('Mo Nitor', 'Senior SRE', 175000, 'IC3', 3.0, 115, 'Strong performance monitoring'),
-            ('Polly Morphism', 'SRE', 128000, 'IC2', 2.5, 95, 'Good system flexibility improvements'),
+            # High performers
+            ('Hashim Map', 'Staff SRE', 195000, 'IC4', 3.75, 120, 'Strong on-call process improvements'),
+            ('Ben Chmark', 'Senior SRE', 172000, 'IC3', 3.0, 115, 'Good incident response leadership'),
+            # Meeting expectations
+            ('Grace Full', 'Senior SRE', 168000, 'IC3', 3.0, 105, 'Solid observability improvements'),
+            ('Shel Script', 'Senior SRE', 165000, 'IC3', 3.0, 100, 'Met monitoring and alerting goals'),
+            ('Mo Nitor', 'Senior SRE', 175000, 'IC3', 3.0, 100, 'Reliable performance monitoring'),
+            ('Red Undancy', 'SRE', 132000, 'IC2', 2.5, 95, 'Adequate failover testing'),
+            # Needs improvement
+            ('Sal T. Hash', 'SRE', 135000, 'IC2', 2.5, 85, 'Chaos engineering incomplete'),
+            ('Polly Morphism', 'SRE', 128000, 'IC2', 2.5, 80, 'System flexibility work behind schedule'),
         ],
     }
 
@@ -344,7 +401,7 @@ def main():
     print()
 
     # Create large team template (3 historical periods)
-    print("Large Team Demo (50 employees, 5 managers, 3 historical periods):")
+    print("Large Team Demo (55 employees incl. 5 managers, 3 historical periods):")
     large_path = os.path.join(templates_dir, 'large-team.db')
     create_template_database(large_path, get_large_team_employees(), include_large_history=True)
 
