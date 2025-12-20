@@ -147,28 +147,6 @@
         text-align: right;
     }
 
-    .performance-badge {
-        display: inline-block;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-weight: 600;
-        font-size: 12px;
-    }
-
-    .performance-high {
-        background: #d4edda;
-        color: #155724;
-    }
-
-    .performance-mid {
-        background: #fff3cd;
-        color: #856404;
-    }
-
-    .performance-low {
-        background: #f8d7da;
-        color: #721c24;
-    }
 
     .no-data-message {
         text-align: center;
@@ -465,10 +443,11 @@
                     <td><strong><span class="employee-name" data-employee-id="{{ result.employee['Associate ID'] }}">{{ result.employee.Associate }}</span></strong></td>
                     <td>{{ result.employee['Current Job Profile'] }}</td>
                     <td class="right">
-                        <span class="performance-badge
-                            {% if result.rating >= rating_thresholds.high %}performance-high
-                            {% elif result.rating >= rating_thresholds.mid %}performance-mid
-                            {% else %}performance-low{% endif %}">
+                        <span class="rating-text
+                            {% if result.rating >= rating_thresholds.high %}rating-text-high
+                            {% elif result.rating >= rating_thresholds.mid %}rating-text-mid
+                            {% elif result.rating >= rating_thresholds.low %}rating-text-low
+                            {% else %}rating-text-below{% endif %}">
                             {{ result.rating }}%
                         </span>
                     </td>

@@ -356,6 +356,15 @@
         low: {{ rating_thresholds.low }}
     };
 
+    // Get CSS class for rating color based on thresholds
+    function getRatingColorClass(rating) {
+        if (rating === null) return 'rating-text-none';
+        if (rating >= RATING_THRESHOLDS.high) return 'rating-text-high';
+        if (rating >= RATING_THRESHOLDS.mid) return 'rating-text-mid';
+        if (rating >= RATING_THRESHOLDS.low) return 'rating-text-low';
+        return 'rating-text-below';
+    }
+
     let currentPeriodChart = null;
 
     function showPeriodList() {
@@ -490,8 +499,8 @@
                                 <td>${escapeHtml(s.snapshot_job_profile || '-')}</td>
                                 <td>
                                     ${s.performance_rating !== null
-                                        ? `<span class="rating-value">${s.performance_rating}%</span>`
-                                        : '<span style="color: #999;">-</span>'}
+                                        ? `<span class="rating-text ${getRatingColorClass(s.performance_rating)}">${s.performance_rating}%</span>`
+                                        : '<span class="rating-text rating-text-none">-</span>'}
                                 </td>
                                 <td style="max-width: 300px; font-size: 13px;">
                                     ${s.justification

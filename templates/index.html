@@ -781,9 +781,15 @@
                     <td>{{ employee['Current Job Profile'] }}</td>
                     <td>
                         {% if employee.performance_rating_percent %}
-                            <span style="color: #27ae60; font-weight: 600;">{{ employee.performance_rating_percent }}%</span>
+                            <span class="rating-text
+                                {% if employee.performance_rating_percent >= rating_thresholds.high %}rating-text-high
+                                {% elif employee.performance_rating_percent >= rating_thresholds.mid %}rating-text-mid
+                                {% elif employee.performance_rating_percent >= rating_thresholds.low %}rating-text-low
+                                {% else %}rating-text-below{% endif %}">
+                                {{ employee.performance_rating_percent }}%
+                            </span>
                         {% else %}
-                            <span style="color: #999;">Not rated</span>
+                            <span class="rating-text rating-text-none">Not rated</span>
                         {% endif %}
                     </td>
                     <td>{{ employee.last_updated if employee.last_updated else '-' }}</td>

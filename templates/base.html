@@ -122,6 +122,26 @@
             font-size: 18px;
         }
 
+        /* Rating text colors - thresholds defined in app.py */
+        .rating-text {
+            font-weight: 600;
+        }
+        .rating-text-high {
+            color: #1e8449;  /* Dark green - exceeds expectations */
+        }
+        .rating-text-mid {
+            color: #27ae60;  /* Green - meets expectations */
+        }
+        .rating-text-low {
+            color: #e67e22;  /* Orange - needs improvement */
+        }
+        .rating-text-below {
+            color: #e74c3c;  /* Red - below expectations */
+        }
+        .rating-text-none {
+            color: #999;     /* Gray - not rated */
+        }
+
         .btn {
             padding: 10px 20px;
             background: #667eea;
