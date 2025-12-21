@@ -95,7 +95,11 @@ def add_demo_session_cookie(response):
 
 @app.route('/health')
 def health_check():
-    """Health check endpoint for load balancers and monitoring."""
+    """Health check endpoint for load balancers and monitoring.
+
+    In demo mode, checks template availability without creating a session.
+    In production mode, checks actual database connectivity.
+    """
     status = {
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
@@ -103,18 +107,46 @@ def health_check():
     }
 
     if DEMO_MODE:
+        # Check demo infrastructure without creating a session
+        from demo_mode import get_template_path, SESSION_DB_DIR, get_active_session_count
+        import os
+        from pathlib import Path
+
         status['active_sessions'] = get_active_session_count()
 
-    # Try a simple database operation to verify connectivity
-    try:
-        db = get_db()
-        db.execute(text('SELECT 1'))
-        db.close()
-        status['database'] = 'connected'
-    except Exception as e:
-        status['database'] = 'error'
-        status['database_error'] = str(e)
-        return jsonify(status), 503
+        # Verify templates exist (required to create new sessions)
+        small_template = get_template_path('small')
+        large_template = get_template_path('large')
+        templates_ok = os.path.exists(small_template) and os.path.exists(large_template)
+        status['templates'] = 'available' if templates_ok else 'missing'
+
+        # Verify session directory is writable
+        try:
+            Path(SESSION_DB_DIR).mkdir(parents=True, exist_ok=True)
+            test_file = os.path.join(SESSION_DB_DIR, '.health_check')
+            Path(test_file).touch()
+            os.remove(test_file)
+            status['session_dir'] = 'writable'
+        except Exception as e:
+            status['session_dir'] = 'error'
+            status['session_dir_error'] = str(e)
+            status['status'] = 'unhealthy'
+            return jsonify(status), 503
+
+        if not templates_ok:
+            status['status'] = 'unhealthy'
+            return jsonify(status), 503
+    else:
+        # Production mode: check actual database connectivity
+        try:
+            db = get_db()
+            db.execute(text('SELECT 1'))
+            db.close()
+            status['database'] = 'connected'
+        except Exception as e:
+            status['database'] = 'error'
+            status['database_error'] = str(e)
+            return jsonify(status), 503
 
     return jsonify(status)
 
