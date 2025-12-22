@@ -1979,7 +1979,8 @@ def import_historical():
                 snapshot.snapshot_name = emp_data['associate']
                 snapshot.snapshot_org = emp_data['supervisory_organization']
                 snapshot.snapshot_job_profile = emp_data['current_job_profile']
-                snapshot.snapshot_bonus_target_usd = emp_data.get('bonus_target_local_currency_usd')
+                # Use USD conversion for international, fall back to local for US employees
+                snapshot.snapshot_bonus_target_usd = emp_data.get('bonus_target_local_currency_usd') or emp_data.get('bonus_target_local_currency')
 
                 snapshot.archived_at = datetime.now()
 
