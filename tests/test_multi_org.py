@@ -22,12 +22,12 @@ def multi_org_employees():
             'supervisory_organization': 'Engineering - Platform',
             'current_job_profile': 'Staff Engineer',
             'current_base_pay_all_countries': 180000.0,
-            'current_base_pay_all_countries_usd': 180000.0,
+            'current_base_pay_manager_currency': 180000.0,
             'currency': 'USD',
             'grade': 'IC4',
             'annual_bonus_target_percent': 15.0,
             'bonus_target_local_currency': 27000.0,
-            'bonus_target_local_currency_usd': None,
+            'bonus_target_manager_currency': None,
             'performance_rating_percent': 130.0,
             'justification': 'Exceptional technical leadership'
         },
@@ -37,12 +37,12 @@ def multi_org_employees():
             'supervisory_organization': 'Engineering - Platform',
             'current_job_profile': 'Senior Software Engineer',
             'current_base_pay_all_countries': 150000.0,
-            'current_base_pay_all_countries_usd': 150000.0,
+            'current_base_pay_manager_currency': 150000.0,
             'currency': 'USD',
             'grade': 'IC3',
             'annual_bonus_target_percent': 12.0,
             'bonus_target_local_currency': 18000.0,
-            'bonus_target_local_currency_usd': None,
+            'bonus_target_manager_currency': None,
             'performance_rating_percent': 110.0,
             'justification': 'Solid performance'
         },
@@ -52,12 +52,12 @@ def multi_org_employees():
             'supervisory_organization': 'Engineering - Platform',
             'current_job_profile': 'Software Engineer',
             'current_base_pay_all_countries': 120000.0,
-            'current_base_pay_all_countries_usd': 120000.0,
+            'current_base_pay_manager_currency': 120000.0,
             'currency': 'USD',
             'grade': 'IC2',
             'annual_bonus_target_percent': 10.0,
             'bonus_target_local_currency': 12000.0,
-            'bonus_target_local_currency_usd': None,
+            'bonus_target_manager_currency': None,
             'performance_rating_percent': 95.0,
             'justification': 'Good work, needs more experience'
         },
@@ -69,12 +69,12 @@ def multi_org_employees():
             'supervisory_organization': 'Engineering - Frontend',
             'current_job_profile': 'Principal Engineer',
             'current_base_pay_all_countries': 220000.0,
-            'current_base_pay_all_countries_usd': 220000.0,
+            'current_base_pay_manager_currency': 220000.0,
             'currency': 'USD',
             'grade': 'IC5',
             'annual_bonus_target_percent': 20.0,
             'bonus_target_local_currency': 44000.0,
-            'bonus_target_local_currency_usd': None,
+            'bonus_target_manager_currency': None,
             'performance_rating_percent': 140.0,
             'justification': 'Outstanding leadership and innovation'
         },
@@ -84,12 +84,12 @@ def multi_org_employees():
             'supervisory_organization': 'Engineering - Frontend',
             'current_job_profile': 'Senior Software Engineer',
             'current_base_pay_all_countries': 145000.0,
-            'current_base_pay_all_countries_usd': 145000.0,
+            'current_base_pay_manager_currency': 145000.0,
             'currency': 'USD',
             'grade': 'IC3',
             'annual_bonus_target_percent': 12.0,
             'bonus_target_local_currency': 17400.0,
-            'bonus_target_local_currency_usd': None,
+            'bonus_target_manager_currency': None,
             'performance_rating_percent': 100.0,
             'justification': 'Met all expectations'
         },
@@ -101,12 +101,12 @@ def multi_org_employees():
             'supervisory_organization': 'Product Management',
             'current_job_profile': 'Senior Product Manager',
             'current_base_pay_all_countries': 165000.0,
-            'current_base_pay_all_countries_usd': 165000.0,
+            'current_base_pay_manager_currency': 165000.0,
             'currency': 'USD',
             'grade': 'IC4',
             'annual_bonus_target_percent': 15.0,
             'bonus_target_local_currency': 24750.0,
-            'bonus_target_local_currency_usd': None,
+            'bonus_target_manager_currency': None,
             'performance_rating_percent': 120.0,
             'justification': 'Great product leadership'
         },
@@ -116,12 +116,12 @@ def multi_org_employees():
             'supervisory_organization': 'Product Management',
             'current_job_profile': 'Product Manager',
             'current_base_pay_all_countries': 130000.0,
-            'current_base_pay_all_countries_usd': 130000.0,
+            'current_base_pay_manager_currency': 130000.0,
             'currency': 'USD',
             'grade': 'IC3',
             'annual_bonus_target_percent': 12.0,
             'bonus_target_local_currency': 15600.0,
-            'bonus_target_local_currency_usd': None,
+            'bonus_target_manager_currency': None,
             'performance_rating_percent': 105.0,
             'justification': 'Strong execution'
         },
@@ -131,12 +131,12 @@ def multi_org_employees():
             'supervisory_organization': 'Product Management',
             'current_job_profile': 'Product Manager',
             'current_base_pay_all_countries': 125000.0,
-            'current_base_pay_all_countries_usd': 125000.0,
+            'current_base_pay_manager_currency': 125000.0,
             'currency': 'USD',
             'grade': 'IC3',
             'annual_bonus_target_percent': 12.0,
             'bonus_target_local_currency': 15000.0,
-            'bonus_target_local_currency_usd': None,
+            'bonus_target_manager_currency': None,
             'performance_rating_percent': 85.0,
             'justification': 'Needs improvement in stakeholder management'
         },
@@ -148,12 +148,12 @@ def multi_org_employees():
             'supervisory_organization': 'Engineering - Data',
             'current_job_profile': 'Senior Data Engineer',
             'current_base_pay_all_countries': 105000.0,  # GBP
-            'current_base_pay_all_countries_usd': 132911.0,  # Converted
+            'current_base_pay_manager_currency': 132911.0,  # Converted
             'currency': 'GBP',
             'grade': 'IC3',
             'annual_bonus_target_percent': 12.0,
             'bonus_target_local_currency': 12600.0,  # GBP
-            'bonus_target_local_currency_usd': 15949.0,  # Converted
+            'bonus_target_manager_currency': 15949.0,  # Converted
             'performance_rating_percent': 115.0,
             'justification': 'Excellent data pipeline work'
         },
@@ -163,12 +163,12 @@ def multi_org_employees():
             'supervisory_organization': 'Engineering - Data',
             'current_job_profile': 'Data Engineer',
             'current_base_pay_all_countries': 78000.0,  # GBP
-            'current_base_pay_all_countries_usd': 98734.0,  # Converted
+            'current_base_pay_manager_currency': 98734.0,  # Converted
             'currency': 'GBP',
             'grade': 'IC2',
             'annual_bonus_target_percent': 10.0,
             'bonus_target_local_currency': 7800.0,  # GBP
-            'bonus_target_local_currency_usd': 9873.0,  # Converted
+            'bonus_target_manager_currency': 9873.0,  # Converted
             'performance_rating_percent': 90.0,
             'justification': 'Good progress, needs more initiative'
         },
@@ -180,12 +180,12 @@ def multi_org_employees():
             'supervisory_organization': 'Engineering - Security',
             'current_job_profile': 'Staff Security Engineer',
             'current_base_pay_all_countries': 190000.0,
-            'current_base_pay_all_countries_usd': 190000.0,
+            'current_base_pay_manager_currency': 190000.0,
             'currency': 'USD',
             'grade': 'IC4',
             'annual_bonus_target_percent': 15.0,
             'bonus_target_local_currency': 28500.0,
-            'bonus_target_local_currency_usd': None,
+            'bonus_target_manager_currency': None,
             'performance_rating_percent': 135.0,
             'justification': 'Critical security improvements delivered'
         },
@@ -195,12 +195,12 @@ def multi_org_employees():
             'supervisory_organization': 'Engineering - Security',
             'current_job_profile': 'Security Engineer',
             'current_base_pay_all_countries': 140000.0,
-            'current_base_pay_all_countries_usd': 140000.0,
+            'current_base_pay_manager_currency': 140000.0,
             'currency': 'USD',
             'grade': 'IC3',
             'annual_bonus_target_percent': 12.0,
             'bonus_target_local_currency': 16800.0,
-            'bonus_target_local_currency_usd': None,
+            'bonus_target_manager_currency': None,
             'performance_rating_percent': 108.0,
             'justification': 'Solid security work'
         },
@@ -210,12 +210,12 @@ def multi_org_employees():
             'supervisory_organization': 'Engineering - Security',
             'current_job_profile': 'Security Engineer',
             'current_base_pay_all_countries': 135000.0,
-            'current_base_pay_all_countries_usd': 135000.0,
+            'current_base_pay_manager_currency': 135000.0,
             'currency': 'USD',
             'grade': 'IC3',
             'annual_bonus_target_percent': 12.0,
             'bonus_target_local_currency': 16200.0,
-            'bonus_target_local_currency_usd': None,
+            'bonus_target_manager_currency': None,
             'performance_rating_percent': 75.0,
             'justification': 'Performance concerns, needs improvement plan'
         }
@@ -350,12 +350,12 @@ class TestMultiOrganization:
         # Calculate total pool
         total_pool = 0
         for emp in employees:
-            # Use USD version if available, otherwise local (which is USD for US employees)
-            bonus_target = emp.bonus_target_local_currency_usd or emp.bonus_target_local_currency
+            # Use manager currency version if available, otherwise local (for domestic employees)
+            bonus_target = emp.bonus_target_manager_currency or emp.bonus_target_local_currency
             if bonus_target:
                 total_pool += bonus_target
 
-        # Expected total (sum of all bonus targets in USD)
+        # Expected total (sum of all bonus targets in manager's currency)
         expected = (27000 + 18000 + 12000 +  # Platform
                    44000 + 17400 +            # Frontend
                    24750 + 15600 + 15000 +    # Product
@@ -372,13 +372,13 @@ class TestMultiOrganization:
         international = [emp for emp in employees if emp.currency != 'USD']
         assert len(international) == 2  # Iris and Jack from Data team
 
-        # Verify they have both local and USD amounts
+        # Verify they have both local and manager currency amounts
         for emp in international:
             assert emp.currency == 'GBP'
             assert emp.bonus_target_local_currency is not None
-            assert emp.bonus_target_local_currency_usd is not None
+            assert emp.bonus_target_manager_currency is not None
             assert emp.current_base_pay_all_countries is not None
-            assert emp.current_base_pay_all_countries_usd is not None
+            assert emp.current_base_pay_manager_currency is not None
 
     def test_rating_distribution_across_orgs(self, populated_multi_org_db):
         """Test rating distribution when employees span multiple organizations."""

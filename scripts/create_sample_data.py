@@ -256,14 +256,14 @@ def write_employee_data(sheet, employees):
         # Bonus calculations
         if emp['currency'] == 'USD':
             base_pay_local = emp['salary']
-            base_pay_usd = None
+            base_pay_converted = None
             bonus_target_local = emp['salary'] * (emp['bonus_pct'] / 100)
-            bonus_target_usd = None
+            bonus_target_converted = None
         else:
             base_pay_local = emp['salary_local']
-            base_pay_usd = emp['salary']
+            base_pay_converted = emp['salary']
             bonus_target_local = emp['salary_local'] * (emp['bonus_pct'] / 100)
-            bonus_target_usd = emp['salary'] * (emp['bonus_pct'] / 100)
+            bonus_target_converted = emp['salary'] * (emp['bonus_pct'] / 100)
 
         # Last bonus allocation (previous period)
         last_bonus_pct = random.choice([None, None, None, 85, 90, 95, 100, 105, 110, 115])
@@ -276,15 +276,15 @@ def write_employee_data(sheet, employees):
             '',  # Errors
             emp['associate_id'],
             base_pay_local,
-            base_pay_usd,
+            base_pay_converted,
             emp['currency'],
             emp['grade'],
             emp['bonus_pct'],
             last_bonus_pct,
             bonus_target_local,
-            bonus_target_usd,
+            bonus_target_converted,
             None,  # Proposed bonus
-            None,  # Proposed bonus USD
+            None,  # Proposed bonus (converted)
             None,  # Proposed percent
             '',  # Notes
             ''  # Zero bonus allocated
@@ -658,14 +658,14 @@ def write_historical_employee_data(sheet, employees, quarter, timelines):
         currency = emp.get('currency', 'USD')
         if currency == 'USD':
             base_pay_local = salary
-            base_pay_usd = None
+            base_pay_converted = None
             bonus_target_local = salary * (bonus_pct / 100)
-            bonus_target_usd = None
+            bonus_target_converted = None
         else:
             base_pay_local = salary_local
-            base_pay_usd = salary
+            base_pay_converted = salary
             bonus_target_local = salary_local * (bonus_pct / 100)
-            bonus_target_usd = salary * (bonus_pct / 100)
+            bonus_target_converted = salary * (bonus_pct / 100)
 
         row = [
             emp['associate'],
@@ -675,15 +675,15 @@ def write_historical_employee_data(sheet, employees, quarter, timelines):
             '',  # Errors
             emp_id,
             base_pay_local,
-            base_pay_usd,
+            base_pay_converted,
             currency,
             grade,  # Use potentially updated grade
             bonus_pct,
             last_bonus_pct,
             bonus_target_local,
-            bonus_target_usd,
+            bonus_target_converted,
             None,  # Proposed bonus amount
-            None,  # Proposed bonus USD
+            None,  # Proposed bonus (converted)
             round(bonus_allocation, 1) if bonus_allocation else None,  # Proposed % of target
             notes,  # Notes with rating data
             ''  # Zero bonus allocated

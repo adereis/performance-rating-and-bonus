@@ -59,7 +59,7 @@ class TestArchivePeriodEndpoint:
             associate='John Doe',
             supervisory_organization='Engineering',
             current_job_profile='Senior Engineer',
-            bonus_target_local_currency_usd=15000,
+            bonus_target_manager_currency=15000,
             performance_rating_percent=125.0,
             justification='Excellent work on project X'
         )
@@ -68,7 +68,7 @@ class TestArchivePeriodEndpoint:
             associate='Jane Smith',
             supervisory_organization='Product',
             current_job_profile='Product Manager',
-            bonus_target_local_currency_usd=12000,
+            bonus_target_manager_currency=12000,
             performance_rating_percent=110.0,
             justification='Solid performance'
         )
@@ -116,7 +116,7 @@ class TestArchivePeriodEndpoint:
         assert john_snap.snapshot_name == 'John Doe'
         assert john_snap.snapshot_org == 'Engineering'
         assert john_snap.snapshot_job_profile == 'Senior Engineer'
-        assert john_snap.snapshot_bonus_target_usd == 15000
+        assert john_snap.snapshot_bonus_target_manager_currency == 15000
         assert john_snap.has_full_details is True
 
     def test_archive_clears_ratings(self, client, db_session):
@@ -440,7 +440,7 @@ class TestEmployeeHistoryEndpoint:
             snapshot_name='John Doe',
             snapshot_org='Engineering',
             snapshot_job_profile='Senior Engineer',
-            snapshot_bonus_target_usd=15000
+            snapshot_bonus_target_manager_currency=15000
         )
         db_session.add(snapshot)
         db_session.commit()
@@ -451,7 +451,7 @@ class TestEmployeeHistoryEndpoint:
         assert snap['snapshot_name'] == 'John Doe'
         assert snap['snapshot_org'] == 'Engineering'
         assert snap['snapshot_job_profile'] == 'Senior Engineer'
-        assert snap['snapshot_bonus_target_usd'] == 15000
+        assert snap['snapshot_bonus_target_manager_currency'] == 15000
 
     def test_history_nonexistent_employee_returns_empty(self, client, db_session):
         """Test history for nonexistent employee returns empty list (not error)."""

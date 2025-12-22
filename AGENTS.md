@@ -111,12 +111,13 @@ To achieve similar results with AI assistance:
 - Maximum line length: 100 characters
 - Use descriptive variable names matching existing patterns:
   - `perf_rating` for performance rating values
-  - `bonus_target_usd` for monetary values in USD
+  - `bonus_target_manager_currency` for monetary values in manager's currency
   - `justification` for text explanations
   - `assoc_id` for employee/associate identifiers
 
 ### Database Patterns
-- **All monetary values stored in USD** for calculations (canonical form)
+- **All monetary values stored in manager's currency** for calculations (canonical form)
+- Workday exports use the manager's home currency for conversion columns (e.g., AUD for Australian manager)
 - Display values converted to local currency for UI presentation only
 - Use SQLAlchemy ORM patterns established in `models.py`
 - **Preserve manager-entered data** on Workday re-imports (ratings, justifications, mentor/mentee fields)
@@ -211,8 +212,8 @@ Environment variables:
 - Preserves user work without explicit "Save" button
 
 #### Fixed Pool Guarantee
-- Normalization ensures bonuses sum to exact target pool (USD)
-- Sum of all `bonus_target_usd` values = total pool
+- Normalization ensures bonuses sum to exact target pool (in manager's currency)
+- Sum of all `bonus_target_manager_currency` values = total pool
 - After applying performance multipliers, normalize to preserve pool
 - Mathematical guarantee: `sum(final_bonuses) == sum(bonus_targets)`
 
@@ -410,7 +411,7 @@ When adding new features, follow this pattern:
 - Targets are **period-based percentages** of base pay
 - Example: 20% target = 20% of base pay for the rating period
 - The rating period can be defined by the organization (monthly, quarterly, semi-annual, annual, etc.)
-- International employees: bonus targets must be provided in both local currency and USD
+- International employees: bonus targets must be provided in both local currency and manager's currency
 
 ### Workday Export Format
 
@@ -430,16 +431,20 @@ When adding new features, follow this pattern:
 - `"Bonus Target - Local Currency"` - Calculated bonus target in local currency
 
 #### International Employee Handling
-- **USD employees**: Only need `"Bonus Target - Local Currency"` column (which IS in USD for them)
-  - Workday quirk: The USD column `"Bonus Target - Local Currency (USD)"` is NULL/empty for USD employees
-- **International employees**: Require both:
-  - `"Bonus Target - Local Currency"` (e.g., in GBP, CAD)
-  - `"Bonus Target - Local Currency (USD)"` (converted value)
-- **Automatic fallback logic**: Code uses `USD column OR local currency column` (app.py line 780)
-  - Tries `"Bonus Target - Local Currency (USD)"` first (for international employees)
-  - Falls back to `"Bonus Target - Local Currency"` if USD column is empty (for USD employees)
-  - This handles the Workday export quirk automatically
-- All calculations use USD values internally
+Workday exports use the **manager's home currency** for conversion columns, not always USD.
+For example, an Australian manager sees "(AUD)" columns, a US manager sees "(USD)" columns.
+
+- **Employees in manager's currency** (domestic to manager):
+  - `"Bonus Target - Local Currency"` contains value in manager's currency
+  - `"Bonus Target - Local Currency (XXX)"` column is NULL/empty (where XXX is manager's currency)
+- **International employees** (different currency than manager):
+  - `"Bonus Target - Local Currency"` contains value in employee's local currency
+  - `"Bonus Target - Local Currency (XXX)"` contains converted value in manager's currency
+- **Automatic fallback logic**: Code uses `manager_currency column OR local column`
+  - Tries the converted column first (for international employees)
+  - Falls back to local column if converted column is empty (for domestic employees)
+  - The XLSX parser uses regex to detect any 3-letter currency code in parentheses
+- All calculations use manager's currency values internally
 - Display uses local currency where appropriate
 
 #### Optional Columns
@@ -450,11 +455,12 @@ When adding new features, follow this pattern:
 
 ### Multi-Currency Handling
 
-- **All calculations in USD** (canonical currency)
-- **Display in local currency** for employee-facing views
-- Conversion happens at import time (Workday provides both values)
+- **All calculations in manager's currency** (canonical currency from Workday export)
+- **Display in local currency** for employee-facing views where appropriate
+- Conversion happens at import time (Workday provides both local and converted values)
+- The manager's currency is auto-detected from the XLSX column headers (e.g., "(AUD)", "(USD)")
 - Sample data includes GBP employees for testing international scenarios
-- Supported currencies: USD, GBP, EUR, CAD, INR (add more in currency dropdown)
+- Supported currencies: USD, GBP, EUR, CAD, INR, AUD (add more in currency dropdown)
 
 ### Manager-Entered Fields
 
@@ -489,12 +495,12 @@ These fields are **preserved** across Workday re-imports:
   - Considered alternatives: performance-weighted distribution, targeted individual adjustments
   - Chose proportional scaling because it's fairest and maintains all performance differentials
 - **How it works**:
-  - Manager enters USD amount (can be positive or negative)
+  - Manager enters amount in their currency (can be positive or negative)
   - `adjusted_pool = base_pool + budget_override`
   - All bonuses scale proportionally by `adjusted_pool / base_pool` multiplier
   - Example: +$50k on $500k pool → everyone's bonus increases by 10%
 - **Scope**: Org-level only (applies to entire organization in multi-team mode)
-- **Storage**: `BonusSettings` table with `budget_override_usd` field (persisted)
+- **Storage**: `BonusSettings` table with `budget_override` field (persisted)
 - **UI**: Inline editable field in summary stats (not separate panel)
 - **Validation**: None - managers can set any amount (trust-based)
 
@@ -909,13 +915,13 @@ segment: {
 
 ### Issue: Bonus Pool Doesn't Match Target
 **Cause**: Normalization factor calculation error
-**Solution**: Verify sum of `bonus_target_usd` equals total pool, check for null values
+**Solution**: Verify sum of `bonus_target_manager_currency` equals total pool, check for null values
 
 ### Issue: International Employees Missing from Bonus Calc
-**Cause**: Missing "Bonus Target - Local Currency (USD)" column for non-USD employees
-**Solution**: Ensure Workday export includes USD conversion column for international employees
-**Note**: USD employees are handled automatically - they only need the local currency column
-**How it works**: Code automatically falls back to local currency column if USD column is empty (see app.py line 780)
+**Cause**: Missing converted currency column for employees in different currency than manager
+**Solution**: Ensure Workday export includes the manager's currency conversion column for international employees
+**Note**: Employees in manager's currency are handled automatically - they only need the local currency column
+**How it works**: Code automatically falls back to local currency column if converted column is empty
 
 ### Issue: Workday Re-Import Overwrites Ratings
 **Cause**: Bug in preserve logic in convert_xlsx.py
@@ -967,10 +973,22 @@ Both projects follow these conventions for consistency:
 
 ---
 
+## Known Limitations
+
+### Currency Symbol Display
+The UI displays `$` as a hardcoded currency symbol in all templates (bonus_calculation.html, export.html, etc.). While the backend correctly handles any manager currency (USD, AUD, EUR, GBP, etc.), the frontend does not localize the currency symbol.
+
+**Why this matters**: An Australian manager sees `$50,000` which could be confused with USD, when it's actually AUD.
+
+**Potential fix**: Pass manager's currency to templates and use a currency symbol lookup (e.g., `{'USD': '$', 'EUR': '€', 'GBP': '£', 'AUD': 'A$', 'CAD': 'C$'}`).
+
+---
+
 ## Future Enhancements
 
 Potential areas for expansion (not yet implemented):
 
+- [ ] Currency symbol localization (display €, £, A$ based on manager's currency)
 - [ ] Save multiple parameter configurations
 - [ ] Bulk edit capabilities
 - [ ] Read-only sharing mode for calibration sessions

@@ -7,28 +7,31 @@ employee data, particularly around international employees and bonus/salary fiel
 CRITICAL WORKDAY FORMAT ASSUMPTIONS:
 ====================================
 
-1. USD Employees (domestic):
-   - current_base_pay_all_countries: Contains USD salary (e.g., 150000)
-   - current_base_pay_all_countries_usd: Empty/None
-   - bonus_target_local_currency: Contains USD bonus target (e.g., 4500)
-   - bonus_target_local_currency_usd: Empty/None
-   - currency: 'USD'
+Workday exports columns based on the MANAGER'S home currency, not always USD.
+For example, an Australian manager sees "(AUD)" columns, a US manager sees "(USD)" columns.
 
-2. International Employees (non-USD):
+1. Employees in Manager's Currency (domestic to manager):
+   - current_base_pay_all_countries: Contains salary in manager's currency
+   - current_base_pay_manager_currency: Empty/None
+   - bonus_target_local_currency: Contains bonus target in manager's currency
+   - bonus_target_manager_currency: Empty/None
+   - currency: Same as manager's currency
+
+2. International Employees (different currency than manager):
    - current_base_pay_all_countries: Contains LOCAL currency amount (e.g., 105000 GBP)
-   - current_base_pay_all_countries_usd: Contains USD CONVERSION (e.g., 132911)
-   - bonus_target_local_currency: Contains LOCAL currency target (e.g., 12600 GBP)
-   - bonus_target_local_currency_usd: Contains USD CONVERSION (e.g., 15949)
+   - current_base_pay_manager_currency: Contains MANAGER CURRENCY conversion
+   - bonus_target_local_currency: Contains LOCAL currency target
+   - bonus_target_manager_currency: Contains MANAGER CURRENCY conversion
    - currency: Local currency code (e.g., 'GBP', 'EUR', 'CAD', 'INR')
 
 3. Fallback Logic (CRITICAL):
-   When displaying or calculating with USD amounts, ALWAYS use:
-   - Base Pay: current_base_pay_all_countries_usd OR current_base_pay_all_countries
-   - Bonus Target: bonus_target_local_currency_usd OR bonus_target_local_currency
+   When displaying or calculating amounts, ALWAYS use:
+   - Base Pay: current_base_pay_manager_currency OR current_base_pay_all_countries
+   - Bonus Target: bonus_target_manager_currency OR bonus_target_local_currency
 
    This ensures:
-   - USD employees use their local column (which is already USD)
-   - International employees use the USD conversion column
+   - Domestic employees use their local column (which is manager's currency)
+   - International employees use the manager currency conversion column
 
 4. Bonus Percentages (sample values used in tests):
    - IC2: 2.5%
@@ -51,9 +54,9 @@ class TestWorkdayFormatUSDEmployees:
             associate='Test Employee',
             currency='USD',
             current_base_pay_all_countries=150000.0,
-            current_base_pay_all_countries_usd=None,  # Workday leaves this empty for USD
+            current_base_pay_manager_currency=None,  # Workday leaves this empty for USD
             bonus_target_local_currency=4500.0,
-            bonus_target_local_currency_usd=None  # Workday leaves this empty for USD
+            bonus_target_manager_currency=None  # Workday leaves this empty for USD
         )
         db_session.add(emp)
         db_session.commit()
@@ -61,9 +64,9 @@ class TestWorkdayFormatUSDEmployees:
         # Verify structure
         assert emp.currency == 'USD'
         assert emp.current_base_pay_all_countries == 150000.0
-        assert emp.current_base_pay_all_countries_usd is None
+        assert emp.current_base_pay_manager_currency is None
         assert emp.bonus_target_local_currency == 4500.0
-        assert emp.bonus_target_local_currency_usd is None
+        assert emp.bonus_target_manager_currency is None
 
     def test_usd_fallback_logic_for_display(self, db_session):
         """Test fallback logic returns correct value for USD employees."""
@@ -72,16 +75,16 @@ class TestWorkdayFormatUSDEmployees:
             associate='USD Employee',
             currency='USD',
             current_base_pay_all_countries=180000.0,
-            current_base_pay_all_countries_usd=None,
+            current_base_pay_manager_currency=None,
             bonus_target_local_currency=6750.0,
-            bonus_target_local_currency_usd=None
+            bonus_target_manager_currency=None
         )
         db_session.add(emp)
         db_session.commit()
 
         # Simulate fallback logic used in templates and calculations
-        base_pay_display = emp.current_base_pay_all_countries_usd or emp.current_base_pay_all_countries
-        bonus_target_display = emp.bonus_target_local_currency_usd or emp.bonus_target_local_currency
+        base_pay_display = emp.current_base_pay_manager_currency or emp.current_base_pay_all_countries
+        bonus_target_display = emp.bonus_target_manager_currency or emp.bonus_target_local_currency
 
         assert base_pay_display == 180000.0
         assert bonus_target_display == 6750.0
@@ -97,9 +100,9 @@ class TestWorkdayFormatInternationalEmployees:
             associate='UK Employee',
             currency='GBP',
             current_base_pay_all_countries=105000.0,  # Local GBP
-            current_base_pay_all_countries_usd=132911.0,  # USD conversion
+            current_base_pay_manager_currency=132911.0,  # USD conversion
             bonus_target_local_currency=3150.0,  # 3% of 105000 GBP
-            bonus_target_local_currency_usd=3987.33  # USD conversion
+            bonus_target_manager_currency=3987.33  # USD conversion
         )
         db_session.add(emp)
         db_session.commit()
@@ -107,9 +110,9 @@ class TestWorkdayFormatInternationalEmployees:
         # Verify structure
         assert emp.currency == 'GBP'
         assert emp.current_base_pay_all_countries == 105000.0
-        assert emp.current_base_pay_all_countries_usd == 132911.0
+        assert emp.current_base_pay_manager_currency == 132911.0
         assert emp.bonus_target_local_currency == 3150.0
-        assert emp.bonus_target_local_currency_usd == 3987.33
+        assert emp.bonus_target_manager_currency == 3987.33
 
     def test_international_fallback_logic_for_display(self, db_session):
         """Test fallback logic returns USD conversion for international employees."""
@@ -118,16 +121,16 @@ class TestWorkdayFormatInternationalEmployees:
             associate='CAD Employee',
             currency='CAD',
             current_base_pay_all_countries=130000.0,  # CAD
-            current_base_pay_all_countries_usd=97000.0,  # USD
+            current_base_pay_manager_currency=97000.0,  # USD
             bonus_target_local_currency=3250.0,  # CAD
-            bonus_target_local_currency_usd=2425.0  # USD
+            bonus_target_manager_currency=2425.0  # USD
         )
         db_session.add(emp)
         db_session.commit()
 
         # Simulate fallback logic used in templates and calculations
-        base_pay_display = emp.current_base_pay_all_countries_usd or emp.current_base_pay_all_countries
-        bonus_target_display = emp.bonus_target_local_currency_usd or emp.bonus_target_local_currency
+        base_pay_display = emp.current_base_pay_manager_currency or emp.current_base_pay_all_countries
+        bonus_target_display = emp.bonus_target_manager_currency or emp.bonus_target_local_currency
 
         # Should use USD conversion for international employee
         assert base_pay_display == 97000.0
@@ -145,9 +148,9 @@ class TestBonusCalculationFallbackLogic:
             associate='US Employee',
             currency='USD',
             current_base_pay_all_countries=150000.0,
-            current_base_pay_all_countries_usd=None,
+            current_base_pay_manager_currency=None,
             bonus_target_local_currency=4500.0,  # 3% of base
-            bonus_target_local_currency_usd=None,
+            bonus_target_manager_currency=None,
             performance_rating_percent=100.0
         )
 
@@ -157,9 +160,9 @@ class TestBonusCalculationFallbackLogic:
             associate='UK Employee',
             currency='GBP',
             current_base_pay_all_countries=105000.0,
-            current_base_pay_all_countries_usd=132911.0,
+            current_base_pay_manager_currency=132911.0,
             bonus_target_local_currency=3150.0,
-            bonus_target_local_currency_usd=3987.33,
+            bonus_target_manager_currency=3987.33,
             performance_rating_percent=100.0
         )
 
@@ -170,7 +173,7 @@ class TestBonusCalculationFallbackLogic:
         # Calculate total bonus pool using fallback logic
         total_pool = 0
         for emp in [usd_emp, gbp_emp]:
-            bonus_target = emp.bonus_target_local_currency_usd or emp.bonus_target_local_currency
+            bonus_target = emp.bonus_target_manager_currency or emp.bonus_target_local_currency
             total_pool += bonus_target
 
         # Should sum USD values: 4500 (USD) + 3987.33 (GBP converted)
@@ -293,3 +296,95 @@ class TestSupervisoryOrganizationFormat:
         # This is a documentation test - no assertions needed
         # The concept is important to preserve in tests
         pass
+
+
+class TestInternationalManagerCurrencyHeaders:
+    """Test that XLSX parsing supports any manager currency, not just USD."""
+
+    def test_aud_currency_headers_detected(self):
+        """Test that AUD currency headers are detected correctly."""
+        from xlsx_utils import find_column_indices
+
+        # Headers as would appear for an Australian manager
+        headers = [
+            'Associate',
+            'Associate ID',
+            'Current Base Pay - All Countries',
+            'Current Base Pay - All Countries (AUD)',  # Australian manager's currency
+            'Bonus Target - Local Currency',
+            'Bonus Target - Local Currency (AUD)',
+            'Proposed Bonus Amount',
+            'Proposed Bonus Amount (AUD)',
+        ]
+
+        indices = find_column_indices(headers)
+
+        # Should find both local and converted columns
+        assert indices['base_pay'] == 2
+        assert indices['base_pay_converted'] == 3
+        assert indices['bonus_target_local'] == 4
+        assert indices['bonus_target_converted'] == 5
+        assert indices['proposed_bonus'] == 6
+        assert indices['proposed_bonus_converted'] == 7
+
+    def test_gbp_currency_headers_detected(self):
+        """Test that GBP currency headers are detected correctly."""
+        from xlsx_utils import find_column_indices
+
+        # Headers as would appear for a UK manager
+        headers = [
+            'Associate',
+            'Associate ID',
+            'Current Base Pay - All Countries',
+            'Current Base Pay - All Countries (GBP)',  # UK manager's currency
+            'Bonus Target - Local Currency',
+            'Bonus Target - Local Currency (GBP)',
+        ]
+
+        indices = find_column_indices(headers)
+
+        assert indices['base_pay'] == 2
+        assert indices['base_pay_converted'] == 3
+        assert indices['bonus_target_local'] == 4
+        assert indices['bonus_target_converted'] == 5
+
+    def test_eur_currency_headers_detected(self):
+        """Test that EUR currency headers are detected correctly."""
+        from xlsx_utils import find_column_indices
+
+        # Headers as would appear for a European manager
+        headers = [
+            'Associate',
+            'Associate ID',
+            'Current Base Pay All Countries',  # Variation without dashes
+            'Current Base Pay All Countries (EUR)',  # EU manager's currency
+            'Bonus Target - Local Currency',
+            'Bonus Target - Local Currency (EUR)',
+        ]
+
+        indices = find_column_indices(headers)
+
+        assert indices['base_pay'] == 2
+        assert indices['base_pay_converted'] == 3
+        assert indices['bonus_target_local'] == 4
+        assert indices['bonus_target_converted'] == 5
+
+    def test_usd_currency_headers_still_work(self):
+        """Test that USD currency headers still work (backwards compatibility)."""
+        from xlsx_utils import find_column_indices
+
+        headers = [
+            'Associate',
+            'Associate ID',
+            'Current Base Pay - All Countries',
+            'Current Base Pay - All Countries (USD)',
+            'Bonus Target - Local Currency',
+            'Bonus Target - Local Currency (USD)',
+        ]
+
+        indices = find_column_indices(headers)
+
+        assert indices['base_pay'] == 2
+        assert indices['base_pay_converted'] == 3
+        assert indices['bonus_target_local'] == 4
+        assert indices['bonus_target_converted'] == 5

@@ -5,8 +5,15 @@ This module provides functions for:
 - Analyzing XLSX files (counting employees, detecting columns)
 - Parsing employee data from Workday exports
 - Creating Employee records from parsed data
+
+Note on currency columns:
+Workday exports include columns like "Bonus Target - Local Currency (XXX)" where
+XXX is the manager's home currency (USD, AUD, EUR, etc.). For employees in the
+manager's country, this column is empty. For international employees, it contains
+the converted value. The code matches any 3-letter currency code pattern.
 """
 import openpyxl
+import re
 from typing import Optional, Tuple, List, Dict, Any
 from datetime import datetime
 
@@ -98,6 +105,11 @@ def find_column_indices(headers: List[str]) -> Dict[str, Optional[int]]:
     """
     Find column indices for known Workday export fields.
 
+    Workday exports use the MANAGER'S home currency for conversion columns.
+    For example, an Australian manager sees "(AUD)" columns, a US manager
+    sees "(USD)" columns. This function uses regex to match any 3-letter
+    currency code in parentheses.
+
     Args:
         headers: List of header strings
 
@@ -110,6 +122,7 @@ def find_column_indices(headers: List[str]) -> Dict[str, Optional[int]]:
     indices = {}
 
     # Map of field name -> possible header variations
+    # Variations with currency codes use regex patterns (marked with 're:' prefix)
     field_mappings = {
         'associate': ['associate'],
         'associate_id': ['associate id'],
@@ -118,15 +131,22 @@ def find_column_indices(headers: List[str]) -> Dict[str, Optional[int]]:
         'photo': ['photo'],
         'errors': ['errors'],
         'base_pay': ['current base pay - all countries', 'current base pay all countries'],
-        'base_pay_usd': ['current base pay - all countries (usd)', 'current base pay all countries (usd)'],
+        # Match any 3-letter currency code: (USD), (AUD), (GBP), (EUR), etc.
+        'base_pay_converted': [
+            're:current base pay - all countries \\([a-z]{3}\\)',
+            're:current base pay all countries \\([a-z]{3}\\)'
+        ],
         'currency': ['currency'],
         'grade': ['grade'],
         'annual_bonus_target': ['annual bonus target %', 'annual bonus target percent'],
         'last_bonus_allocation': ['last bonus allocation %', 'last bonus allocation percent'],
         'bonus_target_local': ['bonus target - local currency', 'bonus target local currency'],
-        'bonus_target_usd': ['bonus target - local currency (usd)', 'bonus target local currency (usd)'],
+        'bonus_target_converted': [
+            're:bonus target - local currency \\([a-z]{3}\\)',
+            're:bonus target local currency \\([a-z]{3}\\)'
+        ],
         'proposed_bonus': ['proposed bonus amount'],
-        'proposed_bonus_usd': ['proposed bonus amount (usd)'],
+        'proposed_bonus_converted': ['re:proposed bonus amount \\([a-z]{3}\\)'],
         'proposed_percent_of_target': ['proposed % of target bonus', 'proposed percent of target bonus'],
         'notes': ['notes', 'single description'],
         'zero_bonus': ['zero bonus allocated'],
@@ -134,12 +154,23 @@ def find_column_indices(headers: List[str]) -> Dict[str, Optional[int]]:
 
     for field, variations in field_mappings.items():
         for var in variations:
-            try:
-                idx = normalized.index(var)
-                indices[field] = idx
-                break
-            except ValueError:
-                continue
+            if var.startswith('re:'):
+                # Regex pattern matching
+                pattern = var[3:]  # Remove 're:' prefix
+                for idx, header in enumerate(normalized):
+                    if re.match(pattern, header):
+                        indices[field] = idx
+                        break
+                if field in indices:
+                    break
+            else:
+                # Exact string matching
+                try:
+                    idx = normalized.index(var)
+                    indices[field] = idx
+                    break
+                except ValueError:
+                    continue
         if field not in indices:
             indices[field] = None
 
@@ -194,15 +225,15 @@ def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], st
                 'photo': _get_str(row, col_indices.get('photo')),
                 'errors': _get_str(row, col_indices.get('errors')),
                 'current_base_pay_all_countries': parse_float(_get_val(row, col_indices.get('base_pay'))),
-                'current_base_pay_all_countries_usd': parse_float(_get_val(row, col_indices.get('base_pay_usd'))),
+                'current_base_pay_manager_currency': parse_float(_get_val(row, col_indices.get('base_pay_converted'))),
                 'currency': _get_str(row, col_indices.get('currency')),
                 'grade': _get_str(row, col_indices.get('grade')),
                 'annual_bonus_target_percent': parse_float(_get_val(row, col_indices.get('annual_bonus_target'))),
                 'last_bonus_allocation_percent': parse_float(_get_val(row, col_indices.get('last_bonus_allocation'))),
                 'bonus_target_local_currency': parse_float(_get_val(row, col_indices.get('bonus_target_local'))),
-                'bonus_target_local_currency_usd': parse_float(_get_val(row, col_indices.get('bonus_target_usd'))),
+                'bonus_target_manager_currency': parse_float(_get_val(row, col_indices.get('bonus_target_converted'))),
                 'proposed_bonus_amount': parse_float(_get_val(row, col_indices.get('proposed_bonus'))),
-                'proposed_bonus_amount_usd': parse_float(_get_val(row, col_indices.get('proposed_bonus_usd'))),
+                'proposed_bonus_amount_manager_currency': parse_float(_get_val(row, col_indices.get('proposed_bonus_converted'))),
                 'proposed_percent_of_target_bonus': parse_float(_get_val(row, col_indices.get('proposed_percent_of_target'))),
                 'notes': _get_str(row, col_indices.get('notes')),
                 'zero_bonus_allocated': _get_str(row, col_indices.get('zero_bonus')),

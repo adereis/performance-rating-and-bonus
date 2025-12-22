@@ -274,13 +274,13 @@ Export your team data from Workday with these required columns:
 - Supervisory Organization
 - Current Job Profile
 - Current Base Pay All Countries
-- Current Base Pay All Countries (USD)
+- Current Base Pay All Countries (XXX) - where XXX is manager's currency
 - Currency
 - Annual Bonus Target Percent
 - Bonus Target - Local Currency
-- Bonus Target - Local Currency (USD)
+- Bonus Target - Local Currency (XXX) - where XXX is manager's currency
 
-> **Note on International Employees:** Workday exports both local and USD columns for salaries and bonus targets. For US employees, the local columns contain USD amounts and the "(USD)" columns are empty. For international employees (CAD, GBP, EUR, etc.), the local columns contain local currency amounts and the "(USD)" columns contain USD conversions. The app automatically uses the correct USD value for bonus pool calculations.
+> **Note on International Teams:** Workday exports include columns with your home currency code in parentheses (e.g., `(USD)` for US managers, `(AUD)` for Australian managers). For employees in your country, this column is empty since their local currency matches yours. For international employees, it contains the converted value in your currency. The app automatically detects and uses the correct column regardless of your location.
 
 **Optional Columns:**
 - Photo
@@ -385,7 +385,7 @@ Currently manual (copy from UI). Future versions will support CSV export.
 See [BONUS_CALCULATION_README.md](docs/BONUS_CALCULATION_README.md) for detailed explanation.
 
 **Summary**:
-1. Total Pool = Sum of all bonus targets from Workday (USD)
+1. Total Pool = Sum of all bonus targets from Workday (in your currency)
 2. Performance Multiplier = Split curve (different exponents for above/below 100%)
 3. Raw Share = Target × Perf Multiplier
 4. Final Bonus = Raw Share × Normalization Factor (ensures total = pool)
@@ -465,8 +465,8 @@ Tests cover database operations, rating validation, bonus calculations, multi-or
 
 ### "Only 6 employees showing in bonus calculation"
 - Employees need bonus target data in Workday export
-- Ensure both "Bonus Target - Local Currency" and "Bonus Target - Local Currency (USD)" columns are in your export
-- The app uses the USD conversion column for international employees, falling back to the local column for US employees
+- Ensure both "Bonus Target - Local Currency" and "Bonus Target - Local Currency (XXX)" columns are in your export (where XXX is your currency code like USD, AUD, EUR)
+- The app uses the converted column for international employees, falling back to the local column for employees in your country
 
 ### "Performance ratings not saving"
 - Check browser console for errors

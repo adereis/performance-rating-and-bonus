@@ -265,7 +265,7 @@ def get_bonus_settings():
         settings = db.query(BonusSettings).first()
         if not settings:
             # Create default settings
-            settings = BonusSettings(budget_override_usd=0.0, last_updated=datetime.now())
+            settings = BonusSettings(budget_override=0.0, last_updated=datetime.now())
             db.add(settings)
             db.commit()
             db.refresh(settings)
@@ -274,7 +274,7 @@ def get_bonus_settings():
         db.close()
 
 
-def update_bonus_settings(budget_override_usd):
+def update_bonus_settings(budget_override):
     """Update bonus settings in database."""
     db = get_db()
     try:
@@ -283,7 +283,7 @@ def update_bonus_settings(budget_override_usd):
             settings = BonusSettings()
             db.add(settings)
 
-        settings.budget_override_usd = budget_override_usd
+        settings.budget_override = budget_override
         settings.last_updated = datetime.now()
         db.commit()
         return True
@@ -602,18 +602,18 @@ def bonus_settings_api():
 
     elif request.method == 'POST':
         data = request.get_json()
-        budget_override_usd = data.get('budget_override_usd')
+        budget_override = data.get('budget_override')
 
-        if budget_override_usd is None:
-            return jsonify({'error': 'Missing budget_override_usd'}), 400
+        if budget_override is None:
+            return jsonify({'error': 'Missing budget_override'}), 400
 
         try:
-            budget_override_usd = float(budget_override_usd)
+            budget_override = float(budget_override)
         except (ValueError, TypeError):
-            return jsonify({'error': 'Invalid budget_override_usd value'}), 400
+            return jsonify({'error': 'Invalid budget_override value'}), 400
 
         try:
-            update_bonus_settings(budget_override_usd)
+            update_bonus_settings(budget_override)
             return jsonify({'success': True, 'message': 'Budget override saved successfully'})
         except Exception as e:
             return jsonify({'error': str(e)}), 500
@@ -1047,7 +1047,7 @@ def analytics():
                          filter_info=filter_info)
 
 
-def calculate_bonus_for_employees(employees, params, budget_override_usd=0.0):
+def calculate_bonus_for_employees(employees, params, budget_override=0.0):
     """
     Calculate bonuses for a given set of employees.
     Returns dict with results, normalization factor, and metadata.
@@ -1055,15 +1055,15 @@ def calculate_bonus_for_employees(employees, params, budget_override_usd=0.0):
     Args:
         employees: List of employee dicts
         params: Dict with upside_exponent and downside_exponent
-        budget_override_usd: Additional budget (can be negative) to add to total pool
+        budget_override: Additional budget (can be negative) to add to total pool
     """
-    # Calculate total bonus pool (sum of all bonus targets in USD)
+    # Calculate total bonus pool (sum of all bonus targets in manager's currency)
     total_pool = 0
     for emp in employees:
-        bonus_target_usd = emp.get('Bonus Target - Local Currency (USD)') or emp.get('Bonus Target - Local Currency')
-        if bonus_target_usd:
+        bonus_target = emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
+        if bonus_target:
             try:
-                total_pool += float(bonus_target_usd)
+                total_pool += float(bonus_target)
             except (ValueError, TypeError):
                 pass
 
@@ -1075,12 +1075,12 @@ def calculate_bonus_for_employees(employees, params, budget_override_usd=0.0):
     for emp in employees:
         try:
             rating = float(emp.get('performance_rating_percent', 100))
-            bonus_target_usd = float((emp.get('Bonus Target - Local Currency (USD)') or emp.get('Bonus Target - Local Currency')) or 0)
-            base_pay_usd = float((emp.get('Current Base Pay All Countries (USD)') or emp.get('Current Base Pay All Countries')) or 0)
+            bonus_target = float((emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')) or 0)
+            base_pay = float((emp.get('Current Base Pay Manager Currency') or emp.get('Current Base Pay All Countries')) or 0)
         except (ValueError, TypeError):
             continue
 
-        if bonus_target_usd <= 0:
+        if bonus_target <= 0:
             employees_without_bonus_target += 1
             continue
 
@@ -1091,20 +1091,20 @@ def calculate_bonus_for_employees(employees, params, budget_override_usd=0.0):
             perf_multiplier = (rating / 100) ** params['upside_exponent']
 
         # Calculate Raw Share
-        raw_share = bonus_target_usd * perf_multiplier
+        raw_share = bonus_target * perf_multiplier
         total_raw_shares += raw_share
 
         bonus_results.append({
             'employee': emp,
             'rating': rating,
-            'bonus_target_usd': bonus_target_usd,
-            'base_pay_usd': base_pay_usd,
+            'bonus_target': bonus_target,
+            'base_pay': base_pay,
             'perf_multiplier': perf_multiplier,
             'raw_share': raw_share
         })
 
     # Apply budget override to create adjusted pool
-    adjusted_pool = total_pool + budget_override_usd
+    adjusted_pool = total_pool + budget_override
 
     # Normalization: Calculate value per share using adjusted pool
     value_per_share = adjusted_pool / total_raw_shares if total_raw_shares > 0 else 0
@@ -1113,7 +1113,7 @@ def calculate_bonus_for_employees(employees, params, budget_override_usd=0.0):
     total_allocated = 0
     for result in bonus_results:
         result['final_bonus'] = result['raw_share'] * value_per_share
-        result['bonus_percent_of_target'] = (result['final_bonus'] / result['bonus_target_usd'] * 100) if result['bonus_target_usd'] > 0 else 0
+        result['bonus_percent_of_target'] = (result['final_bonus'] / result['bonus_target'] * 100) if result['bonus_target'] > 0 else 0
         total_allocated += result['final_bonus']
 
     # Create lookup by Associate ID for easy access
@@ -1123,7 +1123,7 @@ def calculate_bonus_for_employees(employees, params, budget_override_usd=0.0):
         'results': bonus_results,
         'results_by_id': results_by_id,
         'base_pool': total_pool,
-        'budget_override_usd': budget_override_usd,
+        'budget_override': budget_override,
         'total_pool': adjusted_pool,
         'total_allocated': total_allocated,
         'value_per_share': value_per_share,
@@ -1148,7 +1148,7 @@ def bonus_calculation():
 
     # Get budget override from database
     settings = get_bonus_settings()
-    budget_override_usd = settings.budget_override_usd
+    budget_override = settings.budget_override
 
     # Get filter params from URL
     filter_params = get_filter_params()
@@ -1167,7 +1167,7 @@ def bonus_calculation():
                              team=[],
                              params=params,
                              base_pool=0,
-                             budget_override_usd=budget_override_usd,
+                             budget_override=budget_override,
                              total_pool=0,
                              total_allocated=0,
                              value_per_share=1.0,
@@ -1185,7 +1185,7 @@ def bonus_calculation():
     is_multi_team = len(unique_orgs) > 1
 
     # Calculate organization-level bonuses (always) with budget override
-    org_level_calc = calculate_bonus_for_employees(rated_employees, params, budget_override_usd)
+    org_level_calc = calculate_bonus_for_employees(rated_employees, params, budget_override)
 
     # If multi-team, also calculate per-team bonuses for comparison
     team_comparisons = []
@@ -1242,7 +1242,7 @@ def bonus_calculation():
                              team=[],
                              params=params,
                              base_pool=0,
-                             budget_override_usd=budget_override_usd,
+                             budget_override=budget_override,
                              total_pool=0,
                              total_allocated=0,
                              value_per_share=1.0,
@@ -1257,7 +1257,7 @@ def bonus_calculation():
                          team=org_level_calc['results'],
                          params=params,
                          base_pool=org_level_calc['base_pool'],
-                         budget_override_usd=org_level_calc['budget_override_usd'],
+                         budget_override=org_level_calc['budget_override'],
                          total_pool=org_level_calc['total_pool'],
                          total_allocated=org_level_calc['total_allocated'],
                          value_per_share=org_level_calc['value_per_share'],
@@ -1300,10 +1300,10 @@ def export_page():
 
     # Get budget override
     settings = get_bonus_settings()
-    budget_override_usd = settings.budget_override_usd if settings else 0.0
+    budget_override = settings.budget_override if settings else 0.0
 
     # Calculate bonuses for all rated employees
-    bonus_calc = calculate_bonus_for_employees(rated_employees, params, budget_override_usd)
+    bonus_calc = calculate_bonus_for_employees(rated_employees, params, budget_override)
 
     # Load tenets configuration
     _, tenets_map = load_tenets_config()
@@ -1398,7 +1398,7 @@ def export_csv():
         writer.writerow(['Do NOT use this data for any real business decisions.'])
         writer.writerow([])
 
-    # Write header (matching Excel export)
+    # Write header (matching to_dict() keys for data access)
     writer.writerow([
         'Associate ID',
         'Associate',
@@ -1406,25 +1406,25 @@ def export_csv():
         'Current Job Profile',
         'Photo',
         'Errors',
-        'Current Base Pay - All Countries',
-        'Current Base Pay - All Countries (USD)',
+        'Current Base Pay All Countries',
+        'Current Base Pay Manager Currency',
         'Currency',
         'Grade',
-        'Annual Bonus Target %',
-        'Last Bonus Allocation %',
+        'Annual Bonus Target Percent',
+        'Last Bonus Allocation Percent',
         'Bonus Target - Local Currency',
-        'Bonus Target - Local Currency (USD)',
+        'Bonus Target Manager Currency',
         'Proposed Bonus Amount',
-        'Proposed Bonus Amount (USD)',
-        'Proposed % of Target Bonus',
+        'Proposed Bonus Amount Manager Currency',
+        'Proposed Percent of Target Bonus',
         'Notes',
         'Zero Bonus Allocated',
-        'Performance Rating %',
+        'Performance Rating Percent',
         'Justification',
         'Mentor',
         'Mentees',
-        'Tenets - Strengths',
-        'Tenets - Improvements',
+        'Tenets Strengths',
+        'Tenets Improvements',
         'Description'
     ])
 
@@ -1471,17 +1471,17 @@ def export_csv():
             employee.get('Current Job Profile', ''),
             employee.get('Photo', ''),
             employee.get('Errors', ''),
-            employee.get('Current Base Pay - All Countries', ''),
-            employee.get('Current Base Pay - All Countries (USD)', ''),
+            employee.get('Current Base Pay All Countries', ''),
+            employee.get('Current Base Pay Manager Currency', ''),
             employee.get('Currency', ''),
             employee.get('Grade', ''),
-            employee.get('Annual Bonus Target %', ''),
-            employee.get('Last Bonus Allocation %', ''),
+            employee.get('Annual Bonus Target Percent', ''),
+            employee.get('Last Bonus Allocation Percent', ''),
             employee.get('Bonus Target - Local Currency', ''),
-            employee.get('Bonus Target - Local Currency (USD)', ''),
+            employee.get('Bonus Target Manager Currency', ''),
             employee.get('Proposed Bonus Amount', ''),
-            employee.get('Proposed Bonus Amount (USD)', ''),
-            employee.get('Proposed % of Target Bonus', ''),
+            employee.get('Proposed Bonus Amount Manager Currency', ''),
+            employee.get('Proposed Percent of Target Bonus', ''),
             employee.get('Notes', ''),
             employee.get('Zero Bonus Allocated', ''),
             employee.get('performance_rating_percent', ''),
@@ -1533,7 +1533,7 @@ def export_xlsx():
 
         demo_row_offset = 2  # Skip 2 rows for demo header
 
-    # Define headers (matching import format plus our custom fields)
+    # Define headers (matching to_dict() keys for data access)
     headers = [
         'Associate ID',
         'Associate',
@@ -1541,26 +1541,26 @@ def export_xlsx():
         'Current Job Profile',
         'Photo',
         'Errors',
-        'Current Base Pay - All Countries',
-        'Current Base Pay - All Countries (USD)',
+        'Current Base Pay All Countries',
+        'Current Base Pay Manager Currency',
         'Currency',
         'Grade',
-        'Annual Bonus Target %',
-        'Last Bonus Allocation %',
+        'Annual Bonus Target Percent',
+        'Last Bonus Allocation Percent',
         'Bonus Target - Local Currency',
-        'Bonus Target - Local Currency (USD)',
+        'Bonus Target Manager Currency',
         'Proposed Bonus Amount',
-        'Proposed Bonus Amount (USD)',
-        'Proposed % of Target Bonus',
+        'Proposed Bonus Amount Manager Currency',
+        'Proposed Percent of Target Bonus',
         'Notes',
         'Zero Bonus Allocated',
         # Our custom fields
-        'Performance Rating %',
+        'Performance Rating Percent',
         'Justification',
         'Mentor',
         'Mentees',
-        'Tenets - Strengths',
-        'Tenets - Improvements',
+        'Tenets Strengths',
+        'Tenets Improvements',
         'Description'  # Combined description field
     ]
 
@@ -1622,17 +1622,17 @@ def export_xlsx():
             employee.get('Current Job Profile', ''),
             employee.get('Photo', ''),
             employee.get('Errors', ''),
-            employee.get('Current Base Pay - All Countries', ''),
-            employee.get('Current Base Pay - All Countries (USD)', ''),
+            employee.get('Current Base Pay All Countries', ''),
+            employee.get('Current Base Pay Manager Currency', ''),
             employee.get('Currency', ''),
             employee.get('Grade', ''),
-            employee.get('Annual Bonus Target %', ''),
-            employee.get('Last Bonus Allocation %', ''),
+            employee.get('Annual Bonus Target Percent', ''),
+            employee.get('Last Bonus Allocation Percent', ''),
             employee.get('Bonus Target - Local Currency', ''),
-            employee.get('Bonus Target - Local Currency (USD)', ''),
+            employee.get('Bonus Target Manager Currency', ''),
             employee.get('Proposed Bonus Amount', ''),
-            employee.get('Proposed Bonus Amount (USD)', ''),
-            employee.get('Proposed % of Target Bonus', ''),
+            employee.get('Proposed Bonus Amount Manager Currency', ''),
+            employee.get('Proposed Percent of Target Bonus', ''),
             employee.get('Notes', ''),
             employee.get('Zero Bonus Allocated', ''),
             # Our custom fields
@@ -1846,15 +1846,15 @@ def import_current():
                 employee.photo = emp_data['photo']
                 employee.errors = emp_data['errors']
                 employee.current_base_pay_all_countries = emp_data['current_base_pay_all_countries']
-                employee.current_base_pay_all_countries_usd = emp_data['current_base_pay_all_countries_usd']
+                employee.current_base_pay_manager_currency = emp_data['current_base_pay_manager_currency']
                 employee.currency = emp_data['currency']
                 employee.grade = emp_data['grade']
                 employee.annual_bonus_target_percent = emp_data['annual_bonus_target_percent']
                 employee.last_bonus_allocation_percent = emp_data['last_bonus_allocation_percent']
                 employee.bonus_target_local_currency = emp_data['bonus_target_local_currency']
-                employee.bonus_target_local_currency_usd = emp_data['bonus_target_local_currency_usd']
+                employee.bonus_target_manager_currency = emp_data['bonus_target_manager_currency']
                 employee.proposed_bonus_amount = emp_data['proposed_bonus_amount']
-                employee.proposed_bonus_amount_usd = emp_data['proposed_bonus_amount_usd']
+                employee.proposed_bonus_amount_manager_currency = emp_data['proposed_bonus_amount_manager_currency']
                 employee.proposed_percent_of_target_bonus = emp_data['proposed_percent_of_target_bonus']
                 employee.notes = emp_data['notes']
                 employee.zero_bonus_allocated = emp_data['zero_bonus_allocated']
@@ -1979,8 +1979,8 @@ def import_historical():
                 snapshot.snapshot_name = emp_data['associate']
                 snapshot.snapshot_org = emp_data['supervisory_organization']
                 snapshot.snapshot_job_profile = emp_data['current_job_profile']
-                # Use USD conversion for international, fall back to local for US employees
-                snapshot.snapshot_bonus_target_usd = emp_data.get('bonus_target_local_currency_usd') or emp_data.get('bonus_target_local_currency')
+                # Use manager currency for international, fall back to local for domestic employees
+                snapshot.snapshot_bonus_target_manager_currency = emp_data.get('bonus_target_manager_currency') or emp_data.get('bonus_target_local_currency')
 
                 snapshot.archived_at = datetime.now()
 
@@ -2096,7 +2096,7 @@ def archive_period():
                 snapshot_name=emp.associate,
                 snapshot_org=emp.supervisory_organization,
                 snapshot_job_profile=emp.current_job_profile,
-                snapshot_bonus_target_usd=emp.bonus_target_local_currency_usd or emp.bonus_target_local_currency,
+                snapshot_bonus_target_manager_currency=emp.bonus_target_manager_currency or emp.bonus_target_local_currency,
                 archived_at=datetime.now(),
                 has_full_details=True
             )

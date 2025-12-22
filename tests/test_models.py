@@ -20,7 +20,7 @@ class TestEmployeeModel:
         assert employee.associate == 'John Doe'
         assert employee.supervisory_organization == 'Engineering'
         assert employee.current_job_profile == 'Senior Software Engineer'
-        assert employee.current_base_pay_all_countries_usd == 120000.0
+        assert employee.current_base_pay_manager_currency == 120000.0
 
     def test_read_employee(self, db_session, sample_employee_data):
         """Test reading an employee from database."""
@@ -127,7 +127,7 @@ class TestEmployeeModel:
         assert emp_dict['Associate'] == 'John Doe'
         assert emp_dict['Supervisory Organization'] == 'Engineering'
         assert emp_dict['Current Job Profile'] == 'Senior Software Engineer'
-        assert emp_dict['Current Base Pay All Countries (USD)'] == 120000.0
+        assert emp_dict['Current Base Pay Manager Currency'] == 120000.0
         assert emp_dict['last_updated'] == '2025-01-15 10:30:00'
 
     def test_to_dict_with_no_timestamp(self, db_session, sample_employee_data):
@@ -161,7 +161,7 @@ class TestEmployeeModel:
         employee = Employee(
             associate_id='EMP888',
             associate='Test User',
-            current_base_pay_all_countries_usd=123456.78,
+            current_base_pay_manager_currency=123456.78,
             performance_rating_percent=123.45
         )
         db_session.add(employee)
@@ -171,7 +171,7 @@ class TestEmployeeModel:
             Employee.associate_id == 'EMP888'
         ).first()
 
-        assert retrieved.current_base_pay_all_countries_usd == 123456.78
+        assert retrieved.current_base_pay_manager_currency == 123456.78
         assert retrieved.performance_rating_percent == 123.45
 
     def test_query_all_employees(self, db_session, sample_employees):
@@ -324,7 +324,7 @@ class TestRatingSnapshotModel:
             snapshot_name='John Doe',
             snapshot_org='Engineering',
             snapshot_job_profile='Senior Engineer',
-            snapshot_bonus_target_usd=20000.0,
+            snapshot_bonus_target_manager_currency=20000.0,
             archived_at=datetime.now(),
             has_full_details=True
         )

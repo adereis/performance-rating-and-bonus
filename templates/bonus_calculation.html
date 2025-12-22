@@ -389,16 +389,16 @@
             <div class="value">${{ "{:,.0f}".format(base_pool) }}</div>
         </div>
         <div class="summary-card" style="position: relative;">
-            <h4 title="Additional budget in USD (can be negative). Distributes proportionally across all employees. Click to edit.">
+            <h4 title="Additional budget (in your currency). Can be negative. Distributes proportionally across all employees. Click to edit.">
                 Budget Override
                 <span style="cursor: help; opacity: 0.6;">ⓘ</span>
             </h4>
-            <div class="value" style="{% if budget_override_usd > 0 %}color: #27ae60;{% elif budget_override_usd < 0 %}color: #dc3545;{% endif %}">
+            <div class="value" style="{% if budget_override > 0 %}color: #27ae60;{% elif budget_override < 0 %}color: #dc3545;{% endif %}">
                 $<input type="number"
                        id="budget_override_input"
-                       value="{{ budget_override_usd }}"
+                       value="{{ budget_override }}"
                        style="border: none; background: transparent; color: inherit; font-size: inherit; font-weight: inherit; width: 120px; text-align: center; font-family: inherit;"
-                       title="Additional budget in USD (can be negative). Auto-saves after 2 seconds.">
+                       title="Additional budget (in your currency). Can be negative. Auto-saves after 2 seconds.">
             </div>
             <div style="position: absolute; bottom: 5px; right: 10px; font-size: 11px; color: #27ae60; opacity: 0; transition: opacity 0.3s;" id="budget-save-indicator">
                 ✓ Saved
@@ -436,7 +436,7 @@
                 <tr data-name="{{ result.employee.Associate }}"
                     data-job="{{ result.employee['Current Job Profile'] }}"
                     data-rating="{{ result.rating }}"
-                    data-target="{{ result.bonus_target_usd }}"
+                    data-target="{{ result.bonus_target }}"
                     data-perf-mult="{{ result.perf_multiplier }}"
                     data-final="{{ result.final_bonus }}"
                     data-percent="{{ result.bonus_percent_of_target }}">
@@ -451,7 +451,7 @@
                             {{ result.rating }}%
                         </span>
                     </td>
-                    <td class="right">${{ "{:,.0f}".format(result.bonus_target_usd) }}</td>
+                    <td class="right">${{ "{:,.0f}".format(result.bonus_target) }}</td>
                     <td class="right">{{ "%.3f"|format(result.perf_multiplier) }}</td>
                     <td class="right"><strong>${{ "{:,.0f}".format(result.final_bonus) }}</strong></td>
                     <td class="right">
@@ -470,7 +470,7 @@
     <div class="methodology">
         <h4>📋 Calculation Methodology</h4>
         <ol>
-            <li><strong>Total Pool:</strong> Sum of all bonus targets (from Workday, USD)</li>
+            <li><strong>Total Pool:</strong> Sum of all bonus targets (from Workday, in your currency)</li>
             <li><strong>Performance Multiplier:</strong> If rating < 100: <code>(rating/100)^{{ params.downside_exponent }}</code>, else <code>(rating/100)^{{ params.upside_exponent }}</code></li>
             <li><strong>Raw Share:</strong> <code>Bonus Target × Perf Multiplier</code></li>
             <li><strong>Normalization:</strong> Final bonus = <code>Raw Share × Value per Share</code> (where value per share ensures total = pool)</li>
@@ -926,7 +926,7 @@ function saveBudgetOverride(value) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            budget_override_usd: value
+            budget_override: value
         })
     })
     .then(response => response.json())

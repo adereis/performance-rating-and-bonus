@@ -91,7 +91,7 @@ The Bonus Calculation page shows:
 For each employee, you'll see:
 
 - **Rating %**: Their performance rating you assigned
-- **Bonus Target**: Their target from Workday (in USD)
+- **Bonus Target**: Their target from Workday (in your currency)
 - **Perf Mult**: Performance multiplier calculated from the rating
 - **Final Bonus**: The actual bonus they'll receive
 - **% of Target**: How their final bonus compares to their target
@@ -118,15 +118,16 @@ If the results don't feel right, try adjusting the parameters:
 
 ### Currency Handling
 The system automatically handles employees in different countries:
-- For US employees: Uses "Bonus Target - Local Currency" (already in USD)
-- For non-US employees: Uses "Bonus Target - Local Currency (USD)" (converted)
-- All calculations and displays are in USD
+- For employees in your country: Uses "Bonus Target - Local Currency" (already in your currency)
+- For international employees: Uses "Bonus Target - Local Currency (XXX)" where XXX is your currency code
+- All calculations and displays use your home currency as determined by the Workday export
 
 ### Missing Data
 If some rated employees don't appear in the calculation, they're likely missing bonus target data in the Workday export. Ensure your export includes the bonus target columns for all employees.
 
 ### Current Limitations
 1. **One-time calculation**: This is a planning tool. The results are not automatically saved or exported to Workday.
+2. **Currency symbol display**: The UI displays `$` for all currencies. While calculations correctly use your manager currency (USD, AUD, EUR, etc.), the display symbol is not localized. International managers should interpret `$50,000` as "50,000 in your currency" rather than US dollars.
 
 ## Example Scenarios
 

@@ -74,11 +74,11 @@ def get_small_team_employees():
             'current_job_profile': job,
             'currency': 'USD',
             'current_base_pay_all_countries': salary,
-            'current_base_pay_all_countries_usd': salary,
+            'current_base_pay_manager_currency': salary,
             'grade': grade,
             'annual_bonus_target_percent': bonus_pct,
             'bonus_target_local_currency': bonus_target,
-            'bonus_target_local_currency_usd': bonus_target,
+            'bonus_target_manager_currency': bonus_target,
             'performance_rating_percent': rating,
             'justification': justification,
             'last_updated': datetime.now(),
@@ -208,11 +208,11 @@ def get_large_team_employees():
                 'current_job_profile': job,
                 'currency': 'USD',
                 'current_base_pay_all_countries': salary,
-                'current_base_pay_all_countries_usd': salary,
+                'current_base_pay_manager_currency': salary,
                 'grade': grade,
                 'annual_bonus_target_percent': bonus_pct,
                 'bonus_target_local_currency': bonus_target,
-                'bonus_target_local_currency_usd': bonus_target,
+                'bonus_target_manager_currency': bonus_target,
                 'performance_rating_percent': rating,
                 'justification': justification,
                 'last_updated': datetime.now(),
@@ -259,7 +259,7 @@ def get_historical_periods(employees, include_large_history=False):
             'snapshot_name': emp['associate'],
             'snapshot_org': emp['supervisory_organization'],
             'snapshot_job_profile': emp['current_job_profile'],
-            'snapshot_bonus_target_usd': emp.get('bonus_target_local_currency_usd'),
+            'snapshot_bonus_target_manager_currency': emp.get('bonus_target_manager_currency'),
             'archived_at': period1_date,
             'has_full_details': True,
         })
@@ -290,7 +290,7 @@ def get_historical_periods(employees, include_large_history=False):
             'snapshot_name': emp['associate'],
             'snapshot_org': emp['supervisory_organization'],
             'snapshot_job_profile': emp['current_job_profile'],
-            'snapshot_bonus_target_usd': emp.get('bonus_target_local_currency_usd', 0) * 0.95,  # Slightly lower target
+            'snapshot_bonus_target_manager_currency': emp.get('bonus_target_manager_currency', 0) * 0.95,  # Slightly lower target
             'archived_at': period2_date,
             'has_full_details': True,
         })
@@ -323,7 +323,7 @@ def get_historical_periods(employees, include_large_history=False):
                     'snapshot_name': emp['associate'],
                     'snapshot_org': emp['supervisory_organization'],
                     'snapshot_job_profile': emp['current_job_profile'],
-                    'snapshot_bonus_target_usd': emp.get('bonus_target_local_currency_usd', 0) * 0.90,
+                    'snapshot_bonus_target_manager_currency': emp.get('bonus_target_manager_currency', 0) * 0.90,
                     'archived_at': period3_date,
                     'has_full_details': False,  # Older period has less detail
                 })
@@ -353,7 +353,7 @@ def create_template_database(db_path, employees, include_large_history=False):
             session.add(employee)
 
         # Add default bonus settings
-        settings = BonusSettings(budget_override_usd=0.0, last_updated=datetime.now())
+        settings = BonusSettings(budget_override=0.0, last_updated=datetime.now())
         session.add(settings)
 
         # Add historical periods

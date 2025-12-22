@@ -58,7 +58,7 @@ class RatingSnapshot(Base):
     snapshot_name = Column(String)           # Employee name at time of snapshot
     snapshot_org = Column(String)            # Supervisory org at time of snapshot
     snapshot_job_profile = Column(String)    # Job profile at time of snapshot
-    snapshot_bonus_target_usd = Column(Float)  # Bonus target at time of snapshot
+    snapshot_bonus_target_manager_currency = Column(Float)  # Bonus target at time of snapshot
 
     # Metadata
     archived_at = Column(DateTime)
@@ -85,7 +85,7 @@ class RatingSnapshot(Base):
             'snapshot_name': self.snapshot_name,
             'snapshot_org': self.snapshot_org,
             'snapshot_job_profile': self.snapshot_job_profile,
-            'snapshot_bonus_target_usd': self.snapshot_bonus_target_usd,
+            'snapshot_bonus_target_manager_currency': self.snapshot_bonus_target_manager_currency,
             'archived_at': self.archived_at.strftime('%Y-%m-%d %H:%M:%S') if self.archived_at else None,
             'has_full_details': self.has_full_details
         }
@@ -96,13 +96,13 @@ class BonusSettings(Base):
     __tablename__ = 'bonus_settings'
 
     id = Column(Integer, primary_key=True)
-    budget_override_usd = Column(Float, default=0.0)
+    budget_override = Column(Float, default=0.0)
     last_updated = Column(DateTime)
 
     def to_dict(self):
         """Convert model to dictionary for JSON serialization."""
         return {
-            'budget_override_usd': self.budget_override_usd,
+            'budget_override': self.budget_override,
             'last_updated': self.last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.last_updated else ''
         }
 
@@ -120,15 +120,15 @@ class Employee(Base):
     photo = Column(String)
     errors = Column(String)
     current_base_pay_all_countries = Column(Float)
-    current_base_pay_all_countries_usd = Column(Float)
+    current_base_pay_manager_currency = Column(Float)
     currency = Column(String)
     grade = Column(String, index=True)
     annual_bonus_target_percent = Column(Float)
     last_bonus_allocation_percent = Column(Float)
     bonus_target_local_currency = Column(Float)
-    bonus_target_local_currency_usd = Column(Float)
+    bonus_target_manager_currency = Column(Float)
     proposed_bonus_amount = Column(Float)
-    proposed_bonus_amount_usd = Column(Float)
+    proposed_bonus_amount_manager_currency = Column(Float)
     proposed_percent_of_target_bonus = Column(Float)
     notes = Column(String)
     zero_bonus_allocated = Column(String)
@@ -152,15 +152,15 @@ class Employee(Base):
             'Photo': self.photo,
             'Errors': self.errors,
             'Current Base Pay All Countries': self.current_base_pay_all_countries,
-            'Current Base Pay All Countries (USD)': self.current_base_pay_all_countries_usd,
+            'Current Base Pay Manager Currency': self.current_base_pay_manager_currency,
             'Currency': self.currency,
             'Grade': self.grade,
             'Annual Bonus Target Percent': self.annual_bonus_target_percent,
             'Last Bonus Allocation Percent': self.last_bonus_allocation_percent,
             'Bonus Target - Local Currency': self.bonus_target_local_currency,
-            'Bonus Target - Local Currency (USD)': self.bonus_target_local_currency_usd,
+            'Bonus Target Manager Currency': self.bonus_target_manager_currency,
             'Proposed Bonus Amount': self.proposed_bonus_amount,
-            'Proposed Bonus Amount (USD)': self.proposed_bonus_amount_usd,
+            'Proposed Bonus Amount Manager Currency': self.proposed_bonus_amount_manager_currency,
             'Proposed Percent of Target Bonus': self.proposed_percent_of_target_bonus,
             'Notes': self.notes,
             'Zero Bonus Allocated': self.zero_bonus_allocated,

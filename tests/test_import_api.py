@@ -9,13 +9,14 @@ from openpyxl import Workbook
 from models import Employee, Period, RatingSnapshot
 
 
-def create_test_xlsx(employees_data, include_headers=True):
+def create_test_xlsx(employees_data, include_headers=True, manager_currency='USD'):
     """
     Create a test XLSX file with Workday format.
 
     Args:
         employees_data: List of dicts with employee data
         include_headers: Whether to include header rows
+        manager_currency: Manager's home currency (USD, AUD, EUR, etc.)
 
     Returns:
         BytesIO object containing the XLSX file
@@ -27,6 +28,7 @@ def create_test_xlsx(employees_data, include_headers=True):
     ws.append(['Report Data'])
 
     # Row 2: Headers (matching Workday export)
+    # Currency columns use manager's home currency (e.g., USD, AUD, EUR)
     headers = [
         'Associate',
         'Supervisory Organization',
@@ -35,15 +37,15 @@ def create_test_xlsx(employees_data, include_headers=True):
         'Errors',
         'Associate ID',
         'Current Base Pay - All Countries',
-        'Current Base Pay - All Countries (USD)',
+        f'Current Base Pay - All Countries ({manager_currency})',
         'Currency',
         'Grade',
         'Annual Bonus Target %',
         'Last Bonus Allocation %',
         'Bonus Target - Local Currency',
-        'Bonus Target - Local Currency (USD)',
+        f'Bonus Target - Local Currency ({manager_currency})',
         'Proposed Bonus Amount',
-        'Proposed Bonus Amount (USD)',
+        f'Proposed Bonus Amount ({manager_currency})',
         'Proposed % of Target Bonus',
         'Notes',
         'Zero Bonus Allocated'
@@ -60,15 +62,15 @@ def create_test_xlsx(employees_data, include_headers=True):
             emp.get('errors', ''),
             emp.get('associate_id', ''),
             emp.get('current_base_pay_all_countries', ''),
-            emp.get('current_base_pay_all_countries_usd', ''),
+            emp.get('current_base_pay_manager_currency', ''),
             emp.get('currency', ''),
             emp.get('grade', ''),
             emp.get('annual_bonus_target_percent', ''),
             emp.get('last_bonus_allocation_percent', ''),
             emp.get('bonus_target_local_currency', ''),
-            emp.get('bonus_target_local_currency_usd', ''),
+            emp.get('bonus_target_manager_currency', ''),
             emp.get('proposed_bonus_amount', ''),
-            emp.get('proposed_bonus_amount_usd', ''),
+            emp.get('proposed_bonus_amount_manager_currency', ''),
             emp.get('proposed_percent_of_target_bonus', ''),
             emp.get('notes', ''),
             emp.get('zero_bonus_allocated', '')
@@ -206,7 +208,7 @@ class TestImportCurrent:
                 'supervisory_organization': 'Engineering',
                 'current_job_profile': 'Software Engineer',
                 'currency': 'USD',
-                'current_base_pay_all_countries_usd': 100000
+                'current_base_pay_manager_currency': 100000
             },
             {
                 'associate_id': 'NEW002',
@@ -214,7 +216,7 @@ class TestImportCurrent:
                 'supervisory_organization': 'Product',
                 'current_job_profile': 'Product Manager',
                 'currency': 'USD',
-                'current_base_pay_all_countries_usd': 120000
+                'current_base_pay_manager_currency': 120000
             }
         ]
 
@@ -360,7 +362,7 @@ class TestImportHistorical:
                 'associate': 'John Doe',
                 'supervisory_organization': 'Engineering',
                 'current_job_profile': 'Senior Engineer',
-                'bonus_target_local_currency_usd': 15000,
+                'bonus_target_manager_currency': 15000,
                 'proposed_percent_of_target_bonus': 118.5,
                 'notes': 'Performance Rating: 125%\nJustification: Excellent work\nMentor: Alice\nStrengths: Leadership'
             },
@@ -369,7 +371,7 @@ class TestImportHistorical:
                 'associate': 'Jane Smith',
                 'supervisory_organization': 'Product',
                 'current_job_profile': 'Product Manager',
-                'bonus_target_local_currency_usd': 12000,
+                'bonus_target_manager_currency': 12000,
                 'proposed_percent_of_target_bonus': 105.0,
                 'notes': ''  # No notes - partial data
             }
@@ -553,8 +555,8 @@ class TestXlsxUtils:
                 'supervisory_organization': 'Engineering',
                 'current_job_profile': 'Senior Engineer',
                 'currency': 'USD',
-                'current_base_pay_all_countries_usd': 150000,
-                'bonus_target_local_currency_usd': 22500,
+                'current_base_pay_manager_currency': 150000,
+                'bonus_target_manager_currency': 22500,
                 'proposed_percent_of_target_bonus': 118.5,
                 'notes': 'Performance Rating: 125%'
             }
@@ -581,9 +583,166 @@ class TestXlsxUtils:
             assert emp['supervisory_organization'] == 'Engineering'
             assert emp['current_job_profile'] == 'Senior Engineer'
             assert emp['currency'] == 'USD'
-            assert emp['current_base_pay_all_countries_usd'] == 150000
-            assert emp['bonus_target_local_currency_usd'] == 22500
+            assert emp['current_base_pay_manager_currency'] == 150000
+            assert emp['bonus_target_manager_currency'] == 22500
             assert emp['proposed_percent_of_target_bonus'] == 118.5
             assert 'Performance Rating: 125%' in emp['notes']
         finally:
             os.remove(temp_path)
+
+
+class TestInternationalManagerCurrency:
+    """Tests for non-USD manager currency support (e.g., Australian managers)."""
+
+    def test_parse_xlsx_with_aud_columns(self, client, db_session):
+        """Test that XLSX with AUD columns parses correctly."""
+        from xlsx_utils import parse_xlsx_employees
+
+        # Australian manager with mixed team (AUD and NZD employees)
+        employees_data = [
+            {
+                'associate': 'Alice Melbourne',
+                'associate_id': 'AU001',
+                'supervisory_organization': 'APAC Engineering',
+                'current_job_profile': 'Senior Engineer',
+                'current_base_pay_all_countries': 150000,  # AUD
+                'current_base_pay_manager_currency': None,  # Empty for local employees
+                'currency': 'AUD',
+                'grade': 'IC3',
+                'annual_bonus_target_percent': 15,
+                'bonus_target_local_currency': 22500,  # AUD
+                'bonus_target_manager_currency': None,  # Empty for AUD employees
+            },
+            {
+                'associate': 'Bob Auckland',
+                'associate_id': 'NZ001',
+                'supervisory_organization': 'APAC Engineering',
+                'current_job_profile': 'Software Developer',
+                'current_base_pay_all_countries': 120000,  # NZD
+                'current_base_pay_manager_currency': 108000,  # Converted to AUD
+                'currency': 'NZD',
+                'grade': 'IC2',
+                'annual_bonus_target_percent': 10,
+                'bonus_target_local_currency': 12000,  # NZD
+                'bonus_target_manager_currency': 10800,  # Converted to AUD
+            },
+        ]
+
+        # Create XLSX with AUD as manager currency
+        xlsx_file = create_test_xlsx(employees_data, manager_currency='AUD')
+
+        # Save to temp file for parsing
+        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as f:
+            temp_path = f.name
+            f.write(xlsx_file.read())
+
+        try:
+            success, parsed, error = parse_xlsx_employees(temp_path)
+
+            assert success is True, f"Parse failed: {error}"
+            assert len(parsed) == 2
+
+            # Check AUD employee (local to manager)
+            aud_emp = next(e for e in parsed if e['associate_id'] == 'AU001')
+            assert aud_emp['currency'] == 'AUD'
+            assert aud_emp['bonus_target_local_currency'] == 22500
+            assert aud_emp['bonus_target_manager_currency'] is None  # Empty for local
+
+            # Check NZD employee (international)
+            nzd_emp = next(e for e in parsed if e['associate_id'] == 'NZ001')
+            assert nzd_emp['currency'] == 'NZD'
+            assert nzd_emp['bonus_target_local_currency'] == 12000  # NZD
+            assert nzd_emp['bonus_target_manager_currency'] == 10800  # AUD conversion
+        finally:
+            os.remove(temp_path)
+
+    def test_import_with_aud_columns(self, client, db_session):
+        """Test that import works correctly with AUD columns."""
+        employees_data = [
+            {
+                'associate': 'Charlie Sydney',
+                'associate_id': 'AU002',
+                'supervisory_organization': 'APAC Sales',
+                'current_job_profile': 'Account Executive',
+                'current_base_pay_all_countries': 130000,
+                'currency': 'AUD',
+                'annual_bonus_target_percent': 20,
+                'bonus_target_local_currency': 26000,
+                'bonus_target_manager_currency': None,
+            },
+            {
+                'associate': 'Diana Mumbai',
+                'associate_id': 'IN001',
+                'supervisory_organization': 'APAC Sales',
+                'current_job_profile': 'Sales Rep',
+                'current_base_pay_all_countries': 2500000,  # INR
+                'current_base_pay_manager_currency': 45000,  # AUD
+                'currency': 'INR',
+                'annual_bonus_target_percent': 10,
+                'bonus_target_local_currency': 250000,  # INR
+                'bonus_target_manager_currency': 4500,  # AUD
+            },
+        ]
+
+        xlsx_file = create_test_xlsx(employees_data, manager_currency='AUD')
+
+        response = client.post('/api/import/current',
+                              data={'file': (xlsx_file, 'au-team.xlsx')},
+                              content_type='multipart/form-data')
+
+        assert response.status_code == 200
+        result = response.get_json()
+        assert result['success'] is True
+        assert result['imported'] == 2
+
+        # Verify employees were imported correctly
+        aud_emp = db_session.query(Employee).filter_by(associate_id='AU002').first()
+        assert aud_emp is not None
+        assert aud_emp.currency == 'AUD'
+        assert aud_emp.bonus_target_local_currency == 26000
+        assert aud_emp.bonus_target_manager_currency is None
+
+        inr_emp = db_session.query(Employee).filter_by(associate_id='IN001').first()
+        assert inr_emp is not None
+        assert inr_emp.currency == 'INR'
+        assert inr_emp.bonus_target_local_currency == 250000
+        assert inr_emp.bonus_target_manager_currency == 4500
+
+    def test_bonus_calculation_with_aud_manager(self, client, db_session):
+        """Test that bonus calculation uses correct fallback for AUD manager."""
+        # Create employees with AUD as manager currency
+        # AUD employee: use bonus_target_local_currency (already in manager's currency)
+        # INR employee: use bonus_target_manager_currency (converted to AUD)
+        aud_emp = Employee(
+            associate_id='AU003',
+            associate='Emma Perth',
+            supervisory_organization='APAC Ops',
+            current_job_profile='Operations Manager',
+            currency='AUD',
+            bonus_target_local_currency=20000,  # AUD
+            bonus_target_manager_currency=None,  # Empty for local
+            performance_rating_percent=110,
+        )
+        inr_emp = Employee(
+            associate_id='IN002',
+            associate='Frank Delhi',
+            supervisory_organization='APAC Ops',
+            current_job_profile='Operations Analyst',
+            currency='INR',
+            bonus_target_local_currency=400000,  # INR
+            bonus_target_manager_currency=7200,  # AUD conversion
+            performance_rating_percent=100,
+        )
+        db_session.add(aud_emp)
+        db_session.add(inr_emp)
+        db_session.commit()
+
+        # Calculate total bonus pool using fallback logic
+        total_pool = 0
+        for emp in [aud_emp, inr_emp]:
+            # This is the fallback logic used in calculations
+            bonus_target = emp.bonus_target_manager_currency or emp.bonus_target_local_currency
+            total_pool += bonus_target
+
+        # Expected: 20000 (AUD) + 7200 (AUD conversion) = 27200 AUD
+        assert total_pool == 27200
