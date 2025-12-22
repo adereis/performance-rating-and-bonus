@@ -274,13 +274,13 @@ Export your team data from Workday with these required columns:
 - Supervisory Organization
 - Current Job Profile
 - Current Base Pay All Countries
+- Current Base Pay All Countries (USD)
 - Currency
 - Annual Bonus Target Percent
 - Bonus Target - Local Currency
-
-**Additional Columns for International Teams:**
-- Current Base Pay All Countries (USD)
 - Bonus Target - Local Currency (USD)
+
+> **Note on International Employees:** Workday exports both local and USD columns for salaries and bonus targets. For US employees, the local columns contain USD amounts and the "(USD)" columns are empty. For international employees (CAD, GBP, EUR, etc.), the local columns contain local currency amounts and the "(USD)" columns contain USD conversions. The app automatically uses the correct USD value for bonus pool calculations.
 
 **Optional Columns:**
 - Photo
@@ -465,8 +465,8 @@ Tests cover database operations, rating validation, bonus calculations, multi-or
 
 ### "Only 6 employees showing in bonus calculation"
 - Employees need bonus target data in Workday export
-- For international employees, ensure "Bonus Target - Local Currency (USD)" column is included
-- For US employees, ensure "Bonus Target - Local Currency" column has values
+- Ensure both "Bonus Target - Local Currency" and "Bonus Target - Local Currency (USD)" columns are in your export
+- The app uses the USD conversion column for international employees, falling back to the local column for US employees
 
 ### "Performance ratings not saving"
 - Check browser console for errors
