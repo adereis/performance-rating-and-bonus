@@ -2,7 +2,7 @@
 SQLAlchemy models for the performance rating system.
 """
 from sqlalchemy import create_engine, Column, String, Float, DateTime, Integer, Boolean, Text, Index
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 import os
