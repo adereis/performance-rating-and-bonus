@@ -270,10 +270,13 @@ def new_endpoint():
 4. Add tests for new field in `tests/test_models.py`
 5. Update UI templates if field is user-facing
 6. Update sample data generator (`scripts/create_sample_data.py`) if needed
+7. **Regenerate demo templates**: `python3 scripts/create_demo_templates.py`
 
 **Migration approach**: This project uses simple SQLite, so:
 - For dev: Delete `ratings.db` and re-import
 - For production: Write manual ALTER TABLE statement or provide migration script
+
+**Demo templates**: The demo mode uses pre-built SQLite databases in `demo-templates/`. These must be regenerated whenever model columns change, otherwise demo mode will crash with schema mismatch errors. A test in `test_scripts.py` validates this.
 
 ### Modifying Bonus Algorithm
 

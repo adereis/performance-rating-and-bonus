@@ -371,3 +371,43 @@ class TestCreateDemoTemplates:
 
         finally:
             sys.path.remove(scripts_dir)
+
+
+class TestDemoTemplateSchemaValidation:
+    """Verify demo template databases match the current model schema.
+
+    This prevents deployment failures when model columns change but
+    demo templates aren't regenerated.
+    """
+
+    def test_demo_templates_have_all_employee_columns(self):
+        """Ensure demo template databases have all Employee model columns."""
+        import sqlite3
+        from models import Employee
+
+        # Get expected columns from the Employee model
+        expected_columns = {col.name for col in Employee.__table__.columns}
+
+        # Check each demo template
+        demo_templates_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), 'demo-templates'
+        )
+
+        template_files = ['small-team.db', 'large-team.db']
+
+        for template_file in template_files:
+            db_path = os.path.join(demo_templates_dir, template_file)
+            assert os.path.exists(db_path), f"Demo template not found: {template_file}"
+
+            # Get actual columns from the database
+            conn = sqlite3.connect(db_path)
+            cursor = conn.execute("PRAGMA table_info(employees)")
+            actual_columns = {row[1] for row in cursor.fetchall()}
+            conn.close()
+
+            # Check for missing columns
+            missing = expected_columns - actual_columns
+            assert not missing, (
+                f"Demo template '{template_file}' is missing columns: {missing}. "
+                f"Run 'python3 scripts/create_demo_templates.py' to regenerate."
+            )
