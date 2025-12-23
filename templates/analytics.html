@@ -393,7 +393,138 @@
 </div>
 {% endif %}
 
-<!-- 3. Distribution Calibration Guide -->
+<!-- 3. Mentorship Analytics -->
+{% if mentorship_stats %}
+<div class="card">
+    <h2>Mentorship Analytics</h2>
+
+    <!-- Summary Stats -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px;">
+        <div class="stat-box">
+            <h4>Being Mentored</h4>
+            <div class="avg">{{ mentorship_stats.overall.with_mentor }} / {{ mentorship_stats.overall.total }}</div>
+            <div style="font-size: 14px; color: #666;">{{ "%.0f"|format(mentorship_stats.overall.pct_with_mentor) }}%</div>
+        </div>
+        <div class="stat-box">
+            <h4>Mentoring Others</h4>
+            <div class="avg">{{ mentorship_stats.overall.with_mentees }} / {{ mentorship_stats.overall.total }}</div>
+            <div style="font-size: 14px; color: #666;">{{ "%.0f"|format(mentorship_stats.overall.pct_with_mentees) }}%</div>
+        </div>
+        <div class="stat-box">
+            <h4>Total Mentorships</h4>
+            <div class="avg">{{ mentorship_stats.overall.total_mentee_count }}</div>
+            <div style="font-size: 14px; color: #666;">relationships</div>
+        </div>
+    </div>
+
+    <!-- By Job Title Breakdown -->
+    {% if mentorship_stats.by_job_title %}
+    <h3 style="margin-bottom: 15px;">By Job Title</h3>
+    <table class="calibration-table">
+        <thead>
+            <tr>
+                <th>Job Title</th>
+                <th style="text-align: center;">Count</th>
+                <th>Being Mentored</th>
+                <th>Mentoring Others</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in mentorship_stats.by_job_title %}
+            <tr>
+                <td><strong>{{ row.job_title }}</strong></td>
+                <td style="text-align: center;">{{ row.count }}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="flex: 1; background: #e0e0e0; border-radius: 4px; height: 12px; min-width: 100px;">
+                            <div style="background: #3498db; height: 100%; border-radius: 4px; width: {{ row.pct_with_mentor }}%;"></div>
+                        </div>
+                        <span style="white-space: nowrap; min-width: 80px;">{{ "%.0f"|format(row.pct_with_mentor) }}% ({{ row.with_mentor }})</span>
+                    </div>
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="flex: 1; background: #e0e0e0; border-radius: 4px; height: 12px; min-width: 100px;">
+                            <div style="background: #27ae60; height: 100%; border-radius: 4px; width: {{ row.pct_with_mentees }}%;"></div>
+                        </div>
+                        <span style="white-space: nowrap; min-width: 80px;">{{ "%.0f"|format(row.pct_with_mentees) }}% ({{ row.with_mentees }})</span>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Per-Team Breakdown (multi-team mode) -->
+    {% if is_multi_team and team_mentorship_stats %}
+    <h3 style="margin-top: 25px; margin-bottom: 15px;">By Team</h3>
+    <table class="calibration-table">
+        <thead>
+            <tr>
+                <th>Team</th>
+                <th style="text-align: center;">Size</th>
+                <th>Being Mentored</th>
+                <th>Mentoring Others</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for team in team_mentorship_stats %}
+            <tr>
+                <td><strong>{{ team.team_name }}</strong></td>
+                <td style="text-align: center;">{{ team.stats.total }}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="flex: 1; background: #e0e0e0; border-radius: 4px; height: 12px; min-width: 100px;">
+                            <div style="background: #3498db; height: 100%; border-radius: 4px; width: {{ team.stats.pct_with_mentor }}%;"></div>
+                        </div>
+                        <span style="white-space: nowrap; min-width: 80px;">{{ "%.0f"|format(team.stats.pct_with_mentor) }}% ({{ team.stats.with_mentor }})</span>
+                    </div>
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="flex: 1; background: #e0e0e0; border-radius: 4px; height: 12px; min-width: 100px;">
+                            <div style="background: #27ae60; height: 100%; border-radius: 4px; width: {{ team.stats.pct_with_mentees }}%;"></div>
+                        </div>
+                        <span style="white-space: nowrap; min-width: 80px;">{{ "%.0f"|format(team.stats.pct_with_mentees) }}% ({{ team.stats.with_mentees }})</span>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Top Mentors -->
+    {% if mentorship_stats.top_mentors %}
+    <h3 style="margin-top: 25px; margin-bottom: 15px;">Top Mentors</h3>
+    <table class="calibration-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Job Title</th>
+                <th style="text-align: center;">Mentees</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mentor in mentorship_stats.top_mentors %}
+            <tr>
+                <td>
+                    <span class="employee-name" data-employee-id="{{ mentor.associate_id }}">
+                        {{ mentor.name }}
+                    </span>
+                </td>
+                <td>{{ mentor.job_profile }}</td>
+                <td style="text-align: center;"><strong>{{ mentor.mentee_count }}</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- 4. Distribution Calibration Guide -->
 {% if total_rated > 0 %}
 <div class="card">
     <h2>Distribution Calibration Guide</h2>
@@ -751,7 +882,7 @@
                             </span>
                         </td>
                         <td style="max-width: 400px; font-size: 13px;">
-                            {{ employee.justification[:200] }}{% if employee.justification|length > 200 %}...{% endif %}
+                            {% if employee.justification %}{{ employee.justification[:200] }}{% if employee.justification|length > 200 %}...{% endif %}{% endif %}
                         </td>
                     </tr>
                     {% endif %}

@@ -478,7 +478,7 @@ def has_direct_reports(employee, all_employees):
         if other_emp.get('Associate ID') == employee.get('Associate ID'):
             continue  # Skip self
 
-        supervisory_org = other_emp.get('Supervisory Organization', '')
+        supervisory_org = other_emp.get('Supervisory Organization') or ''
         if employee_name in supervisory_org:
             return True
 
@@ -885,6 +885,103 @@ def calculate_calibration_for_employees(employees, team_name=None):
     }
 
 
+def calculate_mentorship_stats(employees):
+    """
+    Calculate mentorship statistics for a group of employees.
+
+    Args:
+        employees: List of employee dicts
+
+    Returns:
+        Dict with:
+        - overall: {total, with_mentor, with_mentees, pct_with_mentor, pct_with_mentees, total_mentee_count}
+        - by_job_title: [{job_title, count, with_mentor, with_mentees, pct_with_mentor, pct_with_mentees}]
+        - top_mentors: [{name, associate_id, job_profile, mentee_count}]
+    """
+    total = len(employees)
+    if total == 0:
+        return {
+            'overall': {
+                'total': 0, 'with_mentor': 0, 'with_mentees': 0,
+                'pct_with_mentor': 0, 'pct_with_mentees': 0, 'total_mentee_count': 0
+            },
+            'by_job_title': [],
+            'top_mentors': []
+        }
+
+    # Track overall stats
+    with_mentor = 0
+    with_mentees = 0
+    total_mentee_count = 0
+
+    # Track by job title
+    job_title_stats = {}  # {job_title: {count, with_mentor, with_mentees}}
+
+    # Track top mentors
+    mentors_list = []
+
+    for emp in employees:
+        # Check if employee has a mentor
+        mentor_str = emp.get('mentor', '') or ''
+        has_mentor = bool(mentor_str.strip())
+        if has_mentor:
+            with_mentor += 1
+
+        # Check if employee is mentoring others (has mentees)
+        mentees_str = emp.get('mentees', '') or ''
+        mentee_names = [m.strip() for m in mentees_str.split(',') if m.strip()]
+        mentee_count = len(mentee_names)
+        has_mentees = mentee_count > 0
+        if has_mentees:
+            with_mentees += 1
+            total_mentee_count += mentee_count
+            mentors_list.append({
+                'name': emp.get('Associate', 'Unknown'),
+                'associate_id': emp.get('Associate ID', ''),
+                'job_profile': emp.get('Current Job Profile', 'Unknown'),
+                'mentee_count': mentee_count
+            })
+
+        # Aggregate by job title
+        job_title = emp.get('Current Job Profile', 'Unknown') or 'Unknown'
+        if job_title not in job_title_stats:
+            job_title_stats[job_title] = {'count': 0, 'with_mentor': 0, 'with_mentees': 0}
+        job_title_stats[job_title]['count'] += 1
+        if has_mentor:
+            job_title_stats[job_title]['with_mentor'] += 1
+        if has_mentees:
+            job_title_stats[job_title]['with_mentees'] += 1
+
+    # Build by_job_title list with percentages
+    by_job_title = []
+    for job_title, stats in sorted(job_title_stats.items()):
+        count = stats['count']
+        by_job_title.append({
+            'job_title': job_title,
+            'count': count,
+            'with_mentor': stats['with_mentor'],
+            'with_mentees': stats['with_mentees'],
+            'pct_with_mentor': round(stats['with_mentor'] / count * 100, 1) if count > 0 else 0,
+            'pct_with_mentees': round(stats['with_mentees'] / count * 100, 1) if count > 0 else 0
+        })
+
+    # Sort top mentors by mentee count descending
+    top_mentors = sorted(mentors_list, key=lambda x: x['mentee_count'], reverse=True)[:10]
+
+    return {
+        'overall': {
+            'total': total,
+            'with_mentor': with_mentor,
+            'with_mentees': with_mentees,
+            'pct_with_mentor': round(with_mentor / total * 100, 1) if total > 0 else 0,
+            'pct_with_mentees': round(with_mentees / total * 100, 1) if total > 0 else 0,
+            'total_mentee_count': total_mentee_count
+        },
+        'by_job_title': by_job_title,
+        'top_mentors': top_mentors
+    }
+
+
 @app.route('/analytics')
 def analytics():
     """Analytics and reports page."""
@@ -1149,6 +1246,26 @@ def analytics():
                 'buckets': {item['bucket']: item for item in team_cal['data']}
             })
 
+    # Calculate mentorship statistics
+    mentorship_stats = calculate_mentorship_stats(team_data)
+
+    # If multi-team, also calculate per-team mentorship stats
+    team_mentorship_stats = []
+    if is_multi_team:
+        teams_by_org = {}
+        for emp in team_data:
+            org = emp.get('Supervisory Organization', 'Unknown')
+            if org not in teams_by_org:
+                teams_by_org[org] = []
+            teams_by_org[org].append(emp)
+
+        for org_name, team_employees in sorted(teams_by_org.items()):
+            team_stats = calculate_mentorship_stats(team_employees)
+            team_mentorship_stats.append({
+                'team_name': org_name,
+                'stats': team_stats['overall']
+            })
+
     return render_template('analytics.html',
                          team=sorted_team,
                          chart_data=chart_data,
@@ -1163,6 +1280,8 @@ def analytics():
                          is_multi_team=is_multi_team,
                          team_calibrations=team_calibrations,
                          team_comparisons=team_comparisons,
+                         mentorship_stats=mentorship_stats,
+                         team_mentorship_stats=team_mentorship_stats,
                          filter_info=filter_info)
 
 
