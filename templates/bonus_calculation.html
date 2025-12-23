@@ -386,7 +386,7 @@
     <div class="summary-stats">
         <div class="summary-card">
             <h4>Base Bonus Pool</h4>
-            <div class="value">${{ "{:,.0f}".format(base_pool) }}</div>
+            <div class="value">{{ base_pool|format_currency }}</div>
         </div>
         <div class="summary-card" style="position: relative;">
             <h4 title="Additional budget (in your currency). Can be negative. Distributes proportionally across all employees. Click to edit.">
@@ -394,7 +394,7 @@
                 <span style="cursor: help; opacity: 0.6;">ⓘ</span>
             </h4>
             <div class="value" style="{% if budget_override > 0 %}color: #27ae60;{% elif budget_override < 0 %}color: #dc3545;{% endif %}">
-                $<input type="number"
+                {{ currency.symbol }}{% if currency.space %} {% endif %}<input type="number"
                        id="budget_override_input"
                        value="{{ budget_override }}"
                        style="border: none; background: transparent; color: inherit; font-size: inherit; font-weight: inherit; width: 120px; text-align: center; font-family: inherit;"
@@ -406,11 +406,11 @@
         </div>
         <div class="summary-card">
             <h4>Adjusted Pool</h4>
-            <div class="value">${{ "{:,.0f}".format(total_pool) }}</div>
+            <div class="value">{{ total_pool|format_currency }}</div>
         </div>
         <div class="summary-card">
             <h4>Total Allocated</h4>
-            <div class="value">${{ "{:,.0f}".format(total_allocated) }}</div>
+            <div class="value">{{ total_allocated|format_currency }}</div>
         </div>
         <div class="summary-card">
             <h4>Rated Employees</h4>
@@ -451,9 +451,9 @@
                             {{ result.rating }}%
                         </span>
                     </td>
-                    <td class="right">${{ "{:,.0f}".format(result.bonus_target) }}</td>
+                    <td class="right">{{ result.bonus_target|format_currency }}</td>
                     <td class="right">{{ "%.3f"|format(result.perf_multiplier) }}</td>
-                    <td class="right"><strong>${{ "{:,.0f}".format(result.final_bonus) }}</strong></td>
+                    <td class="right"><strong>{{ result.final_bonus|format_currency }}</strong></td>
                     <td class="right">
                         <strong {% if result.bonus_percent_of_target > 100 %}style="color: #27ae60;"
                                 {% elif result.bonus_percent_of_target < 100 %}style="color: #dc3545;"
@@ -537,13 +537,13 @@
                     <tr>
                         <td><strong>{{ comparison.team_name }}</strong></td>
                         <td class="right">{{ comparison.employee_count }}</td>
-                        <td class="right">${{ "{:,.0f}".format(comparison.team_pool) }}</td>
+                        <td class="right">{{ comparison.team_pool|format_currency }}</td>
                         <td class="right">{{ comparison.avg_rating }}%</td>
                         <td class="right">{{ "%.3f"|format(comparison.team_norm) }}</td>
                         <td class="right">{{ "%.3f"|format(comparison.org_norm) }}</td>
                         <td class="right">
                             <span class="{% if comparison.budget_impact > 0 %}status-gain{% elif comparison.budget_impact < 0 %}status-loss{% else %}status-neutral{% endif %}">
-                                {% if comparison.budget_impact > 0 %}+{% endif %}${{ "{:,.0f}".format(comparison.budget_impact) }}
+                                {{ comparison.budget_impact|format_currency(show_sign=True) }}
                                 ({% if comparison.impact_percent > 0 %}+{% endif %}{{ "%.1f"|format(comparison.impact_percent) }}%)
                             </span>
                         </td>
@@ -615,11 +615,11 @@
                     <tr>
                         <td><strong><span class="employee-name" data-employee-id="{{ emp['Associate ID'] }}">{{ emp.Associate }}</span></strong></td>
                         <td class="right">{{ "%.0f"|format(emp.performance_rating_percent) }}%</td>
-                        <td class="right">${{ "{:,.0f}".format(team_bonus) }}</td>
-                        <td class="right">${{ "{:,.0f}".format(org_bonus) }}</td>
+                        <td class="right">{{ team_bonus|format_currency }}</td>
+                        <td class="right">{{ org_bonus|format_currency }}</td>
                         <td class="right">
                             <span class="{% if diff > 0 %}status-gain{% elif diff < 0 %}status-loss{% else %}status-neutral{% endif %}">
-                                {% if diff > 0 %}+{% endif %}${{ "{:,.0f}".format(diff) }}
+                                {{ diff|format_currency(show_sign=True) }}
                             </span>
                         </td>
                         <td class="right">

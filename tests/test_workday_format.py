@@ -388,3 +388,85 @@ class TestInternationalManagerCurrencyHeaders:
         assert indices['base_pay_converted'] == 3
         assert indices['bonus_target_local'] == 4
         assert indices['bonus_target_converted'] == 5
+
+
+class TestManagerCurrencyDetection:
+    """Tests for detecting the manager's currency from employee data."""
+
+    def test_detect_currency_from_domestic_employees(self, app, db_session):
+        """Manager's currency is detected from domestic employees (those with NULL manager_currency)."""
+        from app import get_manager_currency
+
+        # Create AUD employees (domestic to an Australian manager)
+        emp1 = Employee(
+            associate_id='AU001',
+            associate='Alice Melbourne',
+            currency='AUD',
+            bonus_target_local_currency=20000,
+            bonus_target_manager_currency=None  # NULL = domestic employee
+        )
+        emp2 = Employee(
+            associate_id='AU002',
+            associate='Bob Sydney',
+            currency='AUD',
+            bonus_target_local_currency=25000,
+            bonus_target_manager_currency=None  # NULL = domestic employee
+        )
+        db_session.add_all([emp1, emp2])
+        db_session.commit()
+
+        with app.app_context():
+            currency_code, symbol = get_manager_currency()
+            assert currency_code == 'AUD'
+            assert symbol == 'A$'
+
+    def test_detect_currency_with_mixed_team(self, app, db_session):
+        """Manager's currency is correctly detected even with international employees."""
+        from app import get_manager_currency
+
+        # AUD employee (domestic)
+        aud_emp = Employee(
+            associate_id='AU001',
+            associate='Alice Melbourne',
+            currency='AUD',
+            bonus_target_local_currency=20000,
+            bonus_target_manager_currency=None  # Domestic
+        )
+        # NZD employee (international, has manager_currency conversion)
+        nzd_emp = Employee(
+            associate_id='NZ001',
+            associate='Chris Auckland',
+            currency='NZD',
+            bonus_target_local_currency=18000,  # NZD
+            bonus_target_manager_currency=16200  # Converted to AUD
+        )
+        db_session.add_all([aud_emp, nzd_emp])
+        db_session.commit()
+
+        with app.app_context():
+            currency_code, symbol = get_manager_currency()
+            # Should detect AUD from the domestic employee
+            assert currency_code == 'AUD'
+            assert symbol == 'A$'
+
+    def test_default_to_usd_with_no_employees(self, app, db_session):
+        """Defaults to USD when no employees exist."""
+        from app import get_manager_currency
+
+        # No employees in database
+
+        with app.app_context():
+            currency_code, symbol = get_manager_currency()
+            assert currency_code == 'USD'
+            assert symbol == '$'
+
+    def test_currency_symbols_lookup(self, app):
+        """Test that common currency symbols are correctly mapped."""
+        from app import CURRENCY_SYMBOLS
+
+        assert CURRENCY_SYMBOLS['USD'] == '$'
+        assert CURRENCY_SYMBOLS['AUD'] == 'A$'
+        assert CURRENCY_SYMBOLS['EUR'] == '€'
+        assert CURRENCY_SYMBOLS['GBP'] == '£'
+        assert CURRENCY_SYMBOLS['CAD'] == 'C$'
+        assert CURRENCY_SYMBOLS['INR'] == '₹'

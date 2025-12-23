@@ -459,8 +459,13 @@ For example, an Australian manager sees "(AUD)" columns, a US manager sees "(USD
 - **Display in local currency** for employee-facing views where appropriate
 - Conversion happens at import time (Workday provides both local and converted values)
 - The manager's currency is auto-detected from the XLSX column headers (e.g., "(AUD)", "(USD)")
+- **Currency formatting**: UI displays correct symbol, position, and spacing based on currency conventions
+  - Detection: `get_manager_currency()` in app.py looks for domestic employees (those with NULL `bonus_target_manager_currency`)
+  - Format lookup: `CURRENCY_FORMATS` dict in app.py stores symbol, position (before/after), and spacing per currency
+  - Template filter: `{{ amount|format_currency }}` handles all formatting automatically
+  - Examples: `$1,234` (USD), `R$ 1,234` (BRL with space), `1,234 Kč` (CZK symbol after)
 - Sample data includes GBP employees for testing international scenarios
-- Supported currencies: USD, GBP, EUR, CAD, INR, AUD (add more in currency dropdown)
+- Supported currencies: USD, AUD, BRL, CAD, CHF, CZK, EUR, GBP, HKD, ILS, INR, JPY, NZD, SGD, ZAR
 
 ### Manager-Entered Fields
 
@@ -973,22 +978,10 @@ Both projects follow these conventions for consistency:
 
 ---
 
-## Known Limitations
-
-### Currency Symbol Display
-The UI displays `$` as a hardcoded currency symbol in all templates (bonus_calculation.html, export.html, etc.). While the backend correctly handles any manager currency (USD, AUD, EUR, GBP, etc.), the frontend does not localize the currency symbol.
-
-**Why this matters**: An Australian manager sees `$50,000` which could be confused with USD, when it's actually AUD.
-
-**Potential fix**: Pass manager's currency to templates and use a currency symbol lookup (e.g., `{'USD': '$', 'EUR': '€', 'GBP': '£', 'AUD': 'A$', 'CAD': 'C$'}`).
-
----
-
 ## Future Enhancements
 
 Potential areas for expansion (not yet implemented):
 
-- [ ] Currency symbol localization (display €, £, A$ based on manager's currency)
 - [ ] Save multiple parameter configurations
 - [ ] Bulk edit capabilities
 - [ ] Read-only sharing mode for calibration sessions

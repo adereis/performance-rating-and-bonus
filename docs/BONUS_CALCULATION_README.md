@@ -127,7 +127,6 @@ If some rated employees don't appear in the calculation, they're likely missing 
 
 ### Current Limitations
 1. **One-time calculation**: This is a planning tool. The results are not automatically saved or exported to Workday.
-2. **Currency symbol display**: The UI displays `$` for all currencies. While calculations correctly use your manager currency (USD, AUD, EUR, etc.), the display symbol is not localized. International managers should interpret `$50,000` as "50,000 in your currency" rather than US dollars.
 
 ## Example Scenarios
 

@@ -49,6 +49,30 @@ RATING_THRESHOLD_HIGH = 120  # "Exceeds expectations" threshold
 RATING_THRESHOLD_MID = 90    # "Meets expectations" threshold
 RATING_THRESHOLD_LOW = 60    # "Needs improvement" threshold
 
+# Currency formatting for display (manager's currency)
+# Each currency specifies: symbol, position (before/after number), space between symbol and number
+# Format: {'symbol': str, 'position': 'before'|'after', 'space': bool}
+CURRENCY_FORMATS = {
+    'USD': {'symbol': '$', 'position': 'before', 'space': False},
+    'AUD': {'symbol': 'A$', 'position': 'before', 'space': False},
+    'BRL': {'symbol': 'R$', 'position': 'before', 'space': True},
+    'CAD': {'symbol': 'C$', 'position': 'before', 'space': False},
+    'CHF': {'symbol': 'CHF', 'position': 'before', 'space': True},
+    'CZK': {'symbol': 'Kč', 'position': 'after', 'space': True},
+    'EUR': {'symbol': '€', 'position': 'before', 'space': False},
+    'GBP': {'symbol': '£', 'position': 'before', 'space': False},
+    'HKD': {'symbol': 'HK$', 'position': 'before', 'space': False},
+    'ILS': {'symbol': '₪', 'position': 'before', 'space': False},
+    'INR': {'symbol': '₹', 'position': 'before', 'space': False},
+    'JPY': {'symbol': '¥', 'position': 'before', 'space': False},
+    'NZD': {'symbol': 'NZ$', 'position': 'before', 'space': False},
+    'SGD': {'symbol': 'S$', 'position': 'before', 'space': False},
+    'ZAR': {'symbol': 'R', 'position': 'before', 'space': False},
+}
+
+# Legacy lookup for simple symbol access
+CURRENCY_SYMBOLS = {code: fmt['symbol'] for code, fmt in CURRENCY_FORMATS.items()}
+
 # Initialize database on startup
 init_db()
 
@@ -66,14 +90,45 @@ if DEMO_MODE:
 @app.context_processor
 def inject_global_context():
     """Make global config available in all templates."""
+    # Get manager's currency for display
+    # This is called per-request but is fast (single DB query)
+    currency_code, currency_symbol = get_manager_currency()
+    currency_format = get_currency_format(currency_code)
+
     return {
         'demo_mode': DEMO_MODE,
         'rating_thresholds': {
             'high': RATING_THRESHOLD_HIGH,
             'mid': RATING_THRESHOLD_MID,
             'low': RATING_THRESHOLD_LOW
-        }
+        },
+        'currency': currency_format
     }
+
+
+@app.template_filter('format_currency')
+def format_currency_filter(value, show_sign=False):
+    """Format a number with the manager's currency symbol.
+
+    Handles symbol position (before/after) and spacing based on currency conventions.
+    Usage in templates: {{ amount|format_currency }} or {{ amount|format_currency(show_sign=True) }}
+    """
+    currency_code, _ = get_manager_currency()
+    fmt = get_currency_format(currency_code)
+
+    # Format the number
+    if value >= 0:
+        sign = '+' if show_sign else ''
+        formatted_num = f"{sign}{value:,.0f}"
+    else:
+        formatted_num = f"{value:,.0f}"
+
+    # Build the formatted string based on position and spacing
+    space = ' ' if fmt['space'] else ''
+    if fmt['position'] == 'before':
+        return f"{fmt['symbol']}{space}{formatted_num}"
+    else:
+        return f"{formatted_num}{space}{fmt['symbol']}"
 
 
 @app.before_request
@@ -245,6 +300,70 @@ def get_all_employees():
     try:
         employees = db.query(Employee).all()
         return [emp.to_dict() for emp in employees]
+    finally:
+        db.close()
+
+
+def get_currency_format(currency_code):
+    """Get the full formatting info for a currency code.
+
+    Returns:
+        dict: {'code': str, 'symbol': str, 'position': 'before'|'after', 'space': bool}
+    """
+    default = {'symbol': currency_code, 'position': 'before', 'space': False}
+    fmt = CURRENCY_FORMATS.get(currency_code, default)
+    return {
+        'code': currency_code,
+        'symbol': fmt['symbol'],
+        'position': fmt['position'],
+        'space': fmt['space'],
+    }
+
+
+def get_manager_currency():
+    """Detect the manager's currency from employee data.
+
+    The manager's currency is determined by looking at domestic employees
+    (those whose bonus_target_manager_currency is NULL, meaning their local
+    currency IS the manager's currency).
+
+    Returns:
+        tuple: (currency_code, currency_symbol) e.g., ('AUD', 'A$')
+               Defaults to ('USD', '$') if no employees or unable to detect.
+    """
+    db = get_db()
+    try:
+        # Domestic employees have NULL in bonus_target_manager_currency
+        # because their local currency IS the manager's currency
+        domestic = db.query(Employee).filter(
+            Employee.bonus_target_manager_currency.is_(None),
+            Employee.currency.isnot(None)
+        ).first()
+
+        if domestic and domestic.currency:
+            currency = domestic.currency
+            symbol = CURRENCY_SYMBOLS.get(currency, currency)
+            return currency, symbol
+
+        # Fallback: check if there are any employees at all
+        any_employee = db.query(Employee).filter(
+            Employee.currency.isnot(None)
+        ).first()
+
+        if any_employee:
+            # If all employees have manager_currency set, use majority currency
+            from collections import Counter
+            all_employees = db.query(Employee).filter(
+                Employee.currency.isnot(None)
+            ).all()
+            currencies = [e.currency for e in all_employees]
+            if currencies:
+                most_common = Counter(currencies).most_common(1)[0][0]
+                symbol = CURRENCY_SYMBOLS.get(most_common, most_common)
+                return most_common, symbol
+
+        # Default to USD
+        return 'USD', '$'
     finally:
         db.close()
 
