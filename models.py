@@ -192,6 +192,105 @@ def _get_standard_engine():
     return _engine
 
 
+def _migrate_usd_columns(engine):
+    """
+    Migrate old *_usd column names to *_manager_currency.
+
+    This handles databases created before the international manager currency
+    support was added. SQLite 3.25.0+ supports ALTER TABLE RENAME COLUMN.
+    """
+    from sqlalchemy import text, inspect
+
+    inspector = inspect(engine)
+
+    # Define column renames: (table, old_name, new_name)
+    renames = [
+        ('employees', 'current_base_pay_all_countries_usd', 'current_base_pay_manager_currency'),
+        ('employees', 'bonus_target_local_currency_usd', 'bonus_target_manager_currency'),
+        ('employees', 'proposed_bonus_amount_usd', 'proposed_bonus_amount_manager_currency'),
+        ('bonus_settings', 'budget_override_usd', 'budget_override'),
+        ('rating_snapshots', 'snapshot_bonus_target_usd', 'snapshot_bonus_target_manager_currency'),
+    ]
+
+    with engine.connect() as conn:
+        for table, old_col, new_col in renames:
+            # Check if table exists
+            if table not in inspector.get_table_names():
+                continue
+
+            # Get current columns
+            columns = [col['name'] for col in inspector.get_columns(table)]
+
+            # If old column exists and new doesn't, rename it
+            if old_col in columns and new_col not in columns:
+                print(f"Migrating column {table}.{old_col} → {new_col}")
+                conn.execute(text(f'ALTER TABLE {table} RENAME COLUMN {old_col} TO {new_col}'))
+                conn.commit()
+
+
+class DatabaseSchemaError(Exception):
+    """Raised when database schema doesn't match expected model schema."""
+    pass
+
+
+def _validate_schema(engine):
+    """
+    Validate that the database schema matches the expected model schema.
+
+    Checks that all columns defined in SQLAlchemy models exist in the actual
+    database tables. Raises DatabaseSchemaError with a helpful message if
+    there's a mismatch.
+    """
+    from sqlalchemy import inspect
+
+    inspector = inspect(engine)
+    errors = []
+
+    # Models to validate: (model_class, table_name)
+    models_to_check = [
+        (Employee, 'employees'),
+        (BonusSettings, 'bonus_settings'),
+        (Period, 'periods'),
+        (RatingSnapshot, 'rating_snapshots'),
+    ]
+
+    for model_class, table_name in models_to_check:
+        # Skip if table doesn't exist yet (will be created by create_all)
+        if table_name not in inspector.get_table_names():
+            continue
+
+        # Get actual columns in database
+        db_columns = {col['name'] for col in inspector.get_columns(table_name)}
+
+        # Get expected columns from model
+        model_columns = {col.name for col in model_class.__table__.columns}
+
+        # Find missing columns
+        missing = model_columns - db_columns
+
+        if missing:
+            errors.append(f"  Table '{table_name}' is missing columns: {', '.join(sorted(missing))}")
+
+    if errors:
+        db_path = DATABASE_URL.replace('sqlite:///', '')
+        raise DatabaseSchemaError(
+            f"\n{'='*60}\n"
+            f"DATABASE SCHEMA MISMATCH\n"
+            f"{'='*60}\n"
+            f"The database schema doesn't match the expected model schema.\n\n"
+            f"Issues found:\n" + '\n'.join(errors) + "\n\n"
+            f"This usually happens when:\n"
+            f"  1. The database was created with an older version of the app\n"
+            f"  2. A migration failed or was incomplete\n\n"
+            f"To fix this, you can either:\n"
+            f"  A. Delete the database and re-import your data:\n"
+            f"     rm {db_path}\n\n"
+            f"  B. Manually add the missing columns (for advanced users):\n"
+            f"     sqlite3 {db_path} \"ALTER TABLE <table> ADD COLUMN <col> <type>;\"\n"
+            f"{'='*60}\n"
+        )
+
+
 def init_db():
     """Initialize the database, creating all tables."""
     if DEMO_MODE:
@@ -201,7 +300,15 @@ def init_db():
         return
 
     engine = _get_standard_engine()
+
+    # Run migrations before creating tables (handles schema changes)
+    _migrate_usd_columns(engine)
+
+    # Create any new tables/columns
     Base.metadata.create_all(bind=engine)
+
+    # Validate schema matches models (catches issues migration didn't handle)
+    _validate_schema(engine)
 
 
 def get_db():
