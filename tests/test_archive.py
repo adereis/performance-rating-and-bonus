@@ -148,10 +148,10 @@ class TestArchivePeriodEndpoint:
 
         # Verify all rating fields are cleared
         assert emp.performance_rating_percent is None
-        assert emp.justification is None
-        assert emp.mentor is None
-        assert emp.mentees is None
-        assert emp.tenets_strengths is None
+        assert emp.justification == ''  # Text fields reset to empty string
+        assert emp.mentor == ''
+        assert emp.mentees == ''
+        assert emp.tenets_strengths is None  # JSON fields reset to None
         assert emp.tenets_improvements is None
         assert emp.last_updated is None
 

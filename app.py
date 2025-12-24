@@ -2344,9 +2344,9 @@ def archive_period():
         # Clear ratings from all employees
         for emp in employees:
             emp.performance_rating_percent = None
-            emp.justification = None
-            emp.mentor = None
-            emp.mentees = None
+            emp.justification = ''
+            emp.mentor = ''
+            emp.mentees = ''
             emp.tenets_strengths = None
             emp.tenets_improvements = None
             emp.last_updated = None

@@ -594,17 +594,17 @@
 
                 <div class="rating-input-group">
                     <label>Justification:</label>
-                    <textarea data-field="justification" placeholder="One paragraph explaining the rating...">{{ employee.justification }}</textarea>
+                    <textarea data-field="justification" placeholder="One paragraph explaining the rating...">{{ employee.justification or '' }}</textarea>
                 </div>
 
                 <div class="rating-input-group">
                     <label>Mentor:</label>
-                    <input type="text" data-field="mentor" placeholder="Who is mentoring this person?" value="{{ employee.mentor }}">
+                    <input type="text" data-field="mentor" placeholder="Who is mentoring this person?" value="{{ employee.mentor or '' }}">
                 </div>
 
                 <div class="rating-input-group">
                     <label>Mentee(s):</label>
-                    <input type="text" data-field="mentees" placeholder="Who is this person mentoring?" value="{{ employee.mentees }}">
+                    <input type="text" data-field="mentees" placeholder="Who is this person mentoring?" value="{{ employee.mentees or '' }}">
                 </div>
 
                 <div class="tenets-section">
