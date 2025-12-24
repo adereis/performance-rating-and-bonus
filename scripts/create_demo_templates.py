@@ -81,6 +81,8 @@ def get_small_team_employees():
             'bonus_target_manager_currency': bonus_target,
             'performance_rating_percent': rating,
             'justification': justification,
+            'mentor': '',  # Empty string, not NULL
+            'mentees': '',  # Empty string, not NULL
             'last_updated': datetime.now(),
         })
 
@@ -215,6 +217,8 @@ def get_large_team_employees():
                 'bonus_target_manager_currency': bonus_target,
                 'performance_rating_percent': rating,
                 'justification': justification,
+                'mentor': '',  # Empty string, not NULL
+                'mentees': '',  # Empty string, not NULL
                 'last_updated': datetime.now(),
             })
             emp_id += 1

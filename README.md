@@ -413,15 +413,15 @@ bonuses/
 │   └── *.png                       # Screenshots for README
 ├── AGENTS.md                       # Developer/AI guide and patterns
 ├── demo_mode.py                    # Demo mode session management
-├── demo-templates/                 # Pre-built demo databases
+├── demo-templates/                 # Generated at Docker build time (not in repo)
 │   ├── small-team.db               # 12 employees, 2 historical periods
-│   └── large-team.db               # 50 employees, 3 historical periods
+│   └── large-team.db               # 55 employees, 3 historical periods
 ├── ratings.db                      # SQLite database (created on first run)
 ├── sample-data-small.xlsx          # Generated sample data (not in repo)
 ├── real-workday-export.xlsx        # Your Workday export (not in repo)
 ├── scripts/                        # Utility scripts
 │   ├── create_sample_data.py       # Sample data generator
-│   ├── create_demo_templates.py    # Regenerate demo template databases
+│   ├── create_demo_templates.py    # Generate demo databases (run at Docker build)
 │   └── populate_sample_ratings.py  # Populate DB with sample ratings
 ├── samples/                        # Sample data files
 │   ├── tenets-sample.json          # Example tenets configuration

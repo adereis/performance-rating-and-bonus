@@ -54,7 +54,7 @@ The Performance Rating System was built through an iterative collaboration betwe
 - ✅ Period-over-period comparison in Analytics
 - ✅ Period Browser for viewing archived periods
 - ✅ Demo mode with session isolation for public deployment
-- ✅ Pre-built template databases with historical periods
+- ✅ Demo template databases generated at build time with historical periods
 
 ### Human Oversight
 
@@ -188,7 +188,7 @@ To achieve similar results with AI assistance:
 #### Demo Mode Architecture
 When `DEMO_MODE=true` environment variable is set:
 - **Session isolation**: Each visitor gets their own SQLite database (cookie-based session ID)
-- **Template databases**: Pre-built `demo-templates/*.db` files copied for new sessions
+- **Template databases**: Generated at Docker build time, copied for new sessions
 - **No imports**: Import page replaced with "Generate Demo Data" page
 - **Export watermarks**: All exports include prominent "DEMO MODE - FICTITIOUS DATA" warnings
 - **Session cleanup**: Stale sessions cleaned up after timeout (default 1 hour)
@@ -196,9 +196,9 @@ When `DEMO_MODE=true` environment variable is set:
 
 Key files:
 - `demo_mode.py`: Session management, template copying, cleanup
-- `demo-templates/small-team.db`: 12 employees, 1 manager, 2 historical periods
-- `demo-templates/large-team.db`: 50 employees, 5 managers, 3 historical periods
-- `scripts/create_demo_templates.py`: Regenerates template databases
+- `scripts/create_demo_templates.py`: Generates template databases (run at Docker build time)
+  - `small-team.db`: 12 employees, 1 manager, 2 historical periods
+  - `large-team.db`: 55 employees, 5 managers, 3 historical periods
 
 Environment variables:
 - `DEMO_MODE=true`: Enable demo mode
@@ -270,13 +270,13 @@ def new_endpoint():
 4. Add tests for new field in `tests/test_models.py`
 5. Update UI templates if field is user-facing
 6. Update sample data generator (`scripts/create_sample_data.py`) if needed
-7. **Regenerate demo templates**: `python3 scripts/create_demo_templates.py`
+7. **Demo templates**: Auto-generated at Docker build time (no manual step needed)
 
 **Migration approach**: This project uses simple SQLite, so:
 - For dev: Delete `ratings.db` and re-import
 - For production: Write manual ALTER TABLE statement or provide migration script
 
-**Demo templates**: The demo mode uses pre-built SQLite databases in `demo-templates/`. These must be regenerated whenever model columns change, otherwise demo mode will crash with schema mismatch errors. A test in `test_scripts.py` validates this.
+**Demo templates**: Generated at Docker build time from `scripts/create_demo_templates.py`. When model columns change, the script must be updated accordingly. A test in `test_scripts.py` validates that generated templates match the current schema.
 
 ### Modifying Bonus Algorithm
 
