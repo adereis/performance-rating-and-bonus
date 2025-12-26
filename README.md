@@ -111,156 +111,25 @@ python3 scripts/populate_sample_ratings.py small
 
 ## Sample Data Options
 
-### Option 1: Small Team (Recommended for First-Time Users)
-Perfect for learning the system - 12 employees under one manager with sample ratings/justifications.
+| Scenario | Step 1: Generate Data | Step 2: Populate Ratings |
+|----------|----------------------|--------------------------|
+| **Small team** (12 employees, 1 manager) | `python3 scripts/create_sample_data.py` | `python3 scripts/populate_sample_ratings.py small` |
+| **Large org** (50 employees, 5 managers) | `python3 scripts/create_sample_data.py --large` | `python3 scripts/populate_sample_ratings.py large` |
+| **With history** (6 quarters of data) | Add `--historical` flag to above | Same as above, then import `samples/sample-historical-*.xlsx` as Historical Periods |
 
-```bash
-python3 scripts/create_sample_data.py
-python3 scripts/populate_sample_ratings.py small
-```
+After generating, import the `.xlsx` file via the **Import** tab, then run the populate script.
 
-### Option 2: Large Multi-Manager Organization
-Test multi-org scenarios - 50 employees across 5 managers with sample ratings.
-
-```bash
-python3 scripts/create_sample_data.py --large
-
-# 3-5. Start server, import sample-data-large.xlsx via Import tab
-
-# 6. Populate sample ratings and justifications
-python3 scripts/populate_sample_ratings.py large
-```
-
-**Sample Data Details:**
-- **Small**: 12 employees (Software Developers & SREs), 1 manager (Della Gate)
-- **Large**: 50 employees across 5 managers (Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone)
-- Both include international employees (GBP) for testing multi-currency support
-
-### Option 3: With Historical Data (Testing History Features)
-Generate sample historical data to test period-over-period comparison and employee history features.
-
-```bash
-# Generate large org plus 6 quarters of historical data
-python3 scripts/create_sample_data.py --large --historical
-
-# This creates:
-# - sample-data-large.xlsx (current period)
-# - samples/sample-historical-2023-Q3.xlsx through samples/sample-historical-2024-Q4.xlsx
-```
-
-**To test historical features:**
-1. Start server and import `sample-data-large.xlsx` as **Current Period**
-2. Populate current ratings: `python3 scripts/populate_sample_ratings.py large`
-3. Import each historical file as **Historical Period** (oldest first):
-   - Upload `samples/sample-historical-2023-Q3.xlsx`, enter Period ID `2023-Q3` and Period Name `Q3 2023`
-   - Repeat for 2023-Q4, 2024-Q1, 2024-Q2, 2024-Q3, 2024-Q4
-4. Click any employee name to view their **History** tab with trend chart
-5. Visit **Analytics** to see **Period-over-Period Comparison**
-
-**Architecture Note**: Sample data generation follows the same pattern as real usage:
-1. **Workday export** (scripts/create_sample_data.py) contains ONLY HR data: salaries, bonus targets, org structure
-2. **Manager ratings** (scripts/populate_sample_ratings.py) adds performance ratings and justifications to the DATABASE
-3. This separation mirrors reality: Workday data vs. local manager-entered ratings
-
-**What you get:**
-- ✅ Complete Workday employee data (salary, bonus targets, job profiles)
-- ✅ Sample performance ratings (45-185% range) and justifications
-- ✅ Empty mentor/mentee/AI fields for you to fill in
-- ✅ Ready for immediate bonus calculation
-- ✅ Mix of high performers, solid performers, and those needing improvement
-
-You can now explore all features:
-- **Dashboard**: See team overview with ratings
-- **Rate Team**: View/modify existing ratings or practice adding new ones
-- **Analytics**: Explore distribution and calibration guidance
-- **Bonus Calculation**: Run algorithmic bonus distribution immediately
+Both datasets include international employees (GBP) for multi-currency testing. Sample ratings range from 45-185% with justifications included.
 
 ## Docker Deployment
 
-The application can be run using Docker for easier deployment and isolation.
-
-### Quick Start with Docker
-
 ```bash
-# 1. Build and start the container
-docker-compose up -d
-
-# 2. Open browser to http://localhost:5000
-
-# 3. Generate sample data (run in container)
-docker-compose exec app python3 scripts/create_sample_data.py
-
-# 4. Import sample data via the web interface (Import tab)
-# Upload the generated sample-data-small.xlsx file
+docker-compose up -d        # Start at http://localhost:5000
+docker-compose down         # Stop
+docker-compose up -d --build  # Rebuild after changes
 ```
 
-### Docker Commands
-
-```bash
-# Start the application
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop the application
-docker-compose down
-
-# Rebuild after code changes
-docker-compose up -d --build
-
-# Run commands inside container (e.g., generate sample data)
-docker-compose exec app python3 scripts/create_sample_data.py
-
-# Access shell in container
-docker-compose exec app bash
-```
-
-### Data Persistence
-
-The database (`ratings.db`) is stored in the `./data` directory, which is mounted as a volume. This ensures your data persists even if you rebuild or remove the container.
-
-**Important**: The `./data` directory contains your database and should be backed up regularly. It's automatically created on first run.
-
-### Production Deployment
-
-For production use, you may want to:
-
-1. **Remove development volume mount** in `docker-compose.yml`:
-   ```yaml
-   # Comment out or remove this line:
-   # - .:/app
-   ```
-
-2. **Set production environment**:
-   ```yaml
-   environment:
-     - FLASK_ENV=production
-   ```
-
-3. **Use a reverse proxy** (nginx, Traefik) for HTTPS and domain routing
-
-4. **Set up regular backups** of the `./data` directory
-
-### Dockerfile Only (Without Docker Compose)
-
-If you prefer to use Docker directly without docker-compose:
-
-```bash
-# Build the image
-docker build -t performance-rating-app .
-
-# Run the container
-docker run -d \
-  --name performance-rating-app \
-  -p 5000:5000 \
-  -v $(pwd)/data:/app/data \
-  -e DATABASE_URL=sqlite:////app/data/ratings.db \
-  performance-rating-app
-
-# View logs
-docker logs -f performance-rating-app
-```
+Data persists in `./data` directory. See [docs/DOCKER.md](docs/DOCKER.md) for production deployment, commands reference, and running without docker-compose.
 
 ## Using Your Own Team Data
 
@@ -398,46 +267,6 @@ See [BONUS_CALCULATION_README.md](docs/BONUS_CALCULATION_README.md) for detailed
 - **Charts**: Chart.js
 - **Excel**: openpyxl for Workday imports
 
-## File Structure
-
-```
-bonuses/
-├── app.py                          # Flask application (main server)
-├── models.py                       # SQLAlchemy database models
-├── xlsx_utils.py                   # Workday XLSX parsing utilities
-├── notes_parser.py                 # Notes field parser for historical imports
-├── requirements.txt                # Python dependencies
-├── README.md                       # This file
-├── docs/                           # Documentation and images
-│   ├── BONUS_CALCULATION_README.md # Manager's guide to bonuses
-│   └── *.png                       # Screenshots for README
-├── AGENTS.md                       # Developer/AI guide and patterns
-├── demo_mode.py                    # Demo mode session management
-├── demo-templates/                 # Generated at Docker build time (not in repo)
-│   ├── small-team.db               # 12 employees, 2 historical periods
-│   └── large-team.db               # 55 employees, 3 historical periods
-├── ratings.db                      # SQLite database (created on first run)
-├── sample-data-small.xlsx          # Generated sample data (not in repo)
-├── real-workday-export.xlsx        # Your Workday export (not in repo)
-├── scripts/                        # Utility scripts
-│   ├── create_sample_data.py       # Sample data generator
-│   ├── create_demo_templates.py    # Generate demo databases (run at Docker build)
-│   └── populate_sample_ratings.py  # Populate DB with sample ratings
-├── samples/                        # Sample data files
-│   ├── tenets-sample.json          # Example tenets configuration
-│   └── sample-historical-*.xlsx    # Generated historical data
-├── templates/                      # HTML templates
-│   ├── base.html                   # Base layout
-│   ├── index.html                  # Dashboard
-│   ├── rate.html                   # Rating interface
-│   ├── analytics.html              # Analytics & calibration
-│   ├── bonus_calculation.html      # Bonus calculator
-│   ├── export.html                 # Export to Workday
-│   └── import.html                 # Import from Workday
-└── tests/                          # Unit tests
-    └── test_*.py                   # Test suite
-```
-
 ## Testing
 
 Run the test suite:
@@ -457,41 +286,16 @@ Tests cover database operations, rating validation, bonus calculations, multi-or
   - `ratings.db` (your data)
   - `real-*.xlsx` (Workday exports)
 
-## Common Issues
+## Troubleshooting
 
-### "No such file or directory" when importing Workday data
-- You need to export from Workday first, OR
-- Use sample data: `python3 scripts/create_sample_data.py` then import via the Import tab
+| Issue | Solution |
+|-------|----------|
+| "No such file or directory" on import | Export from Workday first, or generate sample data with `python3 scripts/create_sample_data.py` |
+| Only some employees in bonus calculation | Ensure Workday export has both "Bonus Target - Local Currency" columns (local and converted) |
+| Ratings not saving | Check browser console; ensure server is running (`python3 app.py`) |
+| "Database locked" error | Close other processes using `ratings.db`; restart Flask app |
 
-### "Only 6 employees showing in bonus calculation"
-- Employees need bonus target data in Workday export
-- Ensure both "Bonus Target - Local Currency" and "Bonus Target - Local Currency (XXX)" columns are in your export (where XXX is your currency code like USD, AUD, EUR)
-- The app uses the converted column for international employees, falling back to the local column for employees in your country
-
-### "Performance ratings not saving"
-- Check browser console for errors
-- Ensure the web server is running (`python3 app.py`)
-- Try refreshing the page
-
-### "Database locked" error
-- Close any other processes accessing `ratings.db`
-- Restart the Flask app
-
-## Updating Data
-
-To refresh data from Workday:
-
-1. Export fresh data from Workday
-2. Navigate to **Import** tab
-3. Upload the new export file
-4. Choose **Current Period** (do NOT check "Clear existing data")
-5. Click **Import Data**
-
-**Important**: Re-importing updates Workday fields (salary, job title, etc.) but **preserves** your performance ratings and justifications.
-
-## Future Enhancements
-
-See [TODO.md](TODO.md) for planned features and enhancements.
+**Refreshing from Workday**: Import new export via **Import** tab → **Current Period** (don't check "Clear existing data"). Workday fields update but your ratings are preserved.
 
 ## Contributing
 
@@ -512,7 +316,3 @@ For issues or questions:
 - Check this README and [BONUS_CALCULATION_README.md](docs/BONUS_CALCULATION_README.md)
 - Review test suite for examples: `tests/test_app.py`
 - Open an issue on GitHub
-
-## Credits
-
-Built for engineering managers who need a fair, transparent, and efficient way to conduct performance reviews and bonus calculations.
