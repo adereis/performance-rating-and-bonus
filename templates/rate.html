@@ -1162,9 +1162,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Compact table sort listeners
     const compactHeaders = document.querySelectorAll('.compact-table th.sortable');
     compactHeaders.forEach(header => {
+        // Make headers keyboard accessible
+        header.setAttribute('tabindex', '0');
+        header.setAttribute('role', 'button');
+
         header.addEventListener('click', function() {
             const sortKey = this.getAttribute('data-sort');
             sortCompactTable(sortKey);
+        });
+
+        header.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const sortKey = this.getAttribute('data-sort');
+                sortCompactTable(sortKey);
+            }
         });
     });
 

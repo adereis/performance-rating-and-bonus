@@ -1312,9 +1312,21 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentSort = { column: 'rating', direction: 'desc' };
 
     headers.forEach(header => {
+        // Make headers keyboard accessible
+        header.setAttribute('tabindex', '0');
+        header.setAttribute('role', 'button');
+
         header.addEventListener('click', function() {
             const sortKey = this.getAttribute('data-sort');
             sortRankingsTable(sortKey);
+        });
+
+        header.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const sortKey = this.getAttribute('data-sort');
+                sortRankingsTable(sortKey);
+            }
         });
     });
 

@@ -583,9 +583,21 @@
         let currentSort = { column: 'rating', direction: 'desc' };
 
         headers.forEach(header => {
+            // Make headers keyboard accessible
+            header.setAttribute('tabindex', '0');
+            header.setAttribute('role', 'button');
+
             header.addEventListener('click', function() {
                 const column = this.getAttribute('data-sort');
                 sortTable(column);
+            });
+
+            header.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const column = this.getAttribute('data-sort');
+                    sortTable(column);
+                }
             });
         });
 
