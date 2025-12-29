@@ -1,6 +1,6 @@
-# Use Fedora as base image
-# Fedora aligns with Red Hat ecosystem (relevant for OpenShift deployment)
-FROM registry.fedoraproject.org/fedora:41
+# Use Red Hat Universal Base Image (UBI) 9
+# UBI is freely redistributable, built from RHEL, and recommended for OpenShift
+FROM registry.access.redhat.com/ubi9/ubi:latest
 
 # Set working directory
 WORKDIR /app
@@ -11,10 +11,11 @@ ENV PYTHONUNBUFFERED=1 \
     FLASK_APP=app.py \
     FLASK_ENV=production
 
-# Install Python and dependencies
+# Install Python dependencies
+# - python3-pip: not included in UBI base
 # - gcc: needed for compiling some Python packages
-# - curl: needed for healthcheck
-RUN dnf install -y python3 python3-pip gcc curl && \
+# Note: python3 and curl-minimal are already in UBI 9
+RUN dnf install -y python3-pip gcc && \
     dnf clean all
 
 # Copy requirements first for better caching
