@@ -19,19 +19,11 @@ spec:
         image: perfratingdemoacr.azurecr.io/performance-rating:v1
         ports:
         - containerPort: 5000
-        env:
-        - name: DEMO_MODE
-          value: "true"
-        - name: SESSION_TIMEOUT_SECONDS
-          value: "3600"
-        - name: SESSION_DB_DIR
-          value: "/tmp/demo_sessions"
-        - name: FLASK_ENV
-          value: "production"
-        - name: FLASK_HOST
-          value: "0.0.0.0"
-        - name: FLASK_PORT
-          value: "5000"
+        envFrom:
+        - configMapRef:
+            name: perf-rating-config
+        - secretRef:
+            name: perf-rating-secrets
         resources:
           requests:
             memory: "256Mi"
