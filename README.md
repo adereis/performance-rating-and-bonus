@@ -50,7 +50,7 @@ The workflow is: **Import → Rate → Calculate → Export**. Your HR system ha
 
 The easiest way to explore this tool is through the **public demo**:
 
-**[Launch Demo](https://perf-rating-demo.eastus.cloudapp.azure.com)**
+**[Launch Demo](https://perf-rating-perf-rating-demo.apps.uoaar8p0.eastus.aroapp.io/)**
 
 The demo features:
 - **Session isolation**: Each visitor gets their own sandbox database
