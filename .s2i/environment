@@ -1,0 +1,10 @@
+# S2I (Source-to-Image) configuration for OpenShift
+# This file is read automatically during S2I builds
+
+# Use Gunicorn with app:app (Flask application callable)
+# S2I will run: gunicorn app:app --bind 0.0.0.0:8080
+APP_MODULE=app:app
+
+# Gunicorn configuration
+# S2I Python builder respects these environment variables
+APP_CONFIG=gunicorn.conf.py
