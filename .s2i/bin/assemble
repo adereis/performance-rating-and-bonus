@@ -1,0 +1,17 @@
+#!/bin/bash
+# Custom S2I assemble script
+# This runs during the build phase to prepare the application
+
+set -e
+
+echo "---> Running custom assemble script..."
+
+# Run the default S2I assemble first (installs dependencies)
+/usr/libexec/s2i/assemble
+
+echo "---> Generating demo mode template databases..."
+
+# Generate the template databases (same as Dockerfile RUN step)
+python3 scripts/create_demo_templates.py
+
+echo "---> Custom assemble complete!"
