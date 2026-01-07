@@ -4,10 +4,19 @@
 
 The **Bonus Calculation** feature distributes your team's total bonus pool based on individual performance ratings. It ensures that:
 
-1. **The total equals your budget** - All bonuses add up exactly to your total bonus pool (sum of all individual targets from Workday)
+1. **The total equals your budget** - All bonuses add up exactly to your total bonus pool (from Workday metadata)
 2. **High performance is rewarded exponentially** - Exceptional performers receive disproportionately higher bonuses
 3. **Low performance is penalized appropriately** - Underperformance results in below-target bonuses
 4. **The system is fair and transparent** - Everyone can see how the calculation works
+
+### Workday Export Requirements
+
+The system requires the **current Workday export format** which includes metadata:
+- **Row 1**: Report title with period (e.g., "Associate Awards:: ... Bonus - CY25 Q1")
+- **Row 4**: Budget summary with your total bonus pool amount
+- **Row 9+**: Column headers and employee data
+
+If you have an older export without this metadata, please re-export from Workday. The bonus pool from metadata is required for accurate calculations.
 
 ## How It Works (The Simple Version)
 
@@ -82,10 +91,21 @@ You can experiment with two parameters to adjust how aggressive the curve is:
 The Bonus Calculation page shows:
 
 ### Summary Statistics
-- **Total Bonus Pool**: Your total budget (sum of all targets from Workday)
-- **Total Allocated**: What you're actually paying out (should equal pool)
-- **Rated Employees**: How many people received bonuses
+- **Workday Pool** (with ✓): Your authoritative total budget from Workday metadata. This is the source of truth for your bonus pool.
+- **Bonus Pool** (without ✓): Fallback when Workday metadata is unavailable - calculated as sum of all employee bonus targets.
+- **Budget Override**: Optional adjustment to the pool (can be positive or negative). Click the value to edit. Auto-saves after 2 seconds.
+- **Adjusted Pool**: Workday Pool + Budget Override = your actual working budget
+- **Total Allocated**: What you're actually paying out (should equal adjusted pool)
+- **Rated Employees**: Shows "X of Y" format when not all employees have been rated yet
 - **Value per Share**: The normalization factor applied
+
+### Partial Ratings
+
+You can view the bonus calculation before rating all employees:
+- The page shows "X of Y" in the Rated Employees box
+- A warning appears: "⚠️ Partial - pool uses rated only"
+- The calculation uses a **proportional share** of the Workday pool based on the rated employees' targets
+- Example: If rated employees have 50% of total bonus targets, they get 50% of the Workday pool
 
 ### Individual Results Table
 For each employee, you'll see:
@@ -156,8 +176,10 @@ If some rated employees don't appear in the calculation, they're likely missing 
 
 ## Questions or Issues?
 
+- **Why am I getting "Missing bonus pool metadata" error?** → Your Workday export is an older format. Re-export from Workday to get the current format with metadata.
 - **Why don't all my rated employees show up?** → Check that they have bonus target data in the Workday export
 - **Why does total allocated slightly differ from pool?** → It shouldn't - if it does, this is a bug. They should match exactly.
+- **Can I adjust the total pool?** → Yes! Use the Budget Override field to add or subtract from the Workday pool.
 - **Can I save different parameter sets?** → Not yet, but you can document your preferred parameters
 - **How do I export the results?** → Currently manual (copy/paste from UI). Future versions will include CSV export.
 
