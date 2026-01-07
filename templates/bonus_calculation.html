@@ -941,9 +941,7 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endif %}
 });
 
-// Budget override auto-save functionality
-let budgetOverrideSaveTimer = null;
-
+// Budget override auto-save functionality using global AutoSave manager
 function saveBudgetOverride(value) {
     const indicator = document.getElementById('budget-save-indicator');
 
@@ -978,26 +976,23 @@ function saveBudgetOverride(value) {
     });
 }
 
-// Set up budget override input auto-save
+// Set up budget override input auto-save using global AutoSave manager
 const budgetOverrideInput = document.getElementById('budget_override_input');
 if (budgetOverrideInput) {
     budgetOverrideInput.addEventListener('input', function() {
-        // Clear existing timer
-        if (budgetOverrideSaveTimer) {
-            clearTimeout(budgetOverrideSaveTimer);
-        }
-
-        // Set new timer - save after 2 seconds of inactivity
-        budgetOverrideSaveTimer = setTimeout(() => {
-            saveBudgetOverride(this.value);
-        }, 2000);
+        const inputValue = this.value;
+        // Use global AutoSave manager - handles debounce and keepalive on unload
+        window.AutoSave.debounce(
+            'budget_override',
+            '/api/bonus-settings',
+            () => ({ budget_override: inputValue }),
+            2000
+        );
     });
 
     // Also save on blur (when leaving the field)
     budgetOverrideInput.addEventListener('blur', function() {
-        if (budgetOverrideSaveTimer) {
-            clearTimeout(budgetOverrideSaveTimer);
-        }
+        window.AutoSave.flush('budget_override');
         saveBudgetOverride(this.value);
     });
 }

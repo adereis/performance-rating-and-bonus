@@ -634,19 +634,43 @@
 </div>
 
 <script>
-// Auto-save functionality
-const autoSaveTimers = {};
-
+// Auto-save functionality using global AutoSave manager
 function autoSave(associateId, card) {
-    // Clear existing timer for this employee
-    if (autoSaveTimers[associateId]) {
-        clearTimeout(autoSaveTimers[associateId]);
-    }
+    // Use global AutoSave manager - handles debounce and keepalive on unload
+    window.AutoSave.debounce(
+        `rating_${associateId}`,
+        '/api/rate',
+        () => collectRatingData(associateId, card),
+        2000
+    );
+}
 
-    // Set new timer - save after 2 seconds of inactivity
-    autoSaveTimers[associateId] = setTimeout(() => {
-        saveRating(associateId, card);
-    }, 2000);
+// Collect rating data from a card for saving
+function collectRatingData(associateId, card) {
+    const inputs = card.querySelectorAll('[data-field]');
+    const data = {
+        associate_id: associateId,
+        rating_percent: '',
+        justification: '',
+        mentor: '',
+        mentees: '',
+        tenets_strengths: [],
+        tenets_improvements: []
+    };
+
+    inputs.forEach(input => {
+        const field = input.getAttribute('data-field');
+        data[field] = input.value;
+    });
+
+    // Collect selected tenets
+    const strengthCheckboxes = card.querySelectorAll('input[data-tenet-type="strengths"]:checked');
+    const improvementCheckboxes = card.querySelectorAll('input[data-tenet-type="improvements"]:checked');
+
+    data.tenets_strengths = Array.from(strengthCheckboxes).map(cb => cb.value);
+    data.tenets_improvements = Array.from(improvementCheckboxes).map(cb => cb.value);
+
+    return data;
 }
 
 function validateRating(ratingInput) {
@@ -680,9 +704,7 @@ function validateRating(ratingInput) {
     return true;
 }
 
-function saveRating(associateId, card) {
-    const inputs = card.querySelectorAll('[data-field]');
-
+function saveRating(associateId, card, useKeepalive = false) {
     // Validate rating input first
     const ratingInput = card.querySelector('[data-field="rating_percent"]');
     if (!validateRating(ratingInput)) {
@@ -690,34 +712,15 @@ function saveRating(associateId, card) {
         return; // Don't save if validation fails
     }
 
-    const data = {
-        associate_id: associateId,
-        rating_percent: '',
-        justification: '',
-        mentor: '',
-        mentees: '',
-        tenets_strengths: [],
-        tenets_improvements: []
-    };
-
-    inputs.forEach(input => {
-        const field = input.getAttribute('data-field');
-        data[field] = input.value;
-    });
-
-    // Collect selected tenets
-    const strengthCheckboxes = card.querySelectorAll('input[data-tenet-type="strengths"]:checked');
-    const improvementCheckboxes = card.querySelectorAll('input[data-tenet-type="improvements"]:checked');
-
-    data.tenets_strengths = Array.from(strengthCheckboxes).map(cb => cb.value);
-    data.tenets_improvements = Array.from(improvementCheckboxes).map(cb => cb.value);
+    const data = collectRatingData(associateId, card);
 
     fetch('/api/rate', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        keepalive: useKeepalive
     })
     .then(response => response.json())
     .then(result => {
@@ -853,9 +856,7 @@ function validateCompactRating(input) {
     return true;
 }
 
-const compactSaveTimers = {};
-
-function saveCompactRating(associateId, input) {
+function saveCompactRating(associateId, input, useKeepalive = false) {
     if (!validateCompactRating(input)) {
         return;
     }
@@ -871,7 +872,8 @@ function saveCompactRating(associateId, input) {
         body: JSON.stringify({
             associate_id: associateId,
             rating_percent: ratingValue
-        })
+        }),
+        keepalive: useKeepalive
     })
     .then(response => response.json())
     .then(result => {
@@ -906,13 +908,14 @@ function saveCompactRating(associateId, input) {
 }
 
 function autoSaveCompact(associateId, input) {
-    if (compactSaveTimers[associateId]) {
-        clearTimeout(compactSaveTimers[associateId]);
-    }
-
-    compactSaveTimers[associateId] = setTimeout(() => {
-        saveCompactRating(associateId, input);
-    }, 2000);
+    const ratingValue = input.value.trim();
+    // Use global AutoSave manager - handles debounce and keepalive on unload
+    window.AutoSave.debounce(
+        `compact_${associateId}`,
+        '/api/rate',
+        () => ({ associate_id: associateId, rating_percent: ratingValue }),
+        2000
+    );
 }
 
 // Compact table sorting
@@ -1134,25 +1137,7 @@ function setupTenetListeners(card) {
     updateTenetValidation('improvements');
 }
 
-// Save all pending changes before page unload
-window.addEventListener('beforeunload', function(e) {
-    // Clear all pending timers and save immediately
-    Object.keys(autoSaveTimers).forEach(associateId => {
-        clearTimeout(autoSaveTimers[associateId]);
-        const card = document.querySelector(`.employee-card[data-associate-id="${associateId}"]`);
-        if (card) {
-            saveRating(associateId, card);
-        }
-    });
-
-    Object.keys(compactSaveTimers).forEach(associateId => {
-        clearTimeout(compactSaveTimers[associateId]);
-        const input = document.querySelector(`.compact-rating-input[data-associate-id="${associateId}"]`);
-        if (input) {
-            saveCompactRating(associateId, input);
-        }
-    });
-});
+// Note: The global AutoSave manager in base.html handles beforeunload with keepalive saves
 
 // Set up auto-save listeners on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -1188,9 +1173,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const inputs = card.querySelectorAll('[data-field]');
 
         inputs.forEach(input => {
-            // Auto-save on blur (when leaving a field)
+            // Save immediately on blur (when leaving a field) - no debounce
+            // Uses keepalive so the save survives page navigation
             input.addEventListener('blur', () => {
-                autoSave(associateId, card);
+                window.AutoSave.cancel(`rating_${associateId}`);
+                saveRating(associateId, card, true);  // keepalive=true
             });
 
             // Real-time validation for rating input
@@ -1220,8 +1207,10 @@ document.addEventListener('DOMContentLoaded', function() {
             autoSaveCompact(associateId, input);
         });
 
+        // Save immediately on blur with keepalive (survives navigation)
         input.addEventListener('blur', () => {
-            autoSaveCompact(associateId, input);
+            window.AutoSave.cancel(`compact_${associateId}`);
+            saveCompactRating(associateId, input, true);  // keepalive=true
         });
     });
 });
