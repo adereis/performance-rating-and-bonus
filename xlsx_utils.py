@@ -26,6 +26,47 @@ def parse_float(val) -> Optional[float]:
         return None
 
 
+def _find_header_row(rows: List[tuple]) -> Optional[int]:
+    """
+    Find the header row by looking for required Workday column names.
+
+    Scans rows until it finds one containing 'Associate' and 'Associate ID'
+    (case-insensitive), which are required columns in Workday exports.
+
+    Args:
+        rows: List of row tuples from the spreadsheet
+
+    Returns:
+        Index of the header row, or None if not found
+    """
+    required_headers = {'associate', 'associate id'}
+
+    for idx, row in enumerate(rows):
+        if not row:
+            continue
+        # Normalize cell values for comparison
+        normalized = {str(cell).lower().strip() for cell in row if cell}
+        if required_headers.issubset(normalized):
+            return idx
+
+    return None
+
+
+def _is_empty_row(row: tuple) -> bool:
+    """
+    Check if a row is empty (all cells are None or whitespace-only strings).
+
+    Args:
+        row: Row tuple from the spreadsheet
+
+    Returns:
+        True if the row is empty, False otherwise
+    """
+    if not row:
+        return True
+    return all(cell is None or (isinstance(cell, str) and not cell.strip()) for cell in row)
+
+
 def analyze_xlsx(file_path: str) -> Dict[str, Any]:
     """
     Analyze an XLSX file and return metadata about its contents.
@@ -49,16 +90,25 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
 
         rows = list(sheet.iter_rows(values_only=True))
 
-        if len(rows) < 2:
+        # Find the header row dynamically
+        header_idx = _find_header_row(rows)
+        if header_idx is None:
+            wb.close()
             return {
                 'success': False,
-                'error': 'Not enough data in Excel file'
+                'error': 'Could not find header row with required columns (Associate, Associate ID)'
             }
 
-        # Row 1 (index 1) contains the actual headers
-        headers = [str(h).strip() if h else '' for h in rows[1]]
+        if header_idx >= len(rows) - 1:
+            wb.close()
+            return {
+                'success': False,
+                'error': 'No data rows found after header'
+            }
 
-        # Count employees (data rows)
+        headers = [str(h).strip() if h else '' for h in rows[header_idx]]
+
+        # Count employees (data rows start after header)
         employee_count = 0
         notes_count = 0
         partial_count = 0
@@ -66,21 +116,29 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
         # Find column indices
         col_indices = find_column_indices(headers)
 
-        for row in rows[2:]:
-            if not row or (col_indices['associate'] is not None and not row[col_indices['associate']]):
+        for row in rows[header_idx + 1:]:
+            # Skip empty rows
+            if _is_empty_row(row):
                 continue
+
+            # Skip rows without an associate value
+            associate_idx = col_indices.get('associate')
+            if associate_idx is not None:
+                associate_val = row[associate_idx] if associate_idx < len(row) else None
+                if not associate_val or (isinstance(associate_val, str) and not associate_val.strip()):
+                    continue
 
             employee_count += 1
 
             # Check for notes
             notes_idx = col_indices.get('notes')
-            if notes_idx is not None and row[notes_idx]:
+            if notes_idx is not None and notes_idx < len(row) and row[notes_idx]:
                 notes_count += 1
 
             # Check for partial data (has bonus allocation but no notes)
             bonus_idx = col_indices.get('proposed_percent_of_target')
-            if bonus_idx is not None and row[bonus_idx]:
-                if notes_idx is None or not row[notes_idx]:
+            if bonus_idx is not None and bonus_idx < len(row) and row[bonus_idx]:
+                if notes_idx is None or notes_idx >= len(row) or not row[notes_idx]:
                     partial_count += 1
 
         wb.close()
@@ -194,24 +252,36 @@ def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], st
 
         rows = list(sheet.iter_rows(values_only=True))
 
-        if len(rows) < 2:
-            return False, [], 'Not enough data in Excel file'
+        # Find the header row dynamically
+        header_idx = _find_header_row(rows)
+        if header_idx is None:
+            wb.close()
+            return False, [], 'Could not find header row with required columns (Associate, Associate ID)'
 
-        # Row 1 (index 1) contains the actual headers
-        headers = [str(h).strip() if h else '' for h in rows[1]]
+        if header_idx >= len(rows) - 1:
+            wb.close()
+            return False, [], 'No data rows found after header'
+
+        headers = [str(h).strip() if h else '' for h in rows[header_idx]]
         col_indices = find_column_indices(headers)
 
         employees = []
 
-        for i, row in enumerate(rows[2:], start=2):
+        for i, row in enumerate(rows[header_idx + 1:], start=header_idx + 1):
             # Skip empty rows
-            associate_idx = col_indices.get('associate')
-            if not row or (associate_idx is not None and not row[associate_idx]):
+            if _is_empty_row(row):
                 continue
+
+            # Skip rows without an associate value
+            associate_idx = col_indices.get('associate')
+            if associate_idx is not None:
+                associate_val = row[associate_idx] if associate_idx < len(row) else None
+                if not associate_val or (isinstance(associate_val, str) and not associate_val.strip()):
+                    continue
 
             # Get associate ID (required)
             assoc_id_idx = col_indices.get('associate_id')
-            if assoc_id_idx is not None and row[assoc_id_idx]:
+            if assoc_id_idx is not None and assoc_id_idx < len(row) and row[assoc_id_idx]:
                 associate_id = str(row[assoc_id_idx])
             else:
                 associate_id = f"TEMP_{i}"
@@ -219,7 +289,7 @@ def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], st
             # Build employee dict
             emp = {
                 'associate_id': associate_id,
-                'associate': str(row[associate_idx]) if associate_idx is not None and row[associate_idx] else '',
+                'associate': str(row[associate_idx]) if associate_idx is not None and associate_idx < len(row) and row[associate_idx] else '',
                 'supervisory_organization': _get_str(row, col_indices.get('supervisory_org')),
                 'current_job_profile': _get_str(row, col_indices.get('job_profile')),
                 'photo': _get_str(row, col_indices.get('photo')),
