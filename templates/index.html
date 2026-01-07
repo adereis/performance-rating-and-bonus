@@ -720,6 +720,33 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
     </div>
+    {% if historical_info %}
+    <!-- Has historical data but no current period -->
+    <h2>No Current Period Data</h2>
+    <p class="empty-state-description">
+        You have <strong>{{ historical_info.period_count }} archived period{{ 's' if historical_info.period_count != 1 else '' }}</strong>
+        with {{ historical_info.snapshot_count }} employee snapshot{{ 's' if historical_info.snapshot_count != 1 else '' }}{% if historical_info.latest_period_name %} (latest: {{ historical_info.latest_period_name }}){% endif %}.
+    </p>
+    <p class="empty-state-description" style="margin-top: 10px;">
+        Import your current Workday export to start rating employees for this period.
+    </p>
+
+    <div class="empty-state-actions" style="gap: 15px;">
+        <a href="{{ url_for('import_page') }}" class="btn btn-primary btn-large">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            Import Current Period
+        </a>
+        <a href="{{ url_for('history_page') }}" class="btn btn-secondary btn-large">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            View Historical Data
+        </a>
+    </div>
+    {% else %}
+    <!-- First time user - no data at all -->
     <h2>Welcome to Performance Rating System</h2>
     <p class="empty-state-description">Import your team data from Workday to get started with performance ratings and bonus calculations.</p>
 
@@ -741,6 +768,7 @@
         <code>python3 scripts/create_sample_data.py</code>
         <p class="hint">Then import the generated <strong>sample-data-small.xlsx</strong> file</p>
     </div>
+    {% endif %}
 </div>
 {% else %}
 <!-- Normal Dashboard: Has employees -->

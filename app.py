@@ -603,7 +603,26 @@ def index():
         'avg_rating': avg_rating
     }
 
-    return render_template('index.html', team=team_data, stats=stats, filter_info=filter_info, demo_mode=DEMO_MODE)
+    # Check for historical data if no current employees
+    historical_info = None
+    if total_employees == 0:
+        db = get_db()
+        try:
+            period_count = db.query(Period).count()
+            if period_count > 0:
+                # Get most recent period
+                latest_period = db.query(Period).order_by(Period.archived_at.desc()).first()
+                snapshot_count = db.query(RatingSnapshot).count()
+                historical_info = {
+                    'period_count': period_count,
+                    'snapshot_count': snapshot_count,
+                    'latest_period_name': latest_period.name if latest_period else None
+                }
+        finally:
+            db.close()
+
+    return render_template('index.html', team=team_data, stats=stats, filter_info=filter_info,
+                         demo_mode=DEMO_MODE, historical_info=historical_info)
 
 
 @app.route('/rate')
@@ -1994,7 +2013,9 @@ def analyze_import():
             'employee_count': analysis['employee_count'],
             'has_bonus_column': analysis['has_bonus_column'],
             'notes_count': analysis['notes_count'],
-            'partial_count': analysis['partial_count'],
+            'allocation_count': analysis.get('allocation_count', 0),
+            'metadata': analysis.get('metadata', {}),
+            'import_detection': analysis.get('import_detection', {}),
             'period_exists': False,
             'existing_count': 0,
             'period_id': None

@@ -9,14 +9,26 @@ from openpyxl import Workbook
 from models import Employee, Period, RatingSnapshot
 
 
-def create_test_xlsx(employees_data, include_headers=True, manager_currency='USD'):
+def create_test_xlsx(employees_data, include_headers=True, manager_currency='USD',
+                     period_name='CY25 Q3', total_pool=100000.0):
     """
-    Create a test XLSX file with Workday format.
+    Create a test XLSX file with Workday extended format.
+
+    The extended format includes metadata rows before the actual data:
+    - Row 1: Report title with period
+    - Row 2: Subtitle
+    - Row 3: Budget headers
+    - Row 4: Budget data (type, spend, "of", pool, %, style, currency)
+    - Rows 5-8: Section headers
+    - Row 9: Column headers
+    - Row 10+: Employee data
 
     Args:
         employees_data: List of dicts with employee data
         include_headers: Whether to include header rows
         manager_currency: Manager's home currency (USD, AUD, EUR, etc.)
+        period_name: Period identifier (e.g., "CY25 Q3")
+        total_pool: Total bonus pool amount
 
     Returns:
         BytesIO object containing the XLSX file
@@ -24,11 +36,26 @@ def create_test_xlsx(employees_data, include_headers=True, manager_currency='USD
     wb = Workbook()
     ws = wb.active
 
-    # Row 1: Empty or label row (Workday format)
-    ws.append(['Report Data'])
+    # Row 1: Report title with period
+    ws.append([f'Associate Awards:: Compensation Review: Bonus - {period_name}'])
 
-    # Row 2: Headers (matching Workday export)
-    # Currency columns use manager's home currency (e.g., USD, AUD, EUR)
+    # Row 2: Subtitle
+    ws.append(['My Current Organizations Budget and Spend'])
+
+    # Row 3: Budget headers
+    ws.append(['Name', 'Total Spend Text Value', 'of', 'Total Pool Text Value',
+               '% Pool Spent', 'Data Viz Color [Singular]'])
+
+    # Row 4: Budget data
+    ws.append(['Bonus', '0.00', 'of', str(total_pool), 0.0, 'style1', manager_currency, 0.0])
+
+    # Rows 5-8: Section headers (as in real Workday export)
+    ws.append(['Compensation Planning Header', 'Compensation Planning'])
+    ws.append(['Process Preferences'])
+    ws.append(['Organization Issues'])
+    ws.append(['Associate', '', '', '', '', 'Bonus'])
+
+    # Row 9: Column headers (matching Workday export)
     headers = [
         'Associate',
         'Supervisory Organization',
@@ -36,8 +63,8 @@ def create_test_xlsx(employees_data, include_headers=True, manager_currency='USD
         'Photo',
         'Errors',
         'Associate ID',
-        'Current Base Pay - All Countries',
-        f'Current Base Pay - All Countries ({manager_currency})',
+        'Current Base Pay All Countries',
+        f'Current Base Pay All Countries ({manager_currency})',
         'Currency',
         'Grade',
         'Annual Bonus Target %',
@@ -52,7 +79,7 @@ def create_test_xlsx(employees_data, include_headers=True, manager_currency='USD
     ]
     ws.append(headers)
 
-    # Data rows
+    # Row 10+: Employee data rows
     for emp in employees_data:
         row = [
             emp.get('associate', ''),
@@ -746,3 +773,141 @@ class TestInternationalManagerCurrency:
 
         # Expected: 20000 (AUD) + 7200 (AUD conversion) = 27200 AUD
         assert total_pool == 27200
+
+
+class TestMetadataExtraction:
+    """Tests for Workday metadata extraction from extended format."""
+
+    def test_extract_period_name_from_title(self, db_session):
+        """Test that period name is extracted from report title."""
+        from xlsx_utils import analyze_xlsx
+
+        employees = [{'associate_id': 'EMP001', 'associate': 'John Doe'}]
+        xlsx_file = create_test_xlsx(employees, period_name='CY25 Q3', total_pool=50000)
+
+        temp_dir = os.path.expanduser('~/tmp')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.join(temp_dir, 'test_metadata.xlsx')
+
+        with open(temp_path, 'wb') as f:
+            f.write(xlsx_file.read())
+
+        try:
+            result = analyze_xlsx(temp_path)
+            assert result['success'] is True
+            assert 'metadata' in result
+            assert result['metadata']['period_name'] == 'CY25 Q3'
+        finally:
+            os.remove(temp_path)
+
+    def test_extract_total_pool(self, db_session):
+        """Test that total pool is extracted from budget row."""
+        from xlsx_utils import analyze_xlsx
+
+        employees = [{'associate_id': 'EMP001', 'associate': 'John Doe'}]
+        xlsx_file = create_test_xlsx(employees, total_pool=150000.50)
+
+        temp_dir = os.path.expanduser('~/tmp')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.join(temp_dir, 'test_pool.xlsx')
+
+        with open(temp_path, 'wb') as f:
+            f.write(xlsx_file.read())
+
+        try:
+            result = analyze_xlsx(temp_path)
+            assert result['success'] is True
+            assert result['metadata']['total_pool'] == 150000.50
+        finally:
+            os.remove(temp_path)
+
+    def test_extract_currency(self, db_session):
+        """Test that currency is extracted from budget row."""
+        from xlsx_utils import analyze_xlsx
+
+        employees = [{'associate_id': 'EMP001', 'associate': 'John Doe'}]
+        xlsx_file = create_test_xlsx(employees, manager_currency='AUD')
+
+        temp_dir = os.path.expanduser('~/tmp')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.join(temp_dir, 'test_currency.xlsx')
+
+        with open(temp_path, 'wb') as f:
+            f.write(xlsx_file.read())
+
+        try:
+            result = analyze_xlsx(temp_path)
+            assert result['success'] is True
+            assert result['metadata']['currency'] == 'AUD'
+        finally:
+            os.remove(temp_path)
+
+
+class TestValidation:
+    """Tests for Workday format validation."""
+
+    def test_rejects_wrong_format_file(self, db_session):
+        """Test that files with wrong column format are rejected."""
+        from xlsx_utils import analyze_xlsx
+
+        # Create file with wrong headers
+        wb = Workbook()
+        ws = wb.active
+        ws.append(['Name', 'Email', 'Department'])  # Wrong headers
+        ws.append(['John Doe', 'john@example.com', 'Engineering'])
+
+        temp_dir = os.path.expanduser('~/tmp')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.join(temp_dir, 'test_wrong_format.xlsx')
+        wb.save(temp_path)
+
+        try:
+            result = analyze_xlsx(temp_path)
+            assert result['success'] is False
+            assert 'Could not find expected Workday columns' in result['error']
+        finally:
+            os.remove(temp_path)
+
+    def test_parse_rejects_wrong_format(self, db_session):
+        """Test that parse_xlsx_employees rejects wrong format files."""
+        from xlsx_utils import parse_xlsx_employees
+
+        wb = Workbook()
+        ws = wb.active
+        ws.append(['ID', 'Full Name', 'Role'])  # Wrong headers
+        ws.append(['001', 'John Doe', 'Engineer'])
+
+        temp_dir = os.path.expanduser('~/tmp')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.join(temp_dir, 'test_wrong_parse.xlsx')
+        wb.save(temp_path)
+
+        try:
+            success, employees, error = parse_xlsx_employees(temp_path)
+            assert success is False
+            assert len(employees) == 0
+            assert 'Could not find expected Workday columns' in error
+        finally:
+            os.remove(temp_path)
+
+    def test_shows_found_headers_in_error(self, db_session):
+        """Test that error message shows what headers were found."""
+        from xlsx_utils import analyze_xlsx
+
+        wb = Workbook()
+        ws = wb.active
+        ws.append(['CustomField1', 'CustomField2', 'CustomField3'])
+        ws.append(['Value1', 'Value2', 'Value3'])
+
+        temp_dir = os.path.expanduser('~/tmp')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.join(temp_dir, 'test_custom_headers.xlsx')
+        wb.save(temp_path)
+
+        try:
+            result = analyze_xlsx(temp_path)
+            assert result['success'] is False
+            # Error should show what was actually found
+            assert 'Found in file' in result['error']
+        finally:
+            os.remove(temp_path)

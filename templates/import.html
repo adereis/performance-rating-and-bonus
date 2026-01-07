@@ -206,6 +206,49 @@
         margin-top: 5px;
     }
 
+    .detected-period {
+        background: linear-gradient(135deg, #e8f4fd 0%, #f0f7ff 100%);
+        border: 1px solid #b8d4f0;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .period-badge {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .period-badge .period-label {
+        font-size: 14px;
+        color: #555;
+    }
+
+    .period-badge .period-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1976d2;
+        background: white;
+        padding: 4px 12px;
+        border-radius: 4px;
+        border: 1px solid #b8d4f0;
+    }
+
+    .period-suggestion {
+        font-size: 14px;
+        color: #1565c0;
+    }
+
+    .period-suggestion.current-period {
+        color: #2e7d32;
+    }
+
+    .period-suggestion.historical-period {
+        color: #f57c00;
+    }
+
     .analysis-results {
         display: none;
         background: white;
@@ -801,49 +844,62 @@ function resetDemoForm() {
             </div>
             <input type="file" id="fileInput" accept=".xlsx,.xls">
 
-            <!-- Import Type Selection -->
-            <div class="import-options">
-                <h4>Import Type</h4>
-                <div class="option-group">
-                    <label>
-                        <input type="radio" name="importType" value="current" checked>
+            <!-- Import options will be shown after file analysis -->
+            <div class="import-options" id="importOptions" style="display: none;">
+                <h4>Import Settings</h4>
+
+                <!-- Detected Period Info (shown after analysis) -->
+                <div class="detected-period" id="detectedPeriod">
+                    <div class="period-badge" id="periodBadge">
+                        <span class="period-label">Detected Period:</span>
+                        <span class="period-value" id="periodValue">-</span>
+                    </div>
+                    <div class="period-suggestion" id="periodSuggestion">
+                        <!-- Suggestion text will be filled by JS -->
+                    </div>
+                </div>
+
+                <!-- Import Type Selection (auto-selected based on detection) -->
+                <div class="option-group" id="importTypeGroup">
+                    <label id="currentLabel">
+                        <input type="radio" name="importType" value="current">
                         <div class="option-content">
-                            <strong>Current Period</strong>
-                            <span>Update active employee data. Preserves existing ratings and justifications.</span>
+                            <strong>Import as Current Period</strong>
+                            <span>Update active employee roster for rating. Preserves existing ratings.</span>
                         </div>
                     </label>
-                    <label>
+                    <label id="historicalLabel">
                         <input type="radio" name="importType" value="historical">
                         <div class="option-content">
-                            <strong>Historical Period</strong>
-                            <span>Import as a past period snapshot. Parses Notes field for rating data.</span>
+                            <strong>Import as Historical Archive</strong>
+                            <span>Save as a past period snapshot. Parses Notes field for rating data.</span>
                         </div>
                     </label>
                 </div>
 
                 <!-- Current Period Options -->
-                <div class="current-options" id="currentOptions">
+                <div class="current-options hidden" id="currentOptions">
                     <label class="clear-data-option">
                         <input type="checkbox" id="clearExisting">
                         <div class="option-text">
                             <strong>Clear existing data before import</strong>
-                            <span>Removes all current employee data and ratings. Use this when switching from test data to real data.</span>
+                            <span>Removes all current employee data and ratings.</span>
                         </div>
                     </label>
                 </div>
 
-                <!-- Historical Period Fields -->
+                <!-- Historical Period Fields (auto-populated from metadata) -->
                 <div class="period-fields" id="periodFields">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="periodId">Period ID</label>
-                            <input type="text" id="periodId" placeholder="e.g., 2024-H2">
-                            <div class="hint">Format: YYYY-HN (half) or YYYY-QN (quarter)</div>
+                            <input type="text" id="periodId" placeholder="e.g., 2025-Q3">
+                            <div class="hint">Auto-detected from file</div>
                         </div>
                         <div class="form-group">
                             <label for="periodName">Period Name</label>
-                            <input type="text" id="periodName" placeholder="e.g., Second Half 2024">
-                            <div class="hint">Human-readable name for this period</div>
+                            <input type="text" id="periodName" placeholder="e.g., CY25 Q3">
+                            <div class="hint">Auto-detected from file</div>
                         </div>
                     </div>
                 </div>
@@ -972,18 +1028,22 @@ function resetDemoForm() {
     // Import type toggle
     document.querySelectorAll('input[name="importType"]').forEach(radio => {
         radio.addEventListener('change', function() {
-            const periodFields = document.getElementById('periodFields');
-            const currentOptions = document.getElementById('currentOptions');
-            if (this.value === 'historical') {
-                periodFields.classList.add('visible');
-                currentOptions.classList.add('hidden');
-            } else {
-                periodFields.classList.remove('visible');
-                currentOptions.classList.remove('hidden');
-            }
+            updateImportTypeUI(this.value);
             updateImportButton();
         });
     });
+
+    function updateImportTypeUI(importType) {
+        const periodFields = document.getElementById('periodFields');
+        const currentOptions = document.getElementById('currentOptions');
+        if (importType === 'historical') {
+            periodFields.classList.add('visible');
+            currentOptions.classList.add('hidden');
+        } else {
+            periodFields.classList.remove('visible');
+            currentOptions.classList.remove('hidden');
+        }
+    }
 
     // Period field validation
     document.getElementById('periodId').addEventListener('input', function() {
@@ -1068,7 +1128,9 @@ function resetDemoForm() {
         const formData = new FormData();
         formData.append('file', file);
 
-        const importType = document.querySelector('input[name="importType"]:checked').value;
+        // Import type may not be selected yet (will be auto-detected from file)
+        const importTypeRadio = document.querySelector('input[name="importType"]:checked');
+        const importType = importTypeRadio ? importTypeRadio.value : 'current';
         formData.append('import_type', importType);
 
         if (importType === 'historical') {
@@ -1103,9 +1165,44 @@ function resetDemoForm() {
         document.getElementById('bonusColStatus').textContent = data.has_bonus_column ? 'Yes' : 'No';
         document.getElementById('notesCount').textContent = data.notes_count;
 
-        if (data.partial_count > 0) {
+        if (data.allocation_count > 0) {
             document.getElementById('partialItem').style.display = 'block';
-            document.getElementById('partialCount').textContent = data.partial_count;
+            document.getElementById('partialCount').textContent = data.allocation_count;
+            document.querySelector('#partialItem .label').textContent = 'With Allocations';
+        }
+
+        // Show import options section
+        document.getElementById('importOptions').style.display = 'block';
+
+        // Handle import type detection from metadata
+        if (data.import_detection) {
+            const detection = data.import_detection;
+
+            // Show detected period
+            document.getElementById('periodValue').textContent = detection.period_display || 'Unknown';
+
+            // Show suggestion message
+            const suggestionDiv = document.getElementById('periodSuggestion');
+            if (detection.is_current_period) {
+                suggestionDiv.className = 'period-suggestion current-period';
+                suggestionDiv.textContent = `This is the current period (${detection.current_period}). Suggested: Import as current roster.`;
+            } else {
+                suggestionDiv.className = 'period-suggestion historical-period';
+                suggestionDiv.textContent = `This is a past period (current: ${detection.current_period}). Suggested: Import as historical archive.`;
+            }
+
+            // Auto-select import type based on suggestion
+            const suggestedType = detection.suggested_type;
+            document.querySelector(`input[name="importType"][value="${suggestedType}"]`).checked = true;
+            updateImportTypeUI(suggestedType);
+
+            // Auto-populate period fields from metadata
+            if (detection.period_id) {
+                document.getElementById('periodId').value = detection.period_id;
+            }
+            if (detection.period_display) {
+                document.getElementById('periodName').value = detection.period_display;
+            }
         }
 
         // Check for overwrite
@@ -1121,7 +1218,8 @@ function resetDemoForm() {
 
     function updateImportButton() {
         const btn = document.getElementById('importBtn');
-        const importType = document.querySelector('input[name="importType"]:checked').value;
+        const importTypeRadio = document.querySelector('input[name="importType"]:checked');
+        const importType = importTypeRadio ? importTypeRadio.value : 'current';
 
         let canImport = selectedFile !== null && analysisData !== null;
 
@@ -1149,7 +1247,14 @@ function resetDemoForm() {
         const formData = new FormData();
         formData.append('file', selectedFile);
 
-        const importType = document.querySelector('input[name="importType"]:checked').value;
+        const importTypeRadio = document.querySelector('input[name="importType"]:checked');
+        if (!importTypeRadio) {
+            alert('Please select an import type');
+            progress.classList.remove('visible');
+            uploadSection.style.display = 'block';
+            return;
+        }
+        const importType = importTypeRadio.value;
         formData.append('import_type', importType);
 
         if (importType === 'historical') {
@@ -1216,12 +1321,24 @@ function resetDemoForm() {
         document.getElementById('periodId').value = '';
         document.getElementById('periodName').value = '';
 
-        // Reset partial count display
+        // Reset import options and detection display
+        document.getElementById('importOptions').style.display = 'none';
+        document.getElementById('periodValue').textContent = '-';
+        document.getElementById('periodSuggestion').textContent = '';
+        document.getElementById('periodSuggestion').className = 'period-suggestion';
+
+        // Reset import type selection
+        document.querySelector('input[name="importType"][value="current"]').checked = true;
+        updateImportTypeUI('current');
+
+        // Reset partial/allocation count display
         document.getElementById('partialItem').style.display = 'none';
+        document.querySelector('#partialItem .label').textContent = 'Partial Data';
 
         document.getElementById('analysisResults').classList.remove('visible');
         document.getElementById('overwriteWarning').classList.remove('visible');
         document.getElementById('confirmOverwrite').checked = false;
+        document.getElementById('clearExisting').checked = false;
 
         document.getElementById('uploadSection').style.display = 'block';
         document.getElementById('importProgress').classList.remove('visible');
