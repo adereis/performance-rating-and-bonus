@@ -162,19 +162,21 @@ def extract_workday_metadata(rows: List[tuple], header_idx: int) -> Dict[str, An
     return metadata
 
 
-def validate_workday_format(rows: List[tuple], header_idx: Optional[int], headers: List[str]) -> Tuple[bool, str]:
+def validate_workday_format(rows: List[tuple], header_idx: Optional[int], headers: List[str], metadata: Dict[str, Any] = None) -> Tuple[bool, str]:
     """
-    Validate that the file is a proper Workday export.
+    Validate that the file is a proper Workday export with required metadata.
 
     Checks:
     1. Header row was found
     2. Required columns exist (Associate, Associate ID)
     3. At least one data row exists
+    4. Workday metadata present (period name, bonus pool) - new format required
 
     Args:
         rows: All rows from the spreadsheet
         header_idx: Index of the header row (or None if not found)
         headers: List of header strings (empty if header_idx is None)
+        metadata: Optional pre-extracted metadata dict
 
     Returns:
         Tuple of (is_valid, error_message)
@@ -220,6 +222,19 @@ def validate_workday_format(rows: List[tuple], header_idx: Optional[int], header
 
     if data_rows == 0:
         return False, "No employee data found after header row"
+
+    # Check for required metadata (new Workday format)
+    # Old format files without metadata are no longer supported
+    if metadata is not None:
+        if not metadata.get('total_pool'):
+            return False, (
+                "Missing bonus pool metadata.\n\n"
+                "This file appears to be using an old export format that lacks required metadata.\n\n"
+                "Please export a fresh file from Workday - the current export format includes:\n"
+                "  • Row 1: Report title with period (e.g., 'Associate Awards:: ... Bonus - CY25 Q1')\n"
+                "  • Row 4: Budget summary with total pool amount\n\n"
+                "The bonus pool from Workday metadata is required for accurate calculations."
+            )
 
     return True, ''
 
@@ -293,17 +308,17 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
         header_idx = _find_header_row(rows)
         headers = [str(h).strip() if h else '' for h in rows[header_idx]] if header_idx is not None else []
 
-        # Validate the file format
-        is_valid, validation_error = validate_workday_format(rows, header_idx, headers)
+        # Extract metadata from header rows (needed for validation)
+        metadata = extract_workday_metadata(rows, header_idx) if header_idx is not None else {}
+
+        # Validate the file format (including metadata check)
+        is_valid, validation_error = validate_workday_format(rows, header_idx, headers, metadata)
         if not is_valid:
             wb.close()
             return {
                 'success': False,
                 'error': validation_error
             }
-
-        # Extract metadata from header rows
-        metadata = extract_workday_metadata(rows, header_idx)
 
         # Count employees (data rows start after header)
         employee_count = 0
@@ -457,8 +472,11 @@ def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], st
         header_idx = _find_header_row(rows)
         headers = [str(h).strip() if h else '' for h in rows[header_idx]] if header_idx is not None else []
 
-        # Validate the file format
-        is_valid, validation_error = validate_workday_format(rows, header_idx, headers)
+        # Extract metadata from header rows (needed for validation)
+        metadata = extract_workday_metadata(rows, header_idx) if header_idx is not None else {}
+
+        # Validate the file format (including metadata check)
+        is_valid, validation_error = validate_workday_format(rows, header_idx, headers, metadata)
         if not is_valid:
             wb.close()
             return False, [], validation_error

@@ -19,6 +19,8 @@ from openpyxl import Workbook
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from xlsx_utils import get_current_period_name
+
 
 def create_workday_xlsx(employees_data, period_name, total_pool, manager_currency='USD'):
     """
@@ -198,6 +200,81 @@ def get_sample_employees():
     return employees
 
 
+def get_small_sample_employees():
+    """
+    Get a smaller sample of employees for sample-data-small.xlsx.
+    Uses just one team for simpler testing.
+    """
+    employees = [
+        {
+            'associate_id': 'EMP001',
+            'associate': 'Alice Anderson',
+            'supervisory_organization': 'Engineering (Bob Builder)',
+            'current_job_profile': 'Senior Software Developer',
+            'currency': 'USD',
+            'current_base_pay_all_countries': 150000,
+            'current_base_pay_manager_currency': 150000,
+            'grade': 'IC3',
+            'annual_bonus_target_percent': 10.0,
+            'bonus_target_local_currency': 15000,
+            'bonus_target_manager_currency': 15000,
+        },
+        {
+            'associate_id': 'EMP002',
+            'associate': 'Bob Brown',
+            'supervisory_organization': 'Engineering (Bob Builder)',
+            'current_job_profile': 'Software Developer',
+            'currency': 'USD',
+            'current_base_pay_all_countries': 120000,
+            'current_base_pay_manager_currency': 120000,
+            'grade': 'IC2',
+            'annual_bonus_target_percent': 8.0,
+            'bonus_target_local_currency': 9600,
+            'bonus_target_manager_currency': 9600,
+        },
+        {
+            'associate_id': 'EMP003',
+            'associate': 'Carol Chen',
+            'supervisory_organization': 'Engineering (Bob Builder)',
+            'current_job_profile': 'Staff Engineer',
+            'currency': 'USD',
+            'current_base_pay_all_countries': 180000,
+            'current_base_pay_manager_currency': 180000,
+            'grade': 'IC4',
+            'annual_bonus_target_percent': 12.0,
+            'bonus_target_local_currency': 21600,
+            'bonus_target_manager_currency': 21600,
+        },
+        {
+            'associate_id': 'EMP004',
+            'associate': 'David Davis',
+            'supervisory_organization': 'Engineering (Bob Builder)',
+            'current_job_profile': 'Junior Developer',
+            'currency': 'USD',
+            'current_base_pay_all_countries': 85000,
+            'current_base_pay_manager_currency': 85000,
+            'grade': 'IC1',
+            'annual_bonus_target_percent': 5.0,
+            'bonus_target_local_currency': 4250,
+            'bonus_target_manager_currency': 4250,
+        },
+        {
+            'associate_id': 'EMP005',
+            'associate': 'Eve Edwards',
+            'supervisory_organization': 'Engineering (Bob Builder)',
+            'current_job_profile': 'Senior Software Developer',
+            'currency': 'USD',
+            'current_base_pay_all_countries': 155000,
+            'current_base_pay_manager_currency': 155000,
+            'grade': 'IC3',
+            'annual_bonus_target_percent': 10.0,
+            'bonus_target_local_currency': 15500,
+            'bonus_target_manager_currency': 15500,
+        },
+    ]
+    return employees
+
+
 def main():
     print("Regenerating sample XLSX files with new Workday format...")
     print()
@@ -206,6 +283,17 @@ def main():
     project_dir = os.path.dirname(script_dir)
     samples_dir = os.path.join(project_dir, 'samples')
 
+    # Generate sample-data-small.xlsx in project root
+    small_employees = get_small_sample_employees()
+    small_pool = sum(e.get('bonus_target_local_currency', 0) for e in small_employees)
+    current_period = get_current_period_name()
+
+    small_file = os.path.join(project_dir, 'sample-data-small.xlsx')
+    wb = create_workday_xlsx(small_employees, current_period, small_pool)
+    wb.save(small_file)
+    print(f"  Created sample-data-small.xlsx (pool: ${small_pool:,.0f}, period: {current_period})")
+
+    # Generate historical sample files
     employees = get_sample_employees()
     total_pool = sum(e.get('bonus_target_local_currency', 0) for e in employees)
 
@@ -227,7 +315,7 @@ def main():
         print(f"  Created {filename}")
 
     print()
-    print(f"Done! Updated {len(periods)} sample files in samples/")
+    print(f"Done! Updated sample-data-small.xlsx + {len(periods)} historical files")
 
 
 if __name__ == '__main__':

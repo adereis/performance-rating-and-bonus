@@ -911,3 +911,32 @@ class TestValidation:
             assert 'Found in file' in result['error']
         finally:
             os.remove(temp_path)
+
+    def test_rejects_old_format_without_metadata(self, db_session):
+        """Test that files with correct columns but no metadata are rejected."""
+        from xlsx_utils import analyze_xlsx
+
+        # Create file with correct Workday headers but no metadata rows
+        wb = Workbook()
+        ws = wb.active
+        # Headers without metadata rows (old format)
+        ws.append([
+            'Associate', 'Associate ID', 'Supervisory Organization',
+            'Current Job Profile', 'Currency', 'Bonus Target - Local Currency'
+        ])
+        ws.append([
+            'John Doe', 'EMP001', 'Engineering (Manager)', 'Developer', 'USD', 10000
+        ])
+
+        temp_dir = os.path.expanduser('~/tmp')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.join(temp_dir, 'test_old_format.xlsx')
+        wb.save(temp_path)
+
+        try:
+            result = analyze_xlsx(temp_path)
+            assert result['success'] is False
+            assert 'Missing bonus pool metadata' in result['error']
+            assert 'old export format' in result['error']
+        finally:
+            os.remove(temp_path)
