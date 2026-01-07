@@ -96,12 +96,14 @@ class BonusSettings(Base):
     __tablename__ = 'bonus_settings'
 
     id = Column(Integer, primary_key=True)
-    budget_override = Column(Float, default=0.0)
+    workday_pool = Column(Float)  # Total pool from Workday metadata (source of truth)
+    budget_override = Column(Float, default=0.0)  # Manager adjustment to pool
     last_updated = Column(DateTime)
 
     def to_dict(self):
         """Convert model to dictionary for JSON serialization."""
         return {
+            'workday_pool': self.workday_pool,
             'budget_override': self.budget_override,
             'last_updated': self.last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.last_updated else ''
         }
@@ -228,6 +230,37 @@ def _migrate_usd_columns(engine):
                 conn.commit()
 
 
+def _migrate_add_new_columns(engine):
+    """
+    Add new columns that were added in later versions.
+
+    This handles databases created before new columns were added.
+    """
+    from sqlalchemy import text, inspect
+
+    inspector = inspect(engine)
+
+    # Define new columns: (table, column_name, column_type)
+    new_columns = [
+        ('bonus_settings', 'workday_pool', 'REAL'),
+    ]
+
+    with engine.connect() as conn:
+        for table, col_name, col_type in new_columns:
+            # Check if table exists
+            if table not in inspector.get_table_names():
+                continue
+
+            # Get current columns
+            columns = [col['name'] for col in inspector.get_columns(table)]
+
+            # Add column if it doesn't exist
+            if col_name not in columns:
+                print(f"Adding column {table}.{col_name}")
+                conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {col_name} {col_type}'))
+                conn.commit()
+
+
 class DatabaseSchemaError(Exception):
     """Raised when database schema doesn't match expected model schema."""
     pass
@@ -303,6 +336,7 @@ def init_db():
 
     # Run migrations before creating tables (handles schema changes)
     _migrate_usd_columns(engine)
+    _migrate_add_new_columns(engine)
 
     # Create any new tables/columns
     Base.metadata.create_all(bind=engine)

@@ -1304,25 +1304,43 @@ def analytics():
                          filter_info=filter_info)
 
 
-def calculate_bonus_for_employees(employees, params, budget_override=0.0):
+def calculate_bonus_for_employees(employees, params, budget_override=0.0, workday_pool=None, all_targets_sum=None):
     """
     Calculate bonuses for a given set of employees.
     Returns dict with results, normalization factor, and metadata.
 
     Args:
-        employees: List of employee dicts
+        employees: List of employee dicts (typically only rated employees)
         params: Dict with upside_exponent and downside_exponent
         budget_override: Additional budget (can be negative) to add to total pool
+        workday_pool: Total pool from Workday metadata (authoritative budget).
+        all_targets_sum: Sum of ALL employee bonus targets (for proportional calculation
+                         when only a subset of employees are rated).
     """
-    # Calculate total bonus pool (sum of all bonus targets in manager's currency)
-    total_pool = 0
+    # Calculate sum of bonus targets for the employees being calculated
+    sum_of_targets = 0
     for emp in employees:
         bonus_target = emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
         if bonus_target:
             try:
-                total_pool += float(bonus_target)
+                sum_of_targets += float(bonus_target)
             except (ValueError, TypeError):
                 pass
+
+    # Determine the base pool:
+    # - If workday_pool is set (authoritative), use it or a proportional share
+    # - Otherwise fall back to sum of targets
+    if workday_pool is not None and workday_pool > 0:
+        if all_targets_sum and all_targets_sum > 0 and sum_of_targets < all_targets_sum:
+            # Partial rating: use proportional share of Workday pool
+            proportion = sum_of_targets / all_targets_sum
+            base_pool = workday_pool * proportion
+        else:
+            # All employees rated (or no all_targets_sum provided): use full Workday pool
+            base_pool = workday_pool
+    else:
+        # No Workday pool: fall back to sum of targets
+        base_pool = sum_of_targets
 
     # Calculate bonuses
     bonus_results = []
@@ -1361,7 +1379,7 @@ def calculate_bonus_for_employees(employees, params, budget_override=0.0):
         })
 
     # Apply budget override to create adjusted pool
-    adjusted_pool = total_pool + budget_override
+    adjusted_pool = base_pool + budget_override
 
     # Normalization: Calculate value per share using adjusted pool
     value_per_share = adjusted_pool / total_raw_shares if total_raw_shares > 0 else 0
@@ -1379,9 +1397,11 @@ def calculate_bonus_for_employees(employees, params, budget_override=0.0):
     return {
         'results': bonus_results,
         'results_by_id': results_by_id,
-        'base_pool': total_pool,
+        'workday_pool': workday_pool,        # From Workday metadata (may be None)
+        'sum_of_targets': sum_of_targets,    # Calculated from employee targets
+        'base_pool': base_pool,              # What we're using (workday_pool or sum_of_targets)
         'budget_override': budget_override,
-        'total_pool': adjusted_pool,
+        'total_pool': adjusted_pool,         # base_pool + budget_override
         'total_allocated': total_allocated,
         'value_per_share': value_per_share,
         'employees_without_bonus_target': employees_without_bonus_target
@@ -1403,9 +1423,10 @@ def bonus_calculation():
         'downside_exponent': float(request.args.get('downside_exponent', default_params['downside_exponent']))
     }
 
-    # Get budget override from database
+    # Get bonus settings from database (pool and override)
     settings = get_bonus_settings()
     budget_override = settings.budget_override
+    workday_pool = settings.workday_pool
 
     # Get filter params from URL
     filter_params = get_filter_params()
@@ -1418,6 +1439,16 @@ def bonus_calculation():
 
     # Filter to only rated employees
     rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
+
+    # Calculate sum of ALL employee bonus targets (for proportional pool calculation)
+    all_targets_sum = 0
+    for emp in team_data:
+        bonus_target = emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
+        if bonus_target:
+            try:
+                all_targets_sum += float(bonus_target)
+            except (ValueError, TypeError):
+                pass
 
     if not rated_employees:
         return render_template('bonus_calculation.html',
@@ -1441,8 +1472,9 @@ def bonus_calculation():
 
     is_multi_team = len(unique_orgs) > 1
 
-    # Calculate organization-level bonuses (always) with budget override
-    org_level_calc = calculate_bonus_for_employees(rated_employees, params, budget_override)
+    # Calculate organization-level bonuses (always) with budget override and Workday pool
+    # Pass all_targets_sum so partial ratings use proportional share of Workday pool
+    org_level_calc = calculate_bonus_for_employees(rated_employees, params, budget_override, workday_pool, all_targets_sum)
 
     # If multi-team, also calculate per-team bonuses for comparison
     team_comparisons = []
@@ -1514,6 +1546,8 @@ def bonus_calculation():
                          team=org_level_calc['results'],
                          params=params,
                          base_pool=org_level_calc['base_pool'],
+                         workday_pool=org_level_calc['workday_pool'],
+                         sum_of_targets=org_level_calc['sum_of_targets'],
                          budget_override=org_level_calc['budget_override'],
                          total_pool=org_level_calc['total_pool'],
                          total_allocated=org_level_calc['total_allocated'],
@@ -1521,6 +1555,7 @@ def bonus_calculation():
                          has_data=True,
                          missing_bonus_data=False,
                          total_rated=len(rated_employees),
+                         total_employees=len(team_data),
                          employees_without_bonus_target=org_level_calc['employees_without_bonus_target'],
                          is_multi_team=is_multi_team,
                          team_comparisons=team_comparisons,
@@ -1555,12 +1590,23 @@ def export_page():
         'downside_exponent': float(request.args.get('downside_exponent', 1.9))
     }
 
-    # Get budget override
+    # Get bonus settings (pool and override)
     settings = get_bonus_settings()
     budget_override = settings.budget_override if settings else 0.0
+    workday_pool = settings.workday_pool if settings else None
+
+    # Calculate sum of ALL employee bonus targets (for proportional pool calculation)
+    all_targets_sum = 0
+    for emp in team_data:
+        bonus_target = emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
+        if bonus_target:
+            try:
+                all_targets_sum += float(bonus_target)
+            except (ValueError, TypeError):
+                pass
 
     # Calculate bonuses for all rated employees
-    bonus_calc = calculate_bonus_for_employees(rated_employees, params, budget_override)
+    bonus_calc = calculate_bonus_for_employees(rated_employees, params, budget_override, workday_pool, all_targets_sum)
 
     # Load tenets configuration
     _, tenets_map = load_tenets_config()
@@ -2069,6 +2115,12 @@ def import_current():
     try:
         file.save(temp_path)
 
+        # Analyze the file to get metadata (including Workday pool)
+        analysis = analyze_xlsx(temp_path)
+        workday_pool = None
+        if analysis.get('success') and analysis.get('metadata'):
+            workday_pool = analysis['metadata'].get('total_pool')
+
         # Parse the file
         success, employees, error = parse_xlsx_employees(temp_path)
         if not success:
@@ -2081,6 +2133,15 @@ def import_current():
             if clear_existing:
                 cleared = db.query(Employee).count()
                 db.query(Employee).delete()
+
+            # Store Workday pool in BonusSettings if extracted from metadata
+            if workday_pool is not None:
+                settings = db.query(BonusSettings).first()
+                if not settings:
+                    settings = BonusSettings()
+                    db.add(settings)
+                settings.workday_pool = workday_pool
+                settings.last_updated = datetime.now()
 
             imported = 0
             updated = 0
