@@ -1,0 +1,57 @@
+# CI/CD Pipeline: Trigger S2I build on OpenShift (ARO)
+#
+# Triggers on push to main branch
+# 1. Logs into OpenShift using service account token
+# 2. Triggers S2I build (OpenShift builds the image from source)
+# 3. Waits for rollout to complete
+#
+# Required secrets:
+#   OPENSHIFT_SERVER - API server URL (e.g., https://api.xxx.aroapp.io:6443)
+#   OPENSHIFT_TOKEN  - Service account token with build permissions
+
+name: Deploy to OpenShift
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  PROJECT: perf-rating
+  APP_NAME: perf-rating
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install OpenShift CLI
+        uses: redhat-actions/oc-installer@v1
+
+      - name: Login to OpenShift
+        run: |
+          oc login --token=${{ secrets.OPENSHIFT_TOKEN }} \
+                   --server=${{ secrets.OPENSHIFT_SERVER }}
+          oc project ${{ env.PROJECT }}
+
+      - name: Trigger S2I Build
+        run: |
+          echo "Starting build..."
+          oc start-build ${{ env.APP_NAME }} --follow
+
+      - name: Wait for Rollout
+        run: |
+          echo "Waiting for deployment rollout..."
+          oc rollout status deployment/${{ env.APP_NAME }} --timeout=120s
+
+      - name: Show Status
+        run: |
+          echo "=== Pods ==="
+          oc get pods -l app=${{ env.APP_NAME }}
+          echo ""
+          echo "=== Route ==="
+          oc get route -l app=${{ env.APP_NAME }}
