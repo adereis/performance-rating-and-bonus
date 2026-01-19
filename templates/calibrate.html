@@ -1,0 +1,713 @@
+{% extends "base.html" %}
+
+{% block title %}Calibrate Team - Talent Assessment{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calibration-form {
+        display: grid;
+        gap: 20px;
+    }
+
+    .employee-card {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 25px;
+        transition: border-color 0.3s;
+    }
+
+    .employee-card:hover {
+        border-color: #667eea;
+    }
+
+    .employee-card.calibrated {
+        border-color: #27ae60;
+        background: #f8fff9;
+    }
+
+    .employee-header {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .employee-header div {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .employee-header label {
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    .employee-header span {
+        font-size: 15px;
+        font-weight: 500;
+        color: #2c3e50;
+    }
+
+    .calibration-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+    }
+
+    .calibration-section h4 {
+        font-size: 14px;
+        color: #2c3e50;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+
+    .calibration-input-group {
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .calibration-input-group label {
+        font-size: 13px;
+        color: #555;
+        min-width: 180px;
+        padding-top: 8px;
+    }
+
+    .calibration-input-group select {
+        flex: 1;
+        max-width: 300px;
+        padding: 8px 12px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        background: white;
+        cursor: pointer;
+    }
+
+    .calibration-input-group select:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .calibration-input-group textarea {
+        flex: 1;
+        padding: 10px 12px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        min-height: 80px;
+        resize: vertical;
+        font-family: inherit;
+    }
+
+    .calibration-input-group textarea:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .calibration-input-group input[type="text"] {
+        flex: 1;
+        padding: 8px 12px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .calibration-input-group input[type="text"]:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .derived-value {
+        background: #e8f4fc;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-weight: 600;
+        color: #2c3e50;
+        min-width: 200px;
+    }
+
+    .derived-value.high-impact {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .derived-value.successful {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    .derived-value.evolving {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .derived-value.low {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .derived-value.future-talent {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .saved-indicator {
+        color: #27ae60;
+        font-size: 14px;
+        font-weight: 600;
+        opacity: 0;
+        transition: opacity 0.3s;
+        margin-left: 15px;
+    }
+
+    .saved-indicator.show {
+        opacity: 1;
+    }
+
+    .filter-section {
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .filter-btn {
+        padding: 8px 16px;
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 14px;
+    }
+
+    .filter-btn:hover {
+        border-color: #667eea;
+    }
+
+    .filter-btn.active {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+
+    .workday-info {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 15px;
+        font-size: 12px;
+    }
+
+    .workday-info div {
+        background: #f0f0f0;
+        padding: 8px;
+        border-radius: 4px;
+    }
+
+    .workday-info label {
+        display: block;
+        color: #666;
+        font-weight: 600;
+        margin-bottom: 3px;
+        font-size: 10px;
+        text-transform: uppercase;
+    }
+
+    .workday-info span {
+        color: #2c3e50;
+        display: block;
+        word-wrap: break-word;
+    }
+
+    .collapsible-section {
+        margin-top: 15px;
+    }
+
+    .collapsible-header {
+        background: #e9ecef;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        font-size: 13px;
+        color: #495057;
+    }
+
+    .collapsible-header:hover {
+        background: #dee2e6;
+    }
+
+    .collapsible-header .toggle-icon {
+        transition: transform 0.3s;
+    }
+
+    .collapsible-header.expanded .toggle-icon {
+        transform: rotate(180deg);
+    }
+
+    .collapsible-content {
+        display: none;
+        padding: 15px;
+        background: white;
+        border: 1px solid #e9ecef;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+    }
+
+    .collapsible-content.show {
+        display: block;
+    }
+
+    .progress-bar {
+        margin-bottom: 20px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-bar-inner {
+        height: 24px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 12px;
+        transition: width 0.5s ease;
+    }
+
+    .no-data-message {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .no-data-message h3 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+    }
+
+    .no-data-message p {
+        margin-bottom: 20px;
+    }
+
+    .no-data-message .btn {
+        display: inline-block;
+        padding: 12px 24px;
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+
+    .no-data-message .btn:hover {
+        background: #5a6fd6;
+    }
+
+    /* Bonus context section */
+    .bonus-context {
+        background: #fff8e1;
+        border: 1px solid #ffe082;
+        border-radius: 4px;
+        padding: 12px;
+        margin-top: 10px;
+        font-size: 12px;
+    }
+
+    .bonus-context h5 {
+        margin: 0 0 8px 0;
+        font-size: 12px;
+        color: #f57c00;
+        text-transform: uppercase;
+    }
+
+    .bonus-context .context-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .bonus-context .context-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .bonus-context .context-item label {
+        font-size: 10px;
+        color: #666;
+    }
+
+    .bonus-context .context-item span {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if demo_mode is defined and demo_mode %}
+<div class="alert alert-warning" style="background: #fff3cd; border: 1px solid #ffc107; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px;">
+    <strong>Demo Mode:</strong> This is a demonstration environment with sample data. Changes will not persist between sessions.
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Talent Calibration</h2>
+
+    {% if team|length == 0 %}
+    <div class="no-data-message">
+        <h3>No Employee Data</h3>
+        <p>Import employee data from Workday to begin talent calibration.</p>
+        <a href="{{ url_for('import_page') }}" class="btn">Import Data</a>
+    </div>
+    {% else %}
+
+    <!-- Progress bar -->
+    <div class="progress-bar">
+        <div class="progress-bar-inner" style="width: {{ (calibrated_count / team|length * 100)|int }}%;">
+            {{ calibrated_count }} of {{ team|length }} calibrated ({{ (calibrated_count / team|length * 100)|int }}%)
+        </div>
+    </div>
+
+    <div class="filter-section">
+        <button class="filter-btn active" onclick="filterEmployees('all')">All ({{ team|length }})</button>
+        <button class="filter-btn" onclick="filterEmployees('uncalibrated')">Not Calibrated</button>
+        <button class="filter-btn" onclick="filterEmployees('calibrated')">Calibrated</button>
+    </div>
+
+    <div class="calibration-form" id="calibration-view">
+        {% for employee in team %}
+        {% set is_calibrated = employee.talent_perf_what or employee.talent_perf_how %}
+        <div class="employee-card {% if is_calibrated %}calibrated{% endif %}"
+             data-employee-id="{{ employee['Associate ID'] }}"
+             data-is-calibrated="{{ 'true' if is_calibrated else 'false' }}">
+
+            <div class="employee-header">
+                <div>
+                    <label>Name</label>
+                    <span class="employee-name" data-employee-id="{{ employee['Associate ID'] }}">{{ employee.Associate }}</span>
+                </div>
+                <div>
+                    <label>Job Profile</label>
+                    <span>{{ employee['Current Job Profile'] }}</span>
+                </div>
+            </div>
+
+            <div class="workday-info">
+                <div>
+                    <label>Supervisory Org</label>
+                    <span>{{ employee['Supervisory Organization'] }}</span>
+                </div>
+                <div>
+                    <label>Associate ID</label>
+                    <span>{{ employee['Associate ID'] }}</span>
+                </div>
+            </div>
+
+            <!-- Performance Assessment Section -->
+            <div class="calibration-section">
+                <h4>Performance Assessment</h4>
+
+                <div class="calibration-input-group">
+                    <label>Performance: What</label>
+                    <select data-field="talent_perf_what">
+                        <option value="">-- Select --</option>
+                        {% for value in perf_what_values %}
+                        <option value="{{ value }}" {% if employee.talent_perf_what == value %}selected{% endif %}>{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="calibration-input-group">
+                    <label>Performance: How</label>
+                    <select data-field="talent_perf_how">
+                        <option value="">-- Select --</option>
+                        {% for value in perf_how_values %}
+                        <option value="{{ value }}" {% if employee.talent_perf_how == value %}selected{% endif %}>{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="calibration-input-group">
+                    <label>Overall Performance</label>
+                    <div class="derived-value overall-perf-display {% if employee.talent_overall_perf == 'High Impact Performer' %}high-impact{% elif employee.talent_overall_perf == 'Successful Performer' %}successful{% elif employee.talent_overall_perf == 'Evolving Performer' %}evolving{% elif employee.talent_overall_perf == 'Low Performer' %}low{% endif %}">
+                        {{ employee.talent_overall_perf or '(auto-calculated)' }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Future Talent Section -->
+            <div class="calibration-section">
+                <h4>Future Talent Assessment</h4>
+
+                <div class="calibration-input-group">
+                    <label>Growth Agility</label>
+                    <select data-field="talent_growth_agility">
+                        <option value="">-- Select --</option>
+                        {% for value in agility_values %}
+                        <option value="{{ value }}" {% if employee.talent_growth_agility == value %}selected{% endif %}>{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="calibration-input-group">
+                    <label>Change Agility</label>
+                    <select data-field="talent_change_agility">
+                        <option value="">-- Select --</option>
+                        {% for value in agility_values %}
+                        <option value="{{ value }}" {% if employee.talent_change_agility == value %}selected{% endif %}>{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="calibration-input-group">
+                    <label>Future Talent?</label>
+                    <div class="derived-value future-talent-display {% if employee.talent_identified_future %}future-talent{% endif %}">
+                        {% if employee.talent_identified_future %}Yes{% elif employee.talent_identified_future == false %}No{% else %}(auto-calculated){% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Movement & Career Section -->
+            <div class="calibration-section">
+                <h4>Movement & Career</h4>
+
+                <div class="calibration-input-group">
+                    <label>Movement Readiness</label>
+                    <select data-field="talent_movement_readiness">
+                        <option value="">-- Select --</option>
+                        {% for value in movement_values %}
+                        <option value="{{ value }}" {% if employee.talent_movement_readiness == value %}selected{% endif %}>{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="calibration-input-group">
+                    <label>Proposed Actions</label>
+                    <textarea data-field="talent_proposed_actions" placeholder="Recommended development actions...">{{ employee.talent_proposed_actions or '' }}</textarea>
+                </div>
+            </div>
+
+            <!-- Promotion Section (Collapsible) -->
+            <div class="collapsible-section">
+                <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                    <span>Promotion Details (Optional)</span>
+                    <span class="toggle-icon">&#9660;</span>
+                </div>
+                <div class="collapsible-content">
+                    <div class="calibration-input-group">
+                        <label>Proposed Job Profile</label>
+                        <input type="text" data-field="talent_promo_job_profile" placeholder="e.g., Senior SRE, 1534" value="{{ employee.talent_promo_job_profile or '' }}">
+                    </div>
+                    <div class="calibration-input-group">
+                        <label>Business Need</label>
+                        <textarea data-field="talent_promo_business_need" placeholder="Why is this promotion needed?">{{ employee.talent_promo_business_need or '' }}</textarea>
+                    </div>
+                    <div class="calibration-input-group">
+                        <label>Expanded Role Scope</label>
+                        <textarea data-field="talent_promo_role_scope" placeholder="How will the role expand?">{{ employee.talent_promo_role_scope or '' }}</textarea>
+                    </div>
+                    <div class="calibration-input-group">
+                        <label>Associate Readiness</label>
+                        <textarea data-field="talent_promo_readiness" placeholder="Evidence of readiness...">{{ employee.talent_promo_readiness or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bonus Context (Read-only) -->
+            {% if employee.performance_rating_percent %}
+            <div class="bonus-context">
+                <h5>Bonus Cycle Context</h5>
+                <div class="context-grid">
+                    <div class="context-item">
+                        <label>Performance Rating</label>
+                        <span>{{ employee.performance_rating_percent }}%</span>
+                    </div>
+                    <div class="context-item">
+                        <label>Grade</label>
+                        <span>{{ employee.Grade or 'N/A' }}</span>
+                    </div>
+                    <div class="context-item">
+                        <label>Last Updated</label>
+                        <span>{{ employee.last_updated or 'N/A' }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div style="margin-top: 20px; text-align: right;">
+                <span class="saved-indicator">Auto-saved {% if employee.talent_last_updated %}({{ employee.talent_last_updated }}){% endif %}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Auto-save functionality using global AutoSave manager
+function autoSaveCalibration(associateId, card) {
+    window.AutoSave.debounce(
+        `calibration_${associateId}`,
+        '/api/calibrate',
+        () => collectCalibrationData(associateId, card),
+        2000
+    );
+}
+
+// Collect calibration data from a card for saving
+function collectCalibrationData(associateId, card) {
+    const data = { associate_id: associateId };
+
+    // Collect all fields
+    card.querySelectorAll('[data-field]').forEach(input => {
+        const field = input.getAttribute('data-field');
+        data[field] = input.value || null;
+    });
+
+    return data;
+}
+
+// Save calibration data
+function saveCalibration(associateId, card, useKeepalive = false) {
+    const data = collectCalibrationData(associateId, card);
+
+    fetch('/api/calibrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        keepalive: useKeepalive
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            const indicator = card.querySelector('.saved-indicator');
+            const now = new Date();
+            indicator.textContent = `Auto-saved (${now.toLocaleTimeString()})`;
+            indicator.classList.add('show');
+            setTimeout(() => indicator.classList.remove('show'), 3000);
+
+            // Update derived fields display
+            if (result.data.talent_overall_perf) {
+                updateOverallPerfDisplay(card, result.data.talent_overall_perf);
+            }
+            if (result.data.talent_identified_future !== undefined) {
+                updateFutureTalentDisplay(card, result.data.talent_identified_future);
+            }
+
+            // Mark card as calibrated
+            card.classList.add('calibrated');
+            card.setAttribute('data-is-calibrated', 'true');
+
+            // Update progress bar
+            updateProgressBar();
+        } else {
+            console.error('Save failed:', result.error);
+        }
+    })
+    .catch(error => console.error('Save error:', error));
+}
+
+function updateOverallPerfDisplay(card, value) {
+    const display = card.querySelector('.overall-perf-display');
+    display.textContent = value || '(auto-calculated)';
+    display.classList.remove('high-impact', 'successful', 'evolving', 'low');
+    if (value === 'High Impact Performer') display.classList.add('high-impact');
+    else if (value === 'Successful Performer') display.classList.add('successful');
+    else if (value === 'Evolving Performer') display.classList.add('evolving');
+    else if (value === 'Low Performer') display.classList.add('low');
+}
+
+function updateFutureTalentDisplay(card, value) {
+    const display = card.querySelector('.future-talent-display');
+    display.textContent = value ? 'Yes' : 'No';
+    display.classList.toggle('future-talent', value);
+}
+
+function updateProgressBar() {
+    const cards = document.querySelectorAll('.employee-card');
+    const calibrated = Array.from(cards).filter(c => c.getAttribute('data-is-calibrated') === 'true').length;
+    const total = cards.length;
+    const percent = Math.round(calibrated / total * 100);
+
+    const progressInner = document.querySelector('.progress-bar-inner');
+    if (progressInner) {
+        progressInner.style.width = percent + '%';
+        progressInner.textContent = `${calibrated} of ${total} calibrated (${percent}%)`;
+    }
+}
+
+function filterEmployees(filter) {
+    const cards = document.querySelectorAll('.employee-card');
+    const buttons = document.querySelectorAll('.filter-btn');
+
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    cards.forEach(card => {
+        const isCalibrated = card.getAttribute('data-is-calibrated') === 'true';
+
+        if (filter === 'all') {
+            card.style.display = 'block';
+        } else if (filter === 'uncalibrated') {
+            card.style.display = isCalibrated ? 'none' : 'block';
+        } else if (filter === 'calibrated') {
+            card.style.display = isCalibrated ? 'block' : 'none';
+        }
+    });
+}
+
+function toggleCollapsible(header) {
+    header.classList.toggle('expanded');
+    const content = header.nextElementSibling;
+    content.classList.toggle('show');
+}
+
+// Set up auto-save listeners on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.employee-card');
+
+    cards.forEach(card => {
+        const associateId = card.getAttribute('data-employee-id');
+        const inputs = card.querySelectorAll('[data-field]');
+
+        inputs.forEach(input => {
+            // Save immediately on blur with keepalive
+            input.addEventListener('blur', () => {
+                window.AutoSave.cancel(`calibration_${associateId}`);
+                saveCalibration(associateId, card, true);
+            });
+
+            // Auto-save on input with debounce
+            input.addEventListener('input', () => {
+                autoSaveCalibration(associateId, card);
+            });
+
+            // For selects, also save on change
+            if (input.tagName === 'SELECT') {
+                input.addEventListener('change', () => {
+                    autoSaveCalibration(associateId, card);
+                });
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

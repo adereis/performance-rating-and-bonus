@@ -722,6 +722,200 @@ def rate_employee():
         db.close()
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# TALENT CALIBRATION ROUTES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Talent calibration enum values (from Spec §3)
+TALENT_PERF_WHAT_VALUES = [
+    'Surpasses Expectations',
+    'Meets Expectations',
+    'Meets Some Expectations',
+]
+
+TALENT_PERF_HOW_VALUES = [
+    'Surpasses Expectations',
+    'Meets Expectations',
+    'Meets Some Expectations',
+    'Does Not Meet Expectations',
+]
+
+TALENT_AGILITY_VALUES = [
+    'Always/Most of the Time',
+    'Sometimes',
+]
+
+TALENT_MOVEMENT_VALUES = [
+    'Continue growing in current role',
+    'Ready Now to be promoted in current role',
+    'Ready for lateral move',
+]
+
+
+@app.route('/calibrate')
+def calibrate_page():
+    """Talent calibration page."""
+    from models import derive_overall_performance, derive_future_talent
+
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
+
+    # Count calibrated employees (has talent_perf_what or talent_perf_how)
+    calibrated_count = sum(
+        1 for e in team_data
+        if e.get('talent_perf_what') or e.get('talent_perf_how')
+    )
+
+    return render_template(
+        'calibrate.html',
+        team=team_data,
+        filter_info=filter_info,
+        calibrated_count=calibrated_count,
+        perf_what_values=TALENT_PERF_WHAT_VALUES,
+        perf_how_values=TALENT_PERF_HOW_VALUES,
+        agility_values=TALENT_AGILITY_VALUES,
+        movement_values=TALENT_MOVEMENT_VALUES,
+    )
+
+
+@app.route('/api/calibrate', methods=['POST'])
+def calibrate_employee():
+    """API endpoint to save talent calibration data.
+
+    Accepts talent assessment fields and computes derived values:
+    - talent_overall_perf from talent_perf_what + talent_perf_how
+    - talent_identified_future from talent_growth_agility + talent_change_agility
+    """
+    from models import derive_overall_performance, derive_future_talent
+
+    data = request.get_json()
+    associate_id = data.get('associate_id')
+
+    if not associate_id:
+        return jsonify({'success': False, 'error': 'Missing associate ID'}), 400
+
+    db = get_db()
+    try:
+        employee = db.query(Employee).filter_by(associate_id=associate_id).first()
+        if not employee:
+            db.close()
+            return jsonify({'success': False, 'error': f'Employee not found: {associate_id}'}), 404
+
+        # Validate and update talent fields
+        talent_fields = [
+            ('talent_perf_what', TALENT_PERF_WHAT_VALUES),
+            ('talent_perf_how', TALENT_PERF_HOW_VALUES),
+            ('talent_growth_agility', TALENT_AGILITY_VALUES),
+            ('talent_change_agility', TALENT_AGILITY_VALUES),
+            ('talent_movement_readiness', TALENT_MOVEMENT_VALUES),
+        ]
+
+        for field, valid_values in talent_fields:
+            if field in data:
+                value = data.get(field)
+                if value and value not in valid_values:
+                    return jsonify({
+                        'success': False,
+                        'error': f"Invalid value for {field}: '{value}'. Must be one of: {', '.join(valid_values)}"
+                    }), 400
+                setattr(employee, field, value if value else None)
+
+        # Update free-form text fields
+        text_fields = [
+            'talent_proposed_actions',
+            'talent_promo_job_profile',
+            'talent_promo_business_need',
+            'talent_promo_role_scope',
+            'talent_promo_readiness',
+        ]
+
+        for field in text_fields:
+            if field in data:
+                value = data.get(field)
+                setattr(employee, field, value if value else None)
+
+        # Update talent tenets (JSON arrays)
+        if 'talent_tenets_strengths' in data:
+            tenets = data.get('talent_tenets_strengths')
+            if isinstance(tenets, list):
+                import json
+                employee.talent_tenets_strengths = json.dumps(tenets) if tenets else None
+            else:
+                employee.talent_tenets_strengths = tenets if tenets else None
+
+        if 'talent_tenets_improvements' in data:
+            tenets = data.get('talent_tenets_improvements')
+            if isinstance(tenets, list):
+                import json
+                employee.talent_tenets_improvements = json.dumps(tenets) if tenets else None
+            else:
+                employee.talent_tenets_improvements = tenets if tenets else None
+
+        # Compute derived fields
+        employee.talent_overall_perf = derive_overall_performance(
+            employee.talent_perf_what,
+            employee.talent_perf_how
+        )
+        employee.talent_identified_future = derive_future_talent(
+            employee.talent_growth_agility,
+            employee.talent_change_agility
+        )
+
+        # Update timestamp
+        employee.talent_last_updated = datetime.now()
+
+        db.commit()
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'talent_overall_perf': employee.talent_overall_perf,
+                'talent_identified_future': employee.talent_identified_future,
+                'talent_last_updated': employee.talent_last_updated.strftime('%Y-%m-%d %H:%M:%S')
+            }
+        })
+
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@app.route('/api/calibrate/status', methods=['GET'])
+def calibrate_status():
+    """API endpoint to get talent calibration progress."""
+    db = get_db()
+    try:
+        employees = db.query(Employee).all()
+        total = len(employees)
+
+        # Calibrated = has talent_perf_what OR talent_perf_how
+        calibrated = sum(
+            1 for e in employees
+            if e.talent_perf_what or e.talent_perf_how
+        )
+
+        percent = round(calibrated / total * 100) if total > 0 else 0
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'total': total,
+                'calibrated': calibrated,
+                'percent': percent
+            }
+        })
+    finally:
+        db.close()
+
+
 @app.route('/api/tenets', methods=['GET'])
 def get_tenets():
     """API endpoint to serve tenets configuration."""
