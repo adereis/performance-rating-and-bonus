@@ -172,19 +172,19 @@ Save the export as `real-workday-export.xlsx` (or any name starting with `real-`
 
 This will:
 - Import all employee records from Workday
-- Initialize empty performance rating fields
+- Initialize empty bonus rating fields
 - Optionally clear any existing sample data
 
 ### Step 3: Start Rating
 
-Navigate to **Rate Team** to begin entering performance ratings.
+Navigate to **Bonus Rating** to begin entering bonus ratings.
 
 ## Workflow
 
-### 1. Rate Your Team
-- Navigate to **Rate Team** tab
+### 1. Enter Bonus Ratings
+- Navigate to **Bonus Rating** tab
 - For each employee:
-  - Enter performance rating (0-200%, where 100% = met expectations)
+  - Enter bonus rating (0-200%, where 100% = met expectations)
   - Add justification explaining the rating
   - Optionally note mentors and mentees
 - Ratings auto-save after 2 seconds of inactivity

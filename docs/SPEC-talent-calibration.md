@@ -421,7 +421,7 @@ TALENT_COLUMN_MAP = {
 **File:** `templates/base.html`
 **Location:** Nav bar
 
-Add "Calibrate" link between "Rate Team" and "Bonus Calculation":
+Add "Talent Calibration" link between "Bonus Rating" and "Bonus Calculation":
 ```html
 <li class="nav-item">
     <a class="nav-link" href="{{ url_for('calibrate') }}">Calibrate</a>
