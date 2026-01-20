@@ -13,7 +13,6 @@ Instructions for AI agents and human developers working on this codebase.
 | `xlsx_utils.py` | Workday XLSX parsing, column detection, spreadsheet type detection |
 | `demo_mode.py` | Session isolation for demo deployment |
 | `tests/conftest.py` | Shared pytest fixtures (always use these) |
-| `docs/SPEC-talent-calibration.md` | Talent calibration feature specification |
 
 **Never commit**: `ratings.db`, `real-*.xlsx`, `sample-data-*.xlsx`
 
