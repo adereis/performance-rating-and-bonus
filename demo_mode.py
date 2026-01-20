@@ -98,7 +98,7 @@ def _clear_ratings_in_db(db_path):
     conn = sqlite3.connect(db_path)
     try:
         conn.execute('''
-            UPDATE employee SET
+            UPDATE employees SET
                 -- Bonus cycle fields
                 performance_rating_percent = NULL,
                 justification = NULL,

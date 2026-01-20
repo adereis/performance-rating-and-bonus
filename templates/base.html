@@ -732,6 +732,284 @@
             text-transform: uppercase;
         }
 
+        /* Collapsible Sections */
+        .modal-collapsible-section {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .modal-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        .modal-section-header:hover {
+            background: #e9ecef;
+        }
+
+        .modal-section-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-section-header h4 {
+            font-size: 14px;
+            color: #2c3e50;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin: 0;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-section-chevron {
+            color: #666;
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        .modal-collapsible-section.collapsed .modal-section-chevron {
+            transform: rotate(-90deg);
+        }
+
+        .modal-section-body {
+            padding: 16px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .modal-collapsible-section.collapsed .modal-section-body {
+            display: none;
+        }
+
+        /* Status Badges */
+        .modal-section-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .modal-section-badge.has-data {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .modal-section-badge.no-data {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 1px solid #dee2e6;
+        }
+
+        .modal-section-badge.needs-review {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .modal-section-badge.aligned {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .modal-section-badge.review {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .modal-section-badge.incomplete {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        /* Talent Calibration Fields */
+        .talent-assessment-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .talent-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .talent-field.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .talent-field-label {
+            font-size: 11px;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .talent-field-value {
+            font-size: 14px;
+            color: #2c3e50;
+            padding: 6px 0;
+        }
+
+        .talent-field-value.empty {
+            color: #adb5bd;
+            font-style: italic;
+        }
+
+        /* Overall Performance Highlight */
+        .talent-overall-perf {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .talent-overall-perf.high-impact {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .talent-overall-perf.successful {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .talent-overall-perf.evolving {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .talent-overall-perf.low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Future Talent Indicator */
+        .future-talent-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .future-talent-badge.yes {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .future-talent-badge.no {
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+
+        /* Cross-Cycle Alignment */
+        .alignment-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .alignment-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .alignment-item-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .alignment-item-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .alignment-arrow {
+            font-size: 20px;
+            color: #adb5bd;
+        }
+
+        .alignment-result {
+            flex: 1;
+            text-align: right;
+        }
+
+        .alignment-result-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .alignment-result-badge.aligned {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .alignment-result-badge.review {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .alignment-result-badge.incomplete {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        /* Talent Section Dividers */
+        .talent-section-divider {
+            margin: 16px 0;
+            padding-top: 16px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .talent-section-divider h5 {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin: 0 0 12px 0;
+        }
+
+        /* History Talent Data Styling */
+        .history-talent-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #dee2e6;
+        }
+
+        .history-talent-section h6 {
+            font-size: 11px;
+            color: #667eea;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin: 0 0 10px 0;
+        }
+
         /* Filter Panel Styles */
         .filter-toggle {
             position: fixed;
@@ -1312,6 +1590,117 @@
             });
         }
 
+        // Helper: Check if employee has bonus cycle data
+        function hasBonusCycleData(employee) {
+            return employee.performance_rating_percent != null ||
+                   employee.justification ||
+                   employee.mentor ||
+                   employee.mentees ||
+                   employee.tenets_strengths ||
+                   employee.tenets_improvements;
+        }
+
+        // Helper: Check if employee has talent calibration data
+        function hasTalentData(employee) {
+            return employee.talent_perf_what ||
+                   employee.talent_perf_how ||
+                   employee.talent_overall_perf ||
+                   employee.talent_growth_agility ||
+                   employee.talent_change_agility ||
+                   employee.talent_movement_readiness ||
+                   employee.talent_proposed_actions;
+        }
+
+        // Helper: Get cross-cycle alignment status
+        function getCrossAlignment(bonusPct, talentOverall) {
+            if (bonusPct == null || !talentOverall) {
+                return { status: 'incomplete', label: 'Incomplete' };
+            }
+            // Alignment ranges per Spec §7.4
+            const ranges = {
+                'High Impact Performer': { min: 120, max: 200 },
+                'Successful Performer': { min: 90, max: 119 },
+                'Evolving Performer': { min: 70, max: 89 },
+                'Low Performer': { min: 0, max: 69 }
+            };
+            const range = ranges[talentOverall];
+            if (!range) {
+                return { status: 'incomplete', label: 'Unknown' };
+            }
+            if (bonusPct >= range.min && bonusPct <= range.max) {
+                return { status: 'aligned', label: 'Aligned' };
+            } else {
+                return { status: 'review', label: 'Review Needed' };
+            }
+        }
+
+        // Helper: Get overall performance CSS class
+        function getOverallPerfClass(overall) {
+            if (!overall) return '';
+            if (overall.includes('High Impact')) return 'high-impact';
+            if (overall.includes('Successful')) return 'successful';
+            if (overall.includes('Evolving')) return 'evolving';
+            if (overall.includes('Low')) return 'low';
+            return '';
+        }
+
+        // Helper: Generate talent tenets display (read-only)
+        function renderTalentTenetsDisplay(employee) {
+            let talentStrengths = [];
+            let talentImprovements = [];
+            try {
+                if (employee.talent_tenets_strengths) {
+                    talentStrengths = typeof employee.talent_tenets_strengths === 'string'
+                        ? JSON.parse(employee.talent_tenets_strengths)
+                        : employee.talent_tenets_strengths;
+                }
+                if (employee.talent_tenets_improvements) {
+                    talentImprovements = typeof employee.talent_tenets_improvements === 'string'
+                        ? JSON.parse(employee.talent_tenets_improvements)
+                        : employee.talent_tenets_improvements;
+                }
+            } catch (e) {
+                console.error('Error parsing talent tenets:', e);
+            }
+            if (talentStrengths.length === 0 && talentImprovements.length === 0) {
+                return '';
+            }
+            const getTenetNames = (ids) => {
+                if (!modalTenetsConfig || !modalTenetsConfig.tenets) return ids.join(', ');
+                return ids.map(id => {
+                    const tenet = modalTenetsConfig.tenets.find(t => t.id === id);
+                    return tenet ? tenet.name : id;
+                }).join(', ');
+            };
+            return `
+                <div class="talent-section-divider">
+                    <h5>Talent Tenets</h5>
+                    <div class="talent-assessment-grid">
+                        ${talentStrengths.length > 0 ? `
+                            <div class="talent-field">
+                                <div class="talent-field-label">Strengths</div>
+                                <div class="talent-field-value">${escapeHtml(getTenetNames(talentStrengths))}</div>
+                            </div>
+                        ` : ''}
+                        ${talentImprovements.length > 0 ? `
+                            <div class="talent-field">
+                                <div class="talent-field-label">Areas for Improvement</div>
+                                <div class="talent-field-value">${escapeHtml(getTenetNames(talentImprovements))}</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Toggle collapsible section
+        function toggleModalSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.classList.toggle('collapsed');
+            }
+        }
+
         function renderEmployeeModal(employee) {
             currentEmployeeId = employee['Associate ID'];
             originalEmployeeData = {...employee};
@@ -1321,7 +1710,12 @@
 
             modalTitle.textContent = employee.Associate;
 
-            // Parse existing tenets
+            // Determine data availability
+            const hasBonusData = hasBonusCycleData(employee);
+            const hasTalent = hasTalentData(employee);
+            const alignment = getCrossAlignment(employee.performance_rating_percent, employee.talent_overall_perf);
+
+            // Parse existing tenets for bonus cycle
             let existingStrengths = [];
             let existingImprovements = [];
             try {
@@ -1339,8 +1733,8 @@
                 console.error('Error parsing tenets:', e);
             }
 
-            // Generate tenets HTML
-            let tenetsHTML = '';
+            // Generate bonus tenets HTML (editable)
+            let bonusTenetsHTML = '';
             if (modalTenetsConfig && modalTenetsConfig.tenets) {
                 const activeTenets = modalTenetsConfig.tenets.filter(t => t.active);
                 const strengthsHTML = activeTenets.map(tenet => `
@@ -1365,9 +1759,9 @@
                     </div>
                 `).join('');
 
-                tenetsHTML = `
-                    <div class="employee-modal-section">
-                        <h4>Team Tenets (Select 3 strengths and 2-3 improvements)</h4>
+                bonusTenetsHTML = `
+                    <div class="talent-section-divider">
+                        <h5>Team Tenets (Select 3 strengths and 2-3 improvements)</h5>
                         <div class="modal-tenets-grid">
                             <div class="modal-tenet-column">
                                 <h5>Strengths</h5>
@@ -1383,6 +1777,113 @@
                     </div>
                 `;
             }
+
+            // Generate talent calibration section HTML
+            const talentSectionHTML = hasTalent ? `
+                <div class="modal-collapsible-section" id="section-talent">
+                    <div class="modal-section-header" onclick="toggleModalSection('section-talent')">
+                        <div class="modal-section-header-left">
+                            <h4>Talent Calibration</h4>
+                            <span class="modal-section-badge has-data">Has Data</span>
+                        </div>
+                        <span class="modal-section-chevron">▼</span>
+                    </div>
+                    <div class="modal-section-body">
+                        <div class="talent-assessment-grid">
+                            <div class="talent-field">
+                                <div class="talent-field-label">Performance: What</div>
+                                <div class="talent-field-value ${!employee.talent_perf_what ? 'empty' : ''}">${escapeHtml(employee.talent_perf_what) || 'Not assessed'}</div>
+                            </div>
+                            <div class="talent-field">
+                                <div class="talent-field-label">Performance: How</div>
+                                <div class="talent-field-value ${!employee.talent_perf_how ? 'empty' : ''}">${escapeHtml(employee.talent_perf_how) || 'Not assessed'}</div>
+                            </div>
+                            <div class="talent-field full-width">
+                                <div class="talent-field-label">Overall Performance</div>
+                                ${employee.talent_overall_perf ?
+                                    `<span class="talent-overall-perf ${getOverallPerfClass(employee.talent_overall_perf)}">${escapeHtml(employee.talent_overall_perf)}</span>` :
+                                    '<div class="talent-field-value empty">Not determined</div>'
+                                }
+                            </div>
+                        </div>
+                        <div class="talent-section-divider">
+                            <h5>Future Talent</h5>
+                            <div class="talent-assessment-grid">
+                                <div class="talent-field">
+                                    <div class="talent-field-label">Growth Agility</div>
+                                    <div class="talent-field-value ${!employee.talent_growth_agility ? 'empty' : ''}">${escapeHtml(employee.talent_growth_agility) || 'Not assessed'}</div>
+                                </div>
+                                <div class="talent-field">
+                                    <div class="talent-field-label">Change Agility</div>
+                                    <div class="talent-field-value ${!employee.talent_change_agility ? 'empty' : ''}">${escapeHtml(employee.talent_change_agility) || 'Not assessed'}</div>
+                                </div>
+                                <div class="talent-field full-width">
+                                    <div class="talent-field-label">Identified as Future Talent</div>
+                                    ${employee.talent_identified_future != null ?
+                                        `<span class="future-talent-badge ${employee.talent_identified_future ? 'yes' : 'no'}">${employee.talent_identified_future ? '✓ Yes' : '○ No'}</span>` :
+                                        '<div class="talent-field-value empty">Not determined</div>'
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <div class="talent-section-divider">
+                            <h5>Movement & Development</h5>
+                            <div class="talent-assessment-grid">
+                                <div class="talent-field">
+                                    <div class="talent-field-label">Movement Readiness</div>
+                                    <div class="talent-field-value ${!employee.talent_movement_readiness ? 'empty' : ''}">${escapeHtml(employee.talent_movement_readiness) || 'Not assessed'}</div>
+                                </div>
+                                <div class="talent-field">
+                                    <div class="talent-field-label">Last Updated</div>
+                                    <div class="talent-field-value ${!employee.talent_last_updated ? 'empty' : ''}">${employee.talent_last_updated || 'Never'}</div>
+                                </div>
+                                <div class="talent-field full-width">
+                                    <div class="talent-field-label">Proposed Actions</div>
+                                    <div class="talent-field-value ${!employee.talent_proposed_actions ? 'empty' : ''}">${escapeHtml(employee.talent_proposed_actions) || 'None specified'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        ${renderTalentTenetsDisplay(employee)}
+                    </div>
+                </div>
+            ` : '';
+
+            // Generate cross-cycle alignment section (only if both cycles have data)
+            const alignmentSectionHTML = (hasBonusData && hasTalent && employee.performance_rating_percent != null && employee.talent_overall_perf) ? `
+                <div class="modal-collapsible-section collapsed" id="section-alignment">
+                    <div class="modal-section-header" onclick="toggleModalSection('section-alignment')">
+                        <div class="modal-section-header-left">
+                            <h4>Cross-Cycle Alignment</h4>
+                            <span class="modal-section-badge ${alignment.status}">${alignment.label}</span>
+                        </div>
+                        <span class="modal-section-chevron">▼</span>
+                    </div>
+                    <div class="modal-section-body">
+                        <div class="alignment-container">
+                            <div class="alignment-item">
+                                <div class="alignment-item-label">Bonus Rating</div>
+                                <div class="alignment-item-value">${employee.performance_rating_percent}%</div>
+                            </div>
+                            <div class="alignment-arrow">↔</div>
+                            <div class="alignment-item">
+                                <div class="alignment-item-label">Overall Performance</div>
+                                <div class="alignment-item-value">${escapeHtml(employee.talent_overall_perf)}</div>
+                            </div>
+                            <div class="alignment-result">
+                                <span class="alignment-result-badge ${alignment.status}">
+                                    ${alignment.status === 'aligned' ? '✓' : alignment.status === 'review' ? '⚠' : '○'}
+                                    ${alignment.label}
+                                </span>
+                            </div>
+                        </div>
+                        ${alignment.status === 'review' ? `
+                            <p style="margin-top: 12px; font-size: 13px; color: #856404;">
+                                The bonus rating and talent calibration may need review to ensure consistency.
+                            </p>
+                        ` : ''}
+                    </div>
+                </div>
+            ` : '';
 
             // Generate history tab content
             const historyHTML = renderHistoryTabContent();
@@ -1416,52 +1917,62 @@
                         </div>
                     </div>
 
-                    <div class="employee-modal-section">
-                        <h4>Bonus Rating</h4>
-                        <div class="employee-modal-grid">
-                            <div class="employee-modal-field">
-                                <label>Bonus Rating % (0-200)</label>
-                                <input type="number"
-                                       id="modal_rating_percent"
-                                       min="0"
-                                       max="200"
-                                       step="1"
-                                       value="${employee.performance_rating_percent || ''}"
-                                       placeholder="0-200">
-                                <span class="error" id="modal_rating_error"></span>
+                    <div class="modal-collapsible-section" id="section-bonus">
+                        <div class="modal-section-header" onclick="toggleModalSection('section-bonus')">
+                            <div class="modal-section-header-left">
+                                <h4>Bonus Cycle</h4>
+                                <span class="modal-section-badge ${hasBonusData ? 'has-data' : 'no-data'}">${hasBonusData ? 'Has Data' : 'No Data'}</span>
                             </div>
-                            <div class="employee-modal-field">
-                                <label>Last Updated</label>
-                                <div class="value">${employee.last_updated || 'Not yet rated'}</div>
+                            <span class="modal-section-chevron">▼</span>
+                        </div>
+                        <div class="modal-section-body">
+                            <div class="employee-modal-grid">
+                                <div class="employee-modal-field">
+                                    <label>Bonus Rating % (0-200)</label>
+                                    <input type="number"
+                                           id="modal_rating_percent"
+                                           min="0"
+                                           max="200"
+                                           step="1"
+                                           value="${employee.performance_rating_percent || ''}"
+                                           placeholder="0-200">
+                                    <span class="error" id="modal_rating_error"></span>
+                                </div>
+                                <div class="employee-modal-field">
+                                    <label>Last Updated</label>
+                                    <div class="value">${employee.last_updated || 'Not yet rated'}</div>
+                                </div>
+                                <div class="employee-modal-field full-width">
+                                    <label>Justification</label>
+                                    <textarea id="modal_justification" placeholder="Explain the rating...">${employee.justification || ''}</textarea>
+                                </div>
                             </div>
-                            <div class="employee-modal-field full-width">
-                                <label>Justification</label>
-                                <textarea id="modal_justification" placeholder="Explain the rating...">${employee.justification || ''}</textarea>
+                            <div class="talent-section-divider">
+                                <h5>Development & Mentoring</h5>
+                                <div class="employee-modal-grid">
+                                    <div class="employee-modal-field">
+                                        <label>Mentor</label>
+                                        <input type="text"
+                                               id="modal_mentor"
+                                               value="${employee.mentor || ''}"
+                                               placeholder="Who is mentoring this person?">
+                                    </div>
+                                    <div class="employee-modal-field">
+                                        <label>Mentee(s)</label>
+                                        <input type="text"
+                                               id="modal_mentees"
+                                               value="${employee.mentees || ''}"
+                                               placeholder="Who is this person mentoring?">
+                                    </div>
+                                </div>
                             </div>
+                            ${bonusTenetsHTML}
                         </div>
                     </div>
 
-                    <div class="employee-modal-section">
-                        <h4>Development & Mentoring</h4>
-                        <div class="employee-modal-grid">
-                            <div class="employee-modal-field">
-                                <label>Mentor</label>
-                                <input type="text"
-                                       id="modal_mentor"
-                                       value="${employee.mentor || ''}"
-                                       placeholder="Who is mentoring this person?">
-                            </div>
-                            <div class="employee-modal-field">
-                                <label>Mentee(s)</label>
-                                <input type="text"
-                                       id="modal_mentees"
-                                       value="${employee.mentees || ''}"
-                                       placeholder="Who is this person mentoring?">
-                            </div>
-                        </div>
-                    </div>
+                    ${talentSectionHTML}
 
-                    ${tenetsHTML}
+                    ${alignmentSectionHTML}
 
                     <div class="employee-modal-footer">
                         <button class="btn-cancel" onclick="closeEmployeeModal()">Close</button>
@@ -1479,7 +1990,9 @@
 
             // Add validation listener
             const ratingInput = document.getElementById('modal_rating_percent');
-            ratingInput.addEventListener('input', validateModalRating);
+            if (ratingInput) {
+                ratingInput.addEventListener('input', validateModalRating);
+            }
 
             // Add tenets listeners
             if (modalTenetsConfig) {
@@ -1886,6 +2399,92 @@
                     `;
                 }
 
+                // Build talent section for history (if talent data exists in snapshot)
+                const hasTalentSnapshot = snapshot.snapshot_talent_perf_what ||
+                                          snapshot.snapshot_talent_perf_how ||
+                                          snapshot.snapshot_talent_overall_perf ||
+                                          snapshot.snapshot_talent_growth_agility ||
+                                          snapshot.snapshot_talent_change_agility ||
+                                          snapshot.snapshot_talent_movement_readiness;
+
+                let talentHistoryHTML = '';
+                if (hasTalentSnapshot) {
+                    let talentRows = '';
+
+                    if (snapshot.snapshot_talent_overall_perf) {
+                        const perfClass = getOverallPerfClass(snapshot.snapshot_talent_overall_perf);
+                        talentRows += `
+                            <div class="history-detail-row">
+                                <div class="history-detail-label">Overall Performance</div>
+                                <div class="history-detail-value">
+                                    <span class="talent-overall-perf ${perfClass}" style="font-size: 12px; padding: 3px 8px;">${escapeHtml(snapshot.snapshot_talent_overall_perf)}</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    if (snapshot.snapshot_talent_perf_what) {
+                        talentRows += `
+                            <div class="history-detail-row">
+                                <div class="history-detail-label">Performance: What</div>
+                                <div class="history-detail-value">${escapeHtml(snapshot.snapshot_talent_perf_what)}</div>
+                            </div>
+                        `;
+                    }
+
+                    if (snapshot.snapshot_talent_perf_how) {
+                        talentRows += `
+                            <div class="history-detail-row">
+                                <div class="history-detail-label">Performance: How</div>
+                                <div class="history-detail-value">${escapeHtml(snapshot.snapshot_talent_perf_how)}</div>
+                            </div>
+                        `;
+                    }
+
+                    if (snapshot.snapshot_talent_growth_agility) {
+                        talentRows += `
+                            <div class="history-detail-row">
+                                <div class="history-detail-label">Growth Agility</div>
+                                <div class="history-detail-value">${escapeHtml(snapshot.snapshot_talent_growth_agility)}</div>
+                            </div>
+                        `;
+                    }
+
+                    if (snapshot.snapshot_talent_change_agility) {
+                        talentRows += `
+                            <div class="history-detail-row">
+                                <div class="history-detail-label">Change Agility</div>
+                                <div class="history-detail-value">${escapeHtml(snapshot.snapshot_talent_change_agility)}</div>
+                            </div>
+                        `;
+                    }
+
+                    if (snapshot.snapshot_talent_movement_readiness) {
+                        talentRows += `
+                            <div class="history-detail-row">
+                                <div class="history-detail-label">Movement Readiness</div>
+                                <div class="history-detail-value">${escapeHtml(snapshot.snapshot_talent_movement_readiness)}</div>
+                            </div>
+                        `;
+                    }
+
+                    if (snapshot.snapshot_talent_proposed_actions) {
+                        talentRows += `
+                            <div class="history-detail-row">
+                                <div class="history-detail-label">Proposed Actions</div>
+                                <div class="history-detail-value">${escapeHtml(snapshot.snapshot_talent_proposed_actions)}</div>
+                            </div>
+                        `;
+                    }
+
+                    talentHistoryHTML = `
+                        <div class="history-talent-section">
+                            <h6>Talent Calibration</h6>
+                            ${talentRows}
+                        </div>
+                    `;
+                }
+
                 // Context info (job profile, org at time of snapshot)
                 let contextHTML = '';
                 if (snapshot.snapshot_job_profile || snapshot.snapshot_org) {
@@ -1899,6 +2498,15 @@
                     `;
                 }
 
+                // Determine what badges to show in the summary
+                const hasBonusSnapshot = snapshot.performance_rating != null;
+                let summaryBadges = '';
+                if (hasBonusSnapshot && hasTalentSnapshot) {
+                    summaryBadges = '<span class="history-period-partial" style="background: #d4edda; color: #155724;">Both Cycles</span>';
+                } else if (hasTalentSnapshot) {
+                    summaryBadges = '<span class="history-period-partial" style="background: #cce5ff; color: #004085;">Talent Only</span>';
+                }
+
                 return `
                     <div class="history-period" data-period-id="${period.id}">
                         <div class="history-period-header" onclick="toggleHistoryPeriod(this)">
@@ -1908,13 +2516,16 @@
                             </div>
                             <div class="history-period-summary">
                                 ${isPartial ? '<span class="history-period-partial">Partial Record</span>' : ''}
+                                ${summaryBadges}
                                 <span class="history-period-rating">${ratingDisplay}</span>
                                 ${bonusDisplay ? `<span class="history-period-bonus">${bonusDisplay}</span>` : ''}
                                 <span class="history-period-chevron">▼</span>
                             </div>
                         </div>
                         <div class="history-period-details">
-                            ${detailsHTML || '<p style="color: #666; font-size: 13px;">No additional details available.</p>'}
+                            ${detailsHTML ? `<div style="margin-bottom: ${talentHistoryHTML ? '15px' : '0'}">${detailsHTML}</div>` : ''}
+                            ${talentHistoryHTML}
+                            ${!detailsHTML && !talentHistoryHTML ? '<p style="color: #666; font-size: 13px;">No additional details available.</p>' : ''}
                             ${contextHTML}
                         </div>
                     </div>
