@@ -331,8 +331,9 @@
 
 {% block content %}
 <div class="card">
-    <h2>Bonus Calculation (Phase 2)</h2>
+    <h2>💰 Bonus Calculation</h2>
 
+    {% if has_data %}
     <!-- Tab navigation (only show if multi-team) -->
     {% if is_multi_team %}
     <div class="tabs">
@@ -365,10 +366,8 @@
         </form>
     </div>
 
-
     <!-- Tab 1: Overview (existing view) -->
     <div class="tab-content {% if not is_multi_team or true %}active{% endif %}" id="overview">
-    {% if has_data %}
     <div class="card" style="margin-bottom: 20px;">
         <h3>Performance-to-Bonus Curve (Your Team)</h3>
         <div style="height: 450px;">
@@ -500,24 +499,6 @@
         </p>
     </div>
 
-    {% else %}
-    <div class="no-data-message">
-        {% if missing_bonus_data %}
-        <p style="font-size: 18px; margin-bottom: 10px;">📋 Missing bonus target data</p>
-        <p>Bonus calculation requires employee bonus target information from Workday.</p>
-        <p style="margin-top: 15px;">To set up bonus data:</p>
-        <ol style="text-align: left; display: inline-block; margin-top: 10px;">
-            <li>Export your team data from Workday (save with any filename starting with <code>real-</code>, e.g., <code>real-workday-export.xlsx</code>)</li>
-            <li>Run: <code>python convert_xlsx.py real-workday-export.xlsx</code> to import the data</li>
-            <li>Return to this page to calculate bonuses</li>
-        </ol>
-        {% else %}
-        <p style="font-size: 18px; margin-bottom: 10px;">📊 No rated employees yet</p>
-        <p>Performance ratings must be completed before bonus calculation can be performed.</p>
-        <p><a href="{{ url_for('rate_page') }}" class="btn" style="display: inline-block; margin-top: 15px;">Go to Rating Page</a></p>
-        {% endif %}
-    </div>
-    {% endif %}
     </div><!-- End Tab 1: Overview -->
 
     <!-- Tab 2: Team Comparison (only if multi-team) -->
@@ -656,6 +637,28 @@
     </div>
     {% endif %}
 
+    {% else %}
+    <!-- No data state -->
+    <div class="no-data-message">
+        {% if missing_bonus_data %}
+        <h3>📋 Missing Bonus Target Data</h3>
+        <p>Bonus calculation requires employee bonus target information from Workday.</p>
+        <p style="margin-top: 15px;">
+            <a href="{{ url_for('import_page') }}" class="btn">Import Bonus Data</a>
+        </p>
+        <p style="margin-top: 20px; font-size: 13px; color: #888;">
+            Your Workday export should include columns for bonus targets (e.g., "Bonus Target - Local Currency").
+        </p>
+        {% else %}
+        <h3>📊 No Rated Employees</h3>
+        <p>Employees must have bonus ratings before calculation can be performed.</p>
+        <p style="margin-top: 15px;">
+            <a href="{{ url_for('rate_page') }}" class="btn">Go to Rating Page</a>
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
+
 </div>
 {% endblock %}
 
@@ -765,7 +768,7 @@
                     max: 200,
                     title: {
                         display: true,
-                        text: 'Performance Rating (%)',
+                        text: 'Bonus Rating (%)',
                         font: { size: 14, weight: 'bold' }
                     },
                     ticks: {

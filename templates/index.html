@@ -325,6 +325,218 @@
         color: #27ae60;
         margin-bottom: 10px;
     }
+
+    /* Period Status Header */
+    .period-header {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        margin-bottom: 20px;
+        padding: 15px 20px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+
+    .period-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .period-status .label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+    }
+
+    .period-status .value {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .period-status .value.bonus {
+        background: rgba(102, 126, 234, 0.15);
+        color: #667eea;
+    }
+
+    .period-status .value.talent {
+        background: rgba(118, 75, 162, 0.15);
+        color: #764ba2;
+    }
+
+    .period-status .value.empty {
+        background: rgba(0, 0, 0, 0.05);
+        color: #999;
+    }
+
+    .period-divider {
+        width: 1px;
+        height: 30px;
+        background: #ccc;
+    }
+
+    /* Cross-Cycle Alignment Styles */
+    .cycle-header {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+        padding: 15px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px;
+        color: white;
+    }
+
+    .cycle-header .cycle-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .cycle-header .cycle-label {
+        font-weight: 600;
+        opacity: 0.9;
+    }
+
+    .cycle-header .cycle-value {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+
+    .alignment-summary {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .alignment-stat {
+        flex: 1;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .alignment-stat.aligned {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alignment-stat.review {
+        background: #fff3cd;
+        border: 1px solid #ffeeba;
+    }
+
+    .alignment-stat.incomplete {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+    }
+
+    .alignment-stat .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .alignment-stat.aligned .stat-value {
+        color: #155724;
+    }
+
+    .alignment-stat.review .stat-value {
+        color: #856404;
+    }
+
+    .alignment-stat.incomplete .stat-value {
+        color: #6c757d;
+    }
+
+    .alignment-stat .stat-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        margin-top: 5px;
+    }
+
+    .alignment-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .alignment-badge.aligned {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .alignment-badge.review {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .alignment-badge.incomplete {
+        background: #e9ecef;
+        color: #6c757d;
+    }
+
+    .talent-rating-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .talent-rating-badge.high-impact {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .talent-rating-badge.successful {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    .talent-rating-badge.evolving {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .talent-rating-badge.low {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .collapsible-header {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .collapsible-header .toggle-icon {
+        transition: transform 0.2s;
+    }
+
+    .collapsible-header.expanded .toggle-icon {
+        transform: rotate(90deg);
+    }
+
+    .collapsible-content {
+        display: none;
+        margin-top: 15px;
+    }
+
+    .collapsible-content.show {
+        display: block;
+    }
 </style>
 {% endblock %}
 
@@ -347,7 +559,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
                 </div>
-                <h3>Rate Team Members</h3>
+                <h3>Enter Bonus Ratings</h3>
                 <p>See how the rating interface works with 0-200% performance scale</p>
             </div>
             <div class="feature-card">
@@ -772,6 +984,28 @@
 </div>
 {% else %}
 <!-- Normal Dashboard: Has employees -->
+
+<!-- Period Status Header (Spec §7.4) -->
+<div class="period-header">
+    <div class="period-status">
+        <span class="label">📊 Bonus Cycle:</span>
+        {% if stats.rated > 0 %}
+        <span class="value bonus">{{ stats.rated }} rated</span>
+        {% else %}
+        <span class="value empty">No ratings</span>
+        {% endif %}
+    </div>
+    <div class="period-divider"></div>
+    <div class="period-status">
+        <span class="label">🎯 Talent Cycle:</span>
+        {% if calibrated_count > 0 %}
+        <span class="value talent">{{ calibrated_count }} calibrated</span>
+        {% else %}
+        <span class="value empty">No calibrations</span>
+        {% endif %}
+    </div>
+</div>
+
 <div class="stats-grid">
     <div class="stat-card">
         <h3>Total Employees</h3>
@@ -785,18 +1019,38 @@
         <h3>Pending</h3>
         <div class="number">{{ stats.unrated }}</div>
     </div>
+    <div class="stat-card">
+        <h3>Calibrated</h3>
+        <div class="number">{{ calibrated_count }}</div>
+    </div>
 </div>
 
 <div class="card">
     <h2>Team Overview</h2>
+    <!-- Cross-Cycle Alignment Summary (Spec §7.4) -->
+    <div class="alignment-summary">
+        <div class="alignment-stat aligned">
+            <span class="stat-value">{{ alignment_stats.aligned }}</span>
+            <span class="stat-label">Aligned</span>
+        </div>
+        <div class="alignment-stat review">
+            <span class="stat-value">{{ alignment_stats.review }}</span>
+            <span class="stat-label">Needs Review</span>
+        </div>
+        <div class="alignment-stat incomplete">
+            <span class="stat-value">{{ alignment_stats.incomplete }}</span>
+            <span class="stat-label">Incomplete</span>
+        </div>
+    </div>
     <div style="overflow-x: auto;">
         <table id="teamTable">
             <thead>
                 <tr>
                     <th class="sortable" data-sort="name">Name</th>
                     <th class="sortable" data-sort="job">Job Profile</th>
-                    <th class="sortable" data-sort="rating">Performance Rating %</th>
-                    <th class="sortable" data-sort="updated">Last Updated</th>
+                    <th class="sortable" data-sort="rating">Bonus Rating</th>
+                    <th class="sortable" data-sort="talent">Overall Performance</th>
+                    <th class="sortable" data-sort="alignment">Alignment</th>
                 </tr>
             </thead>
             <tbody id="teamTableBody">
@@ -804,7 +1058,8 @@
                 <tr data-name="{{ employee.Associate }}"
                     data-job="{{ employee['Current Job Profile'] }}"
                     data-rating="{{ employee.performance_rating_percent or 0 }}"
-                    data-updated="{{ employee.last_updated or '' }}">
+                    data-talent="{{ employee.talent_overall_perf or '' }}"
+                    data-alignment="{{ employee.alignment or 'incomplete' }}">
                     <td><span class="employee-name" data-employee-id="{{ employee['Associate ID'] }}">{{ employee.Associate }}</span></td>
                     <td>{{ employee['Current Job Profile'] }}</td>
                     <td>
@@ -817,10 +1072,29 @@
                                 {{ employee.performance_rating_percent }}%
                             </span>
                         {% else %}
-                            <span class="rating-text rating-text-none">Not rated</span>
+                            <span class="rating-text rating-text-none">—</span>
                         {% endif %}
                     </td>
-                    <td>{{ employee.last_updated if employee.last_updated else '-' }}</td>
+                    <td>
+                        {% if employee.talent_overall_perf %}
+                            <span class="talent-rating-badge
+                                {% if employee.talent_overall_perf == 'High Impact Performer' %}high-impact
+                                {% elif employee.talent_overall_perf == 'Successful Performer' %}successful
+                                {% elif employee.talent_overall_perf == 'Evolving Performer' %}evolving
+                                {% elif employee.talent_overall_perf == 'Low Performer' %}low{% endif %}">
+                                {{ employee.talent_overall_perf }}
+                            </span>
+                        {% else %}
+                            <span class="rating-text rating-text-none">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="alignment-badge {{ employee.alignment }}">
+                            {% if employee.alignment == 'aligned' %}✓ Aligned
+                            {% elif employee.alignment == 'review' %}⚠ Review
+                            {% else %}— Incomplete{% endif %}
+                        </span>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -830,7 +1104,7 @@
 
 <div class="card">
     <h2>Quick Actions</h2>
-    <a href="{{ url_for('rate_page') }}" class="btn">Rate Team Members</a>
+    <a href="{{ url_for('rate_page') }}" class="btn">Enter Bonus Ratings</a>
     <a href="{{ url_for('analytics') }}" class="btn">View Analytics</a>
     <button class="btn btn-archive" onclick="openArchiveModal()" {% if stats.rated == 0 %}disabled title="No rated employees to archive"{% endif %}>Archive Period</button>
 </div>
@@ -957,10 +1231,18 @@ function sortTable(column) {
             bVal = parseFloat(bVal) || 0;
         }
 
-        // Handle date column
-        if (column === 'updated') {
-            aVal = aVal || '0000-00-00';
-            bVal = bVal || '0000-00-00';
+        // Handle talent column - sort by performance level (High Impact > Successful > Evolving > Low)
+        if (column === 'talent') {
+            const order = {'High Impact Performer': 4, 'Successful Performer': 3, 'Evolving Performer': 2, 'Low Performer': 1, '': 0};
+            aVal = order[aVal] || 0;
+            bVal = order[bVal] || 0;
+        }
+
+        // Handle alignment column - sort by status (aligned > review > incomplete)
+        if (column === 'alignment') {
+            const order = {'aligned': 3, 'review': 2, 'incomplete': 1};
+            aVal = order[aVal] || 0;
+            bVal = order[bVal] || 0;
         }
 
         let comparison = 0;
@@ -1042,5 +1324,6 @@ document.getElementById('archiveModal').addEventListener('click', function(e) {
         closeArchiveModal();
     }
 });
+
 </script>
 {% endblock %}

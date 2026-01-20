@@ -19,6 +19,7 @@ class Period(Base):
 
     id = Column(String, primary_key=True)  # e.g., "2024-H1", "2025-Q1"
     name = Column(String, nullable=False)  # e.g., "First Half 2024"
+    cycle_type = Column(String)  # "bonus" | "talent"
     archived_at = Column(DateTime)
     notes = Column(Text)  # Manager notes about this period
 
@@ -27,6 +28,7 @@ class Period(Base):
         return {
             'id': self.id,
             'name': self.name,
+            'cycle_type': self.cycle_type,
             'archived_at': self.archived_at.strftime('%Y-%m-%d %H:%M:%S') if self.archived_at else None,
             'notes': self.notes
         }
@@ -44,7 +46,8 @@ class RatingSnapshot(Base):
     associate_id = Column(String, nullable=False, index=True)  # Employee identifier
 
     # Rating vs Allocation (important distinction!)
-    performance_rating = Column(Float)  # Manager's assessment (0-200%), INPUT to algorithm
+    # NOTE: "performance_rating" is the legacy field name; UI calls this "Bonus Rating"
+    performance_rating = Column(Float)  # Manager's Bonus Rating (0-200%), INPUT to algorithm
     bonus_allocation = Column(Float)    # Final result from algorithm, OUTPUT
 
     # Qualitative data (from Notes field, may be NULL for old imports)
@@ -63,6 +66,18 @@ class RatingSnapshot(Base):
     # Metadata
     archived_at = Column(DateTime)
     has_full_details = Column(Boolean, default=True)  # FALSE if only bonus allocation available
+
+    # Talent calibration snapshot fields
+    snapshot_talent_perf_what = Column(String)
+    snapshot_talent_perf_how = Column(String)
+    snapshot_talent_overall_perf = Column(String)
+    snapshot_talent_growth_agility = Column(String)
+    snapshot_talent_change_agility = Column(String)
+    snapshot_talent_movement_readiness = Column(String)
+    snapshot_talent_proposed_actions = Column(Text)
+    snapshot_talent_promo_job_profile = Column(String)
+    snapshot_talent_tenets_strengths = Column(String)
+    snapshot_talent_tenets_improvements = Column(String)
 
     # Unique constraint: one snapshot per employee per period
     __table_args__ = (
@@ -87,7 +102,18 @@ class RatingSnapshot(Base):
             'snapshot_job_profile': self.snapshot_job_profile,
             'snapshot_bonus_target_manager_currency': self.snapshot_bonus_target_manager_currency,
             'archived_at': self.archived_at.strftime('%Y-%m-%d %H:%M:%S') if self.archived_at else None,
-            'has_full_details': self.has_full_details
+            'has_full_details': self.has_full_details,
+            # Talent snapshot fields
+            'snapshot_talent_perf_what': self.snapshot_talent_perf_what,
+            'snapshot_talent_perf_how': self.snapshot_talent_perf_how,
+            'snapshot_talent_overall_perf': self.snapshot_talent_overall_perf,
+            'snapshot_talent_growth_agility': self.snapshot_talent_growth_agility,
+            'snapshot_talent_change_agility': self.snapshot_talent_change_agility,
+            'snapshot_talent_movement_readiness': self.snapshot_talent_movement_readiness,
+            'snapshot_talent_proposed_actions': self.snapshot_talent_proposed_actions,
+            'snapshot_talent_promo_job_profile': self.snapshot_talent_promo_job_profile,
+            'snapshot_talent_tenets_strengths': self.snapshot_talent_tenets_strengths,
+            'snapshot_talent_tenets_improvements': self.snapshot_talent_tenets_improvements
         }
 
 
@@ -135,14 +161,69 @@ class Employee(Base):
     notes = Column(String)
     zero_bonus_allocated = Column(String)
 
-    # Manager input fields
-    performance_rating_percent = Column(Float)
+    # Manager input fields (Bonus Cycle)
+    # NOTE: "performance_rating_percent" is the legacy field name; UI calls this "Bonus Rating"
+    performance_rating_percent = Column(Float)  # Bonus Rating (0-200%)
     justification = Column(String)
     mentor = Column(String)
     mentees = Column(String)
     tenets_strengths = Column(String)  # JSON array of 3 tenet IDs for strengths
     tenets_improvements = Column(String)  # JSON array of 3 tenet IDs for improvements
     last_updated = Column(DateTime)
+
+    # ═══════════════════════════════════════════════════════════════
+    # EXTENDED IDENTITY (from talent report, nullable)
+    # ═══════════════════════════════════════════════════════════════
+    management_level = Column(String)        # "IC 1", "IC 2", ..., "Manager", "Director"
+    job_category = Column(String)            # From Workday
+    hire_date = Column(DateTime)             # Date type
+    length_of_service = Column(String)       # "2 years, 3 months"
+    time_in_job_profile = Column(String)     # "1 year, 6 months"
+    region = Column(String)                  # "Americas", "EMEA", "APAC"
+    country = Column(String)                 # "United States", "Australia"
+
+    # ═══════════════════════════════════════════════════════════════
+    # TALENT: PERFORMANCE ASSESSMENT
+    # ═══════════════════════════════════════════════════════════════
+    talent_perf_what = Column(String)        # ENUM: Surpasses/Meets/Meets Some Expectations
+    talent_perf_how = Column(String)         # ENUM: Surpasses/Meets/Meets Some/Does Not Meet
+    talent_overall_perf = Column(String)     # DERIVED: High Impact/Successful/Evolving/Low
+    talent_last_overall_perf = Column(String)  # PRESERVED: from Workday historical
+
+    # ═══════════════════════════════════════════════════════════════
+    # TALENT: FUTURE TALENT
+    # ═══════════════════════════════════════════════════════════════
+    talent_growth_agility = Column(String)   # ENUM: Always/Most of the Time, Sometimes
+    talent_change_agility = Column(String)   # ENUM: Always/Most of the Time, Sometimes
+    talent_identified_future = Column(Boolean)  # DERIVED: True when both agility = Always
+    talent_last_identified_future = Column(Boolean)  # PRESERVED
+
+    # ═══════════════════════════════════════════════════════════════
+    # TALENT: MOVEMENT & CAREER
+    # ═══════════════════════════════════════════════════════════════
+    talent_movement_readiness = Column(String)  # ENUM: Continue/Ready Now/Ready Lateral
+    talent_last_movement_readiness = Column(String)  # PRESERVED
+    talent_proposed_actions = Column(Text)   # Free-form text
+
+    # ═══════════════════════════════════════════════════════════════
+    # TALENT: PROMOTION
+    # ═══════════════════════════════════════════════════════════════
+    talent_promo_job_profile = Column(String)   # "Senior SRE, 1534"
+    talent_promo_business_need = Column(Text)
+    talent_promo_role_scope = Column(Text)
+    talent_promo_readiness = Column(Text)
+
+    # ═══════════════════════════════════════════════════════════════
+    # TALENT: TENETS (parallel to bonus tenets)
+    # ═══════════════════════════════════════════════════════════════
+    talent_tenets_strengths = Column(String)     # JSON array of tenet IDs
+    talent_tenets_improvements = Column(String)  # JSON array of tenet IDs
+
+    # ═══════════════════════════════════════════════════════════════
+    # TALENT: METADATA
+    # ═══════════════════════════════════════════════════════════════
+    talent_calibration_status = Column(String)  # Read-only from Workday
+    talent_last_updated = Column(DateTime)
 
     def to_dict(self):
         """Convert model to dictionary for JSON serialization."""
@@ -172,8 +253,152 @@ class Employee(Base):
             'mentees': self.mentees,
             'tenets_strengths': self.tenets_strengths,
             'tenets_improvements': self.tenets_improvements,
-            'last_updated': self.last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.last_updated else ''
+            'last_updated': self.last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.last_updated else '',
+            # Extended identity (from talent report)
+            'management_level': self.management_level,
+            'job_category': self.job_category,
+            'hire_date': self.hire_date.strftime('%Y-%m-%d') if self.hire_date else None,
+            'length_of_service': self.length_of_service,
+            'time_in_job_profile': self.time_in_job_profile,
+            'region': self.region,
+            'country': self.country,
+            # Talent: Performance Assessment
+            'talent_perf_what': self.talent_perf_what,
+            'talent_perf_how': self.talent_perf_how,
+            'talent_overall_perf': self.talent_overall_perf,
+            'talent_last_overall_perf': self.talent_last_overall_perf,
+            # Talent: Future Talent
+            'talent_growth_agility': self.talent_growth_agility,
+            'talent_change_agility': self.talent_change_agility,
+            'talent_identified_future': self.talent_identified_future,
+            'talent_last_identified_future': self.talent_last_identified_future,
+            # Talent: Movement & Career
+            'talent_movement_readiness': self.talent_movement_readiness,
+            'talent_last_movement_readiness': self.talent_last_movement_readiness,
+            'talent_proposed_actions': self.talent_proposed_actions,
+            # Talent: Promotion
+            'talent_promo_job_profile': self.talent_promo_job_profile,
+            'talent_promo_business_need': self.talent_promo_business_need,
+            'talent_promo_role_scope': self.talent_promo_role_scope,
+            'talent_promo_readiness': self.talent_promo_readiness,
+            # Talent: Tenets
+            'talent_tenets_strengths': self.talent_tenets_strengths,
+            'talent_tenets_improvements': self.talent_tenets_improvements,
+            # Talent: Metadata
+            'talent_calibration_status': self.talent_calibration_status,
+            'talent_last_updated': self.talent_last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.talent_last_updated else None
         }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TALENT CALIBRATION DERIVATION FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def derive_overall_performance(what: str | None, how: str | None) -> str | None:
+    """
+    Derive the overall performance rating from the What and How assessments.
+
+    Decision table (from Spec §4.1):
+    | What              | How                   | → Result              |
+    |-------------------|-----------------------|-----------------------|
+    | *                 | Does Not Meet*        | Low Performer         |
+    | *Some*            | *Some*                | Low Performer         |
+    | Surpasses*        | Surpasses*            | High Impact Performer |
+    | Surpasses*        | Meets Expectations    | High Impact Performer |
+    | Surpasses*        | *Some*                | Successful Performer  |
+    | Meets Expectations| Surpasses*            | Successful Performer  |
+    | Meets Expectations| Meets Expectations    | Successful Performer  |
+    | Meets Expectations| *Some*                | Evolving Performer    |
+    | *Some*            | Meets Expectations    | Evolving Performer    |
+    | *Some*            | Surpasses*            | Evolving Performer    |
+    | (null/empty)      | *                     | None                  |
+    | *                 | (null/empty)          | None                  |
+    """
+    if not what or not how:
+        return None
+
+    w, h = what.lower(), how.lower()
+
+    # Rule: Any "Does Not Meet" in How → Low Performer
+    if 'does not meet' in h:
+        return 'Low Performer'
+
+    # Rule: Both contain "Some" → Low Performer
+    if 'some' in w and 'some' in h:
+        return 'Low Performer'
+
+    # Rule: What = Surpasses
+    if 'surpasses' in w:
+        if 'surpasses' in h or ('meets' in h and 'some' not in h):
+            return 'High Impact Performer'
+        return 'Successful Performer'
+
+    # Rule: What = Meets (not Some)
+    if 'meets' in w and 'some' not in w:
+        if 'surpasses' in h or ('meets' in h and 'some' not in h):
+            return 'Successful Performer'
+        return 'Evolving Performer'
+
+    # Rule: What = Meets Some
+    if 'some' in w:
+        return 'Evolving Performer'
+
+    # Fallback (should not reach with valid inputs)
+    return 'Successful Performer'
+
+
+def derive_future_talent(growth: str | None, change: str | None) -> bool:
+    """
+    Derive whether an employee is identified as Future Talent.
+
+    Rule (from Spec §4.2): Both Growth Agility AND Change Agility must
+    contain "Always" (case-insensitive) to be identified as Future Talent.
+    """
+    if not growth or not change:
+        return False
+    return 'always' in growth.lower() and 'always' in change.lower()
+
+
+def get_cross_cycle_alignment(bonus_pct: float | None, talent_overall: str | None) -> str:
+    """
+    Determine cross-cycle alignment between bonus rating and talent calibration.
+
+    Per Spec §7.4, compares the bonus performance rating percentage with
+    the talent Overall Performance rating to identify alignment or need for review.
+
+    Alignment ranges:
+    - High Impact Performer: 120-200%
+    - Successful Performer: 90-119%
+    - Evolving Performer: 70-89%
+    - Low Performer: 0-69%
+
+    Args:
+        bonus_pct: Performance rating percentage from bonus cycle (0-200)
+        talent_overall: Overall Performance from talent calibration
+
+    Returns:
+        "aligned" - Bonus rating falls within expected range for overall performance
+        "review" - Ratings don't align, may need review
+        "incomplete" - Missing either bonus or talent data
+    """
+    if bonus_pct is None or talent_overall is None:
+        return "incomplete"
+
+    # Expected bonus ranges for each overall performance level
+    ranges = {
+        "High Impact Performer": (120, 200),
+        "Successful Performer": (90, 119),
+        "Evolving Performer": (70, 89),
+        "Low Performer": (0, 69),
+    }
+
+    expected_range = ranges.get(talent_overall)
+    if expected_range is None:
+        return "incomplete"
+
+    lo, hi = expected_range
+    return "aligned" if lo <= bonus_pct <= hi else "review"
 
 
 # Database setup
@@ -243,6 +468,52 @@ def _migrate_add_new_columns(engine):
     # Define new columns: (table, column_name, column_type)
     new_columns = [
         ('bonus_settings', 'workday_pool', 'REAL'),
+        # Period table
+        ('periods', 'cycle_type', 'TEXT'),
+        # Employee table - Extended identity
+        ('employees', 'management_level', 'TEXT'),
+        ('employees', 'job_category', 'TEXT'),
+        ('employees', 'hire_date', 'DATETIME'),
+        ('employees', 'length_of_service', 'TEXT'),
+        ('employees', 'time_in_job_profile', 'TEXT'),
+        ('employees', 'region', 'TEXT'),
+        ('employees', 'country', 'TEXT'),
+        # Employee table - Talent: Performance Assessment
+        ('employees', 'talent_perf_what', 'TEXT'),
+        ('employees', 'talent_perf_how', 'TEXT'),
+        ('employees', 'talent_overall_perf', 'TEXT'),
+        ('employees', 'talent_last_overall_perf', 'TEXT'),
+        # Employee table - Talent: Future Talent
+        ('employees', 'talent_growth_agility', 'TEXT'),
+        ('employees', 'talent_change_agility', 'TEXT'),
+        ('employees', 'talent_identified_future', 'BOOLEAN'),
+        ('employees', 'talent_last_identified_future', 'BOOLEAN'),
+        # Employee table - Talent: Movement & Career
+        ('employees', 'talent_movement_readiness', 'TEXT'),
+        ('employees', 'talent_last_movement_readiness', 'TEXT'),
+        ('employees', 'talent_proposed_actions', 'TEXT'),
+        # Employee table - Talent: Promotion
+        ('employees', 'talent_promo_job_profile', 'TEXT'),
+        ('employees', 'talent_promo_business_need', 'TEXT'),
+        ('employees', 'talent_promo_role_scope', 'TEXT'),
+        ('employees', 'talent_promo_readiness', 'TEXT'),
+        # Employee table - Talent: Tenets
+        ('employees', 'talent_tenets_strengths', 'TEXT'),
+        ('employees', 'talent_tenets_improvements', 'TEXT'),
+        # Employee table - Talent: Metadata
+        ('employees', 'talent_calibration_status', 'TEXT'),
+        ('employees', 'talent_last_updated', 'DATETIME'),
+        # RatingSnapshot table - Talent snapshot fields
+        ('rating_snapshots', 'snapshot_talent_perf_what', 'TEXT'),
+        ('rating_snapshots', 'snapshot_talent_perf_how', 'TEXT'),
+        ('rating_snapshots', 'snapshot_talent_overall_perf', 'TEXT'),
+        ('rating_snapshots', 'snapshot_talent_growth_agility', 'TEXT'),
+        ('rating_snapshots', 'snapshot_talent_change_agility', 'TEXT'),
+        ('rating_snapshots', 'snapshot_talent_movement_readiness', 'TEXT'),
+        ('rating_snapshots', 'snapshot_talent_proposed_actions', 'TEXT'),
+        ('rating_snapshots', 'snapshot_talent_promo_job_profile', 'TEXT'),
+        ('rating_snapshots', 'snapshot_talent_tenets_strengths', 'TEXT'),
+        ('rating_snapshots', 'snapshot_talent_tenets_improvements', 'TEXT'),
     ]
 
     with engine.connect() as conn:

@@ -5,6 +5,7 @@ A web-based tool for managers to conduct performance reviews and calculate team 
 ## Features
 
 - **Performance Rating Interface**: Rate team members on a 0-200% scale with justification
+- **Talent Calibration**: Assess employee potential with What/How performance, agility ratings, and movement readiness
 - **Auto-save**: Ratings save automatically as you work (2-second delay)
 - **Analytics Dashboard**: View team performance distribution with calibration guidance
 - **Bonus Calculation**: Algorithmic bonus allocation with configurable parameters
@@ -172,19 +173,19 @@ Save the export as `real-workday-export.xlsx` (or any name starting with `real-`
 
 This will:
 - Import all employee records from Workday
-- Initialize empty performance rating fields
+- Initialize empty bonus rating fields
 - Optionally clear any existing sample data
 
 ### Step 3: Start Rating
 
-Navigate to **Rate Team** to begin entering performance ratings.
+Navigate to **Bonus Rating** to begin entering bonus ratings.
 
 ## Workflow
 
-### 1. Rate Your Team
-- Navigate to **Rate Team** tab
+### 1. Enter Bonus Ratings
+- Navigate to **Bonus Rating** tab
 - For each employee:
-  - Enter performance rating (0-200%, where 100% = met expectations)
+  - Enter bonus rating (0-200%, where 100% = met expectations)
   - Add justification explaining the rating
   - Optionally note mentors and mentees
 - Ratings auto-save after 2 seconds of inactivity
@@ -230,7 +231,25 @@ This:
   - View who improved, declined, or stayed stable
   - See average rating changes across the team
 
-### 7. Export Results
+### 7. Talent Calibration (Optional)
+
+In addition to bonus ratings, you can conduct **talent calibration** to assess employee potential and career readiness:
+
+- Navigate to **Calibrate** tab
+- For each employee:
+  - Assess **Performance: What** (results delivered) and **How** (behaviors demonstrated)
+  - Evaluate **Growth Agility** and **Change Agility** (determines Future Talent designation)
+  - Set **Movement Readiness** (ready for promotion, lateral move, or continue growing)
+  - Add proposed development actions
+  - Select **Leadership Tenets** (strengths and improvement areas)
+- The system automatically derives:
+  - **Overall Performance**: High Impact / Successful / Evolving / Low Performer
+  - **Future Talent**: Yes/No based on agility ratings
+  - **Cross-cycle Alignment**: Flags when bonus ratings don't match talent assessment
+
+Talent data can be exported and re-imported—tenets are embedded in the "Proposed Actions" field for Workday compatibility.
+
+### 8. Export Results
 
 Currently manual (copy from UI). Future versions will support CSV export.
 

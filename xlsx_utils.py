@@ -39,16 +39,21 @@ def get_current_period_name() -> str:
     return f"CY{year_short:02d} Q{quarter}"
 
 
-def detect_import_type(period_name: str) -> Dict[str, Any]:
+def detect_import_type(period_name: str, spreadsheet_type: str = 'bonus') -> Dict[str, Any]:
     """
-    Suggest import type based on period from metadata.
+    Suggest import type based on period from metadata and spreadsheet type.
 
-    Compares the file's period to the current quarter to suggest whether
-    this is likely a current period import or historical archive.
+    For bonus files: Compares the file's period to the current quarter to suggest
+    whether this is likely a current period import or historical archive.
+
+    For talent files: Always suggests 'current' since talent calibration reports
+    are for the current cycle and don't include period metadata.
+
     The user should confirm the suggested import type.
 
     Args:
         period_name: Period name from metadata (e.g., "CY25 Q3")
+        spreadsheet_type: 'bonus' or 'talent'
 
     Returns:
         Dict with:
@@ -57,8 +62,20 @@ def detect_import_type(period_name: str) -> Dict[str, Any]:
             - period_display: Period display name (e.g., "CY25 Q3")
             - current_period: The current period for reference
             - is_current_period: Whether file period matches current
+            - is_talent_file: Whether this is a talent calibration file
     """
     current_period = get_current_period_name()
+
+    # Talent files don't have period metadata - always import as current
+    if spreadsheet_type == 'talent':
+        return {
+            'suggested_type': 'current',
+            'period_id': None,
+            'period_display': 'Current Cycle',
+            'current_period': current_period,
+            'is_current_period': True,
+            'is_talent_file': True
+        }
 
     # Parse period_name to generate period_id
     # Format: "CY25 Q3" or "CY25-Q3" → "2025-Q3"
@@ -77,7 +94,8 @@ def detect_import_type(period_name: str) -> Dict[str, Any]:
         'period_id': period_id,
         'period_display': period_name or 'Unknown',
         'current_period': current_period,
-        'is_current_period': is_current
+        'is_current_period': is_current,
+        'is_talent_file': False
     }
 
 
@@ -200,12 +218,12 @@ def validate_workday_format(rows: List[tuple], header_idx: Optional[int], header
         )
 
     # Check for required columns
-    required = ['associate', 'associate_id']
+    # Note: Talent reports use 'Worker' instead of 'Associate'
     normalized = [h.lower().strip() for h in headers if h]
 
     missing = []
-    if 'associate' not in normalized:
-        missing.append('Associate')
+    if 'associate' not in normalized and 'worker' not in normalized:
+        missing.append('Associate (or Worker)')
     if 'associate id' not in normalized:
         missing.append('Associate ID')
 
@@ -243,8 +261,9 @@ def _find_header_row(rows: List[tuple]) -> Optional[int]:
     """
     Find the header row by looking for required Workday column names.
 
-    Scans rows until it finds one containing 'Associate' and 'Associate ID'
-    (case-insensitive), which are required columns in Workday exports.
+    Scans rows until it finds one containing 'Associate ID' and either
+    'Associate' or 'Worker' (case-insensitive). Bonus reports use 'Associate',
+    while talent reports use 'Worker'.
 
     Args:
         rows: List of row tuples from the spreadsheet
@@ -252,14 +271,17 @@ def _find_header_row(rows: List[tuple]) -> Optional[int]:
     Returns:
         Index of the header row, or None if not found
     """
-    required_headers = {'associate', 'associate id'}
-
     for idx, row in enumerate(rows):
         if not row:
             continue
         # Normalize cell values for comparison
         normalized = {str(cell).lower().strip() for cell in row if cell}
-        if required_headers.issubset(normalized):
+
+        # Must have 'associate id' AND either 'associate' OR 'worker'
+        has_id = 'associate id' in normalized
+        has_name = 'associate' in normalized or 'worker' in normalized
+
+        if has_id and has_name:
             return idx
 
     return None
@@ -308,11 +330,16 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
         header_idx = _find_header_row(rows)
         headers = [str(h).strip() if h else '' for h in rows[header_idx]] if header_idx is not None else []
 
-        # Extract metadata from header rows (needed for validation)
+        # Detect spreadsheet type (talent vs bonus)
+        spreadsheet_type = detect_spreadsheet_type(headers) if headers else 'bonus'
+
+        # Extract metadata from header rows (needed for validation of bonus files)
         metadata = extract_workday_metadata(rows, header_idx) if header_idx is not None else {}
 
-        # Validate the file format (including metadata check)
-        is_valid, validation_error = validate_workday_format(rows, header_idx, headers, metadata)
+        # Validate the file format
+        # For talent files, skip metadata validation (they don't have bonus pool)
+        validation_metadata = None if spreadsheet_type == 'talent' else metadata
+        is_valid, validation_error = validate_workday_format(rows, header_idx, headers, validation_metadata)
         if not is_valid:
             wb.close()
             return {
@@ -354,12 +381,13 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
 
         wb.close()
 
-        # Suggest import type based on period
-        import_detection = detect_import_type(metadata.get('period_name'))
+        # Suggest import type based on period and spreadsheet type
+        import_detection = detect_import_type(metadata.get('period_name'), spreadsheet_type)
 
         return {
             'success': True,
             'employee_count': employee_count,
+            'spreadsheet_type': spreadsheet_type,  # 'talent' or 'bonus'
             'has_bonus_column': col_indices.get('proposed_percent_of_target') is not None,
             'notes_count': notes_count,
             'allocation_count': allocation_count,
@@ -547,3 +575,341 @@ def _get_str(row: tuple, idx: Optional[int]) -> str:
     """Safely get a string value from a row by index."""
     val = _get_val(row, idx)
     return str(val) if val else ''
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TALENT CALIBRATION IMPORT SUPPORT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Markers used to detect spreadsheet type
+TALENT_MARKERS = ['Performance: What', 'Performance: How', 'Future Talent', 'Movement Readiness']
+BONUS_MARKERS = ['Bonus Target', 'Annual Bonus Target Percent', 'Current Base Pay', 'Proposed Bonus Amount']
+
+
+def detect_spreadsheet_type(headers: List[str]) -> str:
+    """
+    Detect whether a spreadsheet is a talent calibration or bonus report.
+
+    Uses marker columns to determine the type. Talent reports have columns like
+    "Performance: What" and "Movement Readiness". Bonus reports have columns
+    like "Bonus Target" and "Proposed Bonus Amount".
+
+    Args:
+        headers: List of column header strings
+
+    Returns:
+        'talent' or 'bonus'
+    """
+    text = ' '.join(str(h) for h in headers if h)
+    talent_score = sum(1 for m in TALENT_MARKERS if m in text)
+    bonus_score = sum(1 for m in BONUS_MARKERS if m in text)
+    return 'talent' if talent_score > bonus_score else 'bonus'
+
+
+# Talent column mappings (Spec §5.2)
+# Maps Workday column headers to database field names
+TALENT_COLUMN_MAP = {
+    # Identity (Worker and Associate both map to associate)
+    'Associate ID': 'associate_id',
+    'Worker': 'associate',
+    'Associate': 'associate',
+
+    # Standard context (shared with bonus)
+    'Supervisory Organization': 'supervisory_organization',
+    'Job Profile': 'current_job_profile',
+    'Current Job Profile': 'current_job_profile',
+
+    # Performance Assessment
+    'Performance: What': 'talent_perf_what',
+    'Performance: How': 'talent_perf_how',
+    'Overall Performance Rating': 'talent_overall_perf',
+    'Last Talent Assessment Cycle: Overall Performance Rating': 'talent_last_overall_perf',
+
+    # Future Talent
+    'Future Talent: Growth Agility': 'talent_growth_agility',
+    'Future Talent: Change Agility': 'talent_change_agility',
+    'Identified as Future Talent?': 'talent_identified_future',
+    'Last Talent Assessment Cycle: Identified as Future Talent?': 'talent_last_identified_future',
+
+    # Movement & Career
+    'Movement Readiness': 'talent_movement_readiness',
+    'Last Talent Assessment Cycle: Movement Readiness': 'talent_last_movement_readiness',
+    'Proposed Talent Actions': 'talent_proposed_actions',
+
+    # Promotion
+    'Promotions: Proposed Job Profile & Code': 'talent_promo_job_profile',
+    'Promotions: Business Need': 'talent_promo_business_need',
+    'Promotions: Expanded Role Scope': 'talent_promo_role_scope',
+    'Promotions: Associate Readiness': 'talent_promo_readiness',
+
+    # Extended Identity Context
+    'Time in Job Profile': 'time_in_job_profile',
+    'Management Level': 'management_level',
+    'Job Category': 'job_category',
+    'Hire Date': 'hire_date',
+    'Length of Service - Worker': 'length_of_service',
+    'Region - Location Based': 'region',
+    'Country': 'country',
+
+    # Metadata
+    'Calibration Status': 'talent_calibration_status',
+}
+
+
+def find_talent_column_indices(headers: List[str]) -> Dict[str, Optional[int]]:
+    """
+    Find column indices for talent calibration fields.
+
+    Uses TALENT_COLUMN_MAP to map Workday column headers to field names.
+
+    Args:
+        headers: List of header strings
+
+    Returns:
+        Dict mapping field names to column indices (or None if not found)
+    """
+    indices = {}
+
+    # Normalize headers for matching
+    header_lower = [h.lower().strip() if h else '' for h in headers]
+    header_exact = [h.strip() if h else '' for h in headers]
+
+    for workday_col, field_name in TALENT_COLUMN_MAP.items():
+        # Try exact match first (case-sensitive for Workday columns)
+        if workday_col in header_exact:
+            idx = header_exact.index(workday_col)
+            # Don't overwrite if already found (first match wins)
+            if field_name not in indices:
+                indices[field_name] = idx
+        else:
+            # Fall back to case-insensitive match
+            workday_col_lower = workday_col.lower()
+            if workday_col_lower in header_lower:
+                idx = header_lower.index(workday_col_lower)
+                if field_name not in indices:
+                    indices[field_name] = idx
+
+    return indices
+
+
+def parse_talent_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], str]:
+    """
+    Parse employee talent calibration data from a Workday XLSX export.
+
+    Unlike bonus imports, talent imports:
+    - Don't require bonus pool metadata
+    - Map different columns (Performance What/How, Movement Readiness, etc.)
+    - Can create new employees if associate_id not found in database
+
+    Args:
+        file_path: Path to the XLSX file
+
+    Returns:
+        Tuple of (success, employees_list, error_message)
+        employees_list contains dicts with talent calibration fields
+    """
+    try:
+        wb = openpyxl.load_workbook(file_path, read_only=True)
+        sheet = wb.active
+
+        rows = list(sheet.iter_rows(values_only=True))
+
+        # Find the header row dynamically
+        header_idx = _find_header_row(rows)
+        if header_idx is None:
+            wb.close()
+            return False, [], "Could not find header row with Associate and Associate ID columns"
+
+        headers = [str(h).strip() if h else '' for h in rows[header_idx]]
+
+        # Verify this is a talent spreadsheet
+        spreadsheet_type = detect_spreadsheet_type(headers)
+        if spreadsheet_type != 'talent':
+            wb.close()
+            return False, [], (
+                "This appears to be a bonus spreadsheet, not a talent calibration report.\n\n"
+                "Expected columns like: Performance: What, Performance: How, Movement Readiness\n\n"
+                "Please import this file through the standard import process."
+            )
+
+        col_indices = find_talent_column_indices(headers)
+
+        employees = []
+
+        for i, row in enumerate(rows[header_idx + 1:], start=header_idx + 1):
+            # Skip empty rows
+            if _is_empty_row(row):
+                continue
+
+            # Get associate value (required)
+            associate_idx = col_indices.get('associate')
+            if associate_idx is not None:
+                associate_val = row[associate_idx] if associate_idx < len(row) else None
+                if not associate_val or (isinstance(associate_val, str) and not associate_val.strip()):
+                    continue
+
+            # Get associate ID (required)
+            assoc_id_idx = col_indices.get('associate_id')
+            if assoc_id_idx is not None and assoc_id_idx < len(row) and row[assoc_id_idx]:
+                associate_id = str(row[assoc_id_idx])
+            else:
+                associate_id = f"TEMP_{i}"
+
+            # Parse hire_date as datetime if present
+            hire_date_val = _get_val(row, col_indices.get('hire_date'))
+            hire_date = None
+            if hire_date_val:
+                if isinstance(hire_date_val, datetime):
+                    hire_date = hire_date_val
+                elif isinstance(hire_date_val, str):
+                    try:
+                        # Try common date formats
+                        for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y']:
+                            try:
+                                hire_date = datetime.strptime(hire_date_val.strip(), fmt)
+                                break
+                            except ValueError:
+                                continue
+                    except Exception:
+                        pass
+
+            # Parse boolean for identified_future
+            identified_future_val = _get_val(row, col_indices.get('talent_identified_future'))
+            talent_identified_future = None
+            if identified_future_val is not None:
+                if isinstance(identified_future_val, bool):
+                    talent_identified_future = identified_future_val
+                elif isinstance(identified_future_val, str):
+                    val_lower = identified_future_val.strip().lower()
+                    if val_lower in ('yes', 'true', '1'):
+                        talent_identified_future = True
+                    elif val_lower in ('no', 'false', '0'):
+                        talent_identified_future = False
+
+            # Parse last_identified_future similarly
+            last_identified_val = _get_val(row, col_indices.get('talent_last_identified_future'))
+            talent_last_identified_future = None
+            if last_identified_val is not None:
+                if isinstance(last_identified_val, bool):
+                    talent_last_identified_future = last_identified_val
+                elif isinstance(last_identified_val, str):
+                    val_lower = last_identified_val.strip().lower()
+                    if val_lower in ('yes', 'true', '1'):
+                        talent_last_identified_future = True
+                    elif val_lower in ('no', 'false', '0'):
+                        talent_last_identified_future = False
+
+            # Build employee dict
+            emp = {
+                'associate_id': associate_id,
+                'associate': str(row[associate_idx]) if associate_idx is not None and associate_idx < len(row) and row[associate_idx] else '',
+                'supervisory_organization': _get_str(row, col_indices.get('supervisory_organization')),
+                'current_job_profile': _get_str(row, col_indices.get('current_job_profile')),
+
+                # Extended identity
+                'management_level': _get_str(row, col_indices.get('management_level')),
+                'job_category': _get_str(row, col_indices.get('job_category')),
+                'hire_date': hire_date,
+                'length_of_service': _get_str(row, col_indices.get('length_of_service')),
+                'time_in_job_profile': _get_str(row, col_indices.get('time_in_job_profile')),
+                'region': _get_str(row, col_indices.get('region')),
+                'country': _get_str(row, col_indices.get('country')),
+
+                # Performance Assessment
+                'talent_perf_what': _get_str(row, col_indices.get('talent_perf_what')),
+                'talent_perf_how': _get_str(row, col_indices.get('talent_perf_how')),
+                'talent_overall_perf': _get_str(row, col_indices.get('talent_overall_perf')),
+                'talent_last_overall_perf': _get_str(row, col_indices.get('talent_last_overall_perf')),
+
+                # Future Talent
+                'talent_growth_agility': _get_str(row, col_indices.get('talent_growth_agility')),
+                'talent_change_agility': _get_str(row, col_indices.get('talent_change_agility')),
+                'talent_identified_future': talent_identified_future,
+                'talent_last_identified_future': talent_last_identified_future,
+
+                # Movement & Career
+                'talent_movement_readiness': _get_str(row, col_indices.get('talent_movement_readiness')),
+                'talent_last_movement_readiness': _get_str(row, col_indices.get('talent_last_movement_readiness')),
+                'talent_proposed_actions': _get_str(row, col_indices.get('talent_proposed_actions')),
+
+                # Promotion
+                'talent_promo_job_profile': _get_str(row, col_indices.get('talent_promo_job_profile')),
+                'talent_promo_business_need': _get_str(row, col_indices.get('talent_promo_business_need')),
+                'talent_promo_role_scope': _get_str(row, col_indices.get('talent_promo_role_scope')),
+                'talent_promo_readiness': _get_str(row, col_indices.get('talent_promo_readiness')),
+
+                # Metadata
+                'talent_calibration_status': _get_str(row, col_indices.get('talent_calibration_status')),
+            }
+
+            employees.append(emp)
+
+        wb.close()
+        return True, employees, ''
+
+    except Exception as e:
+        return False, [], str(e)
+
+
+def parse_proposed_actions_tenets(proposed_actions: str, tenets_config: dict) -> tuple:
+    """
+    Parse tenets from Proposed Actions field.
+
+    Looks for markers in format:
+        [Strengths: Tenet Name 1, Tenet Name 2]
+        [Improvements: Tenet Name 3]
+
+    Also removes the tenet markers from the text, returning clean proposed actions.
+
+    Args:
+        proposed_actions: The raw Proposed Actions text
+        tenets_config: Dict with 'tenets' list from tenets.json
+
+    Returns:
+        tuple: (clean_actions, strength_ids, improvement_ids)
+            - clean_actions: Proposed Actions without tenet markers
+            - strength_ids: List of tenet IDs matching strengths
+            - improvement_ids: List of tenet IDs matching improvements
+    """
+    import re
+
+    if not proposed_actions:
+        return '', [], []
+
+    # Build name -> id mapping
+    name_to_id = {}
+    if tenets_config and 'tenets' in tenets_config:
+        for tenet in tenets_config['tenets']:
+            name_to_id[tenet['name'].lower()] = tenet['id']
+
+    strength_ids = []
+    improvement_ids = []
+    clean_text = proposed_actions
+
+    # Parse [Strengths: name1; name2] - uses semicolon since tenet names may contain commas
+    strengths_match = re.search(r'\[Strengths:\s*([^\]]+)\]', proposed_actions, re.IGNORECASE)
+    if strengths_match:
+        # Split by semicolon first, fall back to comma for backwards compatibility
+        content = strengths_match.group(1)
+        names = [n.strip() for n in content.split(';')] if ';' in content else [n.strip() for n in content.split(',')]
+        for name in names:
+            tenet_id = name_to_id.get(name.lower())
+            if tenet_id:
+                strength_ids.append(tenet_id)
+        clean_text = clean_text.replace(strengths_match.group(0), '')
+
+    # Parse [Improvements: name1; name2]
+    improvements_match = re.search(r'\[Improvements:\s*([^\]]+)\]', proposed_actions, re.IGNORECASE)
+    if improvements_match:
+        content = improvements_match.group(1)
+        names = [n.strip() for n in content.split(';')] if ';' in content else [n.strip() for n in content.split(',')]
+        for name in names:
+            tenet_id = name_to_id.get(name.lower())
+            if tenet_id:
+                improvement_ids.append(tenet_id)
+        clean_text = clean_text.replace(improvements_match.group(0), '')
+
+    # Clean up extra whitespace
+    clean_text = re.sub(r'\n{3,}', '\n\n', clean_text.strip())
+
+    return clean_text, strength_ids, improvement_ids

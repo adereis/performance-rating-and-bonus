@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-Populate performance ratings, justifications, and tenets for sample data.
+Populate performance ratings, justifications, tenets, and talent data for sample data.
 
-This script adds manager-entered data (ratings, justifications, tenets) to
-employees after Workday data has been imported. This separation maintains
-the architectural distinction between Workday export data and local ratings.
+This script adds manager-entered data (ratings, justifications, tenets, talent
+calibration) to employees after Workday data has been imported. This separation
+maintains the architectural distinction between Workday export data and local ratings.
 
 Usage:
     python3 populate_sample_ratings.py small     # For sample-data-small.xlsx
     python3 populate_sample_ratings.py large     # For sample-data-large.xlsx
     python3 populate_sample_ratings.py small --with-tenets  # Include tenets
     python3 populate_sample_ratings.py large --with-tenets  # Include tenets
+    python3 populate_sample_ratings.py small --with-talent  # Include talent calibration
+    python3 populate_sample_ratings.py large --with-talent --with-tenets  # All data
 """
 import sys
 import os
@@ -23,6 +25,199 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models import Employee, get_db, init_db
 
+
+# ============================================================================
+# Talent Calibration Enums (must match Spec §3 exactly)
+# ============================================================================
+
+PERF_WHAT_OPTIONS = [
+    'Surpasses Expectations',
+    'Meets Expectations',
+    'Meets Some Expectations'
+]
+
+PERF_HOW_OPTIONS = [
+    'Surpasses Expectations',
+    'Meets Expectations',
+    'Meets Some Expectations',
+    'Does Not Meet Expectations'
+]
+
+AGILITY_OPTIONS = [
+    'Always/Most of the Time',
+    'Sometimes'
+]
+
+MOVEMENT_READINESS_OPTIONS = [
+    'Continue growing in current role',
+    'Ready Now to be promoted in current role',
+    'Ready for lateral move'
+]
+
+
+def derive_overall_performance(what: str, how: str) -> str:
+    """
+    Derive Overall Performance from What and How per Spec §4.1 decision table.
+    """
+    if not what or not how:
+        return 'Successful Performer'
+
+    w, h = what.lower(), how.lower()
+
+    # Rule: Any "Does Not Meet" in How → Low Performer
+    if 'does not meet' in h:
+        return 'Low Performer'
+
+    # Rule: Both "Meets Some" → Low Performer
+    if 'some' in w and 'some' in h:
+        return 'Low Performer'
+
+    # Surpasses What
+    if 'surpasses' in w:
+        if 'surpasses' in h or ('meets' in h and 'some' not in h):
+            return 'High Impact Performer'
+        return 'Successful Performer'
+
+    # Meets What (not "Meets Some")
+    if 'meets' in w and 'some' not in w:
+        if 'surpasses' in h or ('meets' in h and 'some' not in h):
+            return 'Successful Performer'
+        return 'Evolving Performer'
+
+    # Meets Some What
+    if 'some' in w:
+        return 'Evolving Performer'
+
+    return 'Successful Performer'
+
+
+def derive_future_talent(growth: str, change: str) -> bool:
+    """
+    Derive Future Talent from agility ratings (Spec §4.2).
+    Both must contain 'Always' to be identified as Future Talent.
+    """
+    g, c = (growth or '').lower(), (change or '').lower()
+    return 'always' in g and 'always' in c
+
+
+def generate_talent_data(bonus_rating: int) -> dict:
+    """
+    Generate talent calibration data that's roughly aligned with bonus rating.
+
+    Args:
+        bonus_rating: The employee's bonus rating percent (0-200)
+
+    Returns:
+        dict with talent fields
+    """
+    # Map bonus rating to talent calibration distribution
+    # Higher performers more likely to have higher talent ratings
+    if bonus_rating >= 130:
+        # High performers: likely Surpasses
+        what_weights = [0.6, 0.35, 0.05]  # Surpasses, Meets, MeetsSome
+        how_weights = [0.5, 0.45, 0.05, 0.0]
+        agility_weight = 0.6  # 60% chance of "Always"
+        movement_weights = [0.5, 0.4, 0.1]  # Continue, Promotion, Lateral
+    elif bonus_rating >= 110:
+        # Strong performers: likely Meets with some Surpasses
+        what_weights = [0.3, 0.65, 0.05]
+        how_weights = [0.25, 0.65, 0.1, 0.0]
+        agility_weight = 0.4
+        movement_weights = [0.6, 0.3, 0.1]
+    elif bonus_rating >= 90:
+        # Solid performers: mostly Meets
+        what_weights = [0.1, 0.8, 0.1]
+        how_weights = [0.1, 0.75, 0.15, 0.0]
+        agility_weight = 0.3
+        movement_weights = [0.75, 0.2, 0.05]
+    else:
+        # Underperformers: likely Meets Some or lower
+        what_weights = [0.0, 0.4, 0.6]
+        how_weights = [0.0, 0.3, 0.5, 0.2]
+        agility_weight = 0.15
+        movement_weights = [0.9, 0.05, 0.05]
+
+    # Generate What/How
+    perf_what = random.choices(PERF_WHAT_OPTIONS, weights=what_weights)[0]
+    perf_how = random.choices(PERF_HOW_OPTIONS, weights=how_weights)[0]
+
+    # Generate agility ratings
+    growth = 'Always/Most of the Time' if random.random() < agility_weight else 'Sometimes'
+    change = 'Always/Most of the Time' if random.random() < agility_weight else 'Sometimes'
+
+    # Generate movement readiness
+    movement = random.choices(MOVEMENT_READINESS_OPTIONS, weights=movement_weights)[0]
+
+    # Derive fields
+    overall = derive_overall_performance(perf_what, perf_how)
+    future_talent = derive_future_talent(growth, change)
+
+    # Generate "last cycle" data (for year-over-year comparison)
+    # Slightly different from current to show change
+    last_what = random.choice(PERF_WHAT_OPTIONS)
+    last_how = random.choice(PERF_HOW_OPTIONS[:3])  # Exclude "Does Not Meet" from history
+    last_overall = derive_overall_performance(last_what, last_how)
+    last_growth = random.choice(AGILITY_OPTIONS)
+    last_change = random.choice(AGILITY_OPTIONS)
+    last_future_talent = derive_future_talent(last_growth, last_change)
+    last_movement = random.choice(MOVEMENT_READINESS_OPTIONS)
+
+    return {
+        'talent_perf_what': perf_what,
+        'talent_perf_how': perf_how,
+        'talent_overall_perf': overall,
+        'talent_growth_agility': growth,
+        'talent_change_agility': change,
+        'talent_identified_future': future_talent,
+        'talent_movement_readiness': movement,
+        # Historical data
+        'talent_last_overall_perf': last_overall,
+        'talent_last_identified_future': last_future_talent,
+        'talent_last_movement_readiness': last_movement,
+    }
+
+
+# Sample promotion data for a few high performers
+# Includes candidates from both small (12) and large (55) datasets
+PROMO_CANDIDATES = {
+    # Small team candidates
+    'Al Ert': {
+        'job_profile': 'Principal SRE, 1847',
+        'business_need': 'Team expanding scope to cover global reliability',
+        'role_scope': 'Will lead cross-regional SRE initiatives',
+        'readiness': 'Demonstrated technical leadership and mentorship',
+    },
+    'Sue Q. Ell': {
+        'job_profile': 'Staff Software Developer, 1623',
+        'business_need': 'Need senior DB expertise for new product line',
+        'role_scope': 'Expand from query optimization to full data architecture',
+        'readiness': 'Strong IC track record, ready for staff scope',
+    },
+    # Large org candidates (additional high performers)
+    'Artie Ficial': {
+        'job_profile': 'Principal Software Developer, 2134',
+        'business_need': 'Architecture leadership for distributed systems initiative',
+        'role_scope': 'Lead cross-team technical strategy and system design',
+        'readiness': 'Exceptional technical vision, proven cross-team influence',
+    },
+    'Ty Po': {
+        'job_profile': 'Staff SRE, 1892',
+        'business_need': 'Infrastructure modernization requires senior leadership',
+        'role_scope': 'Own infrastructure strategy for platform reliability',
+        'readiness': 'Outstanding track record, ready for expanded scope',
+    },
+    "Ray D. O'Button": {
+        'job_profile': 'Principal SRE, 1956',
+        'business_need': 'SLO/SLI framework expansion across organization',
+        'role_scope': 'Define reliability standards and mentor SRE teams',
+        'readiness': 'Demonstrated expertise in reliability engineering',
+    },
+}
+
+
+# ============================================================================
+# Bonus Rating Data
+# ============================================================================
 
 # Sample ratings and justifications for small team
 SMALL_TEAM_RATINGS = {
@@ -134,8 +329,8 @@ def generate_random_tenets(all_tenets, strength_count=3, improvement_count=3):
     return (strengths, improvements)
 
 
-def populate_ratings(size='small', include_tenets=False):
-    """Populate performance ratings, justifications, and optionally tenets for sample data."""
+def populate_ratings(size='small', include_tenets=False, include_talent=False):
+    """Populate performance ratings, justifications, and optionally tenets/talent for sample data."""
 
     # Check if database exists
     if not os.path.exists('ratings.db'):
@@ -155,6 +350,15 @@ def populate_ratings(size='small', include_tenets=False):
     try:
         updated_count = 0
         tenets_count = 0
+        talent_count = 0
+        promo_count = 0
+
+        # Track talent distribution for reporting
+        talent_stats = {
+            'overall': {},
+            'future_talent': 0,
+            'movement': {}
+        }
 
         for employee_name, (rating, justification) in ratings_data.items():
             emp = db.query(Employee).filter(Employee.associate == employee_name).first()
@@ -172,14 +376,76 @@ def populate_ratings(size='small', include_tenets=False):
                     emp.tenets_improvements = json.dumps(improvements)
                     tenets_count += 1
 
+                # Optionally populate talent calibration data
+                if include_talent:
+                    talent_data = generate_talent_data(rating)
+
+                    emp.talent_perf_what = talent_data['talent_perf_what']
+                    emp.talent_perf_how = talent_data['talent_perf_how']
+                    emp.talent_overall_perf = talent_data['talent_overall_perf']
+                    emp.talent_growth_agility = talent_data['talent_growth_agility']
+                    emp.talent_change_agility = talent_data['talent_change_agility']
+                    emp.talent_identified_future = talent_data['talent_identified_future']
+                    emp.talent_movement_readiness = talent_data['talent_movement_readiness']
+
+                    # Historical "last cycle" data
+                    emp.talent_last_overall_perf = talent_data['talent_last_overall_perf']
+                    emp.talent_last_identified_future = talent_data['talent_last_identified_future']
+                    emp.talent_last_movement_readiness = talent_data['talent_last_movement_readiness']
+
+                    emp.talent_last_updated = datetime.now()
+                    talent_count += 1
+
+                    # Track stats
+                    overall = talent_data['talent_overall_perf']
+                    talent_stats['overall'][overall] = talent_stats['overall'].get(overall, 0) + 1
+                    if talent_data['talent_identified_future']:
+                        talent_stats['future_talent'] += 1
+                    mvmt = talent_data['talent_movement_readiness']
+                    talent_stats['movement'][mvmt] = talent_stats['movement'].get(mvmt, 0) + 1
+
+                    # Add promotion data for specific candidates
+                    if employee_name in PROMO_CANDIDATES:
+                        promo = PROMO_CANDIDATES[employee_name]
+                        emp.talent_promo_job_profile = promo['job_profile']
+                        emp.talent_promo_business_need = promo['business_need']
+                        emp.talent_promo_role_scope = promo['role_scope']
+                        emp.talent_promo_readiness = promo['readiness']
+                        # Override movement to "Ready for Promotion"
+                        emp.talent_movement_readiness = 'Ready Now to be promoted in current role'
+                        promo_count += 1
+
+                    # Optionally add talent tenets (reuse bonus tenets if enabled)
+                    if include_tenets and all_tenets:
+                        t_strengths, t_improvements = generate_random_tenets(all_tenets, 2, 2)
+                        emp.talent_tenets_strengths = json.dumps(t_strengths)
+                        emp.talent_tenets_improvements = json.dumps(t_improvements)
+
         db.commit()
         print(f"✓ Populated {updated_count} performance ratings for {dataset_name}")
         print(f"  - Ratings range: {min(r[0] for r in ratings_data.values())}% - {max(r[0] for r in ratings_data.values())}%")
         print(f"  - All employees have ratings and justifications")
+
         if include_tenets and all_tenets:
             print(f"  - Added random tenets evaluation for {tenets_count} employees ({len(all_tenets)} tenets available)")
+
+        if include_talent:
+            print(f"\n✓ Populated {talent_count} talent calibration records")
+            print(f"  Overall Performance Distribution:")
+            for perf, count in sorted(talent_stats['overall'].items()):
+                pct = 100 * count / talent_count if talent_count else 0
+                print(f"    {perf}: {count} ({pct:.0f}%)")
+            print(f"  Future Talent: {talent_stats['future_talent']} ({100 * talent_stats['future_talent'] / talent_count:.0f}%)")
+            print(f"  Movement Readiness:")
+            for mvmt, count in sorted(talent_stats['movement'].items()):
+                pct = 100 * count / talent_count if talent_count else 0
+                print(f"    {mvmt}: {count} ({pct:.0f}%)")
+            if promo_count:
+                print(f"  Promotion candidates with full data: {promo_count}")
+
         print(f"\n  Ready to view at http://localhost:5000")
         print(f"  Mentor/mentee/AI activity fields left blank for you to fill in")
+
     except Exception as e:
         db.rollback()
         print(f"✗ Error populating ratings: {e}")
@@ -194,17 +460,27 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description='Populate performance ratings, justifications, and tenets for sample data.',
+        description='Populate performance ratings, justifications, tenets, and talent calibration for sample data.',
         epilog='''
 Examples:
   python3 scripts/populate_sample_ratings.py small
   python3 scripts/populate_sample_ratings.py large
   python3 scripts/populate_sample_ratings.py small --with-tenets
   python3 scripts/populate_sample_ratings.py large --with-tenets
+  python3 scripts/populate_sample_ratings.py small --with-talent
+  python3 scripts/populate_sample_ratings.py large --with-talent --with-tenets
 
-This script adds manager-entered data (ratings, justifications, tenets) to
-employees after Workday data has been imported. Run this after importing
-sample-data-small.xlsx or sample-data-large.xlsx.
+This script adds manager-entered data (ratings, justifications, tenets, talent
+calibration) to employees after Workday data has been imported. Run this after
+importing sample-data-small.xlsx or sample-data-large.xlsx.
+
+Talent calibration data (--with-talent) includes:
+  - Performance What/How ratings (aligned with bonus rating)
+  - Derived Overall Performance (Spec §4.1)
+  - Growth/Change Agility and derived Future Talent (Spec §4.2)
+  - Movement Readiness
+  - Historical "last cycle" data for year-over-year comparison
+  - Promotion data for select high performers
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -219,9 +495,14 @@ sample-data-small.xlsx or sample-data-large.xlsx.
         action='store_true',
         help='Also populate random tenets evaluation (requires tenets.json or samples/tenets-sample.json)'
     )
+    parser.add_argument(
+        '--with-talent',
+        action='store_true',
+        help='Also populate talent calibration data (Performance What/How, agility, movement, etc.)'
+    )
 
     args = parser.parse_args()
-    populate_ratings(args.size, args.with_tenets)
+    populate_ratings(args.size, args.with_tenets, args.with_talent)
 
 
 if __name__ == '__main__':

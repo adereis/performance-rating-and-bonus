@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from flask import Flask, render_template, request, jsonify, send_file, make_response
+from flask import Flask, render_template, request, jsonify, send_file, make_response, Response
 import os
 import sys
 import logging
@@ -72,6 +72,73 @@ CURRENCY_FORMATS = {
 
 # Legacy lookup for simple symbol access
 CURRENCY_SYMBOLS = {code: fmt['symbol'] for code, fmt in CURRENCY_FORMATS.items()}
+
+
+def _has_tenets(tenets_strengths, tenets_improvements):
+    """Check if employee has at least one tenet selected (strengths or improvements).
+
+    Tenets are stored as JSON arrays, so we check for non-empty, non-'[]' values.
+    """
+    def is_non_empty(val):
+        if not val:
+            return False
+        if isinstance(val, str):
+            return val not in ('', '[]', 'null')
+        if isinstance(val, list):
+            return len(val) > 0
+        return False
+
+    return is_non_empty(tenets_strengths) or is_non_empty(tenets_improvements)
+
+
+def is_employee_rated(emp):
+    """Check if an employee is fully rated for bonus cycle.
+
+    Required fields:
+    - performance_rating_percent: The rating value (0-200%)
+    - justification: Text explanation for the rating
+    - tenets: At least one strength OR improvement tenet selected
+    """
+    # Handle both dict (from to_dict()) and ORM object
+    if isinstance(emp, dict):
+        rating = emp.get('performance_rating_percent')
+        justification = emp.get('justification')
+        tenets_s = emp.get('tenets_strengths')
+        tenets_i = emp.get('tenets_improvements')
+    else:
+        rating = emp.performance_rating_percent
+        justification = emp.justification
+        tenets_s = emp.tenets_strengths
+        tenets_i = emp.tenets_improvements
+
+    return bool(rating) and bool(justification) and _has_tenets(tenets_s, tenets_i)
+
+
+def is_employee_calibrated(emp):
+    """Check if an employee is fully calibrated for talent cycle.
+
+    Required fields:
+    - talent_perf_what: Performance "What" assessment
+    - talent_perf_how: Performance "How" assessment
+    - talent_proposed_actions: Action plan text
+    - talent_tenets: At least one strength OR improvement tenet selected
+    """
+    # Handle both dict (from to_dict()) and ORM object
+    if isinstance(emp, dict):
+        what = emp.get('talent_perf_what')
+        how = emp.get('talent_perf_how')
+        actions = emp.get('talent_proposed_actions')
+        tenets_s = emp.get('talent_tenets_strengths')
+        tenets_i = emp.get('talent_tenets_improvements')
+    else:
+        what = emp.talent_perf_what
+        how = emp.talent_perf_how
+        actions = emp.talent_proposed_actions
+        tenets_s = emp.talent_tenets_strengths
+        tenets_i = emp.talent_tenets_improvements
+
+    return bool(what) and bool(how) and bool(actions) and _has_tenets(tenets_s, tenets_i)
+
 
 # Initialize database on startup
 init_db()
@@ -280,16 +347,18 @@ def demo_reset():
 
     data = request.get_json() or {}
     demo_type = data.get('type', 'small')
+    clear_ratings = data.get('clear_ratings', False)
 
     if demo_type not in ('small', 'large'):
         demo_type = 'small'
 
     session_id = get_session_id()
-    success = initialize_session_from_template(session_id, demo_type)
+    success = initialize_session_from_template(session_id, demo_type, clear_ratings=clear_ratings)
 
     return jsonify({
         'success': success,
         'demo_type': demo_type,
+        'clear_ratings': clear_ratings,
         'message': f'Demo reset to {demo_type} team dataset' if success else 'Failed to reset demo'
     })
 
@@ -330,7 +399,16 @@ def get_manager_currency():
     Returns:
         tuple: (currency_code, currency_symbol) e.g., ('AUD', 'A$')
                Defaults to ('USD', '$') if no employees or unable to detect.
+
+    Note: Result is cached per-request in Flask's g object to avoid
+    repeated database queries (important for template filters).
     """
+    from flask import g, has_request_context
+
+    # Return cached result if available (avoids repeated DB queries in templates)
+    if has_request_context() and hasattr(g, '_manager_currency'):
+        return g._manager_currency
+
     db = get_db()
     try:
         # Domestic employees have NULL in bonus_target_manager_currency
@@ -343,14 +421,8 @@ def get_manager_currency():
         if domestic and domestic.currency:
             currency = domestic.currency
             symbol = CURRENCY_SYMBOLS.get(currency, currency)
-            return currency, symbol
-
-        # Fallback: check if there are any employees at all
-        any_employee = db.query(Employee).filter(
-            Employee.currency.isnot(None)
-        ).first()
-
-        if any_employee:
+            result = (currency, symbol)
+        elif db.query(Employee).filter(Employee.currency.isnot(None)).first():
             # If all employees have manager_currency set, use majority currency
             from collections import Counter
             all_employees = db.query(Employee).filter(
@@ -360,10 +432,18 @@ def get_manager_currency():
             if currencies:
                 most_common = Counter(currencies).most_common(1)[0][0]
                 symbol = CURRENCY_SYMBOLS.get(most_common, most_common)
-                return most_common, symbol
+                result = (most_common, symbol)
+            else:
+                result = ('USD', '$')
+        else:
+            # Default to USD
+            result = ('USD', '$')
 
-        # Default to USD
-        return 'USD', '$'
+        # Cache result for this request
+        if has_request_context():
+            g._manager_currency = result
+
+        return result
     finally:
         db.close()
 
@@ -459,28 +539,38 @@ def has_direct_reports(employee, all_employees):
     """
     Check if an employee has direct reports (is a manager).
 
-    A manager is someone whose name appears in other employees'
-    "Supervisory Organization" field.
+    Detection methods (OR logic):
+    1. Supervisory org lookup: employee's name appears in other employees'
+       "Supervisory Organization" field (works for bonus files)
+    2. Management level: employee's management_level contains "Manager"
+       or "Director" (works for talent calibration files)
 
     Args:
         employee: Employee dict to check
         all_employees: List of all employee dicts
 
     Returns:
-        bool: True if employee has direct reports
+        bool: True if employee has direct reports/is a manager
     """
-    employee_name = employee.get('Associate', '')
-    if not employee_name:
-        return False
-
-    # Check if this employee's name appears in any other employee's supervisory org
-    for other_emp in all_employees:
-        if other_emp.get('Associate ID') == employee.get('Associate ID'):
-            continue  # Skip self
-
-        supervisory_org = other_emp.get('Supervisory Organization') or ''
-        if employee_name in supervisory_org:
+    # Method 1: Check management_level field (from talent calibration data)
+    # Values like "Manager", "Senior Manager", "Director" indicate management
+    management_level = (employee.get('management_level') or '').lower()
+    if management_level:
+        # Check for manager/director keywords (not "Individual Contributor")
+        manager_keywords = ['manager', 'director', 'vp', 'vice president', 'head of']
+        if any(keyword in management_level for keyword in manager_keywords):
             return True
+
+    # Method 2: Check if name appears in other employees' supervisory org
+    employee_name = employee.get('Associate', '')
+    if employee_name:
+        for other_emp in all_employees:
+            if other_emp.get('Associate ID') == employee.get('Associate ID'):
+                continue  # Skip self
+
+            supervisory_org = other_emp.get('Supervisory Organization') or ''
+            if employee_name in supervisory_org:
+                return True
 
     return False
 
@@ -579,6 +669,8 @@ def apply_employee_filters(employees, filter_params):
 @app.route('/')
 def index():
     """Main dashboard page."""
+    from models import get_cross_cycle_alignment
+
     # Get filter params from URL
     filter_params = get_filter_params()
 
@@ -589,7 +681,7 @@ def index():
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     total_employees = len(team_data)
-    rated_employees = sum(1 for emp in team_data if emp.get('performance_rating_percent'))
+    rated_employees = sum(1 for emp in team_data if is_employee_rated(emp))
     unrated_employees = total_employees - rated_employees
 
     # Calculate average rating
@@ -602,6 +694,32 @@ def index():
         'unrated': unrated_employees,
         'avg_rating': avg_rating
     }
+
+    # Calculate cross-cycle alignment data
+    alignment_data = []
+    alignment_stats = {'aligned': 0, 'review': 0, 'incomplete': 0}
+
+    for emp in team_data:
+        bonus_pct = emp.get('performance_rating_percent')
+        talent_overall = emp.get('talent_overall_perf')
+        alignment = get_cross_cycle_alignment(bonus_pct, talent_overall)
+        alignment_stats[alignment] += 1
+
+        # Add alignment to employee for display in Team Overview table
+        emp['alignment'] = alignment
+
+        # Only include employees with some data for the alignment table
+        if bonus_pct is not None or talent_overall is not None:
+            alignment_data.append({
+                'associate_id': emp.get('Associate ID'),
+                'name': emp.get('Associate'),
+                'bonus_pct': bonus_pct,
+                'talent_overall': talent_overall,
+                'alignment': alignment,
+            })
+
+    # Count calibrated employees (What + How + Actions + Tenets)
+    calibrated_count = sum(1 for emp in team_data if is_employee_calibrated(emp))
 
     # Check for historical data if no current employees
     historical_info = None
@@ -622,7 +740,9 @@ def index():
             db.close()
 
     return render_template('index.html', team=team_data, stats=stats, filter_info=filter_info,
-                         demo_mode=DEMO_MODE, historical_info=historical_info)
+                         demo_mode=DEMO_MODE, historical_info=historical_info,
+                         alignment_data=alignment_data, alignment_stats=alignment_stats,
+                         calibrated_count=calibrated_count)
 
 
 @app.route('/rate')
@@ -718,6 +838,207 @@ def rate_employee():
     except Exception as e:
         db.rollback()
         return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TALENT CALIBRATION ROUTES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Talent calibration enum values (from Spec §3)
+TALENT_PERF_WHAT_VALUES = [
+    'Surpasses Expectations',
+    'Meets Expectations',
+    'Meets Some Expectations',
+]
+
+TALENT_PERF_HOW_VALUES = [
+    'Surpasses Expectations',
+    'Meets Expectations',
+    'Meets Some Expectations',
+    'Does Not Meet Expectations',
+]
+
+TALENT_AGILITY_VALUES = [
+    'Always/Most of the Time',
+    'Sometimes',
+]
+
+TALENT_MOVEMENT_VALUES = [
+    'Continue growing in current role',
+    'Ready Now to be promoted in current role',
+    'Ready for lateral move',
+]
+
+
+@app.route('/calibrate')
+def calibrate_page():
+    """Talent calibration page."""
+    from models import derive_overall_performance, derive_future_talent
+
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
+
+    # Count calibrated employees (What + How + Actions + Tenets)
+    calibrated_count = sum(1 for e in team_data if is_employee_calibrated(e))
+
+    return render_template(
+        'calibrate.html',
+        team=team_data,
+        filter_info=filter_info,
+        calibrated_count=calibrated_count,
+        perf_what_values=TALENT_PERF_WHAT_VALUES,
+        perf_how_values=TALENT_PERF_HOW_VALUES,
+        agility_values=TALENT_AGILITY_VALUES,
+        movement_values=TALENT_MOVEMENT_VALUES,
+    )
+
+
+@app.route('/api/calibrate', methods=['POST'])
+def calibrate_employee():
+    """API endpoint to save talent calibration data.
+
+    Accepts talent assessment fields and computes derived values:
+    - talent_overall_perf from talent_perf_what + talent_perf_how
+    - talent_identified_future from talent_growth_agility + talent_change_agility
+    """
+    from models import derive_overall_performance, derive_future_talent
+
+    data = request.get_json()
+    associate_id = data.get('associate_id')
+
+    if not associate_id:
+        return jsonify({'success': False, 'error': 'Missing associate ID'}), 400
+
+    db = get_db()
+    try:
+        employee = db.query(Employee).filter_by(associate_id=associate_id).first()
+        if not employee:
+            db.close()
+            return jsonify({'success': False, 'error': f'Employee not found: {associate_id}'}), 404
+
+        # Validate and update talent fields
+        talent_fields = [
+            ('talent_perf_what', TALENT_PERF_WHAT_VALUES),
+            ('talent_perf_how', TALENT_PERF_HOW_VALUES),
+            ('talent_growth_agility', TALENT_AGILITY_VALUES),
+            ('talent_change_agility', TALENT_AGILITY_VALUES),
+            ('talent_movement_readiness', TALENT_MOVEMENT_VALUES),
+        ]
+
+        for field, valid_values in talent_fields:
+            if field in data:
+                value = data.get(field)
+                if value:
+                    # Case-insensitive validation with normalization to canonical casing
+                    value_lower = value.lower()
+                    matched_value = next(
+                        (v for v in valid_values if v.lower() == value_lower),
+                        None
+                    )
+                    if matched_value is None:
+                        return jsonify({
+                            'success': False,
+                            'error': f"Invalid value for {field}: '{value}'. Must be one of: {', '.join(valid_values)}"
+                        }), 400
+                    # Use canonical casing from valid_values
+                    setattr(employee, field, matched_value)
+                else:
+                    setattr(employee, field, None)
+
+        # Update free-form text fields
+        text_fields = [
+            'talent_proposed_actions',
+            'talent_promo_job_profile',
+            'talent_promo_business_need',
+            'talent_promo_role_scope',
+            'talent_promo_readiness',
+        ]
+
+        for field in text_fields:
+            if field in data:
+                value = data.get(field)
+                setattr(employee, field, value if value else None)
+
+        # Update talent tenets (JSON arrays)
+        if 'talent_tenets_strengths' in data:
+            tenets = data.get('talent_tenets_strengths')
+            if isinstance(tenets, list):
+                import json
+                employee.talent_tenets_strengths = json.dumps(tenets) if tenets else None
+            else:
+                employee.talent_tenets_strengths = tenets if tenets else None
+
+        if 'talent_tenets_improvements' in data:
+            tenets = data.get('talent_tenets_improvements')
+            if isinstance(tenets, list):
+                import json
+                employee.talent_tenets_improvements = json.dumps(tenets) if tenets else None
+            else:
+                employee.talent_tenets_improvements = tenets if tenets else None
+
+        # Compute derived fields
+        employee.talent_overall_perf = derive_overall_performance(
+            employee.talent_perf_what,
+            employee.talent_perf_how
+        )
+        employee.talent_identified_future = derive_future_talent(
+            employee.talent_growth_agility,
+            employee.talent_change_agility
+        )
+
+        # Update timestamp
+        employee.talent_last_updated = datetime.now()
+
+        db.commit()
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'talent_overall_perf': employee.talent_overall_perf,
+                'talent_identified_future': employee.talent_identified_future,
+                'talent_last_updated': employee.talent_last_updated.strftime('%Y-%m-%d %H:%M:%S')
+            }
+        })
+
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@app.route('/api/calibrate/status', methods=['GET'])
+def calibrate_status():
+    """API endpoint to get talent calibration progress."""
+    db = get_db()
+    try:
+        employees = db.query(Employee).all()
+        total = len(employees)
+
+        # Calibrated = has talent_perf_what OR talent_perf_how
+        calibrated = sum(
+            1 for e in employees
+            if e.talent_perf_what or e.talent_perf_how
+        )
+
+        percent = round(calibrated / total * 100) if total > 0 else 0
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'total': total,
+                'calibrated': calibrated,
+                'percent': percent
+            }
+        })
     finally:
         db.close()
 
@@ -1285,6 +1606,262 @@ def analytics():
                 'stats': team_stats['overall']
             })
 
+    # Mentorship analysis - identify patterns worth reviewing
+    senior_keywords = ['senior', 'staff', 'principal', 'lead', 'director', 'manager', 'head', 'vp']
+    junior_keywords = ['associate', 'junior', 'intern', 'trainee', 'graduate', 'entry']
+
+    mentorship_analysis = {
+        'seniors_without_mentees': [],   # Senior roles not mentoring anyone
+        'heavy_mentoring_load': [],      # Anyone with 4+ mentees
+        'unmentored_juniors': []         # Junior roles without a mentor
+    }
+
+    for emp in team_data:
+        job_profile = (emp.get('Current Job Profile') or '').lower()
+        mentees_str = emp.get('mentees') or ''
+        mentor_str = emp.get('mentor') or ''
+        mentee_names = [m.strip() for m in mentees_str.split(',') if m.strip()]
+        mentee_count = len(mentee_names)
+        has_mentees = mentee_count > 0
+        has_mentor = bool(mentor_str.strip())
+
+        emp_info = {
+            'name': emp.get('Associate', 'Unknown'),
+            'id': emp.get('Associate ID', ''),
+            'job': emp.get('Current Job Profile', ''),
+            'mentee_count': mentee_count,
+            'has_mentor': has_mentor
+        }
+
+        # Seniors without mentees
+        is_senior = any(kw in job_profile for kw in senior_keywords)
+        if is_senior and not has_mentees:
+            mentorship_analysis['seniors_without_mentees'].append(emp_info)
+
+        # Heavy mentoring load (4+ mentees)
+        if mentee_count >= 4:
+            mentorship_analysis['heavy_mentoring_load'].append(emp_info)
+
+        # Unmentored juniors
+        is_junior = any(kw in job_profile for kw in junior_keywords)
+        if is_junior and not has_mentor:
+            mentorship_analysis['unmentored_juniors'].append(emp_info)
+
+    total_mentorship_flags = sum(len(v) for v in mentorship_analysis.values())
+
+    # Calculate talent calibration distributions (Spec §7.3)
+    talent_calibration = None
+    employees_with_talent = [emp for emp in team_data if emp.get('talent_overall_perf')]
+
+    if employees_with_talent:
+        total_talent = len(employees_with_talent)
+
+        # Overall Performance Distribution
+        overall_perf_counts = {
+            'High Impact Performer': 0,
+            'Successful Performer': 0,
+            'Evolving Performer': 0,
+            'Low Performer': 0
+        }
+        for emp in employees_with_talent:
+            perf = emp.get('talent_overall_perf')
+            if perf in overall_perf_counts:
+                overall_perf_counts[perf] += 1
+
+        # Future Talent count
+        future_talent_count = sum(1 for emp in team_data if emp.get('talent_identified_future'))
+
+        # Movement Readiness Distribution
+        movement_counts = {
+            'Continue growing in current role': 0,
+            'Ready Now to be promoted in current role': 0,
+            'Ready for lateral move': 0
+        }
+        for emp in employees_with_talent:
+            movement = emp.get('talent_movement_readiness')
+            if movement in movement_counts:
+                movement_counts[movement] += 1
+
+        # Suggested ranges per Spec §7.3
+        talent_suggested_ranges = {
+            'High Impact Performer': (5, 15),
+            'Successful Performer': (55, 70),
+            'Evolving Performer': (15, 25),
+            'Low Performer': (2, 10),
+            'Future Talent': (10, 20)
+        }
+
+        # Build talent calibration data
+        talent_calibration_data = []
+        for perf_level in ['High Impact Performer', 'Successful Performer', 'Evolving Performer', 'Low Performer']:
+            count = overall_perf_counts[perf_level]
+            pct = round(count / total_talent * 100, 1) if total_talent > 0 else 0
+            suggested_min, suggested_max = talent_suggested_ranges[perf_level]
+
+            # Calculate delta from range (same as bonus calibration)
+            within_range = suggested_min <= pct <= suggested_max
+            if pct < suggested_min:
+                delta_from_range = pct - suggested_min  # Negative
+            elif pct > suggested_max:
+                delta_from_range = pct - suggested_max  # Positive
+            else:
+                delta_from_range = 0  # Within range
+
+            # Determine status (same logic as bonus calibration)
+            if within_range:
+                status = 'good'
+            elif abs(delta_from_range) <= 10:
+                status = 'warning'
+            else:
+                status = 'alert'
+
+            # Delta for display (distance from midpoint)
+            suggested_mid = (suggested_min + suggested_max) / 2
+            delta = pct - suggested_mid
+
+            talent_calibration_data.append({
+                'level': perf_level,
+                'count': count,
+                'percentage': pct,
+                'suggested_min': suggested_min,
+                'suggested_max': suggested_max,
+                'suggested_min_people': round(total_talent * suggested_min / 100),
+                'suggested_max_people': round(total_talent * suggested_max / 100),
+                'delta': delta,
+                'status': status
+            })
+
+        # Future Talent row (same status logic as bonus calibration)
+        ft_pct = round(future_talent_count / total_talent * 100, 1) if total_talent > 0 else 0
+        ft_min, ft_max = talent_suggested_ranges['Future Talent']
+        ft_within_range = ft_min <= ft_pct <= ft_max
+        if ft_pct < ft_min:
+            ft_delta_from_range = ft_pct - ft_min
+        elif ft_pct > ft_max:
+            ft_delta_from_range = ft_pct - ft_max
+        else:
+            ft_delta_from_range = 0
+
+        if ft_within_range:
+            ft_status = 'good'
+        elif abs(ft_delta_from_range) <= 10:
+            ft_status = 'warning'
+        else:
+            ft_status = 'alert'
+
+        # Movement readiness data (informational, no ranges)
+        movement_data = []
+        for movement_level, count in movement_counts.items():
+            pct = round(count / total_talent * 100, 1) if total_talent > 0 else 0
+            movement_data.append({
+                'level': movement_level,
+                'count': count,
+                'percentage': pct
+            })
+
+        # 9-Box Talent Matrix: Performance (X) vs Future Talent (Y)
+        # Rows: Future Talent Yes (top), Future Talent No (bottom)
+        # Columns: Low, Evolving, Successful, High Impact (left to right)
+        perf_levels = ['Low Performer', 'Evolving Performer', 'Successful Performer', 'High Impact Performer']
+        talent_matrix = {
+            'future_talent_yes': {level: [] for level in perf_levels},
+            'future_talent_no': {level: [] for level in perf_levels}
+        }
+
+        for emp in employees_with_talent:
+            perf = emp.get('talent_overall_perf')
+            is_future = emp.get('talent_identified_future', False)
+
+            if perf in perf_levels:
+                row_key = 'future_talent_yes' if is_future else 'future_talent_no'
+                talent_matrix[row_key][perf].append({
+                    'name': emp.get('Associate', 'Unknown'),
+                    'id': emp.get('Associate ID', ''),
+                    'job': emp.get('Current Job Profile', '')
+                })
+
+        # Convert to counts for chart rendering
+        talent_matrix_counts = {
+            'future_talent_yes': [len(talent_matrix['future_talent_yes'][level]) for level in perf_levels],
+            'future_talent_no': [len(talent_matrix['future_talent_no'][level]) for level in perf_levels],
+            'labels': ['Low', 'Evolving', 'Successful', 'High Impact']
+        }
+
+        talent_calibration = {
+            'total': total_talent,
+            'performance_data': talent_calibration_data,
+            'future_talent': {
+                'count': future_talent_count,
+                'percentage': ft_pct,
+                'suggested_min': ft_min,
+                'suggested_max': ft_max,
+                'status': ft_status
+            },
+            'movement_data': movement_data,
+            'talent_matrix': talent_matrix_counts
+        }
+
+    # Detect potential inconsistencies between bonus ratings and talent data
+    inconsistencies = {
+        'high_bonus_low_talent': [],    # Rating >90% but Low/Evolving talent
+        'low_bonus_high_talent': [],    # Rating <90% but High Impact talent
+        'future_talent_low_bonus': [],  # Future Talent but rating <90%
+        'promotion_ready_low_rating': [],  # Ready Now but rating <100%
+        'promotion_ready_not_high': [],   # Ready Now but not High Impact (talent measured in current role)
+        'high_performer_not_future': [],  # High Impact but not Future Talent
+        'bonus_only': [],               # Has bonus rating but no talent data
+        'talent_only': []               # Has talent data but no bonus rating
+    }
+
+    for emp in team_data:
+        rating = emp.get('performance_rating_percent')
+        talent_perf = emp.get('talent_overall_perf')
+        is_future = emp.get('talent_identified_future', False)
+        movement = emp.get('talent_movement_readiness') or ''
+
+        emp_info = {
+            'name': emp.get('Associate', 'Unknown'),
+            'id': emp.get('Associate ID', ''),
+            'job': emp.get('Current Job Profile', ''),
+            'rating': rating,
+            'talent': talent_perf,
+            'is_future': is_future,
+            'movement': movement
+        }
+
+        # High Bonus + Low Talent (rating >90% but Low/Evolving)
+        if rating and rating > 90 and talent_perf in ['Low Performer', 'Evolving Performer']:
+            inconsistencies['high_bonus_low_talent'].append(emp_info)
+
+        # Low Bonus + High Talent (rating <90% but High Impact)
+        if rating and rating < 90 and talent_perf == 'High Impact Performer':
+            inconsistencies['low_bonus_high_talent'].append(emp_info)
+
+        # Future Talent + Low Bonus (rating <90%)
+        if is_future and rating and rating < 90:
+            inconsistencies['future_talent_low_bonus'].append(emp_info)
+
+        # Ready for Promotion + Low Rating (<100%)
+        if 'Ready Now' in movement and rating and rating < 100:
+            inconsistencies['promotion_ready_low_rating'].append(emp_info)
+
+        # Ready for Promotion + Not High Performer (talent measured in current role)
+        if 'Ready Now' in movement and talent_perf and talent_perf != 'High Impact Performer':
+            inconsistencies['promotion_ready_not_high'].append(emp_info)
+
+        # High Performer + Not Future Talent
+        if talent_perf == 'High Impact Performer' and not is_future:
+            inconsistencies['high_performer_not_future'].append(emp_info)
+
+        # Data completeness checks
+        if rating and not talent_perf:
+            inconsistencies['bonus_only'].append(emp_info)
+        elif talent_perf and not rating:
+            inconsistencies['talent_only'].append(emp_info)
+
+    # Calculate total count
+    total_inconsistencies = sum(len(v) for v in inconsistencies.values())
+
     return render_template('analytics.html',
                          team=sorted_team,
                          chart_data=chart_data,
@@ -1301,6 +1878,11 @@ def analytics():
                          team_comparisons=team_comparisons,
                          mentorship_stats=mentorship_stats,
                          team_mentorship_stats=team_mentorship_stats,
+                         mentorship_analysis=mentorship_analysis,
+                         total_mentorship_flags=total_mentorship_flags,
+                         talent_calibration=talent_calibration,
+                         inconsistencies=inconsistencies,
+                         total_inconsistencies=total_inconsistencies,
                          filter_info=filter_info)
 
 
@@ -1565,7 +2147,7 @@ def bonus_calculation():
 
 @app.route('/export')
 def export_page():
-    """Export page for Workday bonus allocation."""
+    """Export page for Workday bonus and talent data."""
     # Get filter params from URL
     filter_params = get_filter_params()
 
@@ -1575,13 +2157,25 @@ def export_page():
     # Apply filters
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
-    # Filter to rated employees only
+    # Detect which data types are available
     rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
+    calibrated_employees = [emp for emp in team_data if emp.get('talent_overall_perf')]
 
-    if not rated_employees:
+    has_bonus_data = len(rated_employees) > 0
+    has_talent_data = len(calibrated_employees) > 0
+
+    # Determine default mode: prefer bonus if available, else talent
+    export_mode = request.args.get('mode', 'bonus' if has_bonus_data else 'talent')
+
+    # If no data at all, show empty state
+    if not has_bonus_data and not has_talent_data:
         return render_template('export.html',
                              export_data=[],
+                             talent_export_data=[],
                              has_data=False,
+                             has_bonus_data=False,
+                             has_talent_data=False,
+                             export_mode='bonus',
                              filter_info=filter_info)
 
     # Get bonus calculation settings
@@ -1668,10 +2262,57 @@ def export_page():
     # Sort by employee name
     export_data.sort(key=lambda x: x['employee']['Associate'])
 
+    # Build talent export data
+    talent_export_data = []
+    for emp in calibrated_employees:
+        # Parse talent tenets
+        talent_strengths = []
+        talent_improvements = []
+        try:
+            if emp.get('talent_tenets_strengths'):
+                strength_ids = json.loads(emp['talent_tenets_strengths']) if isinstance(emp['talent_tenets_strengths'], str) else emp['talent_tenets_strengths']
+                talent_strengths = [tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map]
+            if emp.get('talent_tenets_improvements'):
+                improvement_ids = json.loads(emp['talent_tenets_improvements']) if isinstance(emp['talent_tenets_improvements'], str) else emp['talent_tenets_improvements']
+                talent_improvements = [tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map]
+        except Exception as e:
+            print(f"Error parsing talent tenets for {emp.get('Associate')}: {e}")
+
+        # Build proposed actions text (includes embedded tenets for Workday)
+        proposed_actions_parts = []
+        if emp.get('talent_proposed_actions'):
+            proposed_actions_parts.append(emp['talent_proposed_actions'])
+        if talent_strengths:
+            proposed_actions_parts.append(f"[Strengths: {', '.join(talent_strengths)}]")
+        if talent_improvements:
+            proposed_actions_parts.append(f"[Improvements: {', '.join(talent_improvements)}]")
+        proposed_actions_text = ' '.join(proposed_actions_parts)
+
+        talent_export_data.append({
+            'employee': emp,
+            'overall_perf': emp.get('talent_overall_perf', ''),
+            'perf_what': emp.get('talent_perf_what', ''),
+            'perf_how': emp.get('talent_perf_how', ''),
+            'growth_agility': emp.get('talent_growth_agility', ''),
+            'change_agility': emp.get('talent_change_agility', ''),
+            'identified_future': emp.get('talent_identified_future', False),
+            'movement_readiness': emp.get('talent_movement_readiness', ''),
+            'proposed_actions': proposed_actions_text,
+            'promo_job_profile': emp.get('talent_promo_job_profile', ''),
+        })
+
+    # Sort talent export data by employee name
+    talent_export_data.sort(key=lambda x: x['employee']['Associate'])
+
     return render_template('export.html',
                          export_data=export_data,
+                         talent_export_data=talent_export_data,
                          has_data=True,
+                         has_bonus_data=has_bonus_data,
+                         has_talent_data=has_talent_data,
+                         export_mode=export_mode,
                          total_employees=len(export_data),
+                         total_calibrated=len(talent_export_data),
                          filter_info=filter_info)
 
 
@@ -1978,6 +2619,263 @@ def export_xlsx():
     )
 
 
+@app.route('/export/talent')
+def export_talent_xlsx():
+    """Export talent calibration data as Excel file.
+
+    Embeds tenets in the Proposed Actions field using a parseable format
+    so that Workday becomes the source of truth and re-imports preserve data.
+
+    Format: [Strengths: Tenet1, Tenet2] [Improvements: Tenet3]
+    """
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
+
+    # Create workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Talent Calibration"
+
+    # Add demo mode warning if in demo mode
+    demo_row_offset = 0
+    if DEMO_MODE:
+        demo_warning_fill = PatternFill(start_color='FF6B6B', end_color='FF6B6B', fill_type='solid')
+        demo_warning_font = Font(bold=True, color='FFFFFF', size=14)
+
+        ws.merge_cells('A1:Z1')
+        demo_cell = ws.cell(row=1, column=1, value='*** DEMO MODE - FICTITIOUS DATA ONLY - DO NOT USE FOR BUSINESS DECISIONS ***')
+        demo_cell.fill = demo_warning_fill
+        demo_cell.font = demo_warning_font
+        demo_cell.alignment = Alignment(horizontal='center', vertical='center')
+        ws.row_dimensions[1].height = 30
+
+        demo_row_offset = 2
+
+    # Define headers matching Workday talent calibration format
+    headers = [
+        'Associate ID',
+        'Worker',  # Workday uses 'Worker' not 'Associate'
+        'Supervisory Organization',
+        'Current Job Profile',
+        'Performance: What',
+        'Performance: How',
+        'Overall Performance',
+        'Future Talent: Growth Agility',
+        'Future Talent: Change Agility',
+        'Identified Future Talent',
+        'Movement Readiness',
+        'Proposed Talent Actions',  # Contains embedded tenets (matches import column map)
+    ]
+
+    # Style header row
+    header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    header_font = Font(bold=True, color='FFFFFF')
+
+    header_row = 1 + demo_row_offset
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=header_row, column=col_num, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Load tenets for name lookup
+    _, tenets_map = load_tenets_config()
+
+    # Write data rows
+    data_start_row = 2 + demo_row_offset
+    for row_num, employee in enumerate(team_data, data_start_row):
+        # Build Proposed Actions with embedded tenets
+        proposed_actions = employee.get('talent_proposed_actions') or ''
+
+        # Parse and format tenets
+        strengths_text = ''
+        improvements_text = ''
+
+        try:
+            if employee.get('talent_tenets_strengths'):
+                strength_ids = json.loads(employee['talent_tenets_strengths']) if isinstance(employee['talent_tenets_strengths'], str) else employee['talent_tenets_strengths']
+                strengths = [tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map]
+                if strengths:
+                    strengths_text = '; '.join(strengths)  # Use semicolon (tenet names may contain commas)
+
+            if employee.get('talent_tenets_improvements'):
+                improvement_ids = json.loads(employee['talent_tenets_improvements']) if isinstance(employee['talent_tenets_improvements'], str) else employee['talent_tenets_improvements']
+                improvements = [tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map]
+                if improvements:
+                    improvements_text = '; '.join(improvements)  # Use semicolon
+        except Exception as e:
+            print(f"Error parsing talent tenets: {e}")
+
+        # Embed tenets in Proposed Actions using parseable format
+        tenet_markers = []
+        if strengths_text:
+            tenet_markers.append(f"[Strengths: {strengths_text}]")
+        if improvements_text:
+            tenet_markers.append(f"[Improvements: {improvements_text}]")
+
+        if tenet_markers:
+            # Append to proposed actions with separator
+            if proposed_actions:
+                proposed_actions = proposed_actions.rstrip() + '\n\n' + ' '.join(tenet_markers)
+            else:
+                proposed_actions = ' '.join(tenet_markers)
+
+        row_data = [
+            employee.get('Associate ID', ''),
+            employee.get('Associate', ''),  # Export as Worker column
+            employee.get('Supervisory Organization', ''),
+            employee.get('Current Job Profile', ''),
+            employee.get('talent_perf_what', ''),
+            employee.get('talent_perf_how', ''),
+            employee.get('talent_overall_perf', ''),
+            employee.get('talent_growth_agility', ''),
+            employee.get('talent_change_agility', ''),
+            'Yes' if employee.get('talent_identified_future') else 'No' if employee.get('talent_identified_future') is False else '',
+            employee.get('talent_movement_readiness', ''),
+            proposed_actions,
+        ]
+
+        for col_num, value in enumerate(row_data, 1):
+            ws.cell(row=row_num, column=col_num, value=value)
+
+    # Auto-adjust column widths
+    from openpyxl.utils import get_column_letter
+    for col_idx, column in enumerate(ws.columns, 1):
+        max_length = 0
+        for cell in column:
+            try:
+                if cell.value and hasattr(cell, 'column_letter'):
+                    max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+        if max_length > 0:
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
+
+    # Save to BytesIO
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='talent_calibration_export.xlsx'
+    )
+
+
+@app.route('/export/talent/csv')
+def export_talent_csv():
+    """Export talent calibration data as CSV."""
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
+
+    # Load tenets for name lookup
+    _, tenets_map = load_tenets_config()
+
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Add demo mode warning header if in demo mode
+    if DEMO_MODE:
+        writer.writerow(['*** DEMO MODE - FICTITIOUS DATA ONLY ***'])
+        writer.writerow(['This export contains sample data for demonstration purposes.'])
+        writer.writerow(['Do NOT use this data for any real business decisions.'])
+        writer.writerow([])
+
+    # Write header (matching Workday talent calibration format)
+    writer.writerow([
+        'Associate ID',
+        'Worker',
+        'Supervisory Organization',
+        'Current Job Profile',
+        'Performance: What',
+        'Performance: How',
+        'Overall Performance',
+        'Future Talent: Growth Agility',
+        'Future Talent: Change Agility',
+        'Identified Future Talent',
+        'Movement Readiness',
+        'Proposed Talent Actions',
+    ])
+
+    # Write data rows
+    for employee in team_data:
+        # Build Proposed Actions with embedded tenets
+        proposed_actions = employee.get('talent_proposed_actions') or ''
+
+        # Parse and format tenets
+        strengths_text = ''
+        improvements_text = ''
+
+        try:
+            if employee.get('talent_tenets_strengths'):
+                strength_ids = json.loads(employee['talent_tenets_strengths']) if isinstance(employee['talent_tenets_strengths'], str) else employee['talent_tenets_strengths']
+                strengths = [tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map]
+                if strengths:
+                    strengths_text = '; '.join(strengths)
+
+            if employee.get('talent_tenets_improvements'):
+                improvement_ids = json.loads(employee['talent_tenets_improvements']) if isinstance(employee['talent_tenets_improvements'], str) else employee['talent_tenets_improvements']
+                improvements = [tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map]
+                if improvements:
+                    improvements_text = '; '.join(improvements)
+        except Exception as e:
+            print(f"Error parsing talent tenets: {e}")
+
+        # Embed tenets in Proposed Actions
+        tenet_markers = []
+        if strengths_text:
+            tenet_markers.append(f"[Strengths: {strengths_text}]")
+        if improvements_text:
+            tenet_markers.append(f"[Improvements: {improvements_text}]")
+
+        if tenet_markers:
+            if proposed_actions:
+                proposed_actions = proposed_actions.rstrip() + ' ' + ' '.join(tenet_markers)
+            else:
+                proposed_actions = ' '.join(tenet_markers)
+
+        writer.writerow([
+            employee.get('Associate ID', ''),
+            employee.get('Associate', ''),
+            employee.get('Supervisory Organization', ''),
+            employee.get('Current Job Profile', ''),
+            employee.get('talent_perf_what', ''),
+            employee.get('talent_perf_how', ''),
+            employee.get('talent_overall_perf', ''),
+            employee.get('talent_growth_agility', ''),
+            employee.get('talent_change_agility', ''),
+            'Yes' if employee.get('talent_identified_future') else 'No' if employee.get('talent_identified_future') is False else '',
+            employee.get('talent_movement_readiness', ''),
+            proposed_actions,
+        ])
+
+    output.seek(0)
+
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': 'attachment; filename=talent_calibration_export.csv'
+        }
+    )
+
+
 @app.route('/import')
 def import_page():
     """Import data page."""
@@ -2057,6 +2955,7 @@ def analyze_import():
         result = {
             'success': True,
             'employee_count': analysis['employee_count'],
+            'spreadsheet_type': analysis.get('spreadsheet_type', 'bonus'),
             'has_bonus_column': analysis['has_bonus_column'],
             'notes_count': analysis['notes_count'],
             'allocation_count': analysis.get('allocation_count', 0),
@@ -2115,14 +3014,23 @@ def import_current():
     try:
         file.save(temp_path)
 
-        # Analyze the file to get metadata (including Workday pool)
+        # Analyze the file to get metadata and spreadsheet type
         analysis = analyze_xlsx(temp_path)
+        if not analysis.get('success'):
+            return jsonify({'success': False, 'error': analysis.get('error', 'Analysis failed')}), 400
+
+        spreadsheet_type = analysis.get('spreadsheet_type', 'bonus')
         workday_pool = None
-        if analysis.get('success') and analysis.get('metadata'):
+        if analysis.get('metadata'):
             workday_pool = analysis['metadata'].get('total_pool')
 
-        # Parse the file
-        success, employees, error = parse_xlsx_employees(temp_path)
+        # Parse the file using appropriate parser based on type
+        if spreadsheet_type == 'talent':
+            from xlsx_utils import parse_talent_xlsx_employees
+            success, employees, error = parse_talent_xlsx_employees(temp_path)
+        else:
+            success, employees, error = parse_xlsx_employees(temp_path)
+
         if not success:
             return jsonify({'success': False, 'error': error}), 400
 
@@ -2159,25 +3067,86 @@ def import_current():
                     employee = Employee(associate_id=associate_id)
                     imported += 1
 
-                # Update Workday fields
+                # Update common fields
                 employee.associate = emp_data['associate']
                 employee.supervisory_organization = emp_data['supervisory_organization']
                 employee.current_job_profile = emp_data['current_job_profile']
-                employee.photo = emp_data['photo']
-                employee.errors = emp_data['errors']
-                employee.current_base_pay_all_countries = emp_data['current_base_pay_all_countries']
-                employee.current_base_pay_manager_currency = emp_data['current_base_pay_manager_currency']
-                employee.currency = emp_data['currency']
-                employee.grade = emp_data['grade']
-                employee.annual_bonus_target_percent = emp_data['annual_bonus_target_percent']
-                employee.last_bonus_allocation_percent = emp_data['last_bonus_allocation_percent']
-                employee.bonus_target_local_currency = emp_data['bonus_target_local_currency']
-                employee.bonus_target_manager_currency = emp_data['bonus_target_manager_currency']
-                employee.proposed_bonus_amount = emp_data['proposed_bonus_amount']
-                employee.proposed_bonus_amount_manager_currency = emp_data['proposed_bonus_amount_manager_currency']
-                employee.proposed_percent_of_target_bonus = emp_data['proposed_percent_of_target_bonus']
-                employee.notes = emp_data['notes']
-                employee.zero_bonus_allocated = emp_data['zero_bonus_allocated']
+
+                if spreadsheet_type == 'talent':
+                    # Update Workday-sourced fields (always overwrite from Workday)
+                    # Extended identity
+                    employee.management_level = emp_data.get('management_level')
+                    employee.job_category = emp_data.get('job_category')
+                    employee.hire_date = emp_data.get('hire_date')
+                    employee.length_of_service = emp_data.get('length_of_service')
+                    employee.time_in_job_profile = emp_data.get('time_in_job_profile')
+                    employee.region = emp_data.get('region')
+                    employee.country = emp_data.get('country')
+
+                    # Historical/last-cycle fields (from Workday, always overwrite)
+                    employee.talent_last_overall_perf = emp_data.get('talent_last_overall_perf')
+                    employee.talent_last_identified_future = emp_data.get('talent_last_identified_future')
+                    employee.talent_last_movement_readiness = emp_data.get('talent_last_movement_readiness')
+
+                    # Calibration status (from Workday)
+                    employee.talent_calibration_status = emp_data.get('talent_calibration_status')
+
+                    # Manager-input fields: ONLY set for new employees (per Spec §5.3)
+                    # These are preserved on re-import to prevent data loss
+                    if not existing:
+                        # Performance Assessment (manager-entered)
+                        employee.talent_perf_what = emp_data.get('talent_perf_what')
+                        employee.talent_perf_how = emp_data.get('talent_perf_how')
+                        employee.talent_overall_perf = emp_data.get('talent_overall_perf')
+
+                        # Future Talent (manager-entered)
+                        employee.talent_growth_agility = emp_data.get('talent_growth_agility')
+                        employee.talent_change_agility = emp_data.get('talent_change_agility')
+                        employee.talent_identified_future = emp_data.get('talent_identified_future')
+
+                        # Movement & Career (manager-entered)
+                        employee.talent_movement_readiness = emp_data.get('talent_movement_readiness')
+
+                        # Parse tenets from Proposed Actions if present
+                        # Format: [Strengths: Tenet1, Tenet2] [Improvements: Tenet3]
+                        raw_proposed_actions = emp_data.get('talent_proposed_actions') or ''
+                        tenets_config, _ = load_tenets_config()
+
+                        if tenets_config and raw_proposed_actions:
+                            from xlsx_utils import parse_proposed_actions_tenets
+                            clean_actions, strength_ids, improvement_ids = parse_proposed_actions_tenets(
+                                raw_proposed_actions, tenets_config
+                            )
+                            employee.talent_proposed_actions = clean_actions if clean_actions else None
+                            if strength_ids:
+                                employee.talent_tenets_strengths = json.dumps(strength_ids)
+                            if improvement_ids:
+                                employee.talent_tenets_improvements = json.dumps(improvement_ids)
+                        else:
+                            employee.talent_proposed_actions = raw_proposed_actions if raw_proposed_actions else None
+
+                        # Promotion (manager-entered)
+                        employee.talent_promo_job_profile = emp_data.get('talent_promo_job_profile')
+                        employee.talent_promo_business_need = emp_data.get('talent_promo_business_need')
+                        employee.talent_promo_role_scope = emp_data.get('talent_promo_role_scope')
+                        employee.talent_promo_readiness = emp_data.get('talent_promo_readiness')
+                else:
+                    # Update bonus-specific fields
+                    employee.photo = emp_data['photo']
+                    employee.errors = emp_data['errors']
+                    employee.current_base_pay_all_countries = emp_data['current_base_pay_all_countries']
+                    employee.current_base_pay_manager_currency = emp_data['current_base_pay_manager_currency']
+                    employee.currency = emp_data['currency']
+                    employee.grade = emp_data['grade']
+                    employee.annual_bonus_target_percent = emp_data['annual_bonus_target_percent']
+                    employee.last_bonus_allocation_percent = emp_data['last_bonus_allocation_percent']
+                    employee.bonus_target_local_currency = emp_data['bonus_target_local_currency']
+                    employee.bonus_target_manager_currency = emp_data['bonus_target_manager_currency']
+                    employee.proposed_bonus_amount = emp_data['proposed_bonus_amount']
+                    employee.proposed_bonus_amount_manager_currency = emp_data['proposed_bonus_amount_manager_currency']
+                    employee.proposed_percent_of_target_bonus = emp_data['proposed_percent_of_target_bonus']
+                    employee.notes = emp_data['notes']
+                    employee.zero_bonus_allocated = emp_data['zero_bonus_allocated']
 
                 # Initialize manager input fields as empty if new employee
                 if not existing:

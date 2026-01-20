@@ -192,6 +192,81 @@
     }
 
     /* Tab styles */
+    /* Primary calibration tabs (Bonus vs Talent) */
+    .primary-tabs {
+        display: flex;
+        gap: 0;
+        margin-bottom: 20px;
+    }
+
+    .primary-tab {
+        flex: 1;
+        padding: 16px 24px;
+        background: #f8f9fa;
+        border: 2px solid #e0e0e0;
+        border-bottom: none;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        color: #666;
+        transition: all 0.2s;
+        text-align: center;
+    }
+
+    .primary-tab:first-child {
+        border-radius: 8px 0 0 0;
+    }
+
+    .primary-tab:last-child {
+        border-radius: 0 8px 0 0;
+        border-left: none;
+    }
+
+    .primary-tab:hover:not(.active):not(.disabled) {
+        background: #e8e9ea;
+        color: #333;
+    }
+
+    .primary-tab.active {
+        background: white;
+        color: #667eea;
+        border-color: #667eea;
+        border-bottom: 2px solid white;
+        margin-bottom: -2px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .primary-tab.disabled {
+        color: #ccc;
+        cursor: not-allowed;
+        background: #f0f0f0;
+    }
+
+    .primary-tab-count {
+        font-size: 12px;
+        color: #999;
+        margin-left: 5px;
+    }
+
+    .primary-tab.active .primary-tab-count {
+        color: #667eea;
+    }
+
+    .primary-tab-content {
+        display: none;
+        border: 2px solid #667eea;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        padding: 20px;
+        background: white;
+    }
+
+    .primary-tab-content.active {
+        display: block;
+    }
+
+    /* Sub-tabs (for multi-team views within bonus) */
     .tabs {
         display: flex;
         gap: 5px;
@@ -350,13 +425,112 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+
+    /* Collapsible Cards */
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+        margin: -20px -20px 20px -20px;
+        padding: 15px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px 8px 0 0;
+    }
+
+    .card-header h2 {
+        margin: 0;
+        color: white;
+        font-size: 18px;
+    }
+
+    .card-header:hover {
+        background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+    }
+
+    .collapse-icon {
+        font-size: 20px;
+        color: white;
+        transition: transform 0.3s ease;
+        width: 24px;
+        text-align: center;
+    }
+
+    .card.collapsed .collapse-icon {
+        transform: rotate(-90deg);
+    }
+
+    .card-body {
+        transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+        overflow: hidden;
+    }
+
+    .card.collapsed .card-body {
+        max-height: 0;
+        opacity: 0;
+        padding: 0;
+        margin: 0;
+    }
+
+    .card.collapsed .card-header {
+        margin-bottom: 0;
+        border-radius: 8px;
+    }
+
+    .card.collapsed {
+        padding: 0;
+    }
+
+    .no-data-message {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .no-data-message h3 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+    }
+
+    .no-data-message p {
+        margin-bottom: 20px;
+    }
+
+    .no-data-message .btn {
+        display: inline-block;
+        padding: 12px 24px;
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+
+    .no-data-message .btn:hover {
+        background: #5a6fd6;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- 1. Performance Distribution -->
+{% if team|length == 0 %}
 <div class="card">
-    <h2>Performance Distribution</h2>
+    <h2>Analytics</h2>
+    <div class="no-data-message">
+        <h3>No Employee Data</h3>
+        <p>Import employee data from Workday to view analytics.</p>
+        <a href="{{ url_for('import_page') }}" class="btn">Import Data</a>
+    </div>
+</div>
+{% else %}
+<!-- 1. Performance Distribution -->
+<div class="card" data-card-id="performance-distribution">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>📊 Performance Distribution</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
     <div class="charts-grid">
         <div class="chart-container">
             <h3>Rating Distribution</h3>
@@ -370,13 +544,24 @@
             <h3>Average by Job Profile</h3>
             <canvas id="jobChart"></canvas>
         </div>
+        {% if talent_calibration and talent_calibration.talent_matrix %}
+        <div class="chart-container">
+            <h3>Talent Matrix (Performance × Potential)</h3>
+            <canvas id="talentMatrixChart"></canvas>
+        </div>
+        {% endif %}
+    </div>
     </div>
 </div>
 
 <!-- 2. Team Tenets Analysis -->
 {% if tenets_summary %}
-<div class="card">
-    <h2>Team Tenets Analysis</h2>
+<div class="card" data-card-id="team-tenets">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>🎯 Team Tenets Analysis</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
         <div class="stat-box">
@@ -390,13 +575,33 @@
     </div>
 
     <div id="tenetsChartContainer"></div>
+    </div>
 </div>
 {% endif %}
 
-<!-- 3. Mentorship Analytics -->
-{% if mentorship_stats %}
-<div class="card">
-    <h2>Mentorship Analytics</h2>
+<!-- 3. Mentorship (Overview + Analysis tabs) -->
+{% if mentorship_stats or total_mentorship_flags > 0 %}
+<div class="card" data-card-id="mentorship">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>🤝 Mentorship</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
+
+    <!-- Primary Tabs: Overview vs Analysis -->
+    <div class="primary-tabs">
+        <button class="primary-tab {% if mentorship_stats %}active{% else %}disabled{% endif %}" data-primary-tab="mentorship-overview-content" {% if not mentorship_stats %}disabled{% endif %}>
+            📊 Overview
+        </button>
+        <button class="primary-tab {% if not mentorship_stats and total_mentorship_flags > 0 %}active{% elif total_mentorship_flags == 0 %}disabled{% endif %}" data-primary-tab="mentorship-analysis-content" {% if total_mentorship_flags == 0 %}disabled{% endif %}>
+            🔍 Analysis
+            {% if total_mentorship_flags > 0 %}<span class="primary-tab-count">({{ total_mentorship_flags }})</span>{% endif %}
+        </button>
+    </div>
+
+    <!-- Overview Content -->
+    <div class="primary-tab-content {% if mentorship_stats %}active{% endif %}" id="mentorship-overview-content">
+    {% if mentorship_stats %}
 
     <!-- Summary Stats -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px;">
@@ -521,15 +726,94 @@
         </tbody>
     </table>
     {% endif %}
+
+    {% endif %}
+    </div>
+
+    <!-- Analysis Content -->
+    <div class="primary-tab-content {% if not mentorship_stats and total_mentorship_flags > 0 %}active{% endif %}" id="mentorship-analysis-content">
+    {% if total_mentorship_flags > 0 %}
+
+    <div class="calibration-disclaimer">
+        <h4>ℹ️ Mentorship patterns worth reviewing</h4>
+        <p>
+            These are potential mentorship gaps or imbalances. <strong>Each case may be intentional</strong> — use this to ensure mentorship is distributed appropriately.
+        </p>
+    </div>
+
+    <div style="display: grid; gap: 20px;">
+
+        {% if mentorship_analysis.seniors_without_mentees %}
+        <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #faf5ff; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #8e44ad;">🟣 Senior Roles Without Mentees ({{ mentorship_analysis.seniors_without_mentees | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Senior/Staff/Lead/Director roles not currently mentoring anyone</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in mentorship_analysis.seniors_without_mentees %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }})</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if mentorship_analysis.heavy_mentoring_load %}
+        <div class="inconsistency-section" style="border-left: 4px solid #e67e22; padding-left: 15px; background: #fff8f0; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #d35400;">🟠 Heavy Mentoring Load ({{ mentorship_analysis.heavy_mentoring_load | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Employees mentoring 4 or more people — consider redistributing</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in mentorship_analysis.heavy_mentoring_load %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): {{ emp.mentee_count }} mentees</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if mentorship_analysis.unmentored_juniors %}
+        <div class="inconsistency-section" style="border-left: 4px solid #3498db; padding-left: 15px; background: #f0f7ff; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #2980b9;">🔵 Junior Roles Without Mentors ({{ mentorship_analysis.unmentored_juniors | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Junior/Associate/Entry-level employees who don't have a mentor assigned</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in mentorship_analysis.unmentored_juniors %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }})</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+    </div>
+
+    {% endif %}
+    </div>
+
+    </div>
 </div>
 {% endif %}
 
-<!-- 4. Distribution Calibration Guide -->
-{% if total_rated > 0 %}
-<div class="card">
-    <h2>Distribution Calibration Guide</h2>
+<!-- 4. Calibration Guide (Bonus + Talent tabs) -->
+{% if total_rated > 0 or talent_calibration %}
+<div class="card" data-card-id="calibration-guide">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>📖 Calibration Guide</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
 
-    <!-- Tab Navigation (only if multi-team) -->
+    <!-- Primary Tabs: Bonus vs Talent -->
+    <div class="primary-tabs">
+        <button class="primary-tab {% if total_rated > 0 %}active{% else %}disabled{% endif %}" data-primary-tab="bonus-calibration-content" {% if total_rated == 0 %}disabled{% endif %}>
+            📊 Bonus Calibration
+            {% if total_rated > 0 %}<span class="primary-tab-count">({{ total_rated }})</span>{% endif %}
+        </button>
+        <button class="primary-tab {% if not total_rated > 0 and talent_calibration %}active{% elif not talent_calibration %}disabled{% endif %}" data-primary-tab="talent-calibration-content" {% if not talent_calibration %}disabled{% endif %}>
+            🎯 Talent Calibration
+            {% if talent_calibration %}<span class="primary-tab-count">({{ talent_calibration.total }})</span>{% endif %}
+        </button>
+    </div>
+
+    <!-- Bonus Calibration Content -->
+    <div class="primary-tab-content {% if total_rated > 0 %}active{% endif %}" id="bonus-calibration-content">
+    {% if total_rated > 0 %}
+
+    <!-- Sub-Tab Navigation (only if multi-team) -->
     {% if is_multi_team %}
     <div class="tabs" style="margin-bottom: 20px;">
         <button class="tab-button active" data-tab="org-calibration">Organization Overview</button>
@@ -826,12 +1110,268 @@
     {% endif %}
     <!-- End Tab 3: Team Comparison Matrix -->
 
+    {% endif %}
+    </div>
+    <!-- End Bonus Calibration Content -->
+
+    <!-- Talent Calibration Content -->
+    <div class="primary-tab-content {% if not total_rated > 0 and talent_calibration %}active{% endif %}" id="talent-calibration-content">
+    {% if talent_calibration %}
+
+    <div class="calibration-disclaimer">
+        <h4>ℹ️ Talent assessment guidance</h4>
+        <p>
+            The suggested ranges below represent typical talent distributions for reference only.
+            <strong>This is not a quota or forced ranking.</strong> Your team's actual talent profile may legitimately differ.
+            Use this to ensure calibration consistency across cycles.
+        </p>
+    </div>
+
+    {% if talent_calibration.total < 10 %}
+    <div class="small-team-warning">
+        ⚠️ <strong>Small team size ({{ talent_calibration.total }} calibrated):</strong> Percentage-based distributions are less meaningful for small teams.
+        Focus on individual assessments rather than fitting a curve.
+    </div>
+    {% endif %}
+
+    <!-- Overall Performance Distribution -->
+    <h3 style="margin-bottom: 15px;">Overall Performance Distribution</h3>
+
+    <div class="calibration-chart-container">
+        <canvas id="talentPerformanceChart"></canvas>
+    </div>
+
+    <div style="overflow-x: auto; margin-bottom: 30px;">
+        <table class="calibration-table">
+            <thead>
+                <tr>
+                    <th>Performance Level</th>
+                    <th>Your Team</th>
+                    <th>Suggested Range</th>
+                    <th>Delta</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in talent_calibration.performance_data %}
+                <tr>
+                    <td>
+                        <strong>{{ item.level }}</strong>
+                    </td>
+                    <td>
+                        <strong>{{ item.percentage }}%</strong>
+                        <span style="color: #666; font-size: 13px;">({{ item.count }} people)</span>
+                    </td>
+                    <td>
+                        {{ item.suggested_min }}-{{ item.suggested_max }}%
+                        <span style="color: #666; font-size: 13px;">({{ item.suggested_min_people }}-{{ item.suggested_max_people }} people)</span>
+                    </td>
+                    <td>
+                        <span class="delta-value delta-{{ item.status }}">
+                            {% if item.delta > 0 %}+{% endif %}{{ "%.1f"|format(item.delta) }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge {{ item.status }}">
+                            {% if item.status == 'good' %}
+                                ✓ Within Range
+                            {% elif item.status == 'warning' %}
+                                ⚠ Slightly Off
+                            {% else %}
+                                ⚠️ Off Target
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+
+                <!-- Future Talent row (separate metric) -->
+                <tr style="border-top: 2px solid #667eea;">
+                    <td>
+                        <strong>Identified as Future Talent</strong>
+                        <br><span style="font-size: 12px; color: #666;">Both agility traits "Always/Most of the Time"</span>
+                    </td>
+                    <td>
+                        <strong>{{ talent_calibration.future_talent.percentage }}%</strong>
+                        <span style="color: #666; font-size: 13px;">({{ talent_calibration.future_talent.count }} people)</span>
+                    </td>
+                    <td>
+                        {{ talent_calibration.future_talent.suggested_min }}-{{ talent_calibration.future_talent.suggested_max }}%
+                    </td>
+                    <td>
+                        {% set ft_delta = talent_calibration.future_talent.percentage - ((talent_calibration.future_talent.suggested_min + talent_calibration.future_talent.suggested_max) / 2) %}
+                        <span class="delta-value delta-{{ talent_calibration.future_talent.status }}">
+                            {% if ft_delta > 0 %}+{% endif %}{{ "%.1f"|format(ft_delta) }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge {{ talent_calibration.future_talent.status }}">
+                            {% if talent_calibration.future_talent.status == 'good' %}
+                                ✓ Within Range
+                            {% elif talent_calibration.future_talent.status == 'warning' %}
+                                ⚠ Slightly Off
+                            {% else %}
+                                ⚠️ Off Target
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Movement Readiness Breakdown -->
+    <h3 style="margin-bottom: 15px;">Movement Readiness Breakdown</h3>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
+        {% for item in talent_calibration.movement_data %}
+        <div class="stat-box" style="border-left-color: {% if loop.index == 1 %}#3498db{% elif loop.index == 2 %}#27ae60{% else %}#9b59b6{% endif %};">
+            <h4>{{ item.level }}</h4>
+            <div class="avg">{{ item.percentage }}%</div>
+            <div style="font-size: 14px; color: #666;">{{ item.count }} employees</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="calibration-chart-container" style="height: 200px;">
+        <canvas id="movementReadinessChart"></canvas>
+    </div>
+
+    {% endif %}
+    </div>
+    <!-- End Talent Calibration Content -->
+
+    </div>
 </div>
 {% endif %}
 
-<!-- 4. Period-over-Period Comparison -->
-<div class="card" id="periodComparisonCard">
-    <h2>Period-over-Period Comparison</h2>
+<!-- 4b. Potential Inconsistencies -->
+{% if total_inconsistencies > 0 %}
+<div class="card" data-card-id="potential-inconsistencies">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>⚠️ Potential Inconsistencies <span style="font-size: 14px; font-weight: normal; color: rgba(255,255,255,0.8);">({{ total_inconsistencies }} found)</span></h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
+
+    <div class="calibration-disclaimer">
+        <h4>ℹ️ Review recommended, not necessarily errors</h4>
+        <p>
+            These are potential mismatches between bonus ratings and talent calibration data.
+            <strong>Each case may have a valid explanation</strong> — use this as a checklist to ensure intentional decisions.
+        </p>
+    </div>
+
+    <div style="display: grid; gap: 20px;">
+
+        <!-- Critical: Rating vs Talent Mismatches -->
+        {% if inconsistencies.high_bonus_low_talent %}
+        <div class="inconsistency-section" style="border-left: 4px solid #e74c3c; padding-left: 15px; background: #fdf2f2; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #c0392b;">🔴 Above-Target Bonus + Low Talent Rating ({{ inconsistencies.high_bonus_low_talent | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Bonus rating &gt;90% but talent assessment is Low or Evolving Performer</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.high_bonus_low_talent %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}% / {{ emp.talent }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if inconsistencies.low_bonus_high_talent %}
+        <div class="inconsistency-section" style="border-left: 4px solid #e74c3c; padding-left: 15px; background: #fdf2f2; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #c0392b;">🔴 Low Bonus + High Impact Performer ({{ inconsistencies.low_bonus_high_talent | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Bonus rating &lt;90% but talent assessment is High Impact Performer</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.low_bonus_high_talent %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}% / {{ emp.talent }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if inconsistencies.future_talent_low_bonus %}
+        <div class="inconsistency-section" style="border-left: 4px solid #f39c12; padding-left: 15px; background: #fffbf0; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #d68910;">🟡 Future Talent + Low Bonus ({{ inconsistencies.future_talent_low_bonus | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Identified as Future Talent but bonus rating &lt;90%</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.future_talent_low_bonus %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}%</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if inconsistencies.promotion_ready_low_rating %}
+        <div class="inconsistency-section" style="border-left: 4px solid #f39c12; padding-left: 15px; background: #fffbf0; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #d68910;">🟡 Promotion Ready + Below-Target Bonus ({{ inconsistencies.promotion_ready_low_rating | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Movement readiness is "Ready Now" but bonus rating &lt;100%</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.promotion_ready_low_rating %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}%</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if inconsistencies.promotion_ready_not_high %}
+        <div class="inconsistency-section" style="border-left: 4px solid #f39c12; padding-left: 15px; background: #fffbf0; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #d68910;">🟡 Promotion Ready + Not High Impact ({{ inconsistencies.promotion_ready_not_high | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Movement readiness is "Ready Now" but talent (measured in current role) is not High Impact</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.promotion_ready_not_high %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): {{ emp.talent }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if inconsistencies.high_performer_not_future %}
+        <div class="inconsistency-section" style="border-left: 4px solid #3498db; padding-left: 15px; background: #f0f7ff; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #2980b9;">🔵 High Impact Performer Not Flagged as Future Talent ({{ inconsistencies.high_performer_not_future | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Talent assessment is High Impact but not identified as Future Talent</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.high_performer_not_future %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }})</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Data Completeness -->
+        {% if inconsistencies.bonus_only or inconsistencies.talent_only %}
+        <div class="inconsistency-section" style="border-left: 4px solid #95a5a6; padding-left: 15px; background: #f8f9fa; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #7f8c8d;">⚪ Incomplete Data</h4>
+            {% if inconsistencies.bonus_only %}
+            <div style="margin-bottom: 10px;">
+                <strong>Bonus rating only, no talent data ({{ inconsistencies.bonus_only | length }}):</strong>
+                <span style="font-size: 13px; color: #666;">
+                    {% for emp in inconsistencies.bonus_only %}{{ emp.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                </span>
+            </div>
+            {% endif %}
+            {% if inconsistencies.talent_only %}
+            <div>
+                <strong>Talent data only, no bonus rating ({{ inconsistencies.talent_only | length }}):</strong>
+                <span style="font-size: 13px; color: #666;">
+                    {% for emp in inconsistencies.talent_only %}{{ emp.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 5. Period-over-Period Comparison -->
+<div class="card" id="periodComparisonCard" data-card-id="period-comparison">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>📈 Period-over-Period Comparison</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
 
     <div class="comparison-header">
         <label for="periodSelect" style="font-weight: 600; color: #2c3e50;">Compare current ratings with:</label>
@@ -848,18 +1388,23 @@
             </p>
         </div>
     </div>
+    </div>
 </div>
 
-<!-- 5. Team Rankings -->
-<div class="card">
-    <h2>Team Rankings (by Performance Rating)</h2>
+<!-- 6. Team Rankings -->
+<div class="card" data-card-id="team-rankings">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>📋 Team Overview (by Bonus Rating)</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
     <div style="overflow-x: auto;">
         <table class="ranking-table">
             <thead>
                 <tr>
                     <th class="sortable" data-sort="name">Name</th>
                     <th class="sortable" data-sort="job">Job Profile</th>
-                    <th class="sortable" data-sort="rating">Performance Rating %</th>
+                    <th class="sortable" data-sort="rating">Bonus Rating</th>
                     <th>Justification</th>
                 </tr>
             </thead>
@@ -890,7 +1435,9 @@
             </tbody>
         </table>
     </div>
+    </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -911,6 +1458,40 @@ function getRatingColorClass(rating) {
     if (rating >= RATING_THRESHOLDS.low) return 'rating-text-low';
     return 'rating-text-below';
 }
+
+// Collapsible Cards
+function toggleCard(headerElement) {
+    const card = headerElement.closest('.card');
+    const cardId = card.dataset.cardId;
+
+    card.classList.toggle('collapsed');
+
+    // Persist state in localStorage
+    if (cardId) {
+        const collapsedCards = JSON.parse(localStorage.getItem('analytics_collapsed_cards') || '{}');
+        collapsedCards[cardId] = card.classList.contains('collapsed');
+        localStorage.setItem('analytics_collapsed_cards', JSON.stringify(collapsedCards));
+    }
+}
+
+// Start all cards collapsed by default, restore any explicitly expanded cards
+document.addEventListener('DOMContentLoaded', function() {
+    // Collapse all cards first
+    document.querySelectorAll('.card[data-card-id]').forEach(card => {
+        card.classList.add('collapsed');
+    });
+
+    // Restore any cards that were explicitly expanded by user
+    const collapsedCards = JSON.parse(localStorage.getItem('analytics_collapsed_cards') || '{}');
+    Object.keys(collapsedCards).forEach(cardId => {
+        if (collapsedCards[cardId] === false) {
+            const card = document.querySelector(`[data-card-id="${cardId}"]`);
+            if (card) {
+                card.classList.remove('collapsed');
+            }
+        }
+    });
+});
 
 const chartData = {{ chart_data | tojson }};
 
@@ -1047,6 +1628,71 @@ new Chart(jobCtx, {
     }
 });
 
+// Talent Matrix Chart (Performance × Potential 9-Box style)
+{% if talent_calibration and talent_calibration.talent_matrix %}
+const talentMatrix = {{ talent_calibration.talent_matrix | tojson }};
+const talentMatrixCtx = document.getElementById('talentMatrixChart').getContext('2d');
+new Chart(talentMatrixCtx, {
+    type: 'bar',
+    data: {
+        labels: talentMatrix.labels,
+        datasets: [
+            {
+                label: '⭐ Future Talent (High Potential)',
+                data: talentMatrix.future_talent_yes,
+                backgroundColor: '#667eea',
+                borderColor: '#5a67d8',
+                borderWidth: 1
+            },
+            {
+                label: 'Not Yet Identified',
+                data: talentMatrix.future_talent_no,
+                backgroundColor: '#a0aec0',
+                borderColor: '#718096',
+                borderWidth: 1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+            x: {
+                stacked: true,
+                title: {
+                    display: true,
+                    text: 'Performance Level',
+                    font: { weight: 'bold' }
+                }
+            },
+            y: {
+                stacked: true,
+                beginAtZero: true,
+                ticks: { stepSize: 1 },
+                title: {
+                    display: true,
+                    text: 'Number of Employees',
+                    font: { weight: 'bold' }
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.dataset.label + ': ' + context.parsed.y + ' employees';
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
+
 // Calibration Chart - Overlay comparison
 {% if total_rated > 0 %}
 const calibrationData = {{ calibration_data | tojson }};
@@ -1146,6 +1792,151 @@ new Chart(calibrationCtx, {
                 text: 'Your Team Distribution vs. Suggested Range',
                 font: {
                     size: 16,
+                    weight: 'bold'
+                }
+            }
+        }
+    }
+});
+{% endif %}
+
+// Talent Calibration Charts
+{% if talent_calibration %}
+const talentCalibrationData = {{ talent_calibration | tojson }};
+
+// Talent Performance Distribution Chart
+const talentPerfCtx = document.getElementById('talentPerformanceChart').getContext('2d');
+new Chart(talentPerfCtx, {
+    type: 'bar',
+    data: {
+        labels: talentCalibrationData.performance_data.map(d => d.level),
+        datasets: [
+            {
+                label: 'Your Team',
+                data: talentCalibrationData.performance_data.map(d => d.percentage),
+                backgroundColor: talentCalibrationData.performance_data.map(d => {
+                    if (d.status === 'good') return 'rgba(39, 174, 96, 0.7)';
+                    if (d.status === 'warning') return 'rgba(255, 193, 7, 0.7)';
+                    return 'rgba(220, 53, 69, 0.7)';
+                }),
+                borderColor: talentCalibrationData.performance_data.map(d => {
+                    if (d.status === 'good') return '#27ae60';
+                    if (d.status === 'warning') return '#ffc107';
+                    return '#dc3545';
+                }),
+                borderWidth: 2
+            },
+            {
+                label: 'Suggested Min',
+                data: talentCalibrationData.performance_data.map(d => d.suggested_min),
+                backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                borderColor: '#667eea',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                type: 'line',
+                pointRadius: 0
+            },
+            {
+                label: 'Suggested Max',
+                data: talentCalibrationData.performance_data.map(d => d.suggested_max),
+                backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                borderColor: '#667eea',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                type: 'line',
+                pointRadius: 0,
+                fill: '-1'
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                    callback: function(value) {
+                        return value + '%';
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Percentage of Team'
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        if (context.dataset.label === 'Your Team') {
+                            const item = talentCalibrationData.performance_data[context.dataIndex];
+                            return `Your Team: ${item.percentage}% (${item.count} people)`;
+                        }
+                        return context.dataset.label + ': ' + context.parsed.y + '%';
+                    }
+                }
+            },
+            title: {
+                display: true,
+                text: 'Talent Performance Distribution vs. Suggested Range',
+                font: {
+                    size: 16,
+                    weight: 'bold'
+                }
+            }
+        }
+    }
+});
+
+// Movement Readiness Doughnut Chart
+const movementCtx = document.getElementById('movementReadinessChart').getContext('2d');
+new Chart(movementCtx, {
+    type: 'doughnut',
+    data: {
+        labels: talentCalibrationData.movement_data.map(d => d.level),
+        datasets: [{
+            data: talentCalibrationData.movement_data.map(d => d.count),
+            backgroundColor: [
+                'rgba(52, 152, 219, 0.7)',   // Continue growing - blue
+                'rgba(39, 174, 96, 0.7)',    // Ready for promotion - green
+                'rgba(155, 89, 182, 0.7)'    // Ready for lateral - purple
+            ],
+            borderColor: [
+                '#3498db',
+                '#27ae60',
+                '#9b59b6'
+            ],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'right'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const item = talentCalibrationData.movement_data[context.dataIndex];
+                        return `${item.level}: ${item.count} (${item.percentage}%)`;
+                    }
+                }
+            },
+            title: {
+                display: true,
+                text: 'Movement Readiness Distribution',
+                font: {
+                    size: 14,
                     weight: 'bold'
                 }
             }
@@ -1375,7 +2166,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set initial sort indicator
     document.querySelector('th[data-sort="rating"]').classList.add('desc');
 
-    // Tab switching for multi-team calibration views
+    // Primary tab switching (scoped to parent card)
+    const primaryTabButtons = document.querySelectorAll('.primary-tab:not(.disabled)');
+    primaryTabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetTab = this.getAttribute('data-primary-tab');
+            const parentCard = this.closest('.card');
+
+            // Remove active class from tabs/content within this card only
+            parentCard.querySelectorAll('.primary-tab').forEach(btn => btn.classList.remove('active'));
+            parentCard.querySelectorAll('.primary-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Add active class to clicked button and corresponding content
+            this.classList.add('active');
+            const targetContent = document.getElementById(targetTab);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+
+    // Sub-tab switching for multi-team calibration views
     {% if is_multi_team %}
     const tabButtons = document.querySelectorAll('.tab-button');
     tabButtons.forEach(button => {
