@@ -160,3 +160,55 @@ def populated_db(db_session, sample_employees):
     db_session.commit()
 
     return db_session
+
+
+@pytest.fixture(scope='function')
+def talent_xlsx_file():
+    """Create a temporary talent calibration XLSX file for testing."""
+    from openpyxl import Workbook
+
+    # Create workbook with talent headers (matching real Workday export structure)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Talent Calibration"
+
+    # Talent files have metadata rows before headers (like real Workday exports)
+    # Headers at row 5 with 'Worker' instead of 'Associate'
+    ws['A1'] = 'Talent Calibration Report'
+    ws['A2'] = 'Generated: 2025-01-15'
+    ws['A3'] = ''
+    ws['A4'] = ''
+
+    # Headers at row 5
+    headers = [
+        'Associate ID', 'Worker', 'Supervisory Organization',
+        'Current Job Profile', 'Performance: What', 'Performance: How',
+        'Future Talent: Growth Agility', 'Future Talent: Change Agility',
+        'Movement Readiness'
+    ]
+    for col, header in enumerate(headers, 1):
+        ws.cell(row=5, column=col, value=header)
+
+    # Sample data rows
+    data = [
+        ['T001', 'Test Employee One', 'Engineering (Manager One)', 'Senior Engineer',
+         'Surpasses Expectations', 'Meets Expectations',
+         'Always/Most of the Time', 'Always/Most of the Time', 'Ready Now'],
+        ['T002', 'Test Employee Two', 'Engineering (Manager One)', 'Engineer',
+         'Meets Expectations', 'Meets Expectations',
+         'Sometimes', 'Always/Most of the Time', 'Ready in 1-2 Years'],
+    ]
+
+    for row_idx, row_data in enumerate(data, 6):
+        for col_idx, value in enumerate(row_data, 1):
+            ws.cell(row=row_idx, column=col_idx, value=value)
+
+    # Save to temporary file
+    fd, path = tempfile.mkstemp(suffix='.xlsx')
+    os.close(fd)
+    wb.save(path)
+
+    yield path
+
+    # Cleanup
+    os.unlink(path)

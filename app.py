@@ -2251,6 +2251,7 @@ def analyze_import():
         result = {
             'success': True,
             'employee_count': analysis['employee_count'],
+            'spreadsheet_type': analysis.get('spreadsheet_type', 'bonus'),
             'has_bonus_column': analysis['has_bonus_column'],
             'notes_count': analysis['notes_count'],
             'allocation_count': analysis.get('allocation_count', 0),
@@ -2309,14 +2310,23 @@ def import_current():
     try:
         file.save(temp_path)
 
-        # Analyze the file to get metadata (including Workday pool)
+        # Analyze the file to get metadata and spreadsheet type
         analysis = analyze_xlsx(temp_path)
+        if not analysis.get('success'):
+            return jsonify({'success': False, 'error': analysis.get('error', 'Analysis failed')}), 400
+
+        spreadsheet_type = analysis.get('spreadsheet_type', 'bonus')
         workday_pool = None
-        if analysis.get('success') and analysis.get('metadata'):
+        if analysis.get('metadata'):
             workday_pool = analysis['metadata'].get('total_pool')
 
-        # Parse the file
-        success, employees, error = parse_xlsx_employees(temp_path)
+        # Parse the file using appropriate parser based on type
+        if spreadsheet_type == 'talent':
+            from xlsx_utils import parse_talent_xlsx_employees
+            success, employees, error = parse_talent_xlsx_employees(temp_path)
+        else:
+            success, employees, error = parse_xlsx_employees(temp_path)
+
         if not success:
             return jsonify({'success': False, 'error': error}), 400
 
@@ -2353,25 +2363,73 @@ def import_current():
                     employee = Employee(associate_id=associate_id)
                     imported += 1
 
-                # Update Workday fields
+                # Update common fields
                 employee.associate = emp_data['associate']
                 employee.supervisory_organization = emp_data['supervisory_organization']
                 employee.current_job_profile = emp_data['current_job_profile']
-                employee.photo = emp_data['photo']
-                employee.errors = emp_data['errors']
-                employee.current_base_pay_all_countries = emp_data['current_base_pay_all_countries']
-                employee.current_base_pay_manager_currency = emp_data['current_base_pay_manager_currency']
-                employee.currency = emp_data['currency']
-                employee.grade = emp_data['grade']
-                employee.annual_bonus_target_percent = emp_data['annual_bonus_target_percent']
-                employee.last_bonus_allocation_percent = emp_data['last_bonus_allocation_percent']
-                employee.bonus_target_local_currency = emp_data['bonus_target_local_currency']
-                employee.bonus_target_manager_currency = emp_data['bonus_target_manager_currency']
-                employee.proposed_bonus_amount = emp_data['proposed_bonus_amount']
-                employee.proposed_bonus_amount_manager_currency = emp_data['proposed_bonus_amount_manager_currency']
-                employee.proposed_percent_of_target_bonus = emp_data['proposed_percent_of_target_bonus']
-                employee.notes = emp_data['notes']
-                employee.zero_bonus_allocated = emp_data['zero_bonus_allocated']
+
+                if spreadsheet_type == 'talent':
+                    # Update Workday-sourced fields (always overwrite from Workday)
+                    # Extended identity
+                    employee.management_level = emp_data.get('management_level')
+                    employee.job_category = emp_data.get('job_category')
+                    employee.hire_date = emp_data.get('hire_date')
+                    employee.length_of_service = emp_data.get('length_of_service')
+                    employee.time_in_job_profile = emp_data.get('time_in_job_profile')
+                    employee.region = emp_data.get('region')
+                    employee.country = emp_data.get('country')
+
+                    # Historical/last-cycle fields (from Workday, always overwrite)
+                    employee.talent_last_overall_perf = emp_data.get('talent_last_overall_perf')
+                    employee.talent_last_identified_future = emp_data.get('talent_last_identified_future')
+                    employee.talent_last_movement_readiness = emp_data.get('talent_last_movement_readiness')
+
+                    # Calibration status (from Workday)
+                    employee.talent_calibration_status = emp_data.get('talent_calibration_status')
+
+                    # Manager-input fields: ONLY set for new employees (per Spec §5.3)
+                    # These are preserved on re-import to prevent data loss
+                    if not existing:
+                        # Performance Assessment (manager-entered)
+                        employee.talent_perf_what = emp_data.get('talent_perf_what')
+                        employee.talent_perf_how = emp_data.get('talent_perf_how')
+                        employee.talent_overall_perf = emp_data.get('talent_overall_perf')
+
+                        # Future Talent (manager-entered)
+                        employee.talent_growth_agility = emp_data.get('talent_growth_agility')
+                        employee.talent_change_agility = emp_data.get('talent_change_agility')
+                        employee.talent_identified_future = emp_data.get('talent_identified_future')
+
+                        # Movement & Career (manager-entered)
+                        employee.talent_movement_readiness = emp_data.get('talent_movement_readiness')
+                        employee.talent_proposed_actions = emp_data.get('talent_proposed_actions')
+
+                        # Promotion (manager-entered)
+                        employee.talent_promo_job_profile = emp_data.get('talent_promo_job_profile')
+                        employee.talent_promo_business_need = emp_data.get('talent_promo_business_need')
+                        employee.talent_promo_role_scope = emp_data.get('talent_promo_role_scope')
+                        employee.talent_promo_readiness = emp_data.get('talent_promo_readiness')
+
+                        # Tenets (manager-entered)
+                        employee.talent_tenets_strengths = emp_data.get('talent_tenets_strengths')
+                        employee.talent_tenets_improvements = emp_data.get('talent_tenets_improvements')
+                else:
+                    # Update bonus-specific fields
+                    employee.photo = emp_data['photo']
+                    employee.errors = emp_data['errors']
+                    employee.current_base_pay_all_countries = emp_data['current_base_pay_all_countries']
+                    employee.current_base_pay_manager_currency = emp_data['current_base_pay_manager_currency']
+                    employee.currency = emp_data['currency']
+                    employee.grade = emp_data['grade']
+                    employee.annual_bonus_target_percent = emp_data['annual_bonus_target_percent']
+                    employee.last_bonus_allocation_percent = emp_data['last_bonus_allocation_percent']
+                    employee.bonus_target_local_currency = emp_data['bonus_target_local_currency']
+                    employee.bonus_target_manager_currency = emp_data['bonus_target_manager_currency']
+                    employee.proposed_bonus_amount = emp_data['proposed_bonus_amount']
+                    employee.proposed_bonus_amount_manager_currency = emp_data['proposed_bonus_amount_manager_currency']
+                    employee.proposed_percent_of_target_bonus = emp_data['proposed_percent_of_target_bonus']
+                    employee.notes = emp_data['notes']
+                    employee.zero_bonus_allocated = emp_data['zero_bonus_allocated']
 
                 # Initialize manager input fields as empty if new employee
                 if not existing:

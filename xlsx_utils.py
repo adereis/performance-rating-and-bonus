@@ -200,12 +200,12 @@ def validate_workday_format(rows: List[tuple], header_idx: Optional[int], header
         )
 
     # Check for required columns
-    required = ['associate', 'associate_id']
+    # Note: Talent reports use 'Worker' instead of 'Associate'
     normalized = [h.lower().strip() for h in headers if h]
 
     missing = []
-    if 'associate' not in normalized:
-        missing.append('Associate')
+    if 'associate' not in normalized and 'worker' not in normalized:
+        missing.append('Associate (or Worker)')
     if 'associate id' not in normalized:
         missing.append('Associate ID')
 
@@ -243,8 +243,9 @@ def _find_header_row(rows: List[tuple]) -> Optional[int]:
     """
     Find the header row by looking for required Workday column names.
 
-    Scans rows until it finds one containing 'Associate' and 'Associate ID'
-    (case-insensitive), which are required columns in Workday exports.
+    Scans rows until it finds one containing 'Associate ID' and either
+    'Associate' or 'Worker' (case-insensitive). Bonus reports use 'Associate',
+    while talent reports use 'Worker'.
 
     Args:
         rows: List of row tuples from the spreadsheet
@@ -252,14 +253,17 @@ def _find_header_row(rows: List[tuple]) -> Optional[int]:
     Returns:
         Index of the header row, or None if not found
     """
-    required_headers = {'associate', 'associate id'}
-
     for idx, row in enumerate(rows):
         if not row:
             continue
         # Normalize cell values for comparison
         normalized = {str(cell).lower().strip() for cell in row if cell}
-        if required_headers.issubset(normalized):
+
+        # Must have 'associate id' AND either 'associate' OR 'worker'
+        has_id = 'associate id' in normalized
+        has_name = 'associate' in normalized or 'worker' in normalized
+
+        if has_id and has_name:
             return idx
 
     return None
@@ -308,11 +312,16 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
         header_idx = _find_header_row(rows)
         headers = [str(h).strip() if h else '' for h in rows[header_idx]] if header_idx is not None else []
 
-        # Extract metadata from header rows (needed for validation)
+        # Detect spreadsheet type (talent vs bonus)
+        spreadsheet_type = detect_spreadsheet_type(headers) if headers else 'bonus'
+
+        # Extract metadata from header rows (needed for validation of bonus files)
         metadata = extract_workday_metadata(rows, header_idx) if header_idx is not None else {}
 
-        # Validate the file format (including metadata check)
-        is_valid, validation_error = validate_workday_format(rows, header_idx, headers, metadata)
+        # Validate the file format
+        # For talent files, skip metadata validation (they don't have bonus pool)
+        validation_metadata = None if spreadsheet_type == 'talent' else metadata
+        is_valid, validation_error = validate_workday_format(rows, header_idx, headers, validation_metadata)
         if not is_valid:
             wb.close()
             return {
@@ -360,6 +369,7 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
         return {
             'success': True,
             'employee_count': employee_count,
+            'spreadsheet_type': spreadsheet_type,  # 'talent' or 'bonus'
             'has_bonus_column': col_indices.get('proposed_percent_of_target') is not None,
             'notes_count': notes_count,
             'allocation_count': allocation_count,

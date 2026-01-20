@@ -281,3 +281,108 @@ class TestTalentMarkers:
         """BONUS_MARKERS match Spec §5.1 markers."""
         expected = ['Bonus Target', 'Annual Bonus Target Percent', 'Current Base Pay', 'Proposed Bonus Amount']
         assert BONUS_MARKERS == expected
+
+
+class TestTalentImportEndpoints:
+    """Integration tests for talent file import via REST endpoints."""
+
+    def test_analyze_import_detects_talent_file(self, client, talent_xlsx_file):
+        """Analyze endpoint correctly detects talent spreadsheet type."""
+        with open(talent_xlsx_file, 'rb') as f:
+            response = client.post(
+                '/api/import/analyze',
+                data={'file': (f, 'talent-report.xlsx')},
+                content_type='multipart/form-data'
+            )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['spreadsheet_type'] == 'talent'
+
+    def test_import_talent_file_success(self, client, talent_xlsx_file):
+        """Import endpoint successfully imports talent file."""
+        with open(talent_xlsx_file, 'rb') as f:
+            response = client.post(
+                '/api/import/current',
+                data={'file': (f, 'talent-report.xlsx')},
+                content_type='multipart/form-data'
+            )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['imported'] == 2  # Fixture has 2 employees
+
+    def test_import_talent_file_populates_talent_fields(self, client, talent_xlsx_file, db_session):
+        """Import correctly populates talent-specific fields."""
+        from models import Employee
+
+        with open(talent_xlsx_file, 'rb') as f:
+            response = client.post(
+                '/api/import/current',
+                data={'file': (f, 'talent-report.xlsx')},
+                content_type='multipart/form-data'
+            )
+
+        assert response.status_code == 200
+
+        # Verify talent fields were populated
+        employee = db_session.query(Employee).first()
+        assert employee is not None
+        # At least one talent field should be set
+        assert any([
+            employee.talent_perf_what,
+            employee.talent_perf_how,
+            employee.talent_growth_agility,
+            employee.talent_change_agility,
+        ])
+
+    def test_manager_talent_inputs_preserved_on_reimport(self, client, talent_xlsx_file, db_session):
+        """Manager-entered talent fields are preserved on re-import (Spec §5.3)."""
+        from models import Employee
+
+        # First import creates employees
+        with open(talent_xlsx_file, 'rb') as f:
+            response = client.post(
+                '/api/import/current',
+                data={'file': (f, 'talent-report.xlsx')},
+                content_type='multipart/form-data'
+            )
+        assert response.status_code == 200
+
+        # Get the imported employee and modify manager-input fields
+        employee = db_session.query(Employee).filter_by(associate_id='T001').first()
+        assert employee is not None
+
+        # Simulate manager edits (these should be preserved on re-import)
+        employee.talent_perf_what = 'Meets Expectations'  # Changed from fixture value
+        employee.talent_perf_how = 'Surpasses Expectations'  # Changed from fixture value
+        employee.talent_growth_agility = 'Sometimes'  # Changed from fixture value
+        employee.talent_movement_readiness = 'Ready in 1-2 Years'  # Changed
+        employee.talent_proposed_actions = 'Promote to Senior'  # New value
+        employee.talent_tenets_strengths = 'Customer Obsession'  # New value
+        db_session.commit()
+
+        # Re-import the same file
+        with open(talent_xlsx_file, 'rb') as f:
+            response = client.post(
+                '/api/import/current',
+                data={'file': (f, 'talent-report.xlsx')},
+                content_type='multipart/form-data'
+            )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['updated'] == 2  # Both employees updated, not imported
+
+        # Refresh and verify manager fields were PRESERVED
+        db_session.expire_all()
+        employee = db_session.query(Employee).filter_by(associate_id='T001').first()
+
+        # Manager-entered fields should be preserved
+        assert employee.talent_perf_what == 'Meets Expectations'
+        assert employee.talent_perf_how == 'Surpasses Expectations'
+        assert employee.talent_growth_agility == 'Sometimes'
+        assert employee.talent_movement_readiness == 'Ready in 1-2 Years'
+        assert employee.talent_proposed_actions == 'Promote to Senior'
+        assert employee.talent_tenets_strengths == 'Customer Obsession'
