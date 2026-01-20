@@ -1516,6 +1516,129 @@ def analytics():
                 'stats': team_stats['overall']
             })
 
+    # Calculate talent calibration distributions (Spec §7.3)
+    talent_calibration = None
+    employees_with_talent = [emp for emp in team_data if emp.get('talent_overall_perf')]
+
+    if employees_with_talent:
+        total_talent = len(employees_with_talent)
+
+        # Overall Performance Distribution
+        overall_perf_counts = {
+            'High Impact Performer': 0,
+            'Successful Performer': 0,
+            'Evolving Performer': 0,
+            'Low Performer': 0
+        }
+        for emp in employees_with_talent:
+            perf = emp.get('talent_overall_perf')
+            if perf in overall_perf_counts:
+                overall_perf_counts[perf] += 1
+
+        # Future Talent count
+        future_talent_count = sum(1 for emp in team_data if emp.get('talent_identified_future'))
+
+        # Movement Readiness Distribution
+        movement_counts = {
+            'Continue growing in current role': 0,
+            'Ready Now to be promoted in current role': 0,
+            'Ready for lateral move': 0
+        }
+        for emp in employees_with_talent:
+            movement = emp.get('talent_movement_readiness')
+            if movement in movement_counts:
+                movement_counts[movement] += 1
+
+        # Suggested ranges per Spec §7.3
+        talent_suggested_ranges = {
+            'High Impact Performer': (5, 15),
+            'Successful Performer': (55, 70),
+            'Evolving Performer': (15, 25),
+            'Low Performer': (2, 10),
+            'Future Talent': (10, 20)
+        }
+
+        # Build talent calibration data
+        talent_calibration_data = []
+        for perf_level in ['High Impact Performer', 'Successful Performer', 'Evolving Performer', 'Low Performer']:
+            count = overall_perf_counts[perf_level]
+            pct = round(count / total_talent * 100, 1) if total_talent > 0 else 0
+            suggested_min, suggested_max = talent_suggested_ranges[perf_level]
+
+            # Calculate delta from range (same as bonus calibration)
+            within_range = suggested_min <= pct <= suggested_max
+            if pct < suggested_min:
+                delta_from_range = pct - suggested_min  # Negative
+            elif pct > suggested_max:
+                delta_from_range = pct - suggested_max  # Positive
+            else:
+                delta_from_range = 0  # Within range
+
+            # Determine status (same logic as bonus calibration)
+            if within_range:
+                status = 'good'
+            elif abs(delta_from_range) <= 10:
+                status = 'warning'
+            else:
+                status = 'alert'
+
+            # Delta for display (distance from midpoint)
+            suggested_mid = (suggested_min + suggested_max) / 2
+            delta = pct - suggested_mid
+
+            talent_calibration_data.append({
+                'level': perf_level,
+                'count': count,
+                'percentage': pct,
+                'suggested_min': suggested_min,
+                'suggested_max': suggested_max,
+                'suggested_min_people': round(total_talent * suggested_min / 100),
+                'suggested_max_people': round(total_talent * suggested_max / 100),
+                'delta': delta,
+                'status': status
+            })
+
+        # Future Talent row (same status logic as bonus calibration)
+        ft_pct = round(future_talent_count / total_talent * 100, 1) if total_talent > 0 else 0
+        ft_min, ft_max = talent_suggested_ranges['Future Talent']
+        ft_within_range = ft_min <= ft_pct <= ft_max
+        if ft_pct < ft_min:
+            ft_delta_from_range = ft_pct - ft_min
+        elif ft_pct > ft_max:
+            ft_delta_from_range = ft_pct - ft_max
+        else:
+            ft_delta_from_range = 0
+
+        if ft_within_range:
+            ft_status = 'good'
+        elif abs(ft_delta_from_range) <= 10:
+            ft_status = 'warning'
+        else:
+            ft_status = 'alert'
+
+        # Movement readiness data (informational, no ranges)
+        movement_data = []
+        for movement_level, count in movement_counts.items():
+            pct = round(count / total_talent * 100, 1) if total_talent > 0 else 0
+            movement_data.append({
+                'level': movement_level,
+                'count': count,
+                'percentage': pct
+            })
+
+        talent_calibration = {
+            'total': total_talent,
+            'performance_data': talent_calibration_data,
+            'future_talent': {
+                'count': future_talent_count,
+                'percentage': ft_pct,
+                'suggested_min': ft_min,
+                'suggested_max': ft_max,
+                'status': ft_status
+            },
+            'movement_data': movement_data
+        }
+
     return render_template('analytics.html',
                          team=sorted_team,
                          chart_data=chart_data,
@@ -1532,6 +1655,7 @@ def analytics():
                          team_comparisons=team_comparisons,
                          mentorship_stats=mentorship_stats,
                          team_mentorship_stats=team_mentorship_stats,
+                         talent_calibration=talent_calibration,
                          filter_info=filter_info)
 
 

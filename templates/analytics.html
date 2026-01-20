@@ -829,7 +829,133 @@
 </div>
 {% endif %}
 
-<!-- 4. Period-over-Period Comparison -->
+<!-- 4a. Talent Calibration Distribution -->
+{% if talent_calibration %}
+<div class="card">
+    <h2>Talent Calibration Distribution</h2>
+
+    <div class="calibration-disclaimer">
+        <h4>ℹ️ Talent assessment guidance</h4>
+        <p>
+            The suggested ranges below represent typical talent distributions for reference only.
+            <strong>This is not a quota or forced ranking.</strong> Your team's actual talent profile may legitimately differ.
+            Use this to ensure calibration consistency across cycles.
+        </p>
+    </div>
+
+    {% if talent_calibration.total < 10 %}
+    <div class="small-team-warning">
+        ⚠️ <strong>Small team size ({{ talent_calibration.total }} calibrated):</strong> Percentage-based distributions are less meaningful for small teams.
+        Focus on individual assessments rather than fitting a curve.
+    </div>
+    {% endif %}
+
+    <!-- Overall Performance Distribution -->
+    <h3 style="margin-bottom: 15px;">Overall Performance Distribution</h3>
+
+    <div class="calibration-chart-container">
+        <canvas id="talentPerformanceChart"></canvas>
+    </div>
+
+    <div style="overflow-x: auto; margin-bottom: 30px;">
+        <table class="calibration-table">
+            <thead>
+                <tr>
+                    <th>Performance Level</th>
+                    <th>Your Team</th>
+                    <th>Suggested Range</th>
+                    <th>Delta</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in talent_calibration.performance_data %}
+                <tr>
+                    <td>
+                        <strong>{{ item.level }}</strong>
+                    </td>
+                    <td>
+                        <strong>{{ item.percentage }}%</strong>
+                        <span style="color: #666; font-size: 13px;">({{ item.count }} people)</span>
+                    </td>
+                    <td>
+                        {{ item.suggested_min }}-{{ item.suggested_max }}%
+                        <span style="color: #666; font-size: 13px;">({{ item.suggested_min_people }}-{{ item.suggested_max_people }} people)</span>
+                    </td>
+                    <td>
+                        <span class="delta-value delta-{{ item.status }}">
+                            {% if item.delta > 0 %}+{% endif %}{{ "%.1f"|format(item.delta) }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge {{ item.status }}">
+                            {% if item.status == 'good' %}
+                                ✓ Within Range
+                            {% elif item.status == 'warning' %}
+                                ⚠ Slightly Off
+                            {% else %}
+                                ⚠️ Off Target
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+
+                <!-- Future Talent row (separate metric) -->
+                <tr style="border-top: 2px solid #667eea;">
+                    <td>
+                        <strong>Identified as Future Talent</strong>
+                        <br><span style="font-size: 12px; color: #666;">Both agility traits "Always/Most of the Time"</span>
+                    </td>
+                    <td>
+                        <strong>{{ talent_calibration.future_talent.percentage }}%</strong>
+                        <span style="color: #666; font-size: 13px;">({{ talent_calibration.future_talent.count }} people)</span>
+                    </td>
+                    <td>
+                        {{ talent_calibration.future_talent.suggested_min }}-{{ talent_calibration.future_talent.suggested_max }}%
+                    </td>
+                    <td>
+                        {% set ft_delta = talent_calibration.future_talent.percentage - ((talent_calibration.future_talent.suggested_min + talent_calibration.future_talent.suggested_max) / 2) %}
+                        <span class="delta-value delta-{{ talent_calibration.future_talent.status }}">
+                            {% if ft_delta > 0 %}+{% endif %}{{ "%.1f"|format(ft_delta) }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge {{ talent_calibration.future_talent.status }}">
+                            {% if talent_calibration.future_talent.status == 'good' %}
+                                ✓ Within Range
+                            {% elif talent_calibration.future_talent.status == 'warning' %}
+                                ⚠ Slightly Off
+                            {% else %}
+                                ⚠️ Off Target
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Movement Readiness Breakdown -->
+    <h3 style="margin-bottom: 15px;">Movement Readiness Breakdown</h3>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
+        {% for item in talent_calibration.movement_data %}
+        <div class="stat-box" style="border-left-color: {% if loop.index == 1 %}#3498db{% elif loop.index == 2 %}#27ae60{% else %}#9b59b6{% endif %};">
+            <h4>{{ item.level }}</h4>
+            <div class="avg">{{ item.percentage }}%</div>
+            <div style="font-size: 14px; color: #666;">{{ item.count }} employees</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="calibration-chart-container" style="height: 200px;">
+        <canvas id="movementReadinessChart"></canvas>
+    </div>
+</div>
+{% endif %}
+
+<!-- 5. Period-over-Period Comparison -->
 <div class="card" id="periodComparisonCard">
     <h2>Period-over-Period Comparison</h2>
 
@@ -1146,6 +1272,151 @@ new Chart(calibrationCtx, {
                 text: 'Your Team Distribution vs. Suggested Range',
                 font: {
                     size: 16,
+                    weight: 'bold'
+                }
+            }
+        }
+    }
+});
+{% endif %}
+
+// Talent Calibration Charts
+{% if talent_calibration %}
+const talentCalibrationData = {{ talent_calibration | tojson }};
+
+// Talent Performance Distribution Chart
+const talentPerfCtx = document.getElementById('talentPerformanceChart').getContext('2d');
+new Chart(talentPerfCtx, {
+    type: 'bar',
+    data: {
+        labels: talentCalibrationData.performance_data.map(d => d.level),
+        datasets: [
+            {
+                label: 'Your Team',
+                data: talentCalibrationData.performance_data.map(d => d.percentage),
+                backgroundColor: talentCalibrationData.performance_data.map(d => {
+                    if (d.status === 'good') return 'rgba(39, 174, 96, 0.7)';
+                    if (d.status === 'warning') return 'rgba(255, 193, 7, 0.7)';
+                    return 'rgba(220, 53, 69, 0.7)';
+                }),
+                borderColor: talentCalibrationData.performance_data.map(d => {
+                    if (d.status === 'good') return '#27ae60';
+                    if (d.status === 'warning') return '#ffc107';
+                    return '#dc3545';
+                }),
+                borderWidth: 2
+            },
+            {
+                label: 'Suggested Min',
+                data: talentCalibrationData.performance_data.map(d => d.suggested_min),
+                backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                borderColor: '#667eea',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                type: 'line',
+                pointRadius: 0
+            },
+            {
+                label: 'Suggested Max',
+                data: talentCalibrationData.performance_data.map(d => d.suggested_max),
+                backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                borderColor: '#667eea',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                type: 'line',
+                pointRadius: 0,
+                fill: '-1'
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                    callback: function(value) {
+                        return value + '%';
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Percentage of Team'
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        if (context.dataset.label === 'Your Team') {
+                            const item = talentCalibrationData.performance_data[context.dataIndex];
+                            return `Your Team: ${item.percentage}% (${item.count} people)`;
+                        }
+                        return context.dataset.label + ': ' + context.parsed.y + '%';
+                    }
+                }
+            },
+            title: {
+                display: true,
+                text: 'Talent Performance Distribution vs. Suggested Range',
+                font: {
+                    size: 16,
+                    weight: 'bold'
+                }
+            }
+        }
+    }
+});
+
+// Movement Readiness Doughnut Chart
+const movementCtx = document.getElementById('movementReadinessChart').getContext('2d');
+new Chart(movementCtx, {
+    type: 'doughnut',
+    data: {
+        labels: talentCalibrationData.movement_data.map(d => d.level),
+        datasets: [{
+            data: talentCalibrationData.movement_data.map(d => d.count),
+            backgroundColor: [
+                'rgba(52, 152, 219, 0.7)',   // Continue growing - blue
+                'rgba(39, 174, 96, 0.7)',    // Ready for promotion - green
+                'rgba(155, 89, 182, 0.7)'    // Ready for lateral - purple
+            ],
+            borderColor: [
+                '#3498db',
+                '#27ae60',
+                '#9b59b6'
+            ],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'right'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const item = talentCalibrationData.movement_data[context.dataIndex];
+                        return `${item.level}: ${item.count} (${item.percentage}%)`;
+                    }
+                }
+            },
+            title: {
+                display: true,
+                text: 'Movement Readiness Distribution',
+                font: {
+                    size: 14,
                     weight: 'bold'
                 }
             }
