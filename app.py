@@ -950,6 +950,11 @@ def calibrate_employee():
             if field in data:
                 value = data.get(field)
                 if value:
+                    # Sanitize: strip whitespace and normalize unicode (NFKC handles
+                    # non-breaking spaces, fullwidth chars, compatibility forms)
+                    import unicodedata
+                    value = unicodedata.normalize('NFKC', value.strip())
+
                     # Case-insensitive validation with normalization to canonical casing
                     value_lower = value.lower()
                     matched_value = next(
