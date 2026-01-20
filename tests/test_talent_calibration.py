@@ -603,3 +603,106 @@ class TestCalibrateAPIValidation:
 
         assert response.status_code == 400
         data = response.get_json()
+        assert data['success'] is False
+        assert 'Invalid value' in data['error']
+
+
+class TestTenetsRoundTrip:
+    """Integration test for tenets export → re-import round-trip.
+
+    Tests that tenets embedded in the Proposed Actions field during export
+    are correctly parsed back when the file is re-imported.
+    """
+
+    def test_tenets_round_trip_export_import(self, client, db_session, tmp_path):
+        """Export talent file with tenets, re-import, verify tenets preserved."""
+        import json
+        import io
+        from openpyxl import load_workbook
+        from models import Employee
+
+        # Create employees with tenets
+        emp = Employee(
+            associate_id='RT001',
+            associate='Round Trip Test',
+            supervisory_organization='Engineering',
+            current_job_profile='Senior Engineer',
+            talent_perf_what='Meets Expectations',
+            talent_perf_how='Meets Expectations',
+            talent_growth_agility='Always/Most of the Time',
+            talent_change_agility='Sometimes',
+            talent_movement_readiness='Continue growing in current role',
+            talent_proposed_actions='Focus on technical leadership',
+            talent_tenets_strengths=json.dumps(['delete_more', 'campfire_cleaner']),
+            talent_tenets_improvements=json.dumps(['ship_to_learn']),
+        )
+        db_session.add(emp)
+        db_session.commit()
+
+        # Export talent data
+        response = client.get('/export/talent')
+        assert response.status_code == 200
+        assert 'spreadsheet' in response.content_type or 'excel' in response.content_type
+
+        # Save exported file
+        export_path = tmp_path / 'talent_export.xlsx'
+        with open(export_path, 'wb') as f:
+            f.write(response.data)
+
+        # Verify exported file has tenets embedded in Proposed Actions
+        wb = load_workbook(export_path)
+        ws = wb.active
+
+        # Find Proposed Talent Actions column
+        header_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))[0]
+        proposed_actions_idx = None
+        for idx, header in enumerate(header_row):
+            if header and 'Proposed' in str(header):
+                proposed_actions_idx = idx
+                break
+
+        assert proposed_actions_idx is not None, "Proposed Talent Actions column not found"
+
+        # Check data row
+        data_row = list(ws.iter_rows(min_row=2, max_row=2, values_only=True))[0]
+        proposed_actions_value = data_row[proposed_actions_idx]
+
+        # Verify tenets are embedded (format: [Strengths: ...] [Improvements: ...])
+        assert proposed_actions_value is not None
+        assert '[Strengths:' in proposed_actions_value
+        assert '[Improvements:' in proposed_actions_value
+        assert 'Focus on technical leadership' in proposed_actions_value
+
+        # Clear existing data
+        db_session.query(Employee).delete()
+        db_session.commit()
+
+        # Re-import the exported file
+        with open(export_path, 'rb') as f:
+            response = client.post(
+                '/api/import/current',
+                data={'file': (f, 'talent_export.xlsx')},
+                content_type='multipart/form-data'
+            )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+
+        # Verify tenets were parsed from Proposed Actions and restored
+        db_session.expire_all()
+        employee = db_session.query(Employee).filter_by(associate_id='RT001').first()
+        assert employee is not None
+
+        # Proposed actions should be clean (tenets stripped out)
+        assert employee.talent_proposed_actions == 'Focus on technical leadership'
+
+        # Tenets should be restored as JSON arrays
+        assert employee.talent_tenets_strengths is not None
+        strengths = json.loads(employee.talent_tenets_strengths)
+        assert 'delete_more' in strengths
+        assert 'campfire_cleaner' in strengths
+
+        assert employee.talent_tenets_improvements is not None
+        improvements = json.loads(employee.talent_tenets_improvements)
+        assert 'ship_to_learn' in improvements
