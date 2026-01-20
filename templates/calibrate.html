@@ -483,7 +483,8 @@
 
     <div class="calibration-form" id="calibration-view">
         {% for employee in team %}
-        {% set is_calibrated = employee.talent_perf_what or employee.talent_perf_how %}
+        {% set has_tenets = (employee.talent_tenets_strengths and employee.talent_tenets_strengths not in ['', '[]', 'null']) or (employee.talent_tenets_improvements and employee.talent_tenets_improvements not in ['', '[]', 'null']) %}
+        {% set is_calibrated = employee.talent_perf_what and employee.talent_perf_how and employee.talent_proposed_actions and has_tenets %}
         <div class="employee-card {% if is_calibrated %}calibrated{% endif %}"
              data-employee-id="{{ employee['Associate ID'] }}"
              data-is-calibrated="{{ 'true' if is_calibrated else 'false' }}">
@@ -677,6 +678,16 @@ function autoSaveCalibration(associateId, card) {
     );
 }
 
+// Check if an employee card is fully calibrated (What + How + Actions + Tenets)
+function isCardCalibrated(card, data) {
+    const hasWhat = data.talent_perf_what && data.talent_perf_what !== '';
+    const hasHow = data.talent_perf_how && data.talent_perf_how !== '';
+    const hasActions = data.talent_proposed_actions && data.talent_proposed_actions.trim() !== '';
+    const hasTenets = (data.talent_tenets_strengths && data.talent_tenets_strengths.length > 0) ||
+                      (data.talent_tenets_improvements && data.talent_tenets_improvements.length > 0);
+    return hasWhat && hasHow && hasActions && hasTenets;
+}
+
 // Collect calibration data from a card for saving
 function collectCalibrationData(associateId, card) {
     const data = { associate_id: associateId };
@@ -735,9 +746,15 @@ function saveCalibration(associateId, card, useKeepalive = false) {
                 updateFutureTalentDisplay(card, result.data.talent_identified_future);
             }
 
-            // Mark card as calibrated
-            card.classList.add('calibrated');
-            card.setAttribute('data-is-calibrated', 'true');
+            // Check if fully calibrated (What + How + Actions + Tenets)
+            const isCalibrated = isCardCalibrated(card, data);
+            if (isCalibrated) {
+                card.classList.add('calibrated');
+                card.setAttribute('data-is-calibrated', 'true');
+            } else {
+                card.classList.remove('calibrated');
+                card.setAttribute('data-is-calibrated', 'false');
+            }
 
             // Update progress bar
             updateProgressBar();

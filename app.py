@@ -73,6 +73,73 @@ CURRENCY_FORMATS = {
 # Legacy lookup for simple symbol access
 CURRENCY_SYMBOLS = {code: fmt['symbol'] for code, fmt in CURRENCY_FORMATS.items()}
 
+
+def _has_tenets(tenets_strengths, tenets_improvements):
+    """Check if employee has at least one tenet selected (strengths or improvements).
+
+    Tenets are stored as JSON arrays, so we check for non-empty, non-'[]' values.
+    """
+    def is_non_empty(val):
+        if not val:
+            return False
+        if isinstance(val, str):
+            return val not in ('', '[]', 'null')
+        if isinstance(val, list):
+            return len(val) > 0
+        return False
+
+    return is_non_empty(tenets_strengths) or is_non_empty(tenets_improvements)
+
+
+def is_employee_rated(emp):
+    """Check if an employee is fully rated for bonus cycle.
+
+    Required fields:
+    - performance_rating_percent: The rating value (0-200%)
+    - justification: Text explanation for the rating
+    - tenets: At least one strength OR improvement tenet selected
+    """
+    # Handle both dict (from to_dict()) and ORM object
+    if isinstance(emp, dict):
+        rating = emp.get('performance_rating_percent')
+        justification = emp.get('justification')
+        tenets_s = emp.get('tenets_strengths')
+        tenets_i = emp.get('tenets_improvements')
+    else:
+        rating = emp.performance_rating_percent
+        justification = emp.justification
+        tenets_s = emp.tenets_strengths
+        tenets_i = emp.tenets_improvements
+
+    return bool(rating) and bool(justification) and _has_tenets(tenets_s, tenets_i)
+
+
+def is_employee_calibrated(emp):
+    """Check if an employee is fully calibrated for talent cycle.
+
+    Required fields:
+    - talent_perf_what: Performance "What" assessment
+    - talent_perf_how: Performance "How" assessment
+    - talent_proposed_actions: Action plan text
+    - talent_tenets: At least one strength OR improvement tenet selected
+    """
+    # Handle both dict (from to_dict()) and ORM object
+    if isinstance(emp, dict):
+        what = emp.get('talent_perf_what')
+        how = emp.get('talent_perf_how')
+        actions = emp.get('talent_proposed_actions')
+        tenets_s = emp.get('talent_tenets_strengths')
+        tenets_i = emp.get('talent_tenets_improvements')
+    else:
+        what = emp.talent_perf_what
+        how = emp.talent_perf_how
+        actions = emp.talent_proposed_actions
+        tenets_s = emp.talent_tenets_strengths
+        tenets_i = emp.talent_tenets_improvements
+
+    return bool(what) and bool(how) and bool(actions) and _has_tenets(tenets_s, tenets_i)
+
+
 # Initialize database on startup
 init_db()
 
@@ -603,7 +670,7 @@ def index():
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     total_employees = len(team_data)
-    rated_employees = sum(1 for emp in team_data if emp.get('performance_rating_percent'))
+    rated_employees = sum(1 for emp in team_data if is_employee_rated(emp))
     unrated_employees = total_employees - rated_employees
 
     # Calculate average rating
@@ -640,8 +707,8 @@ def index():
                 'alignment': alignment,
             })
 
-    # Count calibrated employees (has talent_overall_perf)
-    calibrated_count = sum(1 for emp in team_data if emp.get('talent_overall_perf'))
+    # Count calibrated employees (What + How + Actions + Tenets)
+    calibrated_count = sum(1 for emp in team_data if is_employee_calibrated(emp))
 
     # Check for historical data if no current employees
     historical_info = None
@@ -808,11 +875,8 @@ def calibrate_page():
     # Apply filters
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
-    # Count calibrated employees (has talent_perf_what or talent_perf_how)
-    calibrated_count = sum(
-        1 for e in team_data
-        if e.get('talent_perf_what') or e.get('talent_perf_how')
-    )
+    # Count calibrated employees (What + How + Actions + Tenets)
+    calibrated_count = sum(1 for e in team_data if is_employee_calibrated(e))
 
     return render_template(
         'calibrate.html',

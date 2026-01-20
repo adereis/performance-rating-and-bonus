@@ -547,10 +547,11 @@
                 <tbody id="compact-table-body">
                     {% for employee in team %}
                     {% set has_tenets = (employee.tenets_strengths and employee.tenets_strengths != '[]') or (employee.tenets_improvements and employee.tenets_improvements != '[]') %}
-                    {% set is_incomplete = not employee.performance_rating_percent or not employee.justification or not has_tenets or not employee.mentor or not employee.mentees %}
-                    <tr class="{% if employee.performance_rating_percent %}has-rating{% endif %}"
+                    {% set is_rated = employee.performance_rating_percent and employee.justification and has_tenets %}
+                    {% set is_incomplete = employee.performance_rating_percent and not is_rated %}
+                    <tr class="{% if is_rated %}has-rating{% endif %}"
                         data-associate-id="{{ employee['Associate ID'] }}"
-                        data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}"
+                        data-is-rated="{{ 'true' if is_rated else 'false' }}"
                         data-is-incomplete="{{ 'true' if is_incomplete else 'false' }}"
                         data-name="{{ employee.Associate }}"
                         data-job="{{ employee['Current Job Profile'] }}"
@@ -584,10 +585,11 @@
     <div class="rating-form" id="detailed-view">
         {% for employee in team %}
         {% set has_tenets = (employee.tenets_strengths and employee.tenets_strengths != '[]') or (employee.tenets_improvements and employee.tenets_improvements != '[]') %}
-        {% set is_incomplete = not employee.performance_rating_percent or not employee.justification or not has_tenets or not employee.mentor or not employee.mentees %}
-        <div class="employee-card {% if employee.performance_rating_percent %}rated{% endif %}"
+        {% set is_rated = employee.performance_rating_percent and employee.justification and has_tenets %}
+        {% set is_incomplete = employee.performance_rating_percent and not is_rated %}
+        <div class="employee-card {% if is_rated %}rated{% endif %}"
              data-associate-id="{{ employee['Associate ID'] }}"
-             data-has-rating="{{ 'true' if employee.performance_rating_percent else 'false' }}"
+             data-is-rated="{{ 'true' if is_rated else 'false' }}"
              data-is-incomplete="{{ 'true' if is_incomplete else 'false' }}">
 
             <div class="employee-header">
@@ -773,10 +775,20 @@ function saveRating(associateId, card, useKeepalive = false) {
             indicator.classList.add('show');
             setTimeout(() => indicator.classList.remove('show'), 3000);
 
-            // Mark card as rated if rating provided
-            if (data.rating_percent) {
+            // Update rated/incomplete status based on required fields
+            const hasTenets = (data.tenets_strengths && data.tenets_strengths.length > 0) ||
+                              (data.tenets_improvements && data.tenets_improvements.length > 0);
+            const isRated = data.rating_percent && data.justification && hasTenets;
+            const isIncomplete = data.rating_percent && !isRated;
+
+            if (isRated) {
                 card.classList.add('rated');
-                card.setAttribute('data-has-rating', 'true');
+                card.setAttribute('data-is-rated', 'true');
+                card.setAttribute('data-is-incomplete', 'false');
+            } else {
+                card.classList.remove('rated');
+                card.setAttribute('data-is-rated', 'false');
+                card.setAttribute('data-is-incomplete', isIncomplete ? 'true' : 'false');
             }
         } else {
             // Only show errors for non-tenet validation issues
@@ -831,15 +843,15 @@ function filterEmployees(filter) {
 
     // Filter detailed view
     detailedCards.forEach(card => {
-        const hasRating = card.getAttribute('data-has-rating') === 'true';
+        const isRated = card.getAttribute('data-is-rated') === 'true';
         const isIncomplete = card.getAttribute('data-is-incomplete') === 'true';
 
         if (filter === 'all') {
             card.style.display = 'block';
         } else if (filter === 'unrated') {
-            card.style.display = hasRating ? 'none' : 'block';
+            card.style.display = isRated ? 'none' : 'block';
         } else if (filter === 'rated') {
-            card.style.display = hasRating ? 'block' : 'none';
+            card.style.display = isRated ? 'block' : 'none';
         } else if (filter === 'incomplete') {
             card.style.display = isIncomplete ? 'block' : 'none';
         }
@@ -847,15 +859,15 @@ function filterEmployees(filter) {
 
     // Filter compact view
     compactRows.forEach(row => {
-        const hasRating = row.getAttribute('data-has-rating') === 'true';
+        const isRated = row.getAttribute('data-is-rated') === 'true';
         const isIncomplete = row.getAttribute('data-is-incomplete') === 'true';
 
         if (filter === 'all') {
             row.style.display = '';
         } else if (filter === 'unrated') {
-            row.style.display = hasRating ? 'none' : '';
+            row.style.display = isRated ? 'none' : '';
         } else if (filter === 'rated') {
-            row.style.display = hasRating ? '' : 'none';
+            row.style.display = isRated ? '' : 'none';
         } else if (filter === 'incomplete') {
             row.style.display = isIncomplete ? '' : 'none';
         }
@@ -923,11 +935,16 @@ function saveCompactRating(associateId, input, useKeepalive = false) {
             indicator.classList.add('show');
             setTimeout(() => indicator.classList.remove('show'), 3000);
 
-            // Update row styling
+            // Update row styling - compact view only has rating, so we can only mark as incomplete
+            // Full "rated" status requires justification + tenets from detailed view
             const row = input.closest('tr');
             if (ratingValue) {
-                row.classList.add('has-rating');
-                row.setAttribute('data-has-rating', 'true');
+                // Has rating but may be incomplete - set incomplete until other fields are filled
+                row.setAttribute('data-is-incomplete', 'true');
+            } else {
+                row.classList.remove('has-rating');
+                row.setAttribute('data-is-rated', 'false');
+                row.setAttribute('data-is-incomplete', 'false');
             }
         } else {
             const errorSpan = input.nextElementSibling;
