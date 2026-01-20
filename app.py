@@ -625,6 +625,9 @@ def index():
         alignment = get_cross_cycle_alignment(bonus_pct, talent_overall)
         alignment_stats[alignment] += 1
 
+        # Add alignment to employee for display in Team Overview table
+        emp['alignment'] = alignment
+
         # Only include employees with some data for the alignment table
         if bonus_pct is not None or talent_overall is not None:
             alignment_data.append({
