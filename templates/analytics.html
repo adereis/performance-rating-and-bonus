@@ -1420,14 +1420,20 @@ function toggleCard(headerElement) {
     }
 }
 
-// Restore collapsed card states on page load
+// Start all cards collapsed by default, restore any explicitly expanded cards
 document.addEventListener('DOMContentLoaded', function() {
+    // Collapse all cards first
+    document.querySelectorAll('.card[data-card-id]').forEach(card => {
+        card.classList.add('collapsed');
+    });
+
+    // Restore any cards that were explicitly expanded by user
     const collapsedCards = JSON.parse(localStorage.getItem('analytics_collapsed_cards') || '{}');
     Object.keys(collapsedCards).forEach(cardId => {
-        if (collapsedCards[cardId]) {
+        if (collapsedCards[cardId] === false) {
             const card = document.querySelector(`[data-card-id="${cardId}"]`);
             if (card) {
-                card.classList.add('collapsed');
+                card.classList.remove('collapsed');
             }
         }
     });
