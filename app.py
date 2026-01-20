@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from flask import Flask, render_template, request, jsonify, send_file, make_response
+from flask import Flask, render_template, request, jsonify, send_file, make_response, Response
 import os
 import sys
 import logging
@@ -1920,7 +1920,7 @@ def bonus_calculation():
 
 @app.route('/export')
 def export_page():
-    """Export page for Workday bonus allocation."""
+    """Export page for Workday bonus and talent data."""
     # Get filter params from URL
     filter_params = get_filter_params()
 
@@ -1930,13 +1930,25 @@ def export_page():
     # Apply filters
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
-    # Filter to rated employees only
+    # Detect which data types are available
     rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
+    calibrated_employees = [emp for emp in team_data if emp.get('talent_overall_perf')]
 
-    if not rated_employees:
+    has_bonus_data = len(rated_employees) > 0
+    has_talent_data = len(calibrated_employees) > 0
+
+    # Determine default mode: prefer bonus if available, else talent
+    export_mode = request.args.get('mode', 'bonus' if has_bonus_data else 'talent')
+
+    # If no data at all, show empty state
+    if not has_bonus_data and not has_talent_data:
         return render_template('export.html',
                              export_data=[],
+                             talent_export_data=[],
                              has_data=False,
+                             has_bonus_data=False,
+                             has_talent_data=False,
+                             export_mode='bonus',
                              filter_info=filter_info)
 
     # Get bonus calculation settings
@@ -2023,10 +2035,57 @@ def export_page():
     # Sort by employee name
     export_data.sort(key=lambda x: x['employee']['Associate'])
 
+    # Build talent export data
+    talent_export_data = []
+    for emp in calibrated_employees:
+        # Parse talent tenets
+        talent_strengths = []
+        talent_improvements = []
+        try:
+            if emp.get('talent_tenets_strengths'):
+                strength_ids = json.loads(emp['talent_tenets_strengths']) if isinstance(emp['talent_tenets_strengths'], str) else emp['talent_tenets_strengths']
+                talent_strengths = [tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map]
+            if emp.get('talent_tenets_improvements'):
+                improvement_ids = json.loads(emp['talent_tenets_improvements']) if isinstance(emp['talent_tenets_improvements'], str) else emp['talent_tenets_improvements']
+                talent_improvements = [tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map]
+        except Exception as e:
+            print(f"Error parsing talent tenets for {emp.get('Associate')}: {e}")
+
+        # Build proposed actions text (includes embedded tenets for Workday)
+        proposed_actions_parts = []
+        if emp.get('talent_proposed_actions'):
+            proposed_actions_parts.append(emp['talent_proposed_actions'])
+        if talent_strengths:
+            proposed_actions_parts.append(f"[Strengths: {', '.join(talent_strengths)}]")
+        if talent_improvements:
+            proposed_actions_parts.append(f"[Improvements: {', '.join(talent_improvements)}]")
+        proposed_actions_text = ' '.join(proposed_actions_parts)
+
+        talent_export_data.append({
+            'employee': emp,
+            'overall_perf': emp.get('talent_overall_perf', ''),
+            'perf_what': emp.get('talent_perf_what', ''),
+            'perf_how': emp.get('talent_perf_how', ''),
+            'growth_agility': emp.get('talent_growth_agility', ''),
+            'change_agility': emp.get('talent_change_agility', ''),
+            'identified_future': emp.get('talent_identified_future', False),
+            'movement_readiness': emp.get('talent_movement_readiness', ''),
+            'proposed_actions': proposed_actions_text,
+            'promo_job_profile': emp.get('talent_promo_job_profile', ''),
+        })
+
+    # Sort talent export data by employee name
+    talent_export_data.sort(key=lambda x: x['employee']['Associate'])
+
     return render_template('export.html',
                          export_data=export_data,
+                         talent_export_data=talent_export_data,
                          has_data=True,
+                         has_bonus_data=has_bonus_data,
+                         has_talent_data=has_talent_data,
+                         export_mode=export_mode,
                          total_employees=len(export_data),
+                         total_calibrated=len(talent_export_data),
                          filter_info=filter_info)
 
 
@@ -2482,6 +2541,111 @@ def export_talent_xlsx():
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         as_attachment=True,
         download_name='talent_calibration_export.xlsx'
+    )
+
+
+@app.route('/export/talent/csv')
+def export_talent_csv():
+    """Export talent calibration data as CSV."""
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
+
+    # Load tenets for name lookup
+    _, tenets_map = load_tenets_config()
+
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Add demo mode warning header if in demo mode
+    if DEMO_MODE:
+        writer.writerow(['*** DEMO MODE - FICTITIOUS DATA ONLY ***'])
+        writer.writerow(['This export contains sample data for demonstration purposes.'])
+        writer.writerow(['Do NOT use this data for any real business decisions.'])
+        writer.writerow([])
+
+    # Write header (matching Workday talent calibration format)
+    writer.writerow([
+        'Associate ID',
+        'Worker',
+        'Supervisory Organization',
+        'Current Job Profile',
+        'Performance: What',
+        'Performance: How',
+        'Overall Performance',
+        'Future Talent: Growth Agility',
+        'Future Talent: Change Agility',
+        'Identified Future Talent',
+        'Movement Readiness',
+        'Proposed Talent Actions',
+    ])
+
+    # Write data rows
+    for employee in team_data:
+        # Build Proposed Actions with embedded tenets
+        proposed_actions = employee.get('talent_proposed_actions') or ''
+
+        # Parse and format tenets
+        strengths_text = ''
+        improvements_text = ''
+
+        try:
+            if employee.get('talent_tenets_strengths'):
+                strength_ids = json.loads(employee['talent_tenets_strengths']) if isinstance(employee['talent_tenets_strengths'], str) else employee['talent_tenets_strengths']
+                strengths = [tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map]
+                if strengths:
+                    strengths_text = '; '.join(strengths)
+
+            if employee.get('talent_tenets_improvements'):
+                improvement_ids = json.loads(employee['talent_tenets_improvements']) if isinstance(employee['talent_tenets_improvements'], str) else employee['talent_tenets_improvements']
+                improvements = [tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map]
+                if improvements:
+                    improvements_text = '; '.join(improvements)
+        except Exception as e:
+            print(f"Error parsing talent tenets: {e}")
+
+        # Embed tenets in Proposed Actions
+        tenet_markers = []
+        if strengths_text:
+            tenet_markers.append(f"[Strengths: {strengths_text}]")
+        if improvements_text:
+            tenet_markers.append(f"[Improvements: {improvements_text}]")
+
+        if tenet_markers:
+            if proposed_actions:
+                proposed_actions = proposed_actions.rstrip() + ' ' + ' '.join(tenet_markers)
+            else:
+                proposed_actions = ' '.join(tenet_markers)
+
+        writer.writerow([
+            employee.get('Associate ID', ''),
+            employee.get('Associate', ''),
+            employee.get('Supervisory Organization', ''),
+            employee.get('Current Job Profile', ''),
+            employee.get('talent_perf_what', ''),
+            employee.get('talent_perf_how', ''),
+            employee.get('talent_overall_perf', ''),
+            employee.get('talent_growth_agility', ''),
+            employee.get('talent_change_agility', ''),
+            'Yes' if employee.get('talent_identified_future') else 'No' if employee.get('talent_identified_future') is False else '',
+            employee.get('talent_movement_readiness', ''),
+            proposed_actions,
+        ])
+
+    output.seek(0)
+
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': 'attachment; filename=talent_calibration_export.csv'
+        }
     )
 
 
