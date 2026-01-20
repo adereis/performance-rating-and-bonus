@@ -1516,6 +1516,49 @@ def analytics():
                 'stats': team_stats['overall']
             })
 
+    # Mentorship analysis - identify patterns worth reviewing
+    senior_keywords = ['senior', 'staff', 'principal', 'lead', 'director', 'manager', 'head', 'vp']
+    junior_keywords = ['associate', 'junior', 'intern', 'trainee', 'graduate', 'entry']
+
+    mentorship_analysis = {
+        'seniors_without_mentees': [],   # Senior roles not mentoring anyone
+        'heavy_mentoring_load': [],      # Anyone with 4+ mentees
+        'unmentored_juniors': []         # Junior roles without a mentor
+    }
+
+    for emp in team_data:
+        job_profile = (emp.get('Current Job Profile') or '').lower()
+        mentees_str = emp.get('mentees') or ''
+        mentor_str = emp.get('mentor') or ''
+        mentee_names = [m.strip() for m in mentees_str.split(',') if m.strip()]
+        mentee_count = len(mentee_names)
+        has_mentees = mentee_count > 0
+        has_mentor = bool(mentor_str.strip())
+
+        emp_info = {
+            'name': emp.get('Associate', 'Unknown'),
+            'id': emp.get('Associate ID', ''),
+            'job': emp.get('Current Job Profile', ''),
+            'mentee_count': mentee_count,
+            'has_mentor': has_mentor
+        }
+
+        # Seniors without mentees
+        is_senior = any(kw in job_profile for kw in senior_keywords)
+        if is_senior and not has_mentees:
+            mentorship_analysis['seniors_without_mentees'].append(emp_info)
+
+        # Heavy mentoring load (4+ mentees)
+        if mentee_count >= 4:
+            mentorship_analysis['heavy_mentoring_load'].append(emp_info)
+
+        # Unmentored juniors
+        is_junior = any(kw in job_profile for kw in junior_keywords)
+        if is_junior and not has_mentor:
+            mentorship_analysis['unmentored_juniors'].append(emp_info)
+
+    total_mentorship_flags = sum(len(v) for v in mentorship_analysis.values())
+
     # Calculate talent calibration distributions (Spec §7.3)
     talent_calibration = None
     employees_with_talent = [emp for emp in team_data if emp.get('talent_overall_perf')]
@@ -1626,6 +1669,34 @@ def analytics():
                 'percentage': pct
             })
 
+        # 9-Box Talent Matrix: Performance (X) vs Future Talent (Y)
+        # Rows: Future Talent Yes (top), Future Talent No (bottom)
+        # Columns: Low, Evolving, Successful, High Impact (left to right)
+        perf_levels = ['Low Performer', 'Evolving Performer', 'Successful Performer', 'High Impact Performer']
+        talent_matrix = {
+            'future_talent_yes': {level: [] for level in perf_levels},
+            'future_talent_no': {level: [] for level in perf_levels}
+        }
+
+        for emp in employees_with_talent:
+            perf = emp.get('talent_overall_perf')
+            is_future = emp.get('talent_identified_future', False)
+
+            if perf in perf_levels:
+                row_key = 'future_talent_yes' if is_future else 'future_talent_no'
+                talent_matrix[row_key][perf].append({
+                    'name': emp.get('Associate', 'Unknown'),
+                    'id': emp.get('Associate ID', ''),
+                    'job': emp.get('Current Job Profile', '')
+                })
+
+        # Convert to counts for chart rendering
+        talent_matrix_counts = {
+            'future_talent_yes': [len(talent_matrix['future_talent_yes'][level]) for level in perf_levels],
+            'future_talent_no': [len(talent_matrix['future_talent_no'][level]) for level in perf_levels],
+            'labels': ['Low', 'Evolving', 'Successful', 'High Impact']
+        }
+
         talent_calibration = {
             'total': total_talent,
             'performance_data': talent_calibration_data,
@@ -1636,8 +1707,70 @@ def analytics():
                 'suggested_max': ft_max,
                 'status': ft_status
             },
-            'movement_data': movement_data
+            'movement_data': movement_data,
+            'talent_matrix': talent_matrix_counts
         }
+
+    # Detect potential inconsistencies between bonus ratings and talent data
+    inconsistencies = {
+        'high_bonus_low_talent': [],    # Rating >90% but Low/Evolving talent
+        'low_bonus_high_talent': [],    # Rating <90% but High Impact talent
+        'future_talent_low_bonus': [],  # Future Talent but rating <90%
+        'promotion_ready_low_rating': [],  # Ready Now but rating <100%
+        'promotion_ready_not_high': [],   # Ready Now but not High Impact (talent measured in current role)
+        'high_performer_not_future': [],  # High Impact but not Future Talent
+        'bonus_only': [],               # Has bonus rating but no talent data
+        'talent_only': []               # Has talent data but no bonus rating
+    }
+
+    for emp in team_data:
+        rating = emp.get('performance_rating_percent')
+        talent_perf = emp.get('talent_overall_perf')
+        is_future = emp.get('talent_identified_future', False)
+        movement = emp.get('talent_movement_readiness') or ''
+
+        emp_info = {
+            'name': emp.get('Associate', 'Unknown'),
+            'id': emp.get('Associate ID', ''),
+            'job': emp.get('Current Job Profile', ''),
+            'rating': rating,
+            'talent': talent_perf,
+            'is_future': is_future,
+            'movement': movement
+        }
+
+        # High Bonus + Low Talent (rating >90% but Low/Evolving)
+        if rating and rating > 90 and talent_perf in ['Low Performer', 'Evolving Performer']:
+            inconsistencies['high_bonus_low_talent'].append(emp_info)
+
+        # Low Bonus + High Talent (rating <90% but High Impact)
+        if rating and rating < 90 and talent_perf == 'High Impact Performer':
+            inconsistencies['low_bonus_high_talent'].append(emp_info)
+
+        # Future Talent + Low Bonus (rating <90%)
+        if is_future and rating and rating < 90:
+            inconsistencies['future_talent_low_bonus'].append(emp_info)
+
+        # Ready for Promotion + Low Rating (<100%)
+        if 'Ready Now' in movement and rating and rating < 100:
+            inconsistencies['promotion_ready_low_rating'].append(emp_info)
+
+        # Ready for Promotion + Not High Performer (talent measured in current role)
+        if 'Ready Now' in movement and talent_perf and talent_perf != 'High Impact Performer':
+            inconsistencies['promotion_ready_not_high'].append(emp_info)
+
+        # High Performer + Not Future Talent
+        if talent_perf == 'High Impact Performer' and not is_future:
+            inconsistencies['high_performer_not_future'].append(emp_info)
+
+        # Data completeness checks
+        if rating and not talent_perf:
+            inconsistencies['bonus_only'].append(emp_info)
+        elif talent_perf and not rating:
+            inconsistencies['talent_only'].append(emp_info)
+
+    # Calculate total count
+    total_inconsistencies = sum(len(v) for v in inconsistencies.values())
 
     return render_template('analytics.html',
                          team=sorted_team,
@@ -1655,7 +1788,11 @@ def analytics():
                          team_comparisons=team_comparisons,
                          mentorship_stats=mentorship_stats,
                          team_mentorship_stats=team_mentorship_stats,
+                         mentorship_analysis=mentorship_analysis,
+                         total_mentorship_flags=total_mentorship_flags,
                          talent_calibration=talent_calibration,
+                         inconsistencies=inconsistencies,
+                         total_inconsistencies=total_inconsistencies,
                          filter_info=filter_info)
 
 

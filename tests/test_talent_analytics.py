@@ -65,12 +65,15 @@ class TestTalentAnalyticsDistribution:
     """Test talent distribution calculations in analytics."""
 
     def test_analytics_with_talent_data(self, client, employees_with_talent):
-        """Analytics page includes talent calibration section when data exists."""
+        """Analytics page includes talent calibration tab when data exists."""
         response = client.get('/analytics')
         assert response.status_code == 200
 
         html = response.data.decode('utf-8')
-        assert 'Talent Calibration Distribution' in html
+        # Check for the combined Calibration Guide card with Talent tab
+        assert 'Calibration Guide' in html
+        assert 'Talent Calibration' in html
+        assert 'talent-calibration-content' in html
 
     def test_talent_performance_levels_displayed(self, client, employees_with_talent):
         """Test that performance level names are displayed."""
@@ -129,6 +132,19 @@ class TestTalentAnalyticsCharts:
         assert 'talentCalibrationData' in html
         assert 'performance_data' in html
         assert 'movement_data' in html
+
+    def test_talent_matrix_chart_present(self, client, employees_with_talent):
+        """Test that 9-box talent matrix chart is present."""
+        response = client.get('/analytics')
+        html = response.data.decode('utf-8')
+
+        # Check for talent matrix chart canvas and title
+        assert 'talentMatrixChart' in html
+        assert 'Talent Matrix' in html
+        # Check for matrix data in JSON
+        assert 'talent_matrix' in html
+        assert 'future_talent_yes' in html
+        assert 'future_talent_no' in html
 
 
 class TestTalentAnalyticsSuggestedRanges:

@@ -192,6 +192,81 @@
     }
 
     /* Tab styles */
+    /* Primary calibration tabs (Bonus vs Talent) */
+    .primary-tabs {
+        display: flex;
+        gap: 0;
+        margin-bottom: 20px;
+    }
+
+    .primary-tab {
+        flex: 1;
+        padding: 16px 24px;
+        background: #f8f9fa;
+        border: 2px solid #e0e0e0;
+        border-bottom: none;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        color: #666;
+        transition: all 0.2s;
+        text-align: center;
+    }
+
+    .primary-tab:first-child {
+        border-radius: 8px 0 0 0;
+    }
+
+    .primary-tab:last-child {
+        border-radius: 0 8px 0 0;
+        border-left: none;
+    }
+
+    .primary-tab:hover:not(.active):not(.disabled) {
+        background: #e8e9ea;
+        color: #333;
+    }
+
+    .primary-tab.active {
+        background: white;
+        color: #667eea;
+        border-color: #667eea;
+        border-bottom: 2px solid white;
+        margin-bottom: -2px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .primary-tab.disabled {
+        color: #ccc;
+        cursor: not-allowed;
+        background: #f0f0f0;
+    }
+
+    .primary-tab-count {
+        font-size: 12px;
+        color: #999;
+        margin-left: 5px;
+    }
+
+    .primary-tab.active .primary-tab-count {
+        color: #667eea;
+    }
+
+    .primary-tab-content {
+        display: none;
+        border: 2px solid #667eea;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        padding: 20px;
+        background: white;
+    }
+
+    .primary-tab-content.active {
+        display: block;
+    }
+
+    /* Sub-tabs (for multi-team views within bonus) */
     .tabs {
         display: flex;
         gap: 5px;
@@ -370,6 +445,12 @@
             <h3>Average by Job Profile</h3>
             <canvas id="jobChart"></canvas>
         </div>
+        {% if talent_calibration and talent_calibration.talent_matrix %}
+        <div class="chart-container">
+            <h3>Talent Matrix (Performance × Potential)</h3>
+            <canvas id="talentMatrixChart"></canvas>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -524,12 +605,82 @@
 </div>
 {% endif %}
 
-<!-- 4. Distribution Calibration Guide -->
-{% if total_rated > 0 %}
+<!-- 3b. Mentorship Analysis -->
+{% if total_mentorship_flags > 0 %}
 <div class="card">
-    <h2>Distribution Calibration Guide</h2>
+    <h2>🔍 Mentorship Analysis <span style="font-size: 14px; font-weight: normal; color: #666;">({{ total_mentorship_flags }} items to review)</span></h2>
 
-    <!-- Tab Navigation (only if multi-team) -->
+    <div class="calibration-disclaimer">
+        <h4>ℹ️ Mentorship patterns worth reviewing</h4>
+        <p>
+            These are potential mentorship gaps or imbalances. <strong>Each case may be intentional</strong> — use this to ensure mentorship is distributed appropriately.
+        </p>
+    </div>
+
+    <div style="display: grid; gap: 20px;">
+
+        {% if mentorship_analysis.seniors_without_mentees %}
+        <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #faf5ff; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #8e44ad;">🟣 Senior Roles Without Mentees ({{ mentorship_analysis.seniors_without_mentees | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Senior/Staff/Lead/Director roles not currently mentoring anyone</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in mentorship_analysis.seniors_without_mentees %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }})</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if mentorship_analysis.heavy_mentoring_load %}
+        <div class="inconsistency-section" style="border-left: 4px solid #e67e22; padding-left: 15px; background: #fff8f0; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #d35400;">🟠 Heavy Mentoring Load ({{ mentorship_analysis.heavy_mentoring_load | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Employees mentoring 4 or more people — consider redistributing</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in mentorship_analysis.heavy_mentoring_load %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): {{ emp.mentee_count }} mentees</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if mentorship_analysis.unmentored_juniors %}
+        <div class="inconsistency-section" style="border-left: 4px solid #3498db; padding-left: 15px; background: #f0f7ff; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #2980b9;">🔵 Junior Roles Without Mentors ({{ mentorship_analysis.unmentored_juniors | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Junior/Associate/Entry-level employees who don't have a mentor assigned</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in mentorship_analysis.unmentored_juniors %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }})</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endif %}
+
+<!-- 4. Calibration Guide (Bonus + Talent tabs) -->
+{% if total_rated > 0 or talent_calibration %}
+<div class="card">
+    <h2>Calibration Guide</h2>
+
+    <!-- Primary Tabs: Bonus vs Talent -->
+    <div class="primary-tabs">
+        <button class="primary-tab {% if total_rated > 0 %}active{% else %}disabled{% endif %}" data-primary-tab="bonus-calibration-content" {% if total_rated == 0 %}disabled{% endif %}>
+            📊 Bonus Calibration
+            {% if total_rated > 0 %}<span class="primary-tab-count">({{ total_rated }})</span>{% endif %}
+        </button>
+        <button class="primary-tab {% if not total_rated > 0 and talent_calibration %}active{% elif not talent_calibration %}disabled{% endif %}" data-primary-tab="talent-calibration-content" {% if not talent_calibration %}disabled{% endif %}>
+            🎯 Talent Calibration
+            {% if talent_calibration %}<span class="primary-tab-count">({{ talent_calibration.total }})</span>{% endif %}
+        </button>
+    </div>
+
+    <!-- Bonus Calibration Content -->
+    <div class="primary-tab-content {% if total_rated > 0 %}active{% endif %}" id="bonus-calibration-content">
+    {% if total_rated > 0 %}
+
+    <!-- Sub-Tab Navigation (only if multi-team) -->
     {% if is_multi_team %}
     <div class="tabs" style="margin-bottom: 20px;">
         <button class="tab-button active" data-tab="org-calibration">Organization Overview</button>
@@ -826,13 +977,13 @@
     {% endif %}
     <!-- End Tab 3: Team Comparison Matrix -->
 
-</div>
-{% endif %}
+    {% endif %}
+    </div>
+    <!-- End Bonus Calibration Content -->
 
-<!-- 4a. Talent Calibration Distribution -->
-{% if talent_calibration %}
-<div class="card">
-    <h2>Talent Calibration Distribution</h2>
+    <!-- Talent Calibration Content -->
+    <div class="primary-tab-content {% if not total_rated > 0 and talent_calibration %}active{% endif %}" id="talent-calibration-content">
+    {% if talent_calibration %}
 
     <div class="calibration-disclaimer">
         <h4>ℹ️ Talent assessment guidance</h4>
@@ -951,6 +1102,126 @@
 
     <div class="calibration-chart-container" style="height: 200px;">
         <canvas id="movementReadinessChart"></canvas>
+    </div>
+
+    {% endif %}
+    </div>
+    <!-- End Talent Calibration Content -->
+
+</div>
+{% endif %}
+
+<!-- 4b. Potential Inconsistencies -->
+{% if total_inconsistencies > 0 %}
+<div class="card">
+    <h2>⚠️ Potential Inconsistencies <span style="font-size: 14px; font-weight: normal; color: #666;">({{ total_inconsistencies }} found)</span></h2>
+
+    <div class="calibration-disclaimer">
+        <h4>ℹ️ Review recommended, not necessarily errors</h4>
+        <p>
+            These are potential mismatches between bonus ratings and talent calibration data.
+            <strong>Each case may have a valid explanation</strong> — use this as a checklist to ensure intentional decisions.
+        </p>
+    </div>
+
+    <div style="display: grid; gap: 20px;">
+
+        <!-- Critical: Rating vs Talent Mismatches -->
+        {% if inconsistencies.high_bonus_low_talent %}
+        <div class="inconsistency-section" style="border-left: 4px solid #e74c3c; padding-left: 15px; background: #fdf2f2; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #c0392b;">🔴 Above-Target Bonus + Low Talent Rating ({{ inconsistencies.high_bonus_low_talent | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Bonus rating &gt;90% but talent assessment is Low or Evolving Performer</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.high_bonus_low_talent %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}% / {{ emp.talent }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if inconsistencies.low_bonus_high_talent %}
+        <div class="inconsistency-section" style="border-left: 4px solid #e74c3c; padding-left: 15px; background: #fdf2f2; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #c0392b;">🔴 Low Bonus + High Impact Performer ({{ inconsistencies.low_bonus_high_talent | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Bonus rating &lt;90% but talent assessment is High Impact Performer</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.low_bonus_high_talent %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}% / {{ emp.talent }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if inconsistencies.future_talent_low_bonus %}
+        <div class="inconsistency-section" style="border-left: 4px solid #f39c12; padding-left: 15px; background: #fffbf0; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #d68910;">🟡 Future Talent + Low Bonus ({{ inconsistencies.future_talent_low_bonus | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Identified as Future Talent but bonus rating &lt;90%</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.future_talent_low_bonus %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}%</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if inconsistencies.promotion_ready_low_rating %}
+        <div class="inconsistency-section" style="border-left: 4px solid #f39c12; padding-left: 15px; background: #fffbf0; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #d68910;">🟡 Promotion Ready + Below-Target Bonus ({{ inconsistencies.promotion_ready_low_rating | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Movement readiness is "Ready Now" but bonus rating &lt;100%</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.promotion_ready_low_rating %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}%</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if inconsistencies.promotion_ready_not_high %}
+        <div class="inconsistency-section" style="border-left: 4px solid #f39c12; padding-left: 15px; background: #fffbf0; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #d68910;">🟡 Promotion Ready + Not High Impact ({{ inconsistencies.promotion_ready_not_high | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Movement readiness is "Ready Now" but talent (measured in current role) is not High Impact</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.promotion_ready_not_high %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): {{ emp.talent }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if inconsistencies.high_performer_not_future %}
+        <div class="inconsistency-section" style="border-left: 4px solid #3498db; padding-left: 15px; background: #f0f7ff; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #2980b9;">🔵 High Impact Performer Not Flagged as Future Talent ({{ inconsistencies.high_performer_not_future | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Talent assessment is High Impact but not identified as Future Talent</p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.high_performer_not_future %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }})</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Data Completeness -->
+        {% if inconsistencies.bonus_only or inconsistencies.talent_only %}
+        <div class="inconsistency-section" style="border-left: 4px solid #95a5a6; padding-left: 15px; background: #f8f9fa; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #7f8c8d;">⚪ Incomplete Data</h4>
+            {% if inconsistencies.bonus_only %}
+            <div style="margin-bottom: 10px;">
+                <strong>Bonus rating only, no talent data ({{ inconsistencies.bonus_only | length }}):</strong>
+                <span style="font-size: 13px; color: #666;">
+                    {% for emp in inconsistencies.bonus_only %}{{ emp.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                </span>
+            </div>
+            {% endif %}
+            {% if inconsistencies.talent_only %}
+            <div>
+                <strong>Talent data only, no bonus rating ({{ inconsistencies.talent_only | length }}):</strong>
+                <span style="font-size: 13px; color: #666;">
+                    {% for emp in inconsistencies.talent_only %}{{ emp.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
     </div>
 </div>
 {% endif %}
@@ -1172,6 +1443,71 @@ new Chart(jobCtx, {
         }
     }
 });
+
+// Talent Matrix Chart (Performance × Potential 9-Box style)
+{% if talent_calibration and talent_calibration.talent_matrix %}
+const talentMatrix = {{ talent_calibration.talent_matrix | tojson }};
+const talentMatrixCtx = document.getElementById('talentMatrixChart').getContext('2d');
+new Chart(talentMatrixCtx, {
+    type: 'bar',
+    data: {
+        labels: talentMatrix.labels,
+        datasets: [
+            {
+                label: '⭐ Future Talent (High Potential)',
+                data: talentMatrix.future_talent_yes,
+                backgroundColor: '#667eea',
+                borderColor: '#5a67d8',
+                borderWidth: 1
+            },
+            {
+                label: 'Not Yet Identified',
+                data: talentMatrix.future_talent_no,
+                backgroundColor: '#a0aec0',
+                borderColor: '#718096',
+                borderWidth: 1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+            x: {
+                stacked: true,
+                title: {
+                    display: true,
+                    text: 'Performance Level',
+                    font: { weight: 'bold' }
+                }
+            },
+            y: {
+                stacked: true,
+                beginAtZero: true,
+                ticks: { stepSize: 1 },
+                title: {
+                    display: true,
+                    text: 'Number of Employees',
+                    font: { weight: 'bold' }
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.dataset.label + ': ' + context.parsed.y + ' employees';
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
 
 // Calibration Chart - Overlay comparison
 {% if total_rated > 0 %}
@@ -1646,7 +1982,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set initial sort indicator
     document.querySelector('th[data-sort="rating"]').classList.add('desc');
 
-    // Tab switching for multi-team calibration views
+    // Primary tab switching (Bonus vs Talent calibration)
+    const primaryTabButtons = document.querySelectorAll('.primary-tab:not(.disabled)');
+    primaryTabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetTab = this.getAttribute('data-primary-tab');
+
+            // Remove active class from all primary buttons and content
+            document.querySelectorAll('.primary-tab').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.primary-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Add active class to clicked button and corresponding content
+            this.classList.add('active');
+            const targetContent = document.getElementById(targetTab);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+
+    // Sub-tab switching for multi-team calibration views
     {% if is_multi_team %}
     const tabButtons = document.querySelectorAll('.tab-button');
     tabButtons.forEach(button => {
