@@ -1178,12 +1178,16 @@ function resetDemoForm() {
         if (data.import_detection) {
             const detection = data.import_detection;
 
-            // Show detected period
+            // Show detected period or file type
             document.getElementById('periodValue').textContent = detection.period_display || 'Unknown';
 
             // Show suggestion message
             const suggestionDiv = document.getElementById('periodSuggestion');
-            if (detection.is_current_period) {
+            if (detection.is_talent_file) {
+                // Talent calibration files always import as current
+                suggestionDiv.className = 'period-suggestion current-period';
+                suggestionDiv.textContent = 'Talent calibration file detected. Will import/update current employee talent data.';
+            } else if (detection.is_current_period) {
                 suggestionDiv.className = 'period-suggestion current-period';
                 suggestionDiv.textContent = `This is the current period (${detection.current_period}). Suggested: Import as current roster.`;
             } else {
@@ -1196,12 +1200,14 @@ function resetDemoForm() {
             document.querySelector(`input[name="importType"][value="${suggestedType}"]`).checked = true;
             updateImportTypeUI(suggestedType);
 
-            // Auto-populate period fields from metadata
-            if (detection.period_id) {
-                document.getElementById('periodId').value = detection.period_id;
-            }
-            if (detection.period_display) {
-                document.getElementById('periodName').value = detection.period_display;
+            // Auto-populate period fields from metadata (only for bonus files)
+            if (!detection.is_talent_file) {
+                if (detection.period_id) {
+                    document.getElementById('periodId').value = detection.period_id;
+                }
+                if (detection.period_display && detection.period_display !== 'Unknown') {
+                    document.getElementById('periodName').value = detection.period_display;
+                }
             }
         }
 

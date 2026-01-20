@@ -459,28 +459,38 @@ def has_direct_reports(employee, all_employees):
     """
     Check if an employee has direct reports (is a manager).
 
-    A manager is someone whose name appears in other employees'
-    "Supervisory Organization" field.
+    Detection methods (OR logic):
+    1. Supervisory org lookup: employee's name appears in other employees'
+       "Supervisory Organization" field (works for bonus files)
+    2. Management level: employee's management_level contains "Manager"
+       or "Director" (works for talent calibration files)
 
     Args:
         employee: Employee dict to check
         all_employees: List of all employee dicts
 
     Returns:
-        bool: True if employee has direct reports
+        bool: True if employee has direct reports/is a manager
     """
-    employee_name = employee.get('Associate', '')
-    if not employee_name:
-        return False
-
-    # Check if this employee's name appears in any other employee's supervisory org
-    for other_emp in all_employees:
-        if other_emp.get('Associate ID') == employee.get('Associate ID'):
-            continue  # Skip self
-
-        supervisory_org = other_emp.get('Supervisory Organization') or ''
-        if employee_name in supervisory_org:
+    # Method 1: Check management_level field (from talent calibration data)
+    # Values like "Manager", "Senior Manager", "Director" indicate management
+    management_level = (employee.get('management_level') or '').lower()
+    if management_level:
+        # Check for manager/director keywords (not "Individual Contributor")
+        manager_keywords = ['manager', 'director', 'vp', 'vice president', 'head of']
+        if any(keyword in management_level for keyword in manager_keywords):
             return True
+
+    # Method 2: Check if name appears in other employees' supervisory org
+    employee_name = employee.get('Associate', '')
+    if employee_name:
+        for other_emp in all_employees:
+            if other_emp.get('Associate ID') == employee.get('Associate ID'):
+                continue  # Skip self
+
+            supervisory_org = other_emp.get('Supervisory Organization') or ''
+            if employee_name in supervisory_org:
+                return True
 
     return False
 
@@ -579,6 +589,8 @@ def apply_employee_filters(employees, filter_params):
 @app.route('/')
 def index():
     """Main dashboard page."""
+    from models import get_cross_cycle_alignment
+
     # Get filter params from URL
     filter_params = get_filter_params()
 
@@ -603,6 +615,29 @@ def index():
         'avg_rating': avg_rating
     }
 
+    # Calculate cross-cycle alignment data
+    alignment_data = []
+    alignment_stats = {'aligned': 0, 'review': 0, 'incomplete': 0}
+
+    for emp in team_data:
+        bonus_pct = emp.get('performance_rating_percent')
+        talent_overall = emp.get('talent_overall_perf')
+        alignment = get_cross_cycle_alignment(bonus_pct, talent_overall)
+        alignment_stats[alignment] += 1
+
+        # Only include employees with some data for the alignment table
+        if bonus_pct is not None or talent_overall is not None:
+            alignment_data.append({
+                'associate_id': emp.get('Associate ID'),
+                'name': emp.get('Associate'),
+                'bonus_pct': bonus_pct,
+                'talent_overall': talent_overall,
+                'alignment': alignment,
+            })
+
+    # Count calibrated employees (has talent_overall_perf)
+    calibrated_count = sum(1 for emp in team_data if emp.get('talent_overall_perf'))
+
     # Check for historical data if no current employees
     historical_info = None
     if total_employees == 0:
@@ -622,7 +657,9 @@ def index():
             db.close()
 
     return render_template('index.html', team=team_data, stats=stats, filter_info=filter_info,
-                         demo_mode=DEMO_MODE, historical_info=historical_info)
+                         demo_mode=DEMO_MODE, historical_info=historical_info,
+                         alignment_data=alignment_data, alignment_stats=alignment_stats,
+                         calibrated_count=calibrated_count)
 
 
 @app.route('/rate')

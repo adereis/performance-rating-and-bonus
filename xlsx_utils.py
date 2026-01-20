@@ -39,16 +39,21 @@ def get_current_period_name() -> str:
     return f"CY{year_short:02d} Q{quarter}"
 
 
-def detect_import_type(period_name: str) -> Dict[str, Any]:
+def detect_import_type(period_name: str, spreadsheet_type: str = 'bonus') -> Dict[str, Any]:
     """
-    Suggest import type based on period from metadata.
+    Suggest import type based on period from metadata and spreadsheet type.
 
-    Compares the file's period to the current quarter to suggest whether
-    this is likely a current period import or historical archive.
+    For bonus files: Compares the file's period to the current quarter to suggest
+    whether this is likely a current period import or historical archive.
+
+    For talent files: Always suggests 'current' since talent calibration reports
+    are for the current cycle and don't include period metadata.
+
     The user should confirm the suggested import type.
 
     Args:
         period_name: Period name from metadata (e.g., "CY25 Q3")
+        spreadsheet_type: 'bonus' or 'talent'
 
     Returns:
         Dict with:
@@ -57,8 +62,20 @@ def detect_import_type(period_name: str) -> Dict[str, Any]:
             - period_display: Period display name (e.g., "CY25 Q3")
             - current_period: The current period for reference
             - is_current_period: Whether file period matches current
+            - is_talent_file: Whether this is a talent calibration file
     """
     current_period = get_current_period_name()
+
+    # Talent files don't have period metadata - always import as current
+    if spreadsheet_type == 'talent':
+        return {
+            'suggested_type': 'current',
+            'period_id': None,
+            'period_display': 'Current Cycle',
+            'current_period': current_period,
+            'is_current_period': True,
+            'is_talent_file': True
+        }
 
     # Parse period_name to generate period_id
     # Format: "CY25 Q3" or "CY25-Q3" → "2025-Q3"
@@ -77,7 +94,8 @@ def detect_import_type(period_name: str) -> Dict[str, Any]:
         'period_id': period_id,
         'period_display': period_name or 'Unknown',
         'current_period': current_period,
-        'is_current_period': is_current
+        'is_current_period': is_current,
+        'is_talent_file': False
     }
 
 
@@ -363,8 +381,8 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
 
         wb.close()
 
-        # Suggest import type based on period
-        import_detection = detect_import_type(metadata.get('period_name'))
+        # Suggest import type based on period and spreadsheet type
+        import_detection = detect_import_type(metadata.get('period_name'), spreadsheet_type)
 
         return {
             'success': True,

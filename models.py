@@ -46,7 +46,8 @@ class RatingSnapshot(Base):
     associate_id = Column(String, nullable=False, index=True)  # Employee identifier
 
     # Rating vs Allocation (important distinction!)
-    performance_rating = Column(Float)  # Manager's assessment (0-200%), INPUT to algorithm
+    # NOTE: "performance_rating" is the legacy field name; UI calls this "Bonus Rating"
+    performance_rating = Column(Float)  # Manager's Bonus Rating (0-200%), INPUT to algorithm
     bonus_allocation = Column(Float)    # Final result from algorithm, OUTPUT
 
     # Qualitative data (from Notes field, may be NULL for old imports)
@@ -160,8 +161,9 @@ class Employee(Base):
     notes = Column(String)
     zero_bonus_allocated = Column(String)
 
-    # Manager input fields
-    performance_rating_percent = Column(Float)
+    # Manager input fields (Bonus Cycle)
+    # NOTE: "performance_rating_percent" is the legacy field name; UI calls this "Bonus Rating"
+    performance_rating_percent = Column(Float)  # Bonus Rating (0-200%)
     justification = Column(String)
     mentor = Column(String)
     mentees = Column(String)
@@ -356,6 +358,47 @@ def derive_future_talent(growth: str | None, change: str | None) -> bool:
     if not growth or not change:
         return False
     return 'always' in growth.lower() and 'always' in change.lower()
+
+
+def get_cross_cycle_alignment(bonus_pct: float | None, talent_overall: str | None) -> str:
+    """
+    Determine cross-cycle alignment between bonus rating and talent calibration.
+
+    Per Spec §7.4, compares the bonus performance rating percentage with
+    the talent Overall Performance rating to identify alignment or need for review.
+
+    Alignment ranges:
+    - High Impact Performer: 120-200%
+    - Successful Performer: 90-119%
+    - Evolving Performer: 70-89%
+    - Low Performer: 0-69%
+
+    Args:
+        bonus_pct: Performance rating percentage from bonus cycle (0-200)
+        talent_overall: Overall Performance from talent calibration
+
+    Returns:
+        "aligned" - Bonus rating falls within expected range for overall performance
+        "review" - Ratings don't align, may need review
+        "incomplete" - Missing either bonus or talent data
+    """
+    if bonus_pct is None or talent_overall is None:
+        return "incomplete"
+
+    # Expected bonus ranges for each overall performance level
+    ranges = {
+        "High Impact Performer": (120, 200),
+        "Successful Performer": (90, 119),
+        "Evolving Performer": (70, 89),
+        "Low Performer": (0, 69),
+    }
+
+    expected_range = ranges.get(talent_overall)
+    if expected_range is None:
+        return "incomplete"
+
+    lo, hi = expected_range
+    return "aligned" if lo <= bonus_pct <= hi else "review"
 
 
 # Database setup

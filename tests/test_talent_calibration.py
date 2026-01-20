@@ -363,6 +363,65 @@ class TestTalentMarkers:
         assert BONUS_MARKERS == expected
 
 
+class TestCrossCycleAlignment:
+    """Tests for cross-cycle alignment per Spec §7.4."""
+
+    def test_high_impact_aligned(self):
+        """High Impact Performer with 120-200% is aligned."""
+        from models import get_cross_cycle_alignment
+        assert get_cross_cycle_alignment(120, "High Impact Performer") == "aligned"
+        assert get_cross_cycle_alignment(150, "High Impact Performer") == "aligned"
+        assert get_cross_cycle_alignment(200, "High Impact Performer") == "aligned"
+
+    def test_high_impact_review(self):
+        """High Impact Performer with <120% needs review."""
+        from models import get_cross_cycle_alignment
+        assert get_cross_cycle_alignment(119, "High Impact Performer") == "review"
+        assert get_cross_cycle_alignment(100, "High Impact Performer") == "review"
+
+    def test_successful_aligned(self):
+        """Successful Performer with 90-119% is aligned."""
+        from models import get_cross_cycle_alignment
+        assert get_cross_cycle_alignment(90, "Successful Performer") == "aligned"
+        assert get_cross_cycle_alignment(100, "Successful Performer") == "aligned"
+        assert get_cross_cycle_alignment(119, "Successful Performer") == "aligned"
+
+    def test_successful_review(self):
+        """Successful Performer outside 90-119% needs review."""
+        from models import get_cross_cycle_alignment
+        assert get_cross_cycle_alignment(89, "Successful Performer") == "review"
+        assert get_cross_cycle_alignment(120, "Successful Performer") == "review"
+
+    def test_evolving_aligned(self):
+        """Evolving Performer with 70-89% is aligned."""
+        from models import get_cross_cycle_alignment
+        assert get_cross_cycle_alignment(70, "Evolving Performer") == "aligned"
+        assert get_cross_cycle_alignment(80, "Evolving Performer") == "aligned"
+        assert get_cross_cycle_alignment(89, "Evolving Performer") == "aligned"
+
+    def test_low_aligned(self):
+        """Low Performer with 0-69% is aligned."""
+        from models import get_cross_cycle_alignment
+        assert get_cross_cycle_alignment(0, "Low Performer") == "aligned"
+        assert get_cross_cycle_alignment(50, "Low Performer") == "aligned"
+        assert get_cross_cycle_alignment(69, "Low Performer") == "aligned"
+
+    def test_incomplete_null_bonus(self):
+        """None bonus returns incomplete."""
+        from models import get_cross_cycle_alignment
+        assert get_cross_cycle_alignment(None, "Successful Performer") == "incomplete"
+
+    def test_incomplete_null_talent(self):
+        """None talent returns incomplete."""
+        from models import get_cross_cycle_alignment
+        assert get_cross_cycle_alignment(100, None) == "incomplete"
+
+    def test_incomplete_both_null(self):
+        """Both None returns incomplete."""
+        from models import get_cross_cycle_alignment
+        assert get_cross_cycle_alignment(None, None) == "incomplete"
+
+
 class TestTalentImportEndpoints:
     """Integration tests for talent file import via REST endpoints."""
 
@@ -379,6 +438,25 @@ class TestTalentImportEndpoints:
         data = response.get_json()
         assert data['success'] is True
         assert data['spreadsheet_type'] == 'talent'
+
+    def test_analyze_talent_file_suggests_current_import(self, client, talent_xlsx_file):
+        """Talent files should suggest 'current' import (not historical)."""
+        with open(talent_xlsx_file, 'rb') as f:
+            response = client.post(
+                '/api/import/analyze',
+                data={'file': (f, 'talent-report.xlsx')},
+                content_type='multipart/form-data'
+            )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        # Talent files always suggest current import (no period metadata)
+        detection = data['import_detection']
+        assert detection['suggested_type'] == 'current'
+        assert detection['is_talent_file'] is True
+        assert detection['is_current_period'] is True
+        assert detection['period_display'] == 'Current Cycle'
 
     def test_import_talent_file_success(self, client, talent_xlsx_file):
         """Import endpoint successfully imports talent file."""
