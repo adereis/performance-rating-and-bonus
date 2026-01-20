@@ -54,14 +54,15 @@ When changes touch talent calibration features, verify against the spec:
 
 ## Standard Review Areas
 
-- Commit hygiene (message quality, atomic commits, git story)
+- Commit hygiene (message quality, atomic commits, clear git story, separation
+  of concerns)
 - Security vulnerabilities and risks
 - Performance concerns and optimization opportunities
-- Documentation completeness (README vs AGENTS.md separation)
+- Documentation completeness (is README, AGENTS.md, and files in docs/ up to date?)
 - Test coverage gaps (must use conftest.py fixtures)
-- Similar code elsewhere needing same changes
+- Opportunity to fix or refactor similar code elsewhere
 
-If commits are unpushed, recommend specific fixes (amend, split, squash).
+If commits are unpushed, look at previous commits and recommend specific fixes (amend, split, squash).
 
 Summarize findings grouped by severity (Critical > Warnings > Suggestions).
 
