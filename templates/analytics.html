@@ -425,13 +425,73 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+
+    /* Collapsible Cards */
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+        margin: -20px -20px 20px -20px;
+        padding: 15px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px 8px 0 0;
+    }
+
+    .card-header h2 {
+        margin: 0;
+        color: white;
+        font-size: 18px;
+    }
+
+    .card-header:hover {
+        background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+    }
+
+    .collapse-icon {
+        font-size: 20px;
+        color: white;
+        transition: transform 0.3s ease;
+        width: 24px;
+        text-align: center;
+    }
+
+    .card.collapsed .collapse-icon {
+        transform: rotate(-90deg);
+    }
+
+    .card-body {
+        transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+        overflow: hidden;
+    }
+
+    .card.collapsed .card-body {
+        max-height: 0;
+        opacity: 0;
+        padding: 0;
+        margin: 0;
+    }
+
+    .card.collapsed .card-header {
+        margin-bottom: 0;
+        border-radius: 8px;
+    }
+
+    .card.collapsed {
+        padding: 0;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- 1. Performance Distribution -->
-<div class="card">
-    <h2>Performance Distribution</h2>
+<div class="card" data-card-id="performance-distribution">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>Performance Distribution</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
     <div class="charts-grid">
         <div class="chart-container">
             <h3>Rating Distribution</h3>
@@ -452,12 +512,17 @@
         </div>
         {% endif %}
     </div>
+    </div>
 </div>
 
 <!-- 2. Team Tenets Analysis -->
 {% if tenets_summary %}
-<div class="card">
-    <h2>Team Tenets Analysis</h2>
+<div class="card" data-card-id="team-tenets">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>Team Tenets Analysis</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
         <div class="stat-box">
@@ -471,13 +536,18 @@
     </div>
 
     <div id="tenetsChartContainer"></div>
+    </div>
 </div>
 {% endif %}
 
 <!-- 3. Mentorship Analytics -->
 {% if mentorship_stats %}
-<div class="card">
-    <h2>Mentorship Analytics</h2>
+<div class="card" data-card-id="mentorship-analytics">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>Mentorship Analytics</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
 
     <!-- Summary Stats -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px;">
@@ -602,13 +672,18 @@
         </tbody>
     </table>
     {% endif %}
+    </div>
 </div>
 {% endif %}
 
 <!-- 3b. Mentorship Analysis -->
 {% if total_mentorship_flags > 0 %}
-<div class="card">
-    <h2>🔍 Mentorship Analysis <span style="font-size: 14px; font-weight: normal; color: #666;">({{ total_mentorship_flags }} items to review)</span></h2>
+<div class="card" data-card-id="mentorship-analysis">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>🔍 Mentorship Analysis <span style="font-size: 14px; font-weight: normal; color: rgba(255,255,255,0.8);">({{ total_mentorship_flags }} items)</span></h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
 
     <div class="calibration-disclaimer">
         <h4>ℹ️ Mentorship patterns worth reviewing</h4>
@@ -656,13 +731,18 @@
         {% endif %}
 
     </div>
+    </div>
 </div>
 {% endif %}
 
 <!-- 4. Calibration Guide (Bonus + Talent tabs) -->
 {% if total_rated > 0 or talent_calibration %}
-<div class="card">
-    <h2>Calibration Guide</h2>
+<div class="card" data-card-id="calibration-guide">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>Calibration Guide</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
 
     <!-- Primary Tabs: Bonus vs Talent -->
     <div class="primary-tabs">
@@ -1108,13 +1188,18 @@
     </div>
     <!-- End Talent Calibration Content -->
 
+    </div>
 </div>
 {% endif %}
 
 <!-- 4b. Potential Inconsistencies -->
 {% if total_inconsistencies > 0 %}
-<div class="card">
-    <h2>⚠️ Potential Inconsistencies <span style="font-size: 14px; font-weight: normal; color: #666;">({{ total_inconsistencies }} found)</span></h2>
+<div class="card" data-card-id="potential-inconsistencies">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>⚠️ Potential Inconsistencies <span style="font-size: 14px; font-weight: normal; color: rgba(255,255,255,0.8);">({{ total_inconsistencies }} found)</span></h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
 
     <div class="calibration-disclaimer">
         <h4>ℹ️ Review recommended, not necessarily errors</h4>
@@ -1223,12 +1308,17 @@
         {% endif %}
 
     </div>
+    </div>
 </div>
 {% endif %}
 
 <!-- 5. Period-over-Period Comparison -->
-<div class="card" id="periodComparisonCard">
-    <h2>Period-over-Period Comparison</h2>
+<div class="card" id="periodComparisonCard" data-card-id="period-comparison">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>Period-over-Period Comparison</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
 
     <div class="comparison-header">
         <label for="periodSelect" style="font-weight: 600; color: #2c3e50;">Compare current ratings with:</label>
@@ -1245,11 +1335,16 @@
             </p>
         </div>
     </div>
+    </div>
 </div>
 
-<!-- 5. Team Rankings -->
-<div class="card">
-    <h2>Team Rankings (by Bonus Rating)</h2>
+<!-- 6. Team Rankings -->
+<div class="card" data-card-id="team-rankings">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>Team Rankings (by Bonus Rating)</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
     <div style="overflow-x: auto;">
         <table class="ranking-table">
             <thead>
@@ -1287,6 +1382,7 @@
             </tbody>
         </table>
     </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -1308,6 +1404,34 @@ function getRatingColorClass(rating) {
     if (rating >= RATING_THRESHOLDS.low) return 'rating-text-low';
     return 'rating-text-below';
 }
+
+// Collapsible Cards
+function toggleCard(headerElement) {
+    const card = headerElement.closest('.card');
+    const cardId = card.dataset.cardId;
+
+    card.classList.toggle('collapsed');
+
+    // Persist state in localStorage
+    if (cardId) {
+        const collapsedCards = JSON.parse(localStorage.getItem('analytics_collapsed_cards') || '{}');
+        collapsedCards[cardId] = card.classList.contains('collapsed');
+        localStorage.setItem('analytics_collapsed_cards', JSON.stringify(collapsedCards));
+    }
+}
+
+// Restore collapsed card states on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const collapsedCards = JSON.parse(localStorage.getItem('analytics_collapsed_cards') || '{}');
+    Object.keys(collapsedCards).forEach(cardId => {
+        if (collapsedCards[cardId]) {
+            const card = document.querySelector(`[data-card-id="${cardId}"]`);
+            if (card) {
+                card.classList.add('collapsed');
+            }
+        }
+    });
+});
 
 const chartData = {{ chart_data | tojson }};
 
