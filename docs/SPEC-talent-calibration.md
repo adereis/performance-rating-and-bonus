@@ -454,7 +454,7 @@ Add header showing: `Current Bonus: {period} | Current Talent: {period}`
 Add cross-cycle alignment table with columns:
 - Employee
 - Bonus Rating (%)
-- Talent Rating (Overall Performance)
+- Overall Performance
 - Alignment status
 
 **Alignment Logic:**

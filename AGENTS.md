@@ -10,9 +10,10 @@ Instructions for AI agents and human developers working on this codebase.
 |------|---------|
 | `app.py` | Flask routes, API endpoints, business logic |
 | `models.py` | SQLAlchemy models: Employee, Period, RatingSnapshot, BonusSettings |
-| `xlsx_utils.py` | Workday XLSX parsing and column detection |
+| `xlsx_utils.py` | Workday XLSX parsing, column detection, spreadsheet type detection |
 | `demo_mode.py` | Session isolation for demo deployment |
 | `tests/conftest.py` | Shared pytest fixtures (always use these) |
+| `docs/SPEC-talent-calibration.md` | Talent calibration feature specification |
 
 **Never commit**: `ratings.db`, `real-*.xlsx`, `sample-data-*.xlsx`
 
@@ -42,6 +43,11 @@ Instructions for AI agents and human developers working on this codebase.
 
 ## Domain Knowledge
 
+### Terminology (Important!)
+- **Bonus Rating** (UI term): The 0-200% rating entered by managers. Database fields use legacy name `performance_rating` / `performance_rating_percent`.
+- **Overall Performance** (UI term): The talent calibration result (High Impact / Successful / Evolving / Low Performer). Derived from What + How assessments.
+- **Performance Rating System**: The product name (not a rating type).
+
 ### Rating Philosophy
 - **100% = met expectations** (baseline, not average)
 - **90-110%** = solid performer range (most employees)
@@ -61,13 +67,35 @@ Instructions for AI agents and human developers working on this codebase.
 - `CURRENCY_FORMATS` dict in app.py handles symbol/position per currency
 
 ### Workday Import
-Required columns: `Associate`, `Associate ID`, `Supervisory Organization`, `Current Job Profile`, `Currency`, `Annual Bonus Target Percent`, `Bonus Target - Local Currency`
+
+**Spreadsheet Type Detection**: `detect_spreadsheet_type()` in xlsx_utils.py auto-detects bonus vs talent files based on column markers.
+
+**Bonus files** (required columns): `Associate`, `Associate ID`, `Supervisory Organization`, `Current Job Profile`, `Currency`, `Annual Bonus Target Percent`, `Bonus Target - Local Currency`
+
+**Talent files** (markers): `Performance: What`, `Performance: How`, `Future Talent`, `Movement Readiness`
 
 Manager name parsed from: `"Supervisory Organization (Manager Name)"` → extracts "Manager Name"
 
-**Preserved on re-import** (manager-entered): `performance_rating`, `justification`, `mentors`, `mentees`, `ai_related_activities`, tenets
+**Preserved on re-import** (manager-entered):
+- Bonus cycle: `performance_rating`, `justification`, `mentors`, `mentees`, `ai_related_activities`, tenets
+- Talent cycle: `talent_perf_what`, `talent_perf_how`, `talent_growth_agility`, `talent_change_agility`, `talent_movement_readiness`, `talent_proposed_actions`, `talent_tenets_*`
 
-**Overwritten on re-import** (from Workday): salary, bonus targets, org structure
+**Overwritten on re-import** (from Workday): salary, bonus targets, org structure, management_level
+
+### Talent Calibration
+
+**Routes**: `/calibrate` (UI), `/api/calibrate` (POST), `/api/calibrate/status` (GET), `/export/talent` (GET)
+
+**Derivation functions** (in models.py):
+- `derive_overall_performance(what, how)` → "High Impact Performer" | "Successful Performer" | "Evolving Performer" | "Low Performer"
+- `derive_future_talent(growth, change)` → True if both contain "Always"
+- `get_cross_cycle_alignment(bonus_pct, talent_overall)` → "aligned" | "review" | "incomplete"
+
+**Manager detection**: Uses `management_level` field (e.g., "Manager", "Director") in addition to supervisory org lookup. See `has_direct_reports()` in app.py.
+
+**Tenets integration**: Tenets embedded in "Proposed Talent Actions" on export (semicolon-separated), parsed back on import via `parse_proposed_actions_tenets()`.
+
+**Cross-cycle alignment** (Spec §7.4): Dashboard shows alignment between Bonus Rating (0-200%) and Overall Performance. Alignment ranges: High Impact = 120-200%, Successful = 90-119%, Evolving = 70-89%, Low = 0-69%.
 
 ---
 

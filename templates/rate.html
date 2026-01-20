@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Rate Team - Performance Rating{% endblock %}
+{% block title %}Bonus Rating - Performance Rating{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -481,7 +481,7 @@
 
 {% block content %}
 <div class="card">
-    <h2>Rate Team Members</h2>
+    <h2>Bonus Rating</h2>
 
     <div class="view-toggle">
         <button class="view-btn active" onclick="switchView('detailed')">Detailed View</button>
@@ -503,7 +503,7 @@
                     <tr>
                         <th class="sortable" data-sort="name">Name</th>
                         <th class="sortable" data-sort="job">Job Profile</th>
-                        <th class="sortable" data-sort="rating" style="width: 150px;">Performance Rating %</th>
+                        <th class="sortable" data-sort="rating" style="width: 150px;">Bonus Rating</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -576,10 +576,10 @@
             </div>
 
             <div class="rating-section">
-                <h4>Performance Rating & Manager Inputs</h4>
+                <h4>Bonus Rating & Manager Inputs</h4>
 
                 <div class="rating-input-group">
-                    <label>Performance Rating %:</label>
+                    <label>Bonus Rating %:</label>
                     <input type="number"
                            min="0"
                            max="200"

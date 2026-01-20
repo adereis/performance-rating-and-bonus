@@ -1087,8 +1087,8 @@
             <nav>
                 <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Dashboard</a>
                 <a href="{{ url_for('import_page') }}" {% if request.endpoint == 'import_page' %}class="active"{% endif %}>Import</a>
-                <a href="{{ url_for('rate_page') }}" {% if request.endpoint == 'rate_page' %}class="active"{% endif %}>Rate Team</a>
-                <a href="{{ url_for('calibrate_page') }}" {% if request.endpoint == 'calibrate_page' %}class="active"{% endif %}>Calibrate</a>
+                <a href="{{ url_for('rate_page') }}" {% if request.endpoint == 'rate_page' %}class="active"{% endif %}>Bonus Rating</a>
+                <a href="{{ url_for('calibrate_page') }}" {% if request.endpoint == 'calibrate_page' %}class="active"{% endif %}>Talent Calibration</a>
                 <a href="{{ url_for('bonus_calculation') }}" {% if request.endpoint == 'bonus_calculation' %}class="active"{% endif %}>Bonus Calculation</a>
                 <a href="{{ url_for('analytics') }}" {% if request.endpoint == 'analytics' %}class="active"{% endif %}>Analytics</a>
                 <a href="{{ url_for('export_page') }}" {% if request.endpoint == 'export_page' %}class="active"{% endif %}>Export</a>
@@ -1417,10 +1417,10 @@
                     </div>
 
                     <div class="employee-modal-section">
-                        <h4>Performance Rating</h4>
+                        <h4>Bonus Rating</h4>
                         <div class="employee-modal-grid">
                             <div class="employee-modal-field">
-                                <label>Rating % (0-200)</label>
+                                <label>Bonus Rating % (0-200)</label>
                                 <input type="number"
                                        id="modal_rating_percent"
                                        min="0"
