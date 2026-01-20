@@ -476,12 +476,49 @@
         color: #666;
         font-size: 13px;
     }
+
+    .no-data-message {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .no-data-message h3 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+    }
+
+    .no-data-message p {
+        margin-bottom: 20px;
+    }
+
+    .no-data-message .btn {
+        display: inline-block;
+        padding: 12px 24px;
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+
+    .no-data-message .btn:hover {
+        background: #5a6fd6;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="card">
     <h2>Bonus Rating</h2>
+
+    {% if team|length == 0 %}
+    <div class="no-data-message">
+        <h3>No Employee Data</h3>
+        <p>Import employee data from Workday to begin rating bonuses.</p>
+        <a href="{{ url_for('import_page') }}" class="btn">Import Data</a>
+    </div>
+    {% else %}
 
     <div class="view-toggle">
         <button class="view-btn active" onclick="switchView('detailed')">Detailed View</button>
@@ -631,6 +668,7 @@
         </div>
         {% endfor %}
     </div>
+    {% endif %}
 </div>
 
 <script>

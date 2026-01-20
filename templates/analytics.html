@@ -481,10 +481,49 @@
     .card.collapsed {
         padding: 0;
     }
+
+    .no-data-message {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .no-data-message h3 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+    }
+
+    .no-data-message p {
+        margin-bottom: 20px;
+    }
+
+    .no-data-message .btn {
+        display: inline-block;
+        padding: 12px 24px;
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+
+    .no-data-message .btn:hover {
+        background: #5a6fd6;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
+{% if team|length == 0 %}
+<div class="card">
+    <h2>Analytics</h2>
+    <div class="no-data-message">
+        <h3>No Employee Data</h3>
+        <p>Import employee data from Workday to view analytics.</p>
+        <a href="{{ url_for('import_page') }}" class="btn">Import Data</a>
+    </div>
+</div>
+{% else %}
 <!-- 1. Performance Distribution -->
 <div class="card" data-card-id="performance-distribution">
     <div class="card-header" onclick="toggleCard(this)">
@@ -2356,4 +2395,5 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 </script>
+{% endif %}
 {% endblock %}
