@@ -2126,15 +2126,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set initial sort indicator
     document.querySelector('th[data-sort="rating"]').classList.add('desc');
 
-    // Primary tab switching (Bonus vs Talent calibration)
+    // Primary tab switching (scoped to parent card)
     const primaryTabButtons = document.querySelectorAll('.primary-tab:not(.disabled)');
     primaryTabButtons.forEach(button => {
         button.addEventListener('click', function() {
             const targetTab = this.getAttribute('data-primary-tab');
+            const parentCard = this.closest('.card');
 
-            // Remove active class from all primary buttons and content
-            document.querySelectorAll('.primary-tab').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.primary-tab-content').forEach(content => {
+            // Remove active class from tabs/content within this card only
+            parentCard.querySelectorAll('.primary-tab').forEach(btn => btn.classList.remove('active'));
+            parentCard.querySelectorAll('.primary-tab-content').forEach(content => {
                 content.classList.remove('active');
             });
 
