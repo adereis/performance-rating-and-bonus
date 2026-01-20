@@ -399,7 +399,16 @@ def get_manager_currency():
     Returns:
         tuple: (currency_code, currency_symbol) e.g., ('AUD', 'A$')
                Defaults to ('USD', '$') if no employees or unable to detect.
+
+    Note: Result is cached per-request in Flask's g object to avoid
+    repeated database queries (important for template filters).
     """
+    from flask import g, has_request_context
+
+    # Return cached result if available (avoids repeated DB queries in templates)
+    if has_request_context() and hasattr(g, '_manager_currency'):
+        return g._manager_currency
+
     db = get_db()
     try:
         # Domestic employees have NULL in bonus_target_manager_currency
@@ -412,14 +421,8 @@ def get_manager_currency():
         if domestic and domestic.currency:
             currency = domestic.currency
             symbol = CURRENCY_SYMBOLS.get(currency, currency)
-            return currency, symbol
-
-        # Fallback: check if there are any employees at all
-        any_employee = db.query(Employee).filter(
-            Employee.currency.isnot(None)
-        ).first()
-
-        if any_employee:
+            result = (currency, symbol)
+        elif db.query(Employee).filter(Employee.currency.isnot(None)).first():
             # If all employees have manager_currency set, use majority currency
             from collections import Counter
             all_employees = db.query(Employee).filter(
@@ -429,10 +432,18 @@ def get_manager_currency():
             if currencies:
                 most_common = Counter(currencies).most_common(1)[0][0]
                 symbol = CURRENCY_SYMBOLS.get(most_common, most_common)
-                return most_common, symbol
+                result = (most_common, symbol)
+            else:
+                result = ('USD', '$')
+        else:
+            # Default to USD
+            result = ('USD', '$')
 
-        # Default to USD
-        return 'USD', '$'
+        # Cache result for this request
+        if has_request_context():
+            g._manager_currency = result
+
+        return result
     finally:
         db.close()
 
