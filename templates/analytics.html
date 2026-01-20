@@ -540,14 +540,29 @@
 </div>
 {% endif %}
 
-<!-- 3. Mentorship Analytics -->
-{% if mentorship_stats %}
-<div class="card" data-card-id="mentorship-analytics">
+<!-- 3. Mentorship (Overview + Analysis tabs) -->
+{% if mentorship_stats or total_mentorship_flags > 0 %}
+<div class="card" data-card-id="mentorship">
     <div class="card-header" onclick="toggleCard(this)">
-        <h2>🤝 Mentorship Analytics</h2>
+        <h2>🤝 Mentorship</h2>
         <span class="collapse-icon">▼</span>
     </div>
     <div class="card-body">
+
+    <!-- Primary Tabs: Overview vs Analysis -->
+    <div class="primary-tabs">
+        <button class="primary-tab {% if mentorship_stats %}active{% else %}disabled{% endif %}" data-primary-tab="mentorship-overview-content" {% if not mentorship_stats %}disabled{% endif %}>
+            📊 Overview
+        </button>
+        <button class="primary-tab {% if not mentorship_stats and total_mentorship_flags > 0 %}active{% elif total_mentorship_flags == 0 %}disabled{% endif %}" data-primary-tab="mentorship-analysis-content" {% if total_mentorship_flags == 0 %}disabled{% endif %}>
+            🔍 Analysis
+            {% if total_mentorship_flags > 0 %}<span class="primary-tab-count">({{ total_mentorship_flags }})</span>{% endif %}
+        </button>
+    </div>
+
+    <!-- Overview Content -->
+    <div class="primary-tab-content {% if mentorship_stats %}active{% endif %}" id="mentorship-overview-content">
+    {% if mentorship_stats %}
 
     <!-- Summary Stats -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px;">
@@ -672,18 +687,13 @@
         </tbody>
     </table>
     {% endif %}
-    </div>
-</div>
-{% endif %}
 
-<!-- 3b. Mentorship Analysis -->
-{% if total_mentorship_flags > 0 %}
-<div class="card" data-card-id="mentorship-analysis">
-    <div class="card-header" onclick="toggleCard(this)">
-        <h2>🔍 Mentorship Analysis <span style="font-size: 14px; font-weight: normal; color: rgba(255,255,255,0.8);">({{ total_mentorship_flags }} items)</span></h2>
-        <span class="collapse-icon">▼</span>
+    {% endif %}
     </div>
-    <div class="card-body">
+
+    <!-- Analysis Content -->
+    <div class="primary-tab-content {% if not mentorship_stats and total_mentorship_flags > 0 %}active{% endif %}" id="mentorship-analysis-content">
+    {% if total_mentorship_flags > 0 %}
 
     <div class="calibration-disclaimer">
         <h4>ℹ️ Mentorship patterns worth reviewing</h4>
@@ -731,6 +741,10 @@
         {% endif %}
 
     </div>
+
+    {% endif %}
+    </div>
+
     </div>
 </div>
 {% endif %}
