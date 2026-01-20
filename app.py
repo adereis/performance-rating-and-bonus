@@ -856,12 +856,22 @@ def calibrate_employee():
         for field, valid_values in talent_fields:
             if field in data:
                 value = data.get(field)
-                if value and value not in valid_values:
-                    return jsonify({
-                        'success': False,
-                        'error': f"Invalid value for {field}: '{value}'. Must be one of: {', '.join(valid_values)}"
-                    }), 400
-                setattr(employee, field, value if value else None)
+                if value:
+                    # Case-insensitive validation with normalization to canonical casing
+                    value_lower = value.lower()
+                    matched_value = next(
+                        (v for v in valid_values if v.lower() == value_lower),
+                        None
+                    )
+                    if matched_value is None:
+                        return jsonify({
+                            'success': False,
+                            'error': f"Invalid value for {field}: '{value}'. Must be one of: {', '.join(valid_values)}"
+                        }), 400
+                    # Use canonical casing from valid_values
+                    setattr(employee, field, matched_value)
+                else:
+                    setattr(employee, field, None)
 
         # Update free-form text fields
         text_fields = [

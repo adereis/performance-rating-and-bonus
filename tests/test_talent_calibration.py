@@ -544,3 +544,62 @@ class TestTalentImportEndpoints:
         assert employee.talent_movement_readiness == 'Ready in 1-2 Years'
         assert employee.talent_proposed_actions == 'Promote to Senior'
         assert employee.talent_tenets_strengths == 'Customer Obsession'
+
+
+class TestCalibrateAPIValidation:
+    """Tests for /api/calibrate endpoint validation."""
+
+    def test_enum_validation_case_insensitive(self, client, db_session):
+        """API accepts enum values with different casing and normalizes them."""
+        from models import Employee
+
+        # Create test employee
+        emp = Employee(
+            associate_id='CASE001',
+            associate='Case Test Employee',
+            supervisory_organization='Engineering',
+        )
+        db_session.add(emp)
+        db_session.commit()
+
+        # Submit with different casing than canonical values
+        import json
+        response = client.post('/api/calibrate', json={
+            'associate_id': 'CASE001',
+            'talent_perf_what': 'MEETS EXPECTATIONS',  # Should be "Meets Expectations"
+            'talent_perf_how': 'surpasses expectations',  # Should be "Surpasses Expectations"
+            'talent_growth_agility': 'ALWAYS/MOST OF THE TIME',  # Should be "Always/Most of the Time"
+        })
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+
+        # Verify values are normalized to canonical casing
+        db_session.expire_all()
+        employee = db_session.query(Employee).filter_by(associate_id='CASE001').first()
+        assert employee.talent_perf_what == 'Meets Expectations'
+        assert employee.talent_perf_how == 'Surpasses Expectations'
+        assert employee.talent_growth_agility == 'Always/Most of the Time'
+
+    def test_enum_validation_rejects_invalid_values(self, client, db_session):
+        """API rejects values that don't match any valid option."""
+        from models import Employee
+
+        # Create test employee
+        emp = Employee(
+            associate_id='INVALID001',
+            associate='Invalid Value Test',
+            supervisory_organization='Engineering',
+        )
+        db_session.add(emp)
+        db_session.commit()
+
+        # Submit with invalid value
+        response = client.post('/api/calibrate', json={
+            'associate_id': 'INVALID001',
+            'talent_perf_what': 'Not A Valid Option',
+        })
+
+        assert response.status_code == 400
+        data = response.get_json()
