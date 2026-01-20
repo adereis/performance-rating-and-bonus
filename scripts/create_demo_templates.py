@@ -2,18 +2,19 @@
 """
 Create pre-built demo template databases for the Performance Rating System.
 
-This generates SQLite databases pre-populated with fictitious employee data
-and ratings, ready to be copied for new demo sessions.
+This generates SQLite databases pre-populated with fictitious employee data,
+ratings, and talent calibration data, ready to be copied for new demo sessions.
 
 Usage:
     python3 scripts/create_demo_templates.py
 
 Creates:
-    demo-templates/small-team.db  - 12 employees, 1 manager, with ratings
-    demo-templates/large-team.db  - 50 employees, 5 managers, with ratings
+    demo-templates/small-team.db  - 12 employees, 1 manager, with ratings + talent
+    demo-templates/large-team.db  - 55 employees, 5 managers, with ratings + talent
 """
 import sys
 import os
+import random
 from datetime import datetime
 
 # Add parent directory to path for imports
@@ -22,6 +23,154 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Base, Employee, BonusSettings, Period, RatingSnapshot
+
+
+# ============================================================================
+# Talent Calibration Generation (Spec §3, §4.1, §4.2)
+# ============================================================================
+
+PERF_WHAT_OPTIONS = [
+    'Surpasses Expectations',
+    'Meets Expectations',
+    'Meets Some Expectations'
+]
+
+PERF_HOW_OPTIONS = [
+    'Surpasses Expectations',
+    'Meets Expectations',
+    'Meets Some Expectations',
+    'Does Not Meet Expectations'
+]
+
+AGILITY_OPTIONS = [
+    'Always/Most of the Time',
+    'Sometimes'
+]
+
+MOVEMENT_READINESS_OPTIONS = [
+    'Continue growing in current role',
+    'Ready Now to be promoted in current role',
+    'Ready for lateral move'
+]
+
+
+def derive_overall_performance(what: str, how: str) -> str:
+    """Derive Overall Performance from What and How per Spec §4.1."""
+    if not what or not how:
+        return 'Successful Performer'
+    w, h = what.lower(), how.lower()
+    if 'does not meet' in h:
+        return 'Low Performer'
+    if 'some' in w and 'some' in h:
+        return 'Low Performer'
+    if 'surpasses' in w:
+        if 'surpasses' in h or ('meets' in h and 'some' not in h):
+            return 'High Impact Performer'
+        return 'Successful Performer'
+    if 'meets' in w and 'some' not in w:
+        if 'surpasses' in h or ('meets' in h and 'some' not in h):
+            return 'Successful Performer'
+        return 'Evolving Performer'
+    if 'some' in w:
+        return 'Evolving Performer'
+    return 'Successful Performer'
+
+
+def derive_future_talent(growth: str, change: str) -> bool:
+    """Derive Future Talent from agility ratings (Spec §4.2)."""
+    g, c = (growth or '').lower(), (change or '').lower()
+    return 'always' in g and 'always' in c
+
+
+def generate_talent_data(bonus_rating: int) -> dict:
+    """Generate talent calibration data aligned with bonus rating."""
+    # Weight distributions based on bonus rating (aligned with Spec §7.4)
+    if bonus_rating >= 120:
+        what_weights = [0.6, 0.35, 0.05]
+        how_weights = [0.5, 0.45, 0.05, 0.0]
+        agility_weight = 0.6
+        movement_weights = [0.5, 0.4, 0.1]
+    elif bonus_rating >= 90:
+        what_weights = [0.2, 0.70, 0.10]
+        how_weights = [0.15, 0.70, 0.15, 0.0]
+        agility_weight = 0.35
+        movement_weights = [0.70, 0.25, 0.05]
+    elif bonus_rating >= 70:
+        what_weights = [0.05, 0.50, 0.45]
+        how_weights = [0.05, 0.45, 0.50, 0.0]
+        agility_weight = 0.20
+        movement_weights = [0.85, 0.10, 0.05]
+    else:
+        what_weights = [0.0, 0.25, 0.75]
+        how_weights = [0.0, 0.20, 0.50, 0.30]
+        agility_weight = 0.10
+        movement_weights = [0.95, 0.03, 0.02]
+
+    perf_what = random.choices(PERF_WHAT_OPTIONS, weights=what_weights)[0]
+    perf_how = random.choices(PERF_HOW_OPTIONS, weights=how_weights)[0]
+    growth = 'Always/Most of the Time' if random.random() < agility_weight else 'Sometimes'
+    change = 'Always/Most of the Time' if random.random() < agility_weight else 'Sometimes'
+    movement = random.choices(MOVEMENT_READINESS_OPTIONS, weights=movement_weights)[0]
+
+    overall = derive_overall_performance(perf_what, perf_how)
+    future_talent = derive_future_talent(growth, change)
+
+    # Generate historical "last cycle" data
+    last_what = random.choice(PERF_WHAT_OPTIONS)
+    last_how = random.choice(PERF_HOW_OPTIONS[:3])
+    last_overall = derive_overall_performance(last_what, last_how)
+    last_growth = random.choice(AGILITY_OPTIONS)
+    last_change = random.choice(AGILITY_OPTIONS)
+    last_future_talent = derive_future_talent(last_growth, last_change)
+    last_movement = random.choice(MOVEMENT_READINESS_OPTIONS)
+
+    return {
+        'talent_perf_what': perf_what,
+        'talent_perf_how': perf_how,
+        'talent_overall_perf': overall,
+        'talent_growth_agility': growth,
+        'talent_change_agility': change,
+        'talent_identified_future': future_talent,
+        'talent_movement_readiness': movement,
+        'talent_last_overall_perf': last_overall,
+        'talent_last_identified_future': last_future_talent,
+        'talent_last_movement_readiness': last_movement,
+        'talent_last_updated': datetime.now(),
+    }
+
+
+# Promotion candidates with full promo data
+PROMO_CANDIDATES = {
+    'Al Ert': {
+        'talent_promo_job_profile': 'Principal SRE, 1847',
+        'talent_promo_business_need': 'Team expanding scope to cover global reliability',
+        'talent_promo_role_scope': 'Will lead cross-regional SRE initiatives',
+        'talent_promo_readiness': 'Demonstrated technical leadership and mentorship',
+    },
+    'Sue Q. Ell': {
+        'talent_promo_job_profile': 'Staff Software Developer, 1623',
+        'talent_promo_business_need': 'Need senior DB expertise for new product line',
+        'talent_promo_role_scope': 'Expand from query optimization to full data architecture',
+        'talent_promo_readiness': 'Strong IC track record, ready for staff scope',
+    },
+    'Artie Ficial': {
+        'talent_promo_job_profile': 'Principal Software Developer, 2134',
+        'talent_promo_business_need': 'Architecture leadership for distributed systems initiative',
+        'talent_promo_role_scope': 'Lead cross-team technical strategy and system design',
+        'talent_promo_readiness': 'Exceptional technical vision, proven cross-team influence',
+    },
+    'Ty Po': {
+        'talent_promo_job_profile': 'Staff SRE, 1892',
+        'talent_promo_business_need': 'Infrastructure modernization requires senior leadership',
+        'talent_promo_role_scope': 'Own infrastructure strategy for platform reliability',
+        'talent_promo_readiness': 'Outstanding track record, ready for expanded scope',
+    },
+}
+
+
+# ============================================================================
+# Employee Data Generation
+# ============================================================================
 
 
 def get_small_team_employees():
@@ -67,7 +216,11 @@ def get_small_team_employees():
     result = []
     for i, (name, job, salary, grade, bonus_pct, rating, justification) in enumerate(employees):
         bonus_target = salary * (bonus_pct / 100)
-        result.append({
+
+        # Generate talent calibration data aligned with bonus rating
+        talent_data = generate_talent_data(rating)
+
+        emp_data = {
             'associate_id': f'EMP{1000 + i}',
             'associate': name,
             'supervisory_organization': manager,
@@ -84,7 +237,16 @@ def get_small_team_employees():
             'mentor': '',  # Empty string, not NULL
             'mentees': '',  # Empty string, not NULL
             'last_updated': datetime.now(),
-        })
+            # Talent calibration fields
+            **talent_data,
+        }
+
+        # Add promotion data for select candidates
+        if name in PROMO_CANDIDATES:
+            emp_data.update(PROMO_CANDIDATES[name])
+            emp_data['talent_movement_readiness'] = 'Ready Now to be promoted in current role'
+
+        result.append(emp_data)
 
     return result
 
@@ -203,7 +365,11 @@ def get_large_team_employees():
     for team_name, members in teams.items():
         for (name, job, salary, grade, bonus_pct, rating, justification) in members:
             bonus_target = salary * (bonus_pct / 100)
-            result.append({
+
+            # Generate talent calibration data aligned with bonus rating
+            talent_data = generate_talent_data(rating)
+
+            emp_data = {
                 'associate_id': f'EMP{emp_id}',
                 'associate': name,
                 'supervisory_organization': team_name,
@@ -220,21 +386,84 @@ def get_large_team_employees():
                 'mentor': '',  # Empty string, not NULL
                 'mentees': '',  # Empty string, not NULL
                 'last_updated': datetime.now(),
-            })
+                # Talent calibration fields
+                **talent_data,
+            }
+
+            # Add promotion data for select candidates
+            if name in PROMO_CANDIDATES:
+                emp_data.update(PROMO_CANDIDATES[name])
+                emp_data['talent_movement_readiness'] = 'Ready Now to be promoted in current role'
+
+            result.append(emp_data)
             emp_id += 1
 
     return result
+
+
+def generate_snapshot_talent_data(emp: dict) -> dict:
+    """
+    Generate talent snapshot data with variation from current talent data.
+    Creates realistic historical talent data for trend analysis.
+    """
+    # Get current bonus rating to generate varied historical talent data
+    current_rating = emp.get('performance_rating_percent', 100)
+    # Vary historical rating similar to how bonus snapshots vary
+    historical_rating = max(50, min(180, current_rating + random.randint(-20, 10)))
+
+    # Generate talent data based on varied historical rating
+    # Use same weighted generation as current data but with historical rating
+    if historical_rating >= 120:
+        what_weights = [0.6, 0.35, 0.05]
+        how_weights = [0.5, 0.45, 0.05, 0.0]
+        agility_weight = 0.55
+        movement_weights = [0.55, 0.35, 0.10]
+    elif historical_rating >= 90:
+        what_weights = [0.2, 0.70, 0.10]
+        how_weights = [0.15, 0.70, 0.15, 0.0]
+        agility_weight = 0.30
+        movement_weights = [0.75, 0.20, 0.05]
+    elif historical_rating >= 70:
+        what_weights = [0.05, 0.50, 0.45]
+        how_weights = [0.05, 0.45, 0.50, 0.0]
+        agility_weight = 0.20
+        movement_weights = [0.85, 0.10, 0.05]
+    else:
+        what_weights = [0.0, 0.25, 0.75]
+        how_weights = [0.0, 0.20, 0.50, 0.30]
+        agility_weight = 0.10
+        movement_weights = [0.95, 0.03, 0.02]
+
+    perf_what = random.choices(PERF_WHAT_OPTIONS, weights=what_weights)[0]
+    perf_how = random.choices(PERF_HOW_OPTIONS, weights=how_weights)[0]
+    growth = 'Always/Most of the Time' if random.random() < agility_weight else 'Sometimes'
+    change = 'Always/Most of the Time' if random.random() < agility_weight else 'Sometimes'
+    movement = random.choices(MOVEMENT_READINESS_OPTIONS, weights=movement_weights)[0]
+    overall = derive_overall_performance(perf_what, perf_how)
+
+    return {
+        'snapshot_talent_perf_what': perf_what,
+        'snapshot_talent_perf_how': perf_how,
+        'snapshot_talent_overall_perf': overall,
+        'snapshot_talent_growth_agility': growth,
+        'snapshot_talent_change_agility': change,
+        'snapshot_talent_movement_readiness': movement,
+        'snapshot_talent_proposed_actions': None,
+        'snapshot_talent_promo_job_profile': emp.get('talent_promo_job_profile'),
+        'snapshot_talent_tenets_strengths': None,
+        'snapshot_talent_tenets_improvements': None,
+    }
 
 
 def get_historical_periods(employees, include_large_history=False):
     """
     Generate historical period data based on current employees.
     Creates 2 periods for small team, 3 for large team.
+    Includes talent calibration snapshot data.
 
     Returns list of (period_data, snapshots) tuples.
     """
     from datetime import timedelta
-    import random
 
     periods = []
 
@@ -254,7 +483,7 @@ def get_historical_periods(employees, include_large_history=False):
         current_rating = emp.get('performance_rating_percent', 100)
         historical_rating = max(50, min(180, current_rating + random.randint(-15, 10)))
 
-        period1_snapshots.append({
+        snapshot_data = {
             'period_id': period1['id'],
             'associate_id': emp['associate_id'],
             'performance_rating': historical_rating,
@@ -266,7 +495,10 @@ def get_historical_periods(employees, include_large_history=False):
             'snapshot_bonus_target_manager_currency': emp.get('bonus_target_manager_currency'),
             'archived_at': period1_date,
             'has_full_details': True,
-        })
+            # Talent calibration snapshot data
+            **generate_snapshot_talent_data(emp),
+        }
+        period1_snapshots.append(snapshot_data)
 
     periods.append((period1, period1_snapshots))
 
@@ -285,7 +517,7 @@ def get_historical_periods(employees, include_large_history=False):
         # More variation for older period
         historical_rating = max(50, min(175, current_rating + random.randint(-20, 5)))
 
-        period2_snapshots.append({
+        snapshot_data = {
             'period_id': period2['id'],
             'associate_id': emp['associate_id'],
             'performance_rating': historical_rating,
@@ -294,10 +526,13 @@ def get_historical_periods(employees, include_large_history=False):
             'snapshot_name': emp['associate'],
             'snapshot_org': emp['supervisory_organization'],
             'snapshot_job_profile': emp['current_job_profile'],
-            'snapshot_bonus_target_manager_currency': emp.get('bonus_target_manager_currency', 0) * 0.95,  # Slightly lower target
+            'snapshot_bonus_target_manager_currency': emp.get('bonus_target_manager_currency', 0) * 0.95,
             'archived_at': period2_date,
             'has_full_details': True,
-        })
+            # Talent calibration snapshot data
+            **generate_snapshot_talent_data(emp),
+        }
+        period2_snapshots.append(snapshot_data)
 
     periods.append((period2, period2_snapshots))
 
@@ -318,7 +553,7 @@ def get_historical_periods(employees, include_large_history=False):
                 current_rating = emp.get('performance_rating_percent', 100)
                 historical_rating = max(55, min(170, current_rating + random.randint(-25, 0)))
 
-                period3_snapshots.append({
+                snapshot_data = {
                     'period_id': period3['id'],
                     'associate_id': emp['associate_id'],
                     'performance_rating': historical_rating,
@@ -330,7 +565,10 @@ def get_historical_periods(employees, include_large_history=False):
                     'snapshot_bonus_target_manager_currency': emp.get('bonus_target_manager_currency', 0) * 0.90,
                     'archived_at': period3_date,
                     'has_full_details': False,  # Older period has less detail
-                })
+                    # Talent calibration snapshot data (older period)
+                    **generate_snapshot_talent_data(emp),
+                }
+                period3_snapshots.append(snapshot_data)
 
         periods.append((period3, period3_snapshots))
 
