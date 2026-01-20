@@ -2172,6 +2172,158 @@ def export_xlsx():
     )
 
 
+@app.route('/export/talent')
+def export_talent_xlsx():
+    """Export talent calibration data as Excel file.
+
+    Embeds tenets in the Proposed Actions field using a parseable format
+    so that Workday becomes the source of truth and re-imports preserve data.
+
+    Format: [Strengths: Tenet1, Tenet2] [Improvements: Tenet3]
+    """
+    # Get filter params from URL
+    filter_params = get_filter_params()
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Apply filters
+    team_data, filter_info = apply_employee_filters(all_employees, filter_params)
+
+    # Create workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Talent Calibration"
+
+    # Add demo mode warning if in demo mode
+    demo_row_offset = 0
+    if DEMO_MODE:
+        demo_warning_fill = PatternFill(start_color='FF6B6B', end_color='FF6B6B', fill_type='solid')
+        demo_warning_font = Font(bold=True, color='FFFFFF', size=14)
+
+        ws.merge_cells('A1:Z1')
+        demo_cell = ws.cell(row=1, column=1, value='*** DEMO MODE - FICTITIOUS DATA ONLY - DO NOT USE FOR BUSINESS DECISIONS ***')
+        demo_cell.fill = demo_warning_fill
+        demo_cell.font = demo_warning_font
+        demo_cell.alignment = Alignment(horizontal='center', vertical='center')
+        ws.row_dimensions[1].height = 30
+
+        demo_row_offset = 2
+
+    # Define headers matching Workday talent calibration format
+    headers = [
+        'Associate ID',
+        'Worker',  # Workday uses 'Worker' not 'Associate'
+        'Supervisory Organization',
+        'Current Job Profile',
+        'Performance: What',
+        'Performance: How',
+        'Overall Performance',
+        'Future Talent: Growth Agility',
+        'Future Talent: Change Agility',
+        'Identified Future Talent',
+        'Movement Readiness',
+        'Proposed Talent Actions',  # Contains embedded tenets (matches import column map)
+    ]
+
+    # Style header row
+    header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    header_font = Font(bold=True, color='FFFFFF')
+
+    header_row = 1 + demo_row_offset
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=header_row, column=col_num, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Load tenets for name lookup
+    _, tenets_map = load_tenets_config()
+
+    # Write data rows
+    data_start_row = 2 + demo_row_offset
+    for row_num, employee in enumerate(team_data, data_start_row):
+        # Build Proposed Actions with embedded tenets
+        proposed_actions = employee.get('talent_proposed_actions') or ''
+
+        # Parse and format tenets
+        strengths_text = ''
+        improvements_text = ''
+
+        try:
+            if employee.get('talent_tenets_strengths'):
+                strength_ids = json.loads(employee['talent_tenets_strengths']) if isinstance(employee['talent_tenets_strengths'], str) else employee['talent_tenets_strengths']
+                strengths = [tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map]
+                if strengths:
+                    strengths_text = '; '.join(strengths)  # Use semicolon (tenet names may contain commas)
+
+            if employee.get('talent_tenets_improvements'):
+                improvement_ids = json.loads(employee['talent_tenets_improvements']) if isinstance(employee['talent_tenets_improvements'], str) else employee['talent_tenets_improvements']
+                improvements = [tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map]
+                if improvements:
+                    improvements_text = '; '.join(improvements)  # Use semicolon
+        except Exception as e:
+            print(f"Error parsing talent tenets: {e}")
+
+        # Embed tenets in Proposed Actions using parseable format
+        tenet_markers = []
+        if strengths_text:
+            tenet_markers.append(f"[Strengths: {strengths_text}]")
+        if improvements_text:
+            tenet_markers.append(f"[Improvements: {improvements_text}]")
+
+        if tenet_markers:
+            # Append to proposed actions with separator
+            if proposed_actions:
+                proposed_actions = proposed_actions.rstrip() + '\n\n' + ' '.join(tenet_markers)
+            else:
+                proposed_actions = ' '.join(tenet_markers)
+
+        row_data = [
+            employee.get('Associate ID', ''),
+            employee.get('Associate', ''),  # Export as Worker column
+            employee.get('Supervisory Organization', ''),
+            employee.get('Current Job Profile', ''),
+            employee.get('talent_perf_what', ''),
+            employee.get('talent_perf_how', ''),
+            employee.get('talent_overall_perf', ''),
+            employee.get('talent_growth_agility', ''),
+            employee.get('talent_change_agility', ''),
+            'Yes' if employee.get('talent_identified_future') else 'No' if employee.get('talent_identified_future') is False else '',
+            employee.get('talent_movement_readiness', ''),
+            proposed_actions,
+        ]
+
+        for col_num, value in enumerate(row_data, 1):
+            ws.cell(row=row_num, column=col_num, value=value)
+
+    # Auto-adjust column widths
+    from openpyxl.utils import get_column_letter
+    for col_idx, column in enumerate(ws.columns, 1):
+        max_length = 0
+        for cell in column:
+            try:
+                if cell.value and hasattr(cell, 'column_letter'):
+                    max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+        if max_length > 0:
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
+
+    # Save to BytesIO
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='talent_calibration_export.xlsx'
+    )
+
+
 @app.route('/import')
 def import_page():
     """Import data page."""
@@ -2402,17 +2554,30 @@ def import_current():
 
                         # Movement & Career (manager-entered)
                         employee.talent_movement_readiness = emp_data.get('talent_movement_readiness')
-                        employee.talent_proposed_actions = emp_data.get('talent_proposed_actions')
+
+                        # Parse tenets from Proposed Actions if present
+                        # Format: [Strengths: Tenet1, Tenet2] [Improvements: Tenet3]
+                        raw_proposed_actions = emp_data.get('talent_proposed_actions') or ''
+                        tenets_config, _ = load_tenets_config()
+
+                        if tenets_config and raw_proposed_actions:
+                            from xlsx_utils import parse_proposed_actions_tenets
+                            clean_actions, strength_ids, improvement_ids = parse_proposed_actions_tenets(
+                                raw_proposed_actions, tenets_config
+                            )
+                            employee.talent_proposed_actions = clean_actions if clean_actions else None
+                            if strength_ids:
+                                employee.talent_tenets_strengths = json.dumps(strength_ids)
+                            if improvement_ids:
+                                employee.talent_tenets_improvements = json.dumps(improvement_ids)
+                        else:
+                            employee.talent_proposed_actions = raw_proposed_actions if raw_proposed_actions else None
 
                         # Promotion (manager-entered)
                         employee.talent_promo_job_profile = emp_data.get('talent_promo_job_profile')
                         employee.talent_promo_business_need = emp_data.get('talent_promo_business_need')
                         employee.talent_promo_role_scope = emp_data.get('talent_promo_role_scope')
                         employee.talent_promo_readiness = emp_data.get('talent_promo_readiness')
-
-                        # Tenets (manager-entered)
-                        employee.talent_tenets_strengths = emp_data.get('talent_tenets_strengths')
-                        employee.talent_tenets_improvements = emp_data.get('talent_tenets_improvements')
                 else:
                     # Update bonus-specific fields
                     employee.photo = emp_data['photo']

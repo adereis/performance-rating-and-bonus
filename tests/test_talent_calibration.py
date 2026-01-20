@@ -269,6 +269,86 @@ class TestTalentColumnMapping:
         assert indices_assoc['associate'] == 1
 
 
+class TestParseProposedActionsTenets:
+    """Tests for parsing tenets from Proposed Actions field."""
+
+    def test_parse_strengths_only(self):
+        """Parse strengths from Proposed Actions."""
+        from xlsx_utils import parse_proposed_actions_tenets
+
+        tenets_config = {
+            'tenets': [
+                {'id': 'tenet_1', 'name': 'Delete More Than You Add'},
+                {'id': 'tenet_2', 'name': 'Ship It to Learn It'},
+            ]
+        }
+        # Uses semicolon separator (tenet names may contain commas)
+        text = "Focus on collaboration.\n\n[Strengths: Delete More Than You Add; Ship It to Learn It]"
+
+        clean, strengths, improvements = parse_proposed_actions_tenets(text, tenets_config)
+
+        assert clean == "Focus on collaboration."
+        assert strengths == ['tenet_1', 'tenet_2']
+        assert improvements == []
+
+    def test_parse_improvements_only(self):
+        """Parse improvements from Proposed Actions."""
+        from xlsx_utils import parse_proposed_actions_tenets
+
+        tenets_config = {
+            'tenets': [
+                {'id': 'tenet_1', 'name': 'Sleep is a Feature'},
+            ]
+        }
+        text = "[Improvements: Sleep is a Feature]"
+
+        clean, strengths, improvements = parse_proposed_actions_tenets(text, tenets_config)
+
+        assert clean == ""
+        assert strengths == []
+        assert improvements == ['tenet_1']
+
+    def test_parse_both_strengths_and_improvements(self):
+        """Parse both strengths and improvements."""
+        from xlsx_utils import parse_proposed_actions_tenets
+
+        tenets_config = {
+            'tenets': [
+                {'id': 'delete_more', 'name': 'Delete More Than You Add'},
+                {'id': 'sleep_feature', 'name': 'Sleep is a Feature'},
+            ]
+        }
+        # Uses semicolon separator as produced by export
+        text = "Good work!\n\n[Strengths: Delete More Than You Add] [Improvements: Sleep is a Feature]"
+
+        clean, strengths, improvements = parse_proposed_actions_tenets(text, tenets_config)
+
+        assert clean == "Good work!"
+        assert strengths == ['delete_more']
+        assert improvements == ['sleep_feature']
+
+    def test_empty_input_returns_empty(self):
+        """Empty input returns empty results."""
+        from xlsx_utils import parse_proposed_actions_tenets
+
+        clean, strengths, improvements = parse_proposed_actions_tenets('', {})
+
+        assert clean == ''
+        assert strengths == []
+        assert improvements == []
+
+    def test_no_markers_returns_original_text(self):
+        """Text without markers is returned unchanged."""
+        from xlsx_utils import parse_proposed_actions_tenets
+
+        text = "Just regular proposed actions text."
+        clean, strengths, improvements = parse_proposed_actions_tenets(text, {'tenets': []})
+
+        assert clean == text
+        assert strengths == []
+        assert improvements == []
+
+
 class TestTalentMarkers:
     """Tests for marker constants."""
 

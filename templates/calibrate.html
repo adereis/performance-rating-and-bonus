@@ -321,6 +321,101 @@
         background: #5a6fd6;
     }
 
+    /* Tenets selection styles */
+    .tenets-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+
+    .tenet-category {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 15px;
+    }
+
+    .tenet-category h6 {
+        font-size: 12px;
+        color: #666;
+        margin: 0 0 10px 0;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .tenet-items {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .tenet-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 4px;
+        transition: background 0.2s;
+        cursor: pointer;
+    }
+
+    .tenet-item:hover {
+        background: #f8f9fa;
+    }
+
+    .tenet-item input[type="checkbox"] {
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .tenet-label {
+        flex: 1;
+        cursor: pointer;
+        font-size: 13px;
+        position: relative;
+    }
+
+    .tenet-name {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .tenet-description {
+        display: none;
+        position: absolute;
+        left: 0;
+        top: 100%;
+        margin-top: 5px;
+        background: #2c3e50;
+        color: white;
+        padding: 10px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        line-height: 1.4;
+        z-index: 1000;
+        width: 280px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .tenet-description::before {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 20px;
+        border: 6px solid transparent;
+        border-bottom-color: #2c3e50;
+    }
+
+    .tenet-label:hover .tenet-description {
+        display: block;
+    }
+
+    .loading-tenets {
+        color: #666;
+        font-style: italic;
+        padding: 10px;
+    }
+
     /* Bonus context section */
     .bonus-context {
         background: #fff8e1;
@@ -505,6 +600,22 @@
                 </div>
             </div>
 
+            <!-- Tenets Section -->
+            <div class="calibration-section tenets-section">
+                <h4>Leadership Tenets</h4>
+                <div class="loading-tenets">Loading tenets...</div>
+                <div class="tenets-grid" style="display: none;">
+                    <div class="tenet-category">
+                        <h6>Strengths (Select up to 3)</h6>
+                        <div class="tenet-items" data-tenet-type="talent_strengths"></div>
+                    </div>
+                    <div class="tenet-category">
+                        <h6>Areas for Improvement (Select up to 3)</h6>
+                        <div class="tenet-items" data-tenet-type="talent_improvements"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Promotion Section (Collapsible) -->
             <div class="collapsible-section">
                 <div class="collapsible-header" onclick="toggleCollapsible(this)">
@@ -581,6 +692,24 @@ function collectCalibrationData(associateId, card) {
         const field = input.getAttribute('data-field');
         data[field] = input.value || null;
     });
+
+    // Collect tenet selections
+    const strengthsContainer = card.querySelector('.tenet-items[data-tenet-type="talent_strengths"]');
+    const improvementsContainer = card.querySelector('.tenet-items[data-tenet-type="talent_improvements"]');
+
+    if (strengthsContainer) {
+        data.talent_tenets_strengths = [];
+        strengthsContainer.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+            data.talent_tenets_strengths.push(cb.getAttribute('data-tenet-id'));
+        });
+    }
+
+    if (improvementsContainer) {
+        data.talent_tenets_improvements = [];
+        improvementsContainer.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+            data.talent_tenets_improvements.push(cb.getAttribute('data-tenet-id'));
+        });
+    }
 
     return data;
 }
@@ -680,8 +809,111 @@ function toggleCollapsible(header) {
     content.classList.toggle('show');
 }
 
+// Tenets configuration and rendering
+let tenetsConfig = null;
+const employeeData = {{ team | tojson }};
+
+function loadTenets() {
+    fetch('/api/tenets')
+        .then(response => response.json())
+        .then(data => {
+            tenetsConfig = data;
+            renderTenets();
+        })
+        .catch(error => {
+            console.error('Error loading tenets:', error);
+            document.querySelectorAll('.loading-tenets').forEach(el => {
+                el.textContent = 'Tenets configuration not found';
+            });
+        });
+}
+
+function renderTenets() {
+    const cards = document.querySelectorAll('.employee-card');
+
+    cards.forEach(card => {
+        const associateId = card.getAttribute('data-employee-id');
+        const loadingEl = card.querySelector('.loading-tenets');
+        const tenetsGrid = card.querySelector('.tenets-grid');
+        const strengthsContainer = card.querySelector('.tenet-items[data-tenet-type="talent_strengths"]');
+        const improvementsContainer = card.querySelector('.tenet-items[data-tenet-type="talent_improvements"]');
+
+        if (!strengthsContainer || !improvementsContainer) return;
+
+        // Get existing selections from employee data
+        const employee = employeeData.find(e => e['Associate ID'] === associateId);
+        let existingStrengths = [];
+        let existingImprovements = [];
+
+        try {
+            if (employee && employee.talent_tenets_strengths) {
+                existingStrengths = JSON.parse(employee.talent_tenets_strengths);
+            }
+            if (employee && employee.talent_tenets_improvements) {
+                existingImprovements = JSON.parse(employee.talent_tenets_improvements);
+            }
+        } catch (e) {
+            console.error('Error parsing existing tenets:', e);
+        }
+
+        // Render tenet checkboxes for both lists
+        tenetsConfig.tenets.forEach(tenet => {
+            if (!tenet.active) return;
+
+            // Add to strengths list
+            const strengthItem = createTenetCheckbox(tenet, 'talent_strengths', existingStrengths.includes(tenet.id), card);
+            strengthsContainer.appendChild(strengthItem);
+
+            // Add to improvements list
+            const improvementItem = createTenetCheckbox(tenet, 'talent_improvements', existingImprovements.includes(tenet.id), card);
+            improvementsContainer.appendChild(improvementItem);
+        });
+
+        // Hide loading, show grid
+        loadingEl.style.display = 'none';
+        tenetsGrid.style.display = 'grid';
+    });
+}
+
+function createTenetCheckbox(tenet, type, checked, card) {
+    const item = document.createElement('div');
+    item.className = 'tenet-item';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = checked;
+    checkbox.setAttribute('data-tenet-id', tenet.id);
+    checkbox.setAttribute('data-tenet-type', type);
+
+    // Add change listener for auto-save
+    checkbox.addEventListener('change', () => {
+        const associateId = card.getAttribute('data-employee-id');
+        autoSaveCalibration(associateId, card);
+    });
+
+    const label = document.createElement('div');
+    label.className = 'tenet-label';
+    label.innerHTML = `
+        <span class="tenet-name">${tenet.name}</span>
+        <div class="tenet-description">${tenet.description}</div>
+    `;
+
+    // Click on label toggles checkbox
+    label.addEventListener('click', () => {
+        checkbox.checked = !checkbox.checked;
+        checkbox.dispatchEvent(new Event('change'));
+    });
+
+    item.appendChild(checkbox);
+    item.appendChild(label);
+
+    return item;
+}
+
 // Set up auto-save listeners on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Load tenets first
+    loadTenets();
     const cards = document.querySelectorAll('.employee-card');
 
     cards.forEach(card => {

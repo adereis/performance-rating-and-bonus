@@ -831,3 +831,67 @@ def parse_talent_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, An
 
     except Exception as e:
         return False, [], str(e)
+
+
+def parse_proposed_actions_tenets(proposed_actions: str, tenets_config: dict) -> tuple:
+    """
+    Parse tenets from Proposed Actions field.
+
+    Looks for markers in format:
+        [Strengths: Tenet Name 1, Tenet Name 2]
+        [Improvements: Tenet Name 3]
+
+    Also removes the tenet markers from the text, returning clean proposed actions.
+
+    Args:
+        proposed_actions: The raw Proposed Actions text
+        tenets_config: Dict with 'tenets' list from tenets.json
+
+    Returns:
+        tuple: (clean_actions, strength_ids, improvement_ids)
+            - clean_actions: Proposed Actions without tenet markers
+            - strength_ids: List of tenet IDs matching strengths
+            - improvement_ids: List of tenet IDs matching improvements
+    """
+    import re
+
+    if not proposed_actions:
+        return '', [], []
+
+    # Build name -> id mapping
+    name_to_id = {}
+    if tenets_config and 'tenets' in tenets_config:
+        for tenet in tenets_config['tenets']:
+            name_to_id[tenet['name'].lower()] = tenet['id']
+
+    strength_ids = []
+    improvement_ids = []
+    clean_text = proposed_actions
+
+    # Parse [Strengths: name1; name2] - uses semicolon since tenet names may contain commas
+    strengths_match = re.search(r'\[Strengths:\s*([^\]]+)\]', proposed_actions, re.IGNORECASE)
+    if strengths_match:
+        # Split by semicolon first, fall back to comma for backwards compatibility
+        content = strengths_match.group(1)
+        names = [n.strip() for n in content.split(';')] if ';' in content else [n.strip() for n in content.split(',')]
+        for name in names:
+            tenet_id = name_to_id.get(name.lower())
+            if tenet_id:
+                strength_ids.append(tenet_id)
+        clean_text = clean_text.replace(strengths_match.group(0), '')
+
+    # Parse [Improvements: name1; name2]
+    improvements_match = re.search(r'\[Improvements:\s*([^\]]+)\]', proposed_actions, re.IGNORECASE)
+    if improvements_match:
+        content = improvements_match.group(1)
+        names = [n.strip() for n in content.split(';')] if ';' in content else [n.strip() for n in content.split(',')]
+        for name in names:
+            tenet_id = name_to_id.get(name.lower())
+            if tenet_id:
+                improvement_ids.append(tenet_id)
+        clean_text = clean_text.replace(improvements_match.group(0), '')
+
+    # Clean up extra whitespace
+    clean_text = re.sub(r'\n{3,}', '\n\n', clean_text.strip())
+
+    return clean_text, strength_ids, improvement_ids
