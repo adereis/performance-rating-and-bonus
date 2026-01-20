@@ -617,6 +617,17 @@
             </div>
         </div>
 
+        <div class="demo-options">
+            <label class="demo-option-checkbox">
+                <input type="checkbox" id="clearRatings">
+                <span class="checkmark"></span>
+                <div class="option-text">
+                    <strong>Start with blank ratings</strong>
+                    <span>Load employees without pre-filled ratings to experience the full workflow</span>
+                </div>
+            </label>
+        </div>
+
         <div class="demo-note">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -746,6 +757,50 @@
         width: 100%;
     }
 
+    .demo-options {
+        margin-bottom: 20px;
+    }
+
+    .demo-option-checkbox {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 15px 20px;
+        background: #f8f9fa;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .demo-option-checkbox:hover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .demo-option-checkbox input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        margin-top: 2px;
+        cursor: pointer;
+        accent-color: #667eea;
+    }
+
+    .demo-option-checkbox .option-text {
+        flex: 1;
+    }
+
+    .demo-option-checkbox .option-text strong {
+        display: block;
+        color: #2c3e50;
+        margin-bottom: 4px;
+    }
+
+    .demo-option-checkbox .option-text span {
+        font-size: 13px;
+        color: #666;
+    }
+
     .demo-note {
         display: flex;
         align-items: flex-start;
@@ -846,10 +901,12 @@ async function loadDemoData(type) {
             btn.textContent = 'Loading...';
         });
 
+        const clearRatings = document.getElementById('clearRatings').checked;
+
         const response = await fetch('/api/demo/reset', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: type })
+            body: JSON.stringify({ type: type, clear_ratings: clearRatings })
         });
 
         const data = await response.json();
@@ -857,13 +914,16 @@ async function loadDemoData(type) {
         if (data.success) {
             // Show success state instead of redirecting
             document.querySelector('.demo-scenario-grid').style.display = 'none';
+            document.querySelector('.demo-options').style.display = 'none';
             document.querySelector('.demo-note').style.display = 'none';
             document.querySelector('.demo-generate-intro').style.display = 'none';
 
             const successDiv = document.getElementById('demoSuccess');
-            const message = type === 'small'
-                ? 'Loaded 12 employees under one manager. Your demo session is ready!'
-                : 'Loaded 50 employees across 5 managers. Your demo session is ready!';
+            const baseMessage = type === 'small'
+                ? 'Loaded 12 employees under one manager.'
+                : 'Loaded 50 employees across 5 managers.';
+            const ratingNote = clearRatings ? ' Ratings cleared—ready for you to rate!' : '';
+            const message = baseMessage + ratingNote + ' Your demo session is ready!';
             document.getElementById('demoSuccessMessage').textContent = message;
             successDiv.style.display = 'block';
         } else {
@@ -886,15 +946,17 @@ async function loadDemoData(type) {
 function resetDemoForm() {
     // Show the scenario selection again
     document.querySelector('.demo-scenario-grid').style.display = 'grid';
+    document.querySelector('.demo-options').style.display = 'block';
     document.querySelector('.demo-note').style.display = 'flex';
     document.querySelector('.demo-generate-intro').style.display = 'block';
     document.getElementById('demoSuccess').style.display = 'none';
 
-    // Reset buttons
+    // Reset buttons and checkbox
     document.querySelectorAll('.scenario-btn').forEach((btn, i) => {
         btn.disabled = false;
         btn.textContent = i === 0 ? 'Load Small Team' : 'Load Large Org';
     });
+    document.getElementById('clearRatings').checked = false;
 }
 </script>
 {% else %}

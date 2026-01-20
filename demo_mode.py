@@ -88,6 +88,46 @@ def get_template_path(demo_type='small'):
     return os.path.join(TEMPLATES_DIR, 'small-team.db')
 
 
+def _clear_ratings_in_db(db_path):
+    """Clear all manager-entered ratings from the Employee table.
+
+    Used when loading demo data with 'blank ratings' option so users
+    can experience the full workflow from import to rating to export.
+    """
+    import sqlite3
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute('''
+            UPDATE employee SET
+                -- Bonus cycle fields
+                performance_rating_percent = NULL,
+                justification = NULL,
+                mentor = NULL,
+                mentees = NULL,
+                tenets_strengths = NULL,
+                tenets_improvements = NULL,
+                last_updated = NULL,
+                -- Talent cycle fields
+                talent_perf_what = NULL,
+                talent_perf_how = NULL,
+                talent_overall_perf = NULL,
+                talent_growth_agility = NULL,
+                talent_change_agility = NULL,
+                talent_identified_future = NULL,
+                talent_movement_readiness = NULL,
+                talent_proposed_actions = NULL,
+                talent_promo_job_profile = NULL,
+                talent_promo_business_need = NULL,
+                talent_promo_role_scope = NULL,
+                talent_promo_readiness = NULL,
+                talent_tenets_strengths = NULL,
+                talent_tenets_improvements = NULL
+        ''')
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def session_has_data(session_id):
     """Check if a session already has a database with data."""
     db_path = get_session_db_path(session_id)
@@ -106,7 +146,7 @@ def _remove_session_files(db_path):
                 _log(f"Error removing {file_path}: {e}")
 
 
-def initialize_session_from_template(session_id, demo_type='small'):
+def initialize_session_from_template(session_id, demo_type='small', clear_ratings=False):
     """
     Initialize a session database by copying a template.
 
@@ -116,6 +156,7 @@ def initialize_session_from_template(session_id, demo_type='small'):
     Args:
         session_id: The session ID
         demo_type: 'small' or 'large'
+        clear_ratings: If True, clears all manager-entered ratings after loading
 
     Returns:
         bool: True if successful, False otherwise
@@ -160,6 +201,11 @@ def initialize_session_from_template(session_id, demo_type='small'):
         # Ensure mtime is current so other workers detect the change
         # (rename preserves mtime, so we touch the file explicitly)
         os.utime(db_path, None)
+
+        # Optionally clear all manager-entered ratings
+        if clear_ratings:
+            _clear_ratings_in_db(db_path)
+            _log(f"Session {session_id[:8]}: cleared ratings")
 
         _log(f"Session {session_id[:8]}: initialized with {demo_type} template ({os.path.getsize(db_path)} bytes)")
         return True

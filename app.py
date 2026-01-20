@@ -280,16 +280,18 @@ def demo_reset():
 
     data = request.get_json() or {}
     demo_type = data.get('type', 'small')
+    clear_ratings = data.get('clear_ratings', False)
 
     if demo_type not in ('small', 'large'):
         demo_type = 'small'
 
     session_id = get_session_id()
-    success = initialize_session_from_template(session_id, demo_type)
+    success = initialize_session_from_template(session_id, demo_type, clear_ratings=clear_ratings)
 
     return jsonify({
         'success': success,
         'demo_type': demo_type,
+        'clear_ratings': clear_ratings,
         'message': f'Demo reset to {demo_type} team dataset' if success else 'Failed to reset demo'
     })
 
