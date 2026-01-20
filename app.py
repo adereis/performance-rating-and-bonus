@@ -282,6 +282,7 @@ def handle_exception(error):
     verbose tracebacks in production logs.
     """
     from werkzeug.exceptions import HTTPException
+    from models import DatabaseSchemaError
 
     # Pass through HTTP exceptions (404, etc.) to default handlers
     if isinstance(error, HTTPException):
@@ -293,6 +294,18 @@ def handle_exception(error):
 
     # One-line log: "DatabaseError: unable to open database file"
     app.logger.error(f"{error_type}: {error_msg}")
+
+    # Schema errors get a specific, helpful error page
+    if isinstance(error, DatabaseSchemaError):
+        return render_template('error.html',
+            error_code=500,
+            error_title="Database Update Required",
+            error_message="Your database was created with an older version and needs to be recreated. "
+                          "Delete 'ratings.db' and re-import your Workday data. "
+                          "(Workday is the source of truth, so no data will be lost.)",
+            demo_mode=DEMO_MODE,
+            show_reset=DEMO_MODE
+        ), 500
 
     # Return a clean error page
     return render_template('error.html',
