@@ -614,7 +614,7 @@ class TestTenetsRoundTrip:
     are correctly parsed back when the file is re-imported.
     """
 
-    def test_tenets_round_trip_export_import(self, client, db_session, tmp_path):
+    def test_tenets_round_trip_export_import(self, client, db_session, tmp_path, sample_tenets):
         """Export talent file with tenets, re-import, verify tenets preserved."""
         import json
         import io

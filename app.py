@@ -508,26 +508,22 @@ def update_bonus_settings(budget_override):
 
 def load_tenets_config():
     """
-    Load tenets configuration from file.
-    Prefers tenets.json, falls back to tenets-sample.json.
+    Load tenets configuration from tenets.json.
 
     Returns:
         tuple: (tenets_config dict, tenets_map dict mapping id->name)
                Returns (None, {}) if no config found
     """
-    tenets_file = 'tenets.json' if os.path.exists('tenets.json') else 'samples/tenets-sample.json'
-
-    if not os.path.exists(tenets_file):
-        return None, {}
-
-    try:
-        with open(tenets_file, 'r') as f:
-            tenets_config = json.load(f)
-            tenets_map = {t['id']: t['name'] for t in tenets_config.get('tenets', [])}
-            return tenets_config, tenets_map
-    except Exception as e:
-        print(f"Error loading tenets from {tenets_file}: {e}")
-        return None, {}
+    tenets_file = 'tenets.json'
+    if os.path.exists(tenets_file):
+        try:
+            with open(tenets_file, 'r') as f:
+                tenets_config = json.load(f)
+                tenets_map = {t['id']: t['name'] for t in tenets_config.get('tenets', [])}
+                return tenets_config, tenets_map
+        except Exception as e:
+            print(f"Error loading tenets from {tenets_file}: {e}")
+    return None, {}
 
 
 def get_filter_params():

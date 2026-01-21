@@ -163,6 +163,26 @@ def populated_db(db_session, sample_employees):
 
 
 @pytest.fixture(scope='function')
+def sample_tenets(app, monkeypatch):
+    """
+    Configure app to use sample tenets for testing.
+
+    This fixture monkeypatches load_tenets_config to return sample tenets,
+    keeping test fixtures out of production code.
+    """
+    import json
+    sample_file = 'samples/tenets-sample.json'
+    with open(sample_file, 'r') as f:
+        sample_config = json.load(f)
+    sample_map = {t['id']: t['name'] for t in sample_config.get('tenets', [])}
+
+    import app as app_module
+    monkeypatch.setattr(app_module, 'load_tenets_config',
+                        lambda: (sample_config, sample_map))
+    return sample_config
+
+
+@pytest.fixture(scope='function')
 def talent_xlsx_file():
     """Create a temporary talent calibration XLSX file for testing."""
     from openpyxl import Workbook
