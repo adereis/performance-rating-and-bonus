@@ -19,7 +19,7 @@ class TestAPIEndpoints:
         """Test the rating page route."""
         response = client.get('/rate')
         assert response.status_code == 200
-        assert b'Bonus Rating' in response.data
+        assert b'Rate Team' in response.data
 
     def test_analytics_route(self, client, populated_db):
         """Test the analytics page route."""

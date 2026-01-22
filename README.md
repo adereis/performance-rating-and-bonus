@@ -173,19 +173,19 @@ Save the export as `real-workday-export.xlsx` (or any name starting with `real-`
 
 This will:
 - Import all employee records from Workday
-- Initialize empty bonus rating fields
+- Initialize empty performance rating fields
 - Optionally clear any existing sample data
 
 ### Step 3: Start Rating
 
-Navigate to **Bonus Rating** to begin entering bonus ratings.
+Navigate to **Rate Team** to begin entering performance ratings.
 
 ## Workflow
 
-### 1. Enter Bonus Ratings
-- Navigate to **Bonus Rating** tab
+### 1. Enter Performance Ratings
+- Navigate to **Rate Team** tab
 - For each employee:
-  - Enter bonus rating (0-200%, where 100% = met expectations)
+  - Enter performance rating (0-200%, where 100% = met expectations)
   - Add justification explaining the rating
   - Optionally note mentors and mentees
 - Ratings auto-save after 2 seconds of inactivity
@@ -233,7 +233,7 @@ This:
 
 ### 7. Talent Calibration (Optional)
 
-In addition to bonus ratings, you can conduct **talent calibration** to assess employee potential and career readiness:
+In addition to performance ratings, you can conduct **talent calibration** to assess employee potential and career readiness:
 
 - Navigate to **Calibrate** tab
 - For each employee:
@@ -245,7 +245,7 @@ In addition to bonus ratings, you can conduct **talent calibration** to assess e
 - The system automatically derives:
   - **Overall Performance**: High Impact / Successful / Evolving / Low Performer
   - **Future Talent**: Yes/No based on agility ratings
-  - **Cross-cycle Alignment**: Flags when bonus ratings don't match talent assessment
+  - **Cross-cycle Alignment**: Flags when performance ratings don't match talent assessment
 
 Talent data can be exported and re-imported—tenets are embedded in the "Proposed Actions" field for Workday compatibility.
 

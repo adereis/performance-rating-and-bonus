@@ -43,7 +43,7 @@ Instructions for AI agents and human developers working on this codebase.
 ## Domain Knowledge
 
 ### Terminology (Important!)
-- **Bonus Rating** (UI term): The 0-200% rating entered by managers. Database fields use legacy name `performance_rating` / `performance_rating_percent`.
+- **Performance Rating** (UI term): The 0-200% rating entered by managers. Database field: `performance_rating_percent`.
 - **Overall Performance** (UI term): The talent calibration result (High Impact / Successful / Evolving / Low Performer). Derived from What + How assessments.
 - **Performance Rating System**: The product name (not a rating type).
 
@@ -94,7 +94,7 @@ Manager name parsed from: `"Supervisory Organization (Manager Name)"` → extrac
 
 **Tenets integration**: Tenets embedded in "Proposed Talent Actions" on export (semicolon-separated), parsed back on import via `parse_proposed_actions_tenets()`.
 
-**Cross-cycle alignment** (Spec §7.4): Dashboard shows alignment between Bonus Rating (0-200%) and Overall Performance. Alignment ranges: High Impact = 120-200%, Successful = 90-119%, Evolving = 70-89%, Low = 0-69%.
+**Cross-cycle alignment** (Spec §7.4): Dashboard shows alignment between Performance Rating (0-200%) and Overall Performance. Alignment ranges: High Impact = 120-200%, Successful = 90-119%, Evolving = 70-89%, Low = 0-69%.
 
 ---
 

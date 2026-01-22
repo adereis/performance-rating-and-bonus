@@ -1257,7 +1257,7 @@
     <div class="calibration-disclaimer">
         <h4>ℹ️ Review recommended, not necessarily errors</h4>
         <p>
-            These are potential mismatches between bonus ratings and talent calibration data.
+            These are potential mismatches between performance ratings and talent calibration data.
             <strong>Each case may have a valid explanation</strong> — use this as a checklist to ensure intentional decisions.
         </p>
     </div>
@@ -1268,7 +1268,7 @@
         {% if inconsistencies.high_bonus_low_talent %}
         <div class="inconsistency-section" style="border-left: 4px solid #e74c3c; padding-left: 15px; background: #fdf2f2; padding: 15px; border-radius: 0 8px 8px 0;">
             <h4 style="margin: 0 0 10px 0; color: #c0392b;">🔴 Above-Target Bonus + Low Talent Rating ({{ inconsistencies.high_bonus_low_talent | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Bonus rating &gt;90% but talent assessment is Low or Evolving Performer</p>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Performance rating &gt;90% but talent assessment is Low or Evolving Performer</p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in inconsistencies.high_bonus_low_talent %}
                 <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}% / {{ emp.talent }}</li>
@@ -1280,7 +1280,7 @@
         {% if inconsistencies.low_bonus_high_talent %}
         <div class="inconsistency-section" style="border-left: 4px solid #e74c3c; padding-left: 15px; background: #fdf2f2; padding: 15px; border-radius: 0 8px 8px 0;">
             <h4 style="margin: 0 0 10px 0; color: #c0392b;">🔴 Low Bonus + High Impact Performer ({{ inconsistencies.low_bonus_high_talent | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Bonus rating &lt;90% but talent assessment is High Impact Performer</p>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Performance rating &lt;90% but talent assessment is High Impact Performer</p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in inconsistencies.low_bonus_high_talent %}
                 <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}% / {{ emp.talent }}</li>
@@ -1292,7 +1292,7 @@
         {% if inconsistencies.future_talent_low_bonus %}
         <div class="inconsistency-section" style="border-left: 4px solid #f39c12; padding-left: 15px; background: #fffbf0; padding: 15px; border-radius: 0 8px 8px 0;">
             <h4 style="margin: 0 0 10px 0; color: #d68910;">🟡 Future Talent + Low Bonus ({{ inconsistencies.future_talent_low_bonus | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Identified as Future Talent but bonus rating &lt;90%</p>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Identified as Future Talent but performance rating &lt;90%</p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in inconsistencies.future_talent_low_bonus %}
                 <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}%</li>
@@ -1304,7 +1304,7 @@
         {% if inconsistencies.promotion_ready_low_rating %}
         <div class="inconsistency-section" style="border-left: 4px solid #f39c12; padding-left: 15px; background: #fffbf0; padding: 15px; border-radius: 0 8px 8px 0;">
             <h4 style="margin: 0 0 10px 0; color: #d68910;">🟡 Promotion Ready + Below-Target Bonus ({{ inconsistencies.promotion_ready_low_rating | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Movement readiness is "Ready Now" but bonus rating &lt;100%</p>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Movement readiness is "Ready Now" but performance rating &lt;100%</p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in inconsistencies.promotion_ready_low_rating %}
                 <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}%</li>
@@ -1343,7 +1343,7 @@
             <h4 style="margin: 0 0 10px 0; color: #7f8c8d;">⚪ Incomplete Data</h4>
             {% if inconsistencies.bonus_only %}
             <div style="margin-bottom: 10px;">
-                <strong>Bonus rating only, no talent data ({{ inconsistencies.bonus_only | length }}):</strong>
+                <strong>Performance rating only, no talent data ({{ inconsistencies.bonus_only | length }}):</strong>
                 <span style="font-size: 13px; color: #666;">
                     {% for emp in inconsistencies.bonus_only %}{{ emp.name }}{% if not loop.last %}, {% endif %}{% endfor %}
                 </span>
@@ -1351,7 +1351,7 @@
             {% endif %}
             {% if inconsistencies.talent_only %}
             <div>
-                <strong>Talent data only, no bonus rating ({{ inconsistencies.talent_only | length }}):</strong>
+                <strong>Talent data only, no performance rating ({{ inconsistencies.talent_only | length }}):</strong>
                 <span style="font-size: 13px; color: #666;">
                     {% for emp in inconsistencies.talent_only %}{{ emp.name }}{% if not loop.last %}, {% endif %}{% endfor %}
                 </span>
@@ -1394,7 +1394,7 @@
 <!-- 6. Team Rankings -->
 <div class="card" data-card-id="team-rankings">
     <div class="card-header" onclick="toggleCard(this)">
-        <h2>📋 Team Overview (by Bonus Rating)</h2>
+        <h2>📋 Team Overview (by Performance Rating)</h2>
         <span class="collapse-icon">▼</span>
     </div>
     <div class="card-body">
@@ -1404,7 +1404,7 @@
                 <tr>
                     <th class="sortable" data-sort="name">Name</th>
                     <th class="sortable" data-sort="job">Job Profile</th>
-                    <th class="sortable" data-sort="rating">Bonus Rating</th>
+                    <th class="sortable" data-sort="rating">Performance Rating</th>
                     <th>Justification</th>
                 </tr>
             </thead>

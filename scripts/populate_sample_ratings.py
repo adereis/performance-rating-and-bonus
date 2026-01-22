@@ -102,15 +102,15 @@ def derive_future_talent(growth: str, change: str) -> bool:
 
 def generate_talent_data(bonus_rating: int) -> dict:
     """
-    Generate talent calibration data that's roughly aligned with bonus rating.
+    Generate talent calibration data that's roughly aligned with performance rating.
 
     Args:
-        bonus_rating: The employee's bonus rating percent (0-200)
+        bonus_rating: The employee's performance rating percent (0-200)
 
     Returns:
         dict with talent fields
     """
-    # Map bonus rating to talent calibration distribution
+    # Map performance rating to talent calibration distribution
     # Higher performers more likely to have higher talent ratings
     if bonus_rating >= 130:
         # High performers: likely Surpasses
@@ -216,7 +216,7 @@ PROMO_CANDIDATES = {
 
 
 # ============================================================================
-# Bonus Rating Data
+# Performance Rating Data
 # ============================================================================
 
 # Sample ratings and justifications for small team
@@ -475,7 +475,7 @@ calibration) to employees after Workday data has been imported. Run this after
 importing sample-data-small.xlsx or sample-data-large.xlsx.
 
 Talent calibration data (--with-talent) includes:
-  - Performance What/How ratings (aligned with bonus rating)
+  - Performance What/How ratings (aligned with performance rating)
   - Derived Overall Performance (Spec §4.1)
   - Growth/Change Agility and derived Future Talent (Spec §4.2)
   - Movement Readiness

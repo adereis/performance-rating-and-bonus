@@ -134,7 +134,7 @@ This file tracks future enhancements and feature requests for the Performance Ra
 
 ### Talent Calibration System
 **Completed:** 2026-01
-**Description:** Full talent calibration workflow separate from bonus ratings, supporting "What" and "How" performance assessments, future talent identification, and cross-cycle alignment.
+**Description:** Full talent calibration workflow separate from performance ratings, supporting "What" and "How" performance assessments, future talent identification, and cross-cycle alignment.
 
 **Implementation:**
 - **Import**: Auto-detects talent spreadsheets via column markers (`Performance: What`, `Performance: How`, `Future Talent`, `Movement Readiness`)
@@ -144,7 +144,7 @@ This file tracks future enhancements and feature requests for the Performance Ra
   - `derive_future_talent(growth, change)` → True if both contain "Always"
   - `get_cross_cycle_alignment(bonus_pct, talent_overall)` → "aligned" | "review" | "incomplete"
 - **UI**: `/calibrate` page with What/How dropdowns, talent tenets, proposed actions textarea
-- **Cross-cycle alignment**: Dashboard shows alignment between Bonus Rating (0-200%) and Overall Performance
+- **Cross-cycle alignment**: Dashboard shows alignment between Performance Rating (0-200%) and Overall Performance
 - **Export**: Talent export mode generates Workday-compatible spreadsheet with proposed actions
 - **Manager detection**: Uses `management_level` field in addition to supervisory org lookup
 - **Tenets round-trip**: Tenets embedded in "Proposed Talent Actions" on export, parsed back on import
@@ -157,7 +157,7 @@ This file tracks future enhancements and feature requests for the Performance Ra
 
 **Implementation:**
 - **Talent 9-box matrix**: Grid visualization of What vs How performance
-- **Rating inconsistencies**: Flags mismatches between bonus ratings and talent assessments
+- **Rating inconsistencies**: Flags mismatches between performance ratings and talent assessments
 - **Mentorship analysis**: Shows mentor/mentee relationships and coverage gaps
 - **Collapsible cards**: All analytics sections collapse for better navigation
 - **Talent distribution charts**: Performance breakdown by category

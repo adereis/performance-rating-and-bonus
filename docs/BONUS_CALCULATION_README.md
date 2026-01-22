@@ -167,7 +167,7 @@ If some rated employees don't appear in the calculation, they're likely missing 
 
 ## Workflow Recommendation
 
-1. **Complete all bonus ratings** on the "Bonus Rating" tab first
+1. **Complete all performance ratings** on the "Rate Team" tab first
 2. **Review distribution** on the Analytics tab to ensure ratings are calibrated
 3. **Run bonus calculation** with default parameters
 4. **Adjust parameters** if the results don't align with your intent

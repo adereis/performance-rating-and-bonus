@@ -1365,7 +1365,7 @@
             <nav>
                 <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Dashboard</a>
                 <a href="{{ url_for('import_page') }}" {% if request.endpoint == 'import_page' %}class="active"{% endif %}>Import</a>
-                <a href="{{ url_for('rate_page') }}" {% if request.endpoint == 'rate_page' %}class="active"{% endif %}>Bonus Rating</a>
+                <a href="{{ url_for('rate_page') }}" {% if request.endpoint == 'rate_page' %}class="active"{% endif %}>Rate Team</a>
                 <a href="{{ url_for('calibrate_page') }}" {% if request.endpoint == 'calibrate_page' %}class="active"{% endif %}>Talent Calibration</a>
                 <a href="{{ url_for('bonus_calculation') }}" {% if request.endpoint == 'bonus_calculation' %}class="active"{% endif %}>Bonus Calculation</a>
                 <a href="{{ url_for('analytics') }}" {% if request.endpoint == 'analytics' %}class="active"{% endif %}>Analytics</a>
@@ -1861,7 +1861,7 @@
                     <div class="modal-section-body">
                         <div class="alignment-container">
                             <div class="alignment-item">
-                                <div class="alignment-item-label">Bonus Rating</div>
+                                <div class="alignment-item-label">Performance Rating</div>
                                 <div class="alignment-item-value">${employee.performance_rating_percent}%</div>
                             </div>
                             <div class="alignment-arrow">↔</div>
@@ -1878,7 +1878,7 @@
                         </div>
                         ${alignment.status === 'review' ? `
                             <p style="margin-top: 12px; font-size: 13px; color: #856404;">
-                                The bonus rating and talent calibration may need review to ensure consistency.
+                                The performance rating and talent calibration may need review to ensure consistency.
                             </p>
                         ` : ''}
                     </div>
@@ -1928,7 +1928,7 @@
                         <div class="modal-section-body">
                             <div class="employee-modal-grid">
                                 <div class="employee-modal-field">
-                                    <label>Bonus Rating % (0-200)</label>
+                                    <label>Performance Rating % (0-200)</label>
                                     <input type="number"
                                            id="modal_rating_percent"
                                            min="0"

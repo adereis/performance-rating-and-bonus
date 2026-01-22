@@ -1815,7 +1815,7 @@ def analytics():
             'talent_matrix': talent_matrix_counts
         }
 
-    # Detect potential inconsistencies between bonus ratings and talent data
+    # Detect potential inconsistencies between performance ratings and talent data
     inconsistencies = {
         'high_bonus_low_talent': [],    # Rating >90% but Low/Evolving talent
         'low_bonus_high_talent': [],    # Rating <90% but High Impact talent
@@ -1823,8 +1823,8 @@ def analytics():
         'promotion_ready_low_rating': [],  # Ready Now but rating <100%
         'promotion_ready_not_high': [],   # Ready Now but not High Impact (talent measured in current role)
         'high_performer_not_future': [],  # High Impact but not Future Talent
-        'bonus_only': [],               # Has bonus rating but no talent data
-        'talent_only': []               # Has talent data but no bonus rating
+        'bonus_only': [],               # Has performance rating but no talent data
+        'talent_only': []               # Has talent data but no performance rating
     }
 
     for emp in team_data:

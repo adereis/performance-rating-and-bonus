@@ -651,7 +651,7 @@
         </p>
         {% else %}
         <h3>📊 No Rated Employees</h3>
-        <p>Employees must have bonus ratings before calculation can be performed.</p>
+        <p>Employees must have performance ratings before calculation can be performed.</p>
         <p style="margin-top: 15px;">
             <a href="{{ url_for('rate_page') }}" class="btn">Go to Rating Page</a>
         </p>
@@ -768,7 +768,7 @@
                     max: 200,
                     title: {
                         display: true,
-                        text: 'Bonus Rating (%)',
+                        text: 'Performance Rating (%)',
                         font: { size: 14, weight: 'bold' }
                     },
                     ticks: {

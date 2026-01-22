@@ -46,8 +46,7 @@ class RatingSnapshot(Base):
     associate_id = Column(String, nullable=False, index=True)  # Employee identifier
 
     # Rating vs Allocation (important distinction!)
-    # NOTE: "performance_rating" is the legacy field name; UI calls this "Bonus Rating"
-    performance_rating = Column(Float)  # Manager's Bonus Rating (0-200%), INPUT to algorithm
+    performance_rating = Column(Float)  # Manager's Performance Rating (0-200%), INPUT to algorithm
     bonus_allocation = Column(Float)    # Final result from algorithm, OUTPUT
 
     # Qualitative data (from Notes field, may be NULL for old imports)
@@ -162,8 +161,7 @@ class Employee(Base):
     zero_bonus_allocated = Column(String)
 
     # Manager input fields (Bonus Cycle)
-    # NOTE: "performance_rating_percent" is the legacy field name; UI calls this "Bonus Rating"
-    performance_rating_percent = Column(Float)  # Bonus Rating (0-200%)
+    performance_rating_percent = Column(Float)  # Performance Rating (0-200%)
     justification = Column(String)
     mentor = Column(String)
     mentees = Column(String)
@@ -362,9 +360,9 @@ def derive_future_talent(growth: str | None, change: str | None) -> bool:
 
 def get_cross_cycle_alignment(bonus_pct: float | None, talent_overall: str | None) -> str:
     """
-    Determine cross-cycle alignment between bonus rating and talent calibration.
+    Determine cross-cycle alignment between performance rating and talent calibration.
 
-    Per Spec §7.4, compares the bonus performance rating percentage with
+    Per Spec §7.4, compares the performance rating percentage with
     the talent Overall Performance rating to identify alignment or need for review.
 
     Alignment ranges:
@@ -378,7 +376,7 @@ def get_cross_cycle_alignment(bonus_pct: float | None, talent_overall: str | Non
         talent_overall: Overall Performance from talent calibration
 
     Returns:
-        "aligned" - Bonus rating falls within expected range for overall performance
+        "aligned" - Performance rating falls within expected range for overall performance
         "review" - Ratings don't align, may need review
         "incomplete" - Missing either bonus or talent data
     """

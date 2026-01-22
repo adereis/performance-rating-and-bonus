@@ -83,8 +83,8 @@ def derive_future_talent(growth: str, change: str) -> bool:
 
 
 def generate_talent_data(bonus_rating: int) -> dict:
-    """Generate talent calibration data aligned with bonus rating."""
-    # Weight distributions based on bonus rating (aligned with Spec §7.4)
+    """Generate talent calibration data aligned with performance rating."""
+    # Weight distributions based on performance rating (aligned with Spec §7.4)
     if bonus_rating >= 120:
         what_weights = [0.6, 0.35, 0.05]
         how_weights = [0.5, 0.45, 0.05, 0.0]
@@ -217,7 +217,7 @@ def get_small_team_employees():
     for i, (name, job, salary, grade, bonus_pct, rating, justification) in enumerate(employees):
         bonus_target = salary * (bonus_pct / 100)
 
-        # Generate talent calibration data aligned with bonus rating
+        # Generate talent calibration data aligned with performance rating
         talent_data = generate_talent_data(rating)
 
         emp_data = {
@@ -366,7 +366,7 @@ def get_large_team_employees():
         for (name, job, salary, grade, bonus_pct, rating, justification) in members:
             bonus_target = salary * (bonus_pct / 100)
 
-            # Generate talent calibration data aligned with bonus rating
+            # Generate talent calibration data aligned with performance rating
             talent_data = generate_talent_data(rating)
 
             emp_data = {
@@ -406,7 +406,7 @@ def generate_snapshot_talent_data(emp: dict) -> dict:
     Generate talent snapshot data with variation from current talent data.
     Creates realistic historical talent data for trend analysis.
     """
-    # Get current bonus rating to generate varied historical talent data
+    # Get current performance rating to generate varied historical talent data
     current_rating = emp.get('performance_rating_percent', 100)
     # Vary historical rating similar to how bonus snapshots vary
     historical_rating = max(50, min(180, current_rating + random.randint(-20, 10)))
