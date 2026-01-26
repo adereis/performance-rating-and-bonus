@@ -155,11 +155,11 @@ class TestTalentAnalyticsSuggestedRanges:
         response = client.get('/analytics')
         html = response.data.decode('utf-8')
 
-        # Check for suggested range values from Spec §7.3
-        assert '5-15%' in html  # High Impact
-        assert '55-70%' in html  # Successful
-        assert '15-25%' in html  # Evolving
-        assert '2-10%' in html  # Low
+        # Check for suggested range values based on Gartner benchmarks
+        assert '10-20%' in html  # High Impact
+        assert '60-80%' in html  # Successful
+        assert '5-15%' in html  # Evolving
+        assert '2-5%' in html  # Low
         assert '10-20%' in html  # Future Talent
 
     def test_status_badges_present(self, client, employees_with_talent):

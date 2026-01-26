@@ -1721,12 +1721,12 @@ def analytics():
             if movement in movement_counts:
                 movement_counts[movement] += 1
 
-        # Suggested ranges per Spec §7.3
+        # Suggested ranges based on Gartner research benchmarks
         talent_suggested_ranges = {
-            'High Impact Performer': (5, 15),
-            'Successful Performer': (55, 70),
-            'Evolving Performer': (15, 25),
-            'Low Performer': (2, 10),
+            'High Impact Performer': (10, 20),
+            'Successful Performer': (60, 80),
+            'Evolving Performer': (5, 15),
+            'Low Performer': (2, 5),
             'Future Talent': (10, 20)
         }
 
