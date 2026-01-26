@@ -851,30 +851,40 @@ def parse_talent_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, An
         return False, [], str(e)
 
 
-def parse_proposed_actions_tenets(proposed_actions: str, tenets_config: dict) -> tuple:
+def parse_proposed_actions_metadata(proposed_actions: str, tenets_config: dict) -> dict:
     """
-    Parse tenets from Proposed Actions field.
+    Parse tenets and mentor/mentees from Proposed Actions field.
 
     Looks for markers in format:
-        [Strengths: Tenet Name 1, Tenet Name 2]
+        [Strengths: Tenet Name 1; Tenet Name 2]
         [Improvements: Tenet Name 3]
+        [Mentor: Name]
+        [Mentees: Name1; Name2]
 
-    Also removes the tenet markers from the text, returning clean proposed actions.
+    Also removes the metadata markers from the text, returning clean proposed actions.
 
     Args:
         proposed_actions: The raw Proposed Actions text
         tenets_config: Dict with 'tenets' list from tenets.json
 
     Returns:
-        tuple: (clean_actions, strength_ids, improvement_ids)
-            - clean_actions: Proposed Actions without tenet markers
+        dict with keys:
+            - clean_actions: Proposed Actions without metadata markers
             - strength_ids: List of tenet IDs matching strengths
             - improvement_ids: List of tenet IDs matching improvements
+            - mentor: Mentor name string (or None)
+            - mentees: Mentees string (or None)
     """
     import re
 
     if not proposed_actions:
-        return '', [], []
+        return {
+            'clean_actions': '',
+            'strength_ids': [],
+            'improvement_ids': [],
+            'mentor': None,
+            'mentees': None
+        }
 
     # Build name -> id mapping
     name_to_id = {}
@@ -884,6 +894,8 @@ def parse_proposed_actions_tenets(proposed_actions: str, tenets_config: dict) ->
 
     strength_ids = []
     improvement_ids = []
+    mentor = None
+    mentees = None
     clean_text = proposed_actions
 
     # Parse [Strengths: name1; name2] - uses semicolon since tenet names may contain commas
@@ -909,7 +921,51 @@ def parse_proposed_actions_tenets(proposed_actions: str, tenets_config: dict) ->
                 improvement_ids.append(tenet_id)
         clean_text = clean_text.replace(improvements_match.group(0), '')
 
+    # Parse [Mentor: Name]
+    mentor_match = re.search(r'\[Mentor:\s*([^\]]+)\]', clean_text, re.IGNORECASE)
+    if mentor_match:
+        mentor = mentor_match.group(1).strip()
+        clean_text = clean_text.replace(mentor_match.group(0), '')
+
+    # Parse [Mentees: Name1; Name2]
+    mentees_match = re.search(r'\[Mentees:\s*([^\]]+)\]', clean_text, re.IGNORECASE)
+    if mentees_match:
+        mentees = mentees_match.group(1).strip()
+        clean_text = clean_text.replace(mentees_match.group(0), '')
+
     # Clean up extra whitespace
     clean_text = re.sub(r'\n{3,}', '\n\n', clean_text.strip())
 
-    return clean_text, strength_ids, improvement_ids
+    return {
+        'clean_actions': clean_text,
+        'strength_ids': strength_ids,
+        'improvement_ids': improvement_ids,
+        'mentor': mentor if mentor else None,
+        'mentees': mentees if mentees else None
+    }
+
+
+def parse_proposed_actions_tenets(proposed_actions: str, tenets_config: dict) -> tuple:
+    """
+    Parse tenets from Proposed Actions field (backward compatibility wrapper).
+
+    Looks for markers in format:
+        [Strengths: Tenet Name 1, Tenet Name 2]
+        [Improvements: Tenet Name 3]
+
+    Also removes the tenet markers from the text, returning clean proposed actions.
+
+    Args:
+        proposed_actions: The raw Proposed Actions text
+        tenets_config: Dict with 'tenets' list from tenets.json
+
+    Returns:
+        tuple: (clean_actions, strength_ids, improvement_ids)
+            - clean_actions: Proposed Actions without tenet markers
+            - strength_ids: List of tenet IDs matching strengths
+            - improvement_ids: List of tenet IDs matching improvements
+
+    Note: For full metadata parsing including mentor/mentees, use parse_proposed_actions_metadata().
+    """
+    result = parse_proposed_actions_metadata(proposed_actions, tenets_config)
+    return result['clean_actions'], result['strength_ids'], result['improvement_ids']

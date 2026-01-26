@@ -523,6 +523,30 @@
         font-weight: 600;
         color: #2c3e50;
     }
+
+    /* Cross-cycle hints */
+    .cross-cycle-hint {
+        font-size: 12px;
+        color: #666;
+        margin-top: 6px;
+        padding: 6px 10px;
+        background: #f8f9fa;
+        border-left: 3px solid #3498db;
+        display: none;
+    }
+
+    .cross-cycle-hint.show {
+        display: block;
+    }
+
+    .cross-cycle-hint .hint-label {
+        font-weight: 500;
+        color: #555;
+    }
+
+    .cross-cycle-hint .hint-value {
+        color: #2c3e50;
+    }
 </style>
 {% endblock %}
 
@@ -662,6 +686,28 @@
                 <div class="calibration-input-group">
                     <label>Proposed Actions</label>
                     <textarea data-field="talent_proposed_actions" placeholder="Recommended development actions...">{{ employee.talent_proposed_actions or '' }}</textarea>
+                </div>
+
+                <div class="calibration-input-group">
+                    <label>Mentor</label>
+                    <input type="text" data-field="talent_mentor" placeholder="Who is mentoring this person?" value="{{ employee.talent_mentor or '' }}">
+                    {% if employee.mentor %}
+                    <div class="cross-cycle-hint show">
+                        <span class="hint-label">From Bonus Cycle:</span>
+                        <span class="hint-value">{{ employee.mentor }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="calibration-input-group">
+                    <label>Mentee(s)</label>
+                    <input type="text" data-field="talent_mentees" placeholder="Who is this person mentoring?" value="{{ employee.talent_mentees or '' }}">
+                    {% if employee.mentees %}
+                    <div class="cross-cycle-hint show">
+                        <span class="hint-label">From Bonus Cycle:</span>
+                        <span class="hint-value">{{ employee.mentees }}</span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 

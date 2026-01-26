@@ -77,7 +77,7 @@ Manager name parsed from: `"Supervisory Organization (Manager Name)"` → extrac
 
 **Preserved on re-import** (manager-entered):
 - Bonus cycle: `performance_rating`, `justification`, `mentors`, `mentees`, `ai_related_activities`, tenets
-- Talent cycle: `talent_perf_what`, `talent_perf_how`, `talent_growth_agility`, `talent_change_agility`, `talent_movement_readiness`, `talent_proposed_actions`, `talent_tenets_*`
+- Talent cycle: `talent_perf_what`, `talent_perf_how`, `talent_growth_agility`, `talent_change_agility`, `talent_movement_readiness`, `talent_proposed_actions`, `talent_mentor`, `talent_mentees`, `talent_tenets_*`
 
 **Overwritten on re-import** (from Workday): salary, bonus targets, org structure, management_level
 
@@ -92,7 +92,7 @@ Manager name parsed from: `"Supervisory Organization (Manager Name)"` → extrac
 
 **Manager detection**: Uses `management_level` field (e.g., "Manager", "Director") in addition to supervisory org lookup. See `has_direct_reports()` in app.py.
 
-**Tenets integration**: Tenets embedded in "Proposed Talent Actions" on export (semicolon-separated), parsed back on import via `parse_proposed_actions_tenets()`.
+**Tenets integration**: Tenets and mentor/mentees embedded in "Proposed Talent Actions" on export using bracket markers (`[Strengths: ...]`, `[Mentor: ...]`, `[Mentees: ...]`), parsed back on import via `parse_proposed_actions_metadata()`.
 
 **Cross-cycle alignment** (Spec §7.4): Dashboard shows alignment between Performance Rating (0-200%) and Overall Performance. Alignment ranges: High Impact = 120-200%, Successful = 90-119%, Evolving = 70-89%, Low = 0-69%.
 

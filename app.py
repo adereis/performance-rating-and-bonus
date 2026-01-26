@@ -974,6 +974,8 @@ def calibrate_employee():
             'talent_promo_business_need',
             'talent_promo_role_scope',
             'talent_promo_readiness',
+            'talent_mentor',
+            'talent_mentees',
         ]
 
         for field in text_fields:
@@ -2753,19 +2755,27 @@ def export_talent_xlsx():
         except Exception as e:
             print(f"Error parsing talent tenets: {e}")
 
-        # Embed tenets in Proposed Actions using parseable format
-        tenet_markers = []
+        # Embed tenets and mentor/mentees in Proposed Actions using parseable format
+        metadata_markers = []
         if strengths_text:
-            tenet_markers.append(f"[Strengths: {strengths_text}]")
+            metadata_markers.append(f"[Strengths: {strengths_text}]")
         if improvements_text:
-            tenet_markers.append(f"[Improvements: {improvements_text}]")
+            metadata_markers.append(f"[Improvements: {improvements_text}]")
 
-        if tenet_markers:
+        # Embed mentor/mentees
+        talent_mentor = employee.get('talent_mentor', '')
+        talent_mentees = employee.get('talent_mentees', '')
+        if talent_mentor:
+            metadata_markers.append(f"[Mentor: {talent_mentor}]")
+        if talent_mentees:
+            metadata_markers.append(f"[Mentees: {talent_mentees}]")
+
+        if metadata_markers:
             # Append to proposed actions with separator
             if proposed_actions:
-                proposed_actions = proposed_actions.rstrip() + '\n\n' + ' '.join(tenet_markers)
+                proposed_actions = proposed_actions.rstrip() + '\n\n' + ' '.join(metadata_markers)
             else:
-                proposed_actions = ' '.join(tenet_markers)
+                proposed_actions = ' '.join(metadata_markers)
 
         row_data = [
             employee.get('Associate ID', ''),
@@ -2886,18 +2896,26 @@ def export_talent_csv():
         except Exception as e:
             print(f"Error parsing talent tenets: {e}")
 
-        # Embed tenets in Proposed Actions
-        tenet_markers = []
+        # Embed tenets and mentor/mentees in Proposed Actions
+        metadata_markers = []
         if strengths_text:
-            tenet_markers.append(f"[Strengths: {strengths_text}]")
+            metadata_markers.append(f"[Strengths: {strengths_text}]")
         if improvements_text:
-            tenet_markers.append(f"[Improvements: {improvements_text}]")
+            metadata_markers.append(f"[Improvements: {improvements_text}]")
 
-        if tenet_markers:
+        # Embed mentor/mentees
+        talent_mentor = employee.get('talent_mentor', '')
+        talent_mentees = employee.get('talent_mentees', '')
+        if talent_mentor:
+            metadata_markers.append(f"[Mentor: {talent_mentor}]")
+        if talent_mentees:
+            metadata_markers.append(f"[Mentees: {talent_mentees}]")
+
+        if metadata_markers:
             if proposed_actions:
-                proposed_actions = proposed_actions.rstrip() + ' ' + ' '.join(tenet_markers)
+                proposed_actions = proposed_actions.rstrip() + ' ' + ' '.join(metadata_markers)
             else:
-                proposed_actions = ' '.join(tenet_markers)
+                proposed_actions = ' '.join(metadata_markers)
 
         writer.writerow([
             employee.get('Associate ID', ''),
@@ -3182,21 +3200,25 @@ def import_current():
                         # Movement & Career (manager-entered)
                         employee.talent_movement_readiness = emp_data.get('talent_movement_readiness')
 
-                        # Parse tenets from Proposed Actions if present
-                        # Format: [Strengths: Tenet1, Tenet2] [Improvements: Tenet3]
+                        # Parse tenets and mentor/mentees from Proposed Actions if present
+                        # Format: [Strengths: Tenet1; Tenet2] [Improvements: Tenet3] [Mentor: Name] [Mentees: A; B]
                         raw_proposed_actions = emp_data.get('talent_proposed_actions') or ''
                         tenets_config, _ = load_tenets_config()
 
                         if tenets_config and raw_proposed_actions:
-                            from xlsx_utils import parse_proposed_actions_tenets
-                            clean_actions, strength_ids, improvement_ids = parse_proposed_actions_tenets(
+                            from xlsx_utils import parse_proposed_actions_metadata
+                            metadata = parse_proposed_actions_metadata(
                                 raw_proposed_actions, tenets_config
                             )
-                            employee.talent_proposed_actions = clean_actions if clean_actions else None
-                            if strength_ids:
-                                employee.talent_tenets_strengths = json.dumps(strength_ids)
-                            if improvement_ids:
-                                employee.talent_tenets_improvements = json.dumps(improvement_ids)
+                            employee.talent_proposed_actions = metadata['clean_actions'] if metadata['clean_actions'] else None
+                            if metadata['strength_ids']:
+                                employee.talent_tenets_strengths = json.dumps(metadata['strength_ids'])
+                            if metadata['improvement_ids']:
+                                employee.talent_tenets_improvements = json.dumps(metadata['improvement_ids'])
+                            if metadata['mentor']:
+                                employee.talent_mentor = metadata['mentor']
+                            if metadata['mentees']:
+                                employee.talent_mentees = metadata['mentees']
                         else:
                             employee.talent_proposed_actions = raw_proposed_actions if raw_proposed_actions else None
 

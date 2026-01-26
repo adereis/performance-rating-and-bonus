@@ -77,6 +77,8 @@ class RatingSnapshot(Base):
     snapshot_talent_promo_job_profile = Column(String)
     snapshot_talent_tenets_strengths = Column(String)
     snapshot_talent_tenets_improvements = Column(String)
+    snapshot_talent_mentor = Column(String)
+    snapshot_talent_mentees = Column(String)
 
     # Unique constraint: one snapshot per employee per period
     __table_args__ = (
@@ -112,7 +114,9 @@ class RatingSnapshot(Base):
             'snapshot_talent_proposed_actions': self.snapshot_talent_proposed_actions,
             'snapshot_talent_promo_job_profile': self.snapshot_talent_promo_job_profile,
             'snapshot_talent_tenets_strengths': self.snapshot_talent_tenets_strengths,
-            'snapshot_talent_tenets_improvements': self.snapshot_talent_tenets_improvements
+            'snapshot_talent_tenets_improvements': self.snapshot_talent_tenets_improvements,
+            'snapshot_talent_mentor': self.snapshot_talent_mentor,
+            'snapshot_talent_mentees': self.snapshot_talent_mentees
         }
 
 
@@ -202,6 +206,8 @@ class Employee(Base):
     talent_movement_readiness = Column(String)  # ENUM: Continue/Ready Now/Ready Lateral
     talent_last_movement_readiness = Column(String)  # PRESERVED
     talent_proposed_actions = Column(Text)   # Free-form text
+    talent_mentor = Column(String)           # Mentor (talent cycle, separate from bonus)
+    talent_mentees = Column(String)          # Mentees (talent cycle, separate from bonus)
 
     # ═══════════════════════════════════════════════════════════════
     # TALENT: PROMOTION
@@ -274,6 +280,8 @@ class Employee(Base):
             'talent_movement_readiness': self.talent_movement_readiness,
             'talent_last_movement_readiness': self.talent_last_movement_readiness,
             'talent_proposed_actions': self.talent_proposed_actions,
+            'talent_mentor': self.talent_mentor,
+            'talent_mentees': self.talent_mentees,
             # Talent: Promotion
             'talent_promo_job_profile': self.talent_promo_job_profile,
             'talent_promo_business_need': self.talent_promo_business_need,
@@ -531,6 +539,14 @@ def _migrate_add_new_columns(engine):
         ('rating_snapshots', 'snapshot_talent_promo_job_profile', 'TEXT'),
         ('rating_snapshots', 'snapshot_talent_tenets_strengths', 'TEXT'),
         ('rating_snapshots', 'snapshot_talent_tenets_improvements', 'TEXT'),
+        # AI Activities (Bonus cycle)
+        ('employees', 'ai_related_activities', 'TEXT'),
+        ('rating_snapshots', 'ai_related_activities', 'TEXT'),
+        # Talent Mentor/Mentees (separate from bonus cycle)
+        ('employees', 'talent_mentor', 'TEXT'),
+        ('employees', 'talent_mentees', 'TEXT'),
+        ('rating_snapshots', 'snapshot_talent_mentor', 'TEXT'),
+        ('rating_snapshots', 'snapshot_talent_mentees', 'TEXT'),
     ]
 
     with engine.connect() as conn:
