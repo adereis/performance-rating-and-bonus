@@ -108,7 +108,7 @@ Manager name parsed from: `"Supervisory Organization (Manager Name)"` → extrac
 
 **New API endpoint**: Add to `app.py`, follow try/except pattern, add test to `test_api.py`
 
-**New database field**: Update `models.py`, handle migration (delete db + re-import for dev), update `convert_xlsx.py` if from Workday
+**New database field**: Update `models.py`, add to `_migrate_add_new_columns()`, update `convert_xlsx.py` if from Workday.
 
 **Bonus algorithm changes**: Update `docs/BONUS_CALCULATION_README.md`, verify pool normalization in tests
 
