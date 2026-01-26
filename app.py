@@ -2708,6 +2708,10 @@ def export_talent_xlsx():
         'Identified Future Talent',
         'Movement Readiness',
         'Proposed Talent Actions',  # Contains embedded tenets (matches import column map)
+        'Promotions: Proposed Job Profile & Code',
+        'Promotions: Business Need',
+        'Promotions: Expanded Role Scope',
+        'Promotions: Associate Readiness',
     ]
 
     # Style header row
@@ -2776,6 +2780,10 @@ def export_talent_xlsx():
             'Yes' if employee.get('talent_identified_future') else 'No' if employee.get('talent_identified_future') is False else '',
             employee.get('talent_movement_readiness', ''),
             proposed_actions,
+            employee.get('talent_promo_job_profile', ''),
+            employee.get('talent_promo_business_need', ''),
+            employee.get('talent_promo_role_scope', ''),
+            employee.get('talent_promo_readiness', ''),
         ]
 
         for col_num, value in enumerate(row_data, 1):
@@ -2848,6 +2856,10 @@ def export_talent_csv():
         'Identified Future Talent',
         'Movement Readiness',
         'Proposed Talent Actions',
+        'Promotions: Proposed Job Profile & Code',
+        'Promotions: Business Need',
+        'Promotions: Expanded Role Scope',
+        'Promotions: Associate Readiness',
     ])
 
     # Write data rows
@@ -2900,6 +2912,10 @@ def export_talent_csv():
             'Yes' if employee.get('talent_identified_future') else 'No' if employee.get('talent_identified_future') is False else '',
             employee.get('talent_movement_readiness', ''),
             proposed_actions,
+            employee.get('talent_promo_job_profile', ''),
+            employee.get('talent_promo_business_need', ''),
+            employee.get('talent_promo_role_scope', ''),
+            employee.get('talent_promo_readiness', ''),
         ])
 
     output.seek(0)

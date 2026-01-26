@@ -273,6 +273,27 @@
         display: block;
     }
 
+    /* Promotion section highlighting when Ready Now selected */
+    .collapsible-section.promotion-required .collapsible-header {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+    }
+    .collapsible-section.promotion-required .collapsible-header .promotion-label {
+        font-weight: 600;
+    }
+    .promotion-incomplete-warning {
+        color: #856404;
+        background: #fff3cd;
+        padding: 8px 12px;
+        border-radius: 4px;
+        margin-top: 10px;
+        font-size: 13px;
+        display: none;
+    }
+    .collapsible-section.promotion-required .promotion-incomplete-warning.show {
+        display: block;
+    }
+
     .progress-bar {
         margin-bottom: 20px;
         background: #e9ecef;
@@ -668,7 +689,7 @@
             <!-- Promotion Section (Collapsible) -->
             <div class="collapsible-section">
                 <div class="collapsible-header" onclick="toggleCollapsible(this)">
-                    <span>Promotion Details (Optional)</span>
+                    <span class="promotion-label">Promotion Details (Optional)</span>
                     <span class="toggle-icon">&#9660;</span>
                 </div>
                 <div class="collapsible-content">
@@ -687,6 +708,9 @@
                     <div class="calibration-input-group">
                         <label>Associate Readiness</label>
                         <textarea data-field="talent_promo_readiness" placeholder="Evidence of readiness...">{{ employee.talent_promo_readiness or '' }}</textarea>
+                    </div>
+                    <div class="promotion-incomplete-warning">
+                        ⚠️ Please complete promotion details when "Ready Now to be promoted" is selected.
                     </div>
                 </div>
             </div>
@@ -872,6 +896,69 @@ function toggleCollapsible(header) {
     header.classList.toggle('expanded');
     const content = header.nextElementSibling;
     content.classList.toggle('show');
+}
+
+// Handle movement readiness change - auto-expand and highlight promotion section
+function handleMovementReadinessChange(select) {
+    const card = select.closest('.calibration-form');
+    const section = card.querySelector('.collapsible-section');
+    const header = section.querySelector('.collapsible-header');
+    const content = section.querySelector('.collapsible-content');
+    const label = section.querySelector('.promotion-label');
+
+    const isPromotionReady = select.value.includes('Ready Now');
+
+    if (isPromotionReady) {
+        // Auto-expand and highlight
+        header.classList.add('expanded');
+        content.classList.add('show');
+        section.classList.add('promotion-required');
+        if (label) label.textContent = 'Promotion Details (Required)';
+    } else {
+        section.classList.remove('promotion-required');
+        if (label) label.textContent = 'Promotion Details (Optional)';
+    }
+
+    updatePromotionWarning(card);
+}
+
+function updatePromotionWarning(card) {
+    const select = card.querySelector('select[data-field="talent_movement_readiness"]');
+    const warning = card.querySelector('.promotion-incomplete-warning');
+    if (!select || !warning) return;
+
+    const isPromotionReady = select.value.includes('Ready Now');
+    if (!isPromotionReady) {
+        warning.classList.remove('show');
+        return;
+    }
+
+    const jobProfile = card.querySelector('[data-field="talent_promo_job_profile"]')?.value?.trim();
+    const businessNeed = card.querySelector('[data-field="talent_promo_business_need"]')?.value?.trim();
+    const roleScope = card.querySelector('[data-field="talent_promo_role_scope"]')?.value?.trim();
+    const readiness = card.querySelector('[data-field="talent_promo_readiness"]')?.value?.trim();
+
+    const allComplete = jobProfile && businessNeed && roleScope && readiness;
+    warning.classList.toggle('show', !allComplete);
+}
+
+// Initialize promotion field handlers on page load
+function initPromotionHandlers() {
+    document.querySelectorAll('select[data-field="talent_movement_readiness"]').forEach(select => {
+        select.addEventListener('change', () => handleMovementReadinessChange(select));
+        // Check initial state
+        if (select.value.includes('Ready Now')) {
+            handleMovementReadinessChange(select);
+        }
+    });
+
+    // Also update warning when promotion fields change
+    document.querySelectorAll('[data-field^="talent_promo_"]').forEach(input => {
+        input.addEventListener('input', () => {
+            const card = input.closest('.calibration-form');
+            updatePromotionWarning(card);
+        });
+    });
 }
 
 // Tenets configuration and rendering
@@ -1068,6 +1155,8 @@ function createTenetCheckbox(tenet, type, checked, card, isInOtherCycle = false)
 document.addEventListener('DOMContentLoaded', function() {
     // Load tenets first
     loadTenets();
+    // Initialize promotion field handlers
+    initPromotionHandlers();
     const cards = document.querySelectorAll('.employee-card');
 
     cards.forEach(card => {
