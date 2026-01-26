@@ -379,6 +379,44 @@
         display: block;
     }
 
+    .tenet-cross-ref {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #3498db;
+        border-radius: 2px;
+        margin-left: 6px;
+        vertical-align: middle;
+        cursor: help;
+    }
+
+    .tenets-legend {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid #eee;
+        font-size: 11px;
+        color: #666;
+        display: none;
+    }
+
+    .tenets-legend.show {
+        display: block;
+    }
+
+    .tenets-legend .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .tenets-legend .legend-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #3498db;
+        border-radius: 2px;
+    }
+
     .tenet-label {
         flex: 1;
         cursor: pointer;
@@ -621,6 +659,9 @@
                         <div class="tenet-items" data-tenet-type="talent_improvements"></div>
                         <div class="tenet-count-warning" data-warning-type="talent_improvements">Please select 2 or 3 areas for improvement</div>
                     </div>
+                </div>
+                <div class="tenets-legend">
+                    <span class="legend-item"><span class="legend-indicator"></span> Also selected in Bonus Rating</span>
                 </div>
             </div>
 
@@ -868,6 +909,8 @@ function renderTenets() {
         const employee = employeeData.find(e => e['Associate ID'] === associateId);
         let existingStrengths = [];
         let existingImprovements = [];
+        let bonusStrengths = [];
+        let bonusImprovements = [];
 
         try {
             if (employee && employee.talent_tenets_strengths) {
@@ -876,22 +919,45 @@ function renderTenets() {
             if (employee && employee.talent_tenets_improvements) {
                 existingImprovements = JSON.parse(employee.talent_tenets_improvements);
             }
+            // Parse bonus rating tenets for cross-reference
+            if (employee && employee.tenets_strengths) {
+                bonusStrengths = JSON.parse(employee.tenets_strengths);
+            }
+            if (employee && employee.tenets_improvements) {
+                bonusImprovements = JSON.parse(employee.tenets_improvements);
+            }
         } catch (e) {
             console.error('Error parsing existing tenets:', e);
         }
+
+        // Create Sets for cross-reference lookup (compare same categories)
+        const bonusStrengthsSet = new Set(bonusStrengths);
+        const bonusImprovementsSet = new Set(bonusImprovements);
+        let hasCrossRef = false;
 
         // Render tenet checkboxes for both lists
         tenetsConfig.tenets.forEach(tenet => {
             if (!tenet.active) return;
 
-            // Add to strengths list
-            const strengthItem = createTenetCheckbox(tenet, 'talent_strengths', existingStrengths.includes(tenet.id), card);
+            // Check same-category cross-reference (strengths→strengths, improvements→improvements)
+            const isStrengthInBonus = bonusStrengthsSet.has(tenet.id);
+            const isImprovementInBonus = bonusImprovementsSet.has(tenet.id);
+            if (isStrengthInBonus || isImprovementInBonus) hasCrossRef = true;
+
+            // Add to strengths list (hint only if also a strength in bonus)
+            const strengthItem = createTenetCheckbox(tenet, 'talent_strengths', existingStrengths.includes(tenet.id), card, isStrengthInBonus);
             strengthsContainer.appendChild(strengthItem);
 
-            // Add to improvements list
-            const improvementItem = createTenetCheckbox(tenet, 'talent_improvements', existingImprovements.includes(tenet.id), card);
+            // Add to improvements list (hint only if also an improvement in bonus)
+            const improvementItem = createTenetCheckbox(tenet, 'talent_improvements', existingImprovements.includes(tenet.id), card, isImprovementInBonus);
             improvementsContainer.appendChild(improvementItem);
         });
+
+        // Show legend if there are any cross-references
+        const legend = card.querySelector('.tenets-legend');
+        if (legend && hasCrossRef) {
+            legend.classList.add('show');
+        }
 
         // Hide loading, show grid
         loadingEl.style.display = 'none';
@@ -956,7 +1022,7 @@ function updateTenetValidation(card, type) {
     });
 }
 
-function createTenetCheckbox(tenet, type, checked, card) {
+function createTenetCheckbox(tenet, type, checked, card, isInOtherCycle = false) {
     const item = document.createElement('div');
     item.className = 'tenet-item';
 
@@ -974,10 +1040,15 @@ function createTenetCheckbox(tenet, type, checked, card) {
         autoSaveCalibration(associateId, card);
     });
 
+    // Build label with optional cross-reference indicator
+    const indicatorHTML = isInOtherCycle
+        ? '<span class="tenet-cross-ref" title="Also selected in Bonus Rating"></span>'
+        : '';
+
     const label = document.createElement('div');
     label.className = 'tenet-label';
     label.innerHTML = `
-        <span class="tenet-name">${tenet.name}</span>
+        <span class="tenet-name">${tenet.name}${indicatorHTML}</span>
         <div class="tenet-description">${tenet.description}</div>
     `;
 

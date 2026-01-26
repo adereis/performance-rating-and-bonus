@@ -470,6 +470,44 @@
         display: block;
     }
 
+    .tenet-cross-ref {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #9b59b6;
+        border-radius: 2px;
+        margin-left: 6px;
+        vertical-align: middle;
+        cursor: help;
+    }
+
+    .tenets-legend {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid #eee;
+        font-size: 11px;
+        color: #666;
+        display: none;
+    }
+
+    .tenets-legend.show {
+        display: block;
+    }
+
+    .tenets-legend .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .tenets-legend .legend-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #9b59b6;
+        border-radius: 2px;
+    }
+
     .loading-tenets {
         text-align: center;
         padding: 20px;
@@ -660,6 +698,9 @@
                             <div class="tenet-items" data-tenet-type="improvements"></div>
                             <div class="tenet-count-warning" data-warning-type="improvements">Please select 2 or 3 areas for improvement</div>
                         </div>
+                    </div>
+                    <div class="tenets-legend">
+                        <span class="legend-item"><span class="legend-indicator"></span> Also selected in Talent Calibration</span>
                     </div>
                 </div>
 
@@ -1049,6 +1090,8 @@ function renderTenets() {
         const employee = employeeData.find(e => e['Associate ID'] === associateId);
         let existingStrengths = [];
         let existingImprovements = [];
+        let talentStrengths = [];
+        let talentImprovements = [];
 
         try {
             if (employee && employee.tenets_strengths) {
@@ -1057,22 +1100,45 @@ function renderTenets() {
             if (employee && employee.tenets_improvements) {
                 existingImprovements = JSON.parse(employee.tenets_improvements);
             }
+            // Parse talent calibration tenets for cross-reference
+            if (employee && employee.talent_tenets_strengths) {
+                talentStrengths = JSON.parse(employee.talent_tenets_strengths);
+            }
+            if (employee && employee.talent_tenets_improvements) {
+                talentImprovements = JSON.parse(employee.talent_tenets_improvements);
+            }
         } catch (e) {
             console.error('Error parsing existing tenets:', e);
         }
+
+        // Create Sets for cross-reference lookup (compare same categories)
+        const talentStrengthsSet = new Set(talentStrengths);
+        const talentImprovementsSet = new Set(talentImprovements);
+        let hasCrossRef = false;
 
         // Render tenet checkboxes for both lists
         tenetsConfig.tenets.forEach(tenet => {
             if (!tenet.active) return;
 
-            // Add to strengths list
-            const strengthItem = createTenetCheckbox(tenet, 'strengths', existingStrengths.includes(tenet.id));
+            // Check same-category cross-reference (strengths→strengths, improvements→improvements)
+            const isStrengthInTalent = talentStrengthsSet.has(tenet.id);
+            const isImprovementInTalent = talentImprovementsSet.has(tenet.id);
+            if (isStrengthInTalent || isImprovementInTalent) hasCrossRef = true;
+
+            // Add to strengths list (hint only if also a strength in talent)
+            const strengthItem = createTenetCheckbox(tenet, 'strengths', existingStrengths.includes(tenet.id), isStrengthInTalent);
             strengthsContainer.appendChild(strengthItem);
 
-            // Add to improvements list
-            const improvementItem = createTenetCheckbox(tenet, 'improvements', existingImprovements.includes(tenet.id));
+            // Add to improvements list (hint only if also an improvement in talent)
+            const improvementItem = createTenetCheckbox(tenet, 'improvements', existingImprovements.includes(tenet.id), isImprovementInTalent);
             improvementsContainer.appendChild(improvementItem);
         });
+
+        // Show legend if there are any cross-references
+        const legend = card.querySelector('.tenets-legend');
+        if (legend && hasCrossRef) {
+            legend.classList.add('show');
+        }
 
         // Hide loading, show grid
         loadingEl.style.display = 'none';
@@ -1083,7 +1149,7 @@ function renderTenets() {
     });
 }
 
-function createTenetCheckbox(tenet, type, checked) {
+function createTenetCheckbox(tenet, type, checked, isInOtherCycle = false) {
     const item = document.createElement('div');
     item.className = 'tenet-item';
 
@@ -1101,6 +1167,14 @@ function createTenetCheckbox(tenet, type, checked) {
     const name = document.createElement('span');
     name.className = 'tenet-name';
     name.textContent = tenet.name;
+
+    // Add cross-reference indicator if selected in other cycle
+    if (isInOtherCycle) {
+        const indicator = document.createElement('span');
+        indicator.className = 'tenet-cross-ref';
+        indicator.title = 'Also selected in Talent Calibration';
+        name.appendChild(indicator);
+    }
 
     const description = document.createElement('span');
     description.className = 'tenet-description';
