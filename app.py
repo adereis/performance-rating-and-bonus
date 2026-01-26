@@ -981,6 +981,29 @@ def calibrate_employee():
                 value = data.get(field)
                 setattr(employee, field, value if value else None)
 
+        # Validate talent tenets before updating
+        talent_tenets_strengths = data.get('talent_tenets_strengths', []) if 'talent_tenets_strengths' in data else None
+        talent_tenets_improvements = data.get('talent_tenets_improvements', []) if 'talent_tenets_improvements' in data else None
+
+        if talent_tenets_strengths is not None:
+            if talent_tenets_strengths and not isinstance(talent_tenets_strengths, list):
+                return jsonify({'success': False, 'error': 'Talent tenets strengths must be an array'}), 400
+            # Validate count (exactly 3 strengths if provided and non-empty)
+            if talent_tenets_strengths and len(talent_tenets_strengths) != 3:
+                return jsonify({'success': False, 'error': 'Must select exactly 3 strength tenets'}), 400
+
+        if talent_tenets_improvements is not None:
+            if talent_tenets_improvements and not isinstance(talent_tenets_improvements, list):
+                return jsonify({'success': False, 'error': 'Talent tenets improvements must be an array'}), 400
+            # Validate count (2-3 improvements if provided and non-empty)
+            if talent_tenets_improvements and (len(talent_tenets_improvements) < 2 or len(talent_tenets_improvements) > 3):
+                return jsonify({'success': False, 'error': 'Must select 2 or 3 improvement tenets'}), 400
+
+        # Validate no duplicates between lists (if both provided)
+        if talent_tenets_strengths and talent_tenets_improvements:
+            if set(talent_tenets_strengths) & set(talent_tenets_improvements):
+                return jsonify({'success': False, 'error': 'Cannot select the same tenet as both strength and improvement'}), 400
+
         # Update talent tenets (JSON arrays)
         if 'talent_tenets_strengths' in data:
             tenets = data.get('talent_tenets_strengths')

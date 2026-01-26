@@ -464,20 +464,57 @@
             font-weight: normal;
             color: #2c3e50;
             margin: 0;
+            position: relative;
+        }
+
+        .modal-tenet-item label .tenet-name {
+            font-weight: 600;
+        }
+
+        .modal-tenet-item label .tenet-description {
+            display: none;
+            position: absolute;
+            left: 0;
+            top: 100%;
+            margin-top: 5px;
+            background: #2c3e50;
+            color: white;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            line-height: 1.5;
+            width: 280px;
+            max-width: 90vw;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .modal-tenet-item label .tenet-description::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 20px;
+            border: 6px solid transparent;
+            border-bottom-color: #2c3e50;
+        }
+
+        .modal-tenet-item label:hover .tenet-description {
+            display: block;
         }
 
         .modal-tenet-item.disabled {
             opacity: 0.5;
         }
 
-        .modal-tenet-count {
+        .modal-tenet-warning {
             font-size: 11px;
-            color: #666;
+            color: #e74c3c;
             margin-top: 5px;
+            display: none;
         }
 
-        .modal-tenet-count.warning {
-            color: #e74c3c;
+        .modal-tenet-warning.show {
+            display: block;
         }
 
         /* Modal Tabs */
@@ -1744,7 +1781,10 @@
                                value="${tenet.id}"
                                data-tenet-type="strengths"
                                ${existingStrengths.includes(tenet.id) ? 'checked' : ''}>
-                        <label for="modal_strength_${tenet.id}">${tenet.name}</label>
+                        <label for="modal_strength_${tenet.id}">
+                            <span class="tenet-name">${tenet.name}</span>
+                            <span class="tenet-description">${tenet.description}</span>
+                        </label>
                     </div>
                 `).join('');
 
@@ -1755,23 +1795,26 @@
                                value="${tenet.id}"
                                data-tenet-type="improvements"
                                ${existingImprovements.includes(tenet.id) ? 'checked' : ''}>
-                        <label for="modal_improvement_${tenet.id}">${tenet.name}</label>
+                        <label for="modal_improvement_${tenet.id}">
+                            <span class="tenet-name">${tenet.name}</span>
+                            <span class="tenet-description">${tenet.description}</span>
+                        </label>
                     </div>
                 `).join('');
 
                 bonusTenetsHTML = `
                     <div class="talent-section-divider">
-                        <h5>Team Tenets (Select 3 strengths and 2-3 improvements)</h5>
+                        <h5>Team Tenets (Select 3 strengths and 2-3 areas for improvement)</h5>
                         <div class="modal-tenets-grid">
                             <div class="modal-tenet-column">
-                                <h5>Strengths</h5>
+                                <h5>Strengths (Select 3)</h5>
                                 ${strengthsHTML}
-                                <div class="modal-tenet-count" id="modal_strengths_count">${existingStrengths.length} / 3 selected</div>
+                                <div class="modal-tenet-warning" id="modal_strengths_warning">Please select exactly 3 strengths</div>
                             </div>
                             <div class="modal-tenet-column">
-                                <h5>Areas for Improvement</h5>
+                                <h5>Areas for Improvement (Select 2-3)</h5>
                                 ${improvementsHTML}
-                                <div class="modal-tenet-count" id="modal_improvements_count">${existingImprovements.length} / 2-3 selected</div>
+                                <div class="modal-tenet-warning" id="modal_improvements_warning">Please select 2 or 3 areas for improvement</div>
                             </div>
                         </div>
                     </div>
@@ -2008,30 +2051,31 @@
             const strengthCheckboxes = modal.querySelectorAll('input[data-tenet-type="strengths"]');
             const improvementCheckboxes = modal.querySelectorAll('input[data-tenet-type="improvements"]');
 
-            const updateTenetCounts = () => {
+            const updateTenetValidation = () => {
                 const strengthsChecked = Array.from(strengthCheckboxes).filter(cb => cb.checked);
                 const improvementsChecked = Array.from(improvementCheckboxes).filter(cb => cb.checked);
 
-                const strengthsCount = document.getElementById('modal_strengths_count');
-                const improvementsCount = document.getElementById('modal_improvements_count');
+                const strengthsWarning = document.getElementById('modal_strengths_warning');
+                const improvementsWarning = document.getElementById('modal_improvements_warning');
 
-                if (strengthsCount) {
-                    strengthsCount.textContent = `${strengthsChecked.length} / 3 selected`;
-                    strengthsCount.className = 'modal-tenet-count';
+                // Show/hide warnings based on selection count
+                if (strengthsWarning) {
                     if (strengthsChecked.length > 0 && strengthsChecked.length !== 3) {
-                        strengthsCount.classList.add('warning');
+                        strengthsWarning.classList.add('show');
+                    } else {
+                        strengthsWarning.classList.remove('show');
                     }
                 }
 
-                if (improvementsCount) {
-                    improvementsCount.textContent = `${improvementsChecked.length} / 2-3 selected`;
-                    improvementsCount.className = 'modal-tenet-count';
+                if (improvementsWarning) {
                     if (improvementsChecked.length > 0 && (improvementsChecked.length < 2 || improvementsChecked.length > 3)) {
-                        improvementsCount.classList.add('warning');
+                        improvementsWarning.classList.add('show');
+                    } else {
+                        improvementsWarning.classList.remove('show');
                     }
                 }
 
-                // Disable checkboxes if already selected in other list
+                // Disable checkboxes if already selected in other list or max reached
                 const strengthValues = new Set(strengthsChecked.map(cb => cb.value));
                 const improvementValues = new Set(improvementsChecked.map(cb => cb.value));
 
@@ -2040,12 +2084,15 @@
                     if (improvementValues.has(cb.value) && !cb.checked) {
                         cb.disabled = true;
                         item.classList.add('disabled');
+                        item.title = 'Already selected in other category';
                     } else if (strengthsChecked.length >= 3 && !cb.checked) {
                         cb.disabled = true;
                         item.classList.add('disabled');
+                        item.title = 'Maximum 3 selections';
                     } else {
                         cb.disabled = false;
                         item.classList.remove('disabled');
+                        item.title = '';
                     }
                 });
 
@@ -2054,21 +2101,24 @@
                     if (strengthValues.has(cb.value) && !cb.checked) {
                         cb.disabled = true;
                         item.classList.add('disabled');
+                        item.title = 'Already selected in other category';
                     } else if (improvementsChecked.length >= 3 && !cb.checked) {
                         cb.disabled = true;
                         item.classList.add('disabled');
+                        item.title = 'Maximum 3 selections';
                     } else {
                         cb.disabled = false;
                         item.classList.remove('disabled');
+                        item.title = '';
                     }
                 });
             };
 
-            strengthCheckboxes.forEach(cb => cb.addEventListener('change', updateTenetCounts));
-            improvementCheckboxes.forEach(cb => cb.addEventListener('change', updateTenetCounts));
+            strengthCheckboxes.forEach(cb => cb.addEventListener('change', updateTenetValidation));
+            improvementCheckboxes.forEach(cb => cb.addEventListener('change', updateTenetValidation));
 
             // Initial update
-            updateTenetCounts();
+            updateTenetValidation();
         }
 
         function setupModalChangeTracking() {
