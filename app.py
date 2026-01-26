@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from flask import Flask, render_template, request, jsonify, send_file, make_response, Response
 import os
-import sys
 import logging
 import json
 import csv
@@ -14,7 +13,6 @@ from sqlalchemy import text
 from models import Employee, BonusSettings, Period, RatingSnapshot, init_db, get_db
 from xlsx_utils import analyze_xlsx, parse_xlsx_employees
 from notes_parser import parse_notes_field
-import tempfile
 
 app = Flask(__name__)
 
@@ -146,8 +144,8 @@ init_db()
 # Start demo mode cleanup thread if enabled
 if DEMO_MODE:
     from demo_mode import (
-        start_cleanup_thread, demo_response_wrapper, get_active_session_count,
-        get_session_id, initialize_session_from_template, session_has_data
+        start_cleanup_thread, demo_response_wrapper,
+        get_session_id, initialize_session_from_template
     )
     from demo_mode import _log
     start_cleanup_thread()
