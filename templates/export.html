@@ -281,27 +281,6 @@
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
     }
-
-    .field-copy-btn {
-        background: #e8e8e8;
-        color: #666;
-        border: none;
-        padding: 4px 10px;
-        border-radius: 4px;
-        font-size: 11px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .field-copy-btn:hover {
-        background: #667eea;
-        color: white;
-    }
-
-    .field-copy-btn.copied {
-        background: #27ae60;
-        color: white;
-    }
 </style>
 {% endblock %}
 
@@ -447,7 +426,6 @@
                             {% else %}talent-low{% endif %}">
                             {{ item.overall_perf }}
                         </span>
-                        <button class="field-copy-btn" onclick="copyField('{{ item.overall_perf }}', this)" style="margin-left: 8px;">Copy</button>
                     </td>
                     <td>
                         {% if item.identified_future %}
@@ -458,9 +436,6 @@
                     </td>
                     <td>
                         {{ item.movement_readiness }}
-                        {% if item.movement_readiness %}
-                        <button class="field-copy-btn" onclick="copyField('{{ item.movement_readiness }}', this)" style="margin-left: 8px;">Copy</button>
-                        {% endif %}
                     </td>
                     <td class="description-cell">
                         {% if item.proposed_actions %}
@@ -531,21 +506,6 @@
                 alert('Failed to copy to clipboard');
             }
             document.body.removeChild(textArea);
-        });
-    }
-
-    // Copy single field value
-    function copyField(text, button) {
-        navigator.clipboard.writeText(text).then(() => {
-            const originalText = button.textContent;
-            button.textContent = '✓';
-            button.classList.add('copied');
-            setTimeout(() => {
-                button.textContent = originalText;
-                button.classList.remove('copied');
-            }, 1500);
-        }).catch(err => {
-            console.error('Failed to copy field:', err);
         });
     }
 
