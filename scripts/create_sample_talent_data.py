@@ -30,6 +30,13 @@ from datetime import datetime, timedelta
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from models import derive_overall_performance, derive_future_talent as _derive_future_talent
+
+
+def derive_future_talent(growth: str, change: str) -> str:
+    """Wrapper returning 'Yes'/'No' string for XLSX output."""
+    return 'Yes' if _derive_future_talent(growth, change) else 'No'
+
 
 # Enum values from Spec §3 (must match Workday export format exactly)
 PERF_WHAT_OPTIONS = [
@@ -422,60 +429,6 @@ def get_large_org_talent_data():
             emp_id += 1
 
     return result
-
-
-def derive_overall_performance(what: str, how: str) -> str:
-    """
-    Derive Overall Performance from What and How per Spec §4.1 decision table.
-
-    Critical rules:
-    - Any 'Does Not Meet' in How → Low Performer
-    - Both 'Meets Some' → Low Performer
-    - Surpasses/Surpasses or Surpasses/Meets → High Impact
-    - Most other combinations → Successful or Evolving
-    """
-    if not what or not how:
-        return 'Successful Performer'
-
-    w, h = what.lower(), how.lower()
-
-    # Rule: Any "Does Not Meet" in How → Low Performer
-    if 'does not meet' in h:
-        return 'Low Performer'
-
-    # Rule: Both "Meets Some" → Low Performer
-    if 'some' in w and 'some' in h:
-        return 'Low Performer'
-
-    # Surpasses What
-    if 'surpasses' in w:
-        if 'surpasses' in h or ('meets' in h and 'some' not in h):
-            return 'High Impact Performer'
-        return 'Successful Performer'
-
-    # Meets What (not "Meets Some")
-    if 'meets' in w and 'some' not in w:
-        if 'surpasses' in h or ('meets' in h and 'some' not in h):
-            return 'Successful Performer'
-        return 'Evolving Performer'
-
-    # Meets Some What
-    if 'some' in w:
-        return 'Evolving Performer'
-
-    # Fallback
-    return 'Successful Performer'
-
-
-def derive_future_talent(growth: str, change: str) -> str:
-    """
-    Derive Future Talent from agility ratings (Spec §4.2).
-    Both must contain 'Always' to be identified as Future Talent.
-    """
-    g, c = (growth or '').lower(), (change or '').lower()
-    if 'always' in g and 'always' in c:
-        return 'Yes'
-    return 'No'
 
 
 def write_talent_xlsx(employees, filename):

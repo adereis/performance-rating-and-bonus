@@ -297,19 +297,31 @@ def derive_overall_performance(what: str | None, how: str | None) -> str | None:
     """
     Derive the overall performance rating from the What and How assessments.
 
-    Decision table (from Spec §4.1):
+    Uses a tier-based approach matching Workday's logic:
+      Tier 4 = Surpasses Expectations
+      Tier 3 = Meets Expectations
+      Tier 2 = Meets Some Expectations
+      Tier 1 = Does Not Meet Expectations
+
+    Decision table (matches Workday behavior):
     | What              | How                   | → Result              |
     |-------------------|-----------------------|-----------------------|
-    | *                 | Does Not Meet*        | Low Performer         |
-    | *Some*            | *Some*                | Low Performer         |
-    | Surpasses*        | Surpasses*            | High Impact Performer |
-    | Surpasses*        | Meets Expectations    | High Impact Performer |
-    | Surpasses*        | *Some*                | Successful Performer  |
-    | Meets Expectations| Surpasses*            | Successful Performer  |
-    | Meets Expectations| Meets Expectations    | Successful Performer  |
-    | Meets Expectations| *Some*                | Evolving Performer    |
-    | *Some*            | Meets Expectations    | Evolving Performer    |
-    | *Some*            | Surpasses*            | Evolving Performer    |
+    | Does Not Meet     | Does Not Meet         | Low Performer         |
+    | Does Not Meet     | Meets Some            | Low Performer         |
+    | Meets Some        | Does Not Meet         | Low Performer         |
+    | Does Not Meet     | Meets                 | Evolving Performer    |
+    | Does Not Meet     | Surpasses             | Evolving Performer    |
+    | Meets             | Does Not Meet         | Evolving Performer    |
+    | Surpasses         | Does Not Meet         | Evolving Performer    |
+    | Meets Some        | Meets Some            | Evolving Performer    |
+    | Meets Some        | Meets                 | Evolving Performer    |
+    | Meets             | Meets Some            | Evolving Performer    |
+    | Surpasses         | Meets Some            | Successful Performer  |
+    | Meets Some        | Surpasses             | Successful Performer  |
+    | Meets             | Meets                 | Successful Performer  |
+    | Meets             | Surpasses             | Successful Performer  |
+    | Surpasses         | Meets                 | Successful Performer  |
+    | Surpasses         | Surpasses             | High Impact Performer |
     | (null/empty)      | *                     | None                  |
     | *                 | (null/empty)          | None                  |
     """
@@ -318,32 +330,39 @@ def derive_overall_performance(what: str | None, how: str | None) -> str | None:
 
     w, h = what.lower(), how.lower()
 
-    # Rule: Any "Does Not Meet" in How → Low Performer
-    if 'does not meet' in h:
+    def get_tier(rating: str) -> int:
+        """Map rating string to numeric tier (1-4)."""
+        if 'surpasses' in rating:
+            return 4
+        if 'does not meet' in rating:
+            return 1
+        if 'some' in rating:  # "meets some expectations"
+            return 2
+        if 'meets' in rating:  # "meets expectations"
+            return 3
+        return 3  # fallback
+
+    w_tier = get_tier(w)
+    h_tier = get_tier(h)
+    min_tier = min(w_tier, h_tier)
+    max_tier = max(w_tier, h_tier)
+
+    # Low Performer: "Does Not Meet" (tier 1) paired with tier 2 or lower
+    if min_tier == 1 and max_tier <= 2:
         return 'Low Performer'
 
-    # Rule: Both contain "Some" → Low Performer
-    if 'some' in w and 'some' in h:
-        return 'Low Performer'
+    # High Impact: both are Surpasses (tier 4)
+    if min_tier == 4:
+        return 'High Impact Performer'
 
-    # Rule: What = Surpasses
-    if 'surpasses' in w:
-        if 'surpasses' in h or ('meets' in h and 'some' not in h):
-            return 'High Impact Performer'
+    # Successful: both at least Meets (tier 3), OR Surpasses carries Meets Some
+    if min_tier >= 3:
+        return 'Successful Performer'
+    if max_tier == 4 and min_tier == 2:  # Surpasses + Meets Some
         return 'Successful Performer'
 
-    # Rule: What = Meets (not Some)
-    if 'meets' in w and 'some' not in w:
-        if 'surpasses' in h or ('meets' in h and 'some' not in h):
-            return 'Successful Performer'
-        return 'Evolving Performer'
-
-    # Rule: What = Meets Some
-    if 'some' in w:
-        return 'Evolving Performer'
-
-    # Fallback (should not reach with valid inputs)
-    return 'Successful Performer'
+    # Evolving: everything else
+    return 'Evolving Performer'
 
 
 def derive_future_talent(growth: str | None, change: str | None) -> bool:

@@ -30,11 +30,11 @@ class TestDeriveOverallPerformance:
             "Surpasses Expectations", "Surpasses Expectations"
         ) == "High Impact Performer"
 
-    def test_surpasses_meets_yields_high_impact(self):
-        """Surpasses + Meets = High Impact Performer."""
+    def test_surpasses_meets_yields_successful(self):
+        """Surpasses + Meets = Successful Performer."""
         assert derive_overall_performance(
             "Surpasses Expectations", "Meets Expectations"
-        ) == "High Impact Performer"
+        ) == "Successful Performer"
 
     def test_meets_meets_yields_successful(self):
         """Meets + Meets = Successful Performer."""
@@ -66,29 +66,48 @@ class TestDeriveOverallPerformance:
             "Meets Some Expectations", "Meets Expectations"
         ) == "Evolving Performer"
 
-    def test_some_surpasses_yields_evolving(self):
-        """Meets Some + Surpasses = Evolving Performer."""
+    def test_some_surpasses_yields_successful(self):
+        """Meets Some + Surpasses = Successful Performer (Surpasses carries)."""
         assert derive_overall_performance(
             "Meets Some Expectations", "Surpasses Expectations"
-        ) == "Evolving Performer"
+        ) == "Successful Performer"
 
-    def test_some_some_yields_low(self):
-        """Meets Some + Meets Some = Low Performer."""
+    def test_some_some_yields_evolving(self):
+        """Meets Some + Meets Some = Evolving Performer."""
         assert derive_overall_performance(
             "Meets Some Expectations", "Meets Some Expectations"
-        ) == "Low Performer"
+        ) == "Evolving Performer"
 
-    def test_any_does_not_meet_yields_low(self):
-        """Any What + Does Not Meet = Low Performer."""
+    def test_does_not_meet_with_low_rating_yields_low(self):
+        """Does Not Meet + Meets Some or worse = Low Performer."""
+        # Does Not Meet + Does Not Meet = Low
         assert derive_overall_performance(
-            "Meets Expectations", "Does Not Meet Expectations"
+            "Does Not Meet Expectations", "Does Not Meet Expectations"
         ) == "Low Performer"
-        assert derive_overall_performance(
-            "Surpasses Expectations", "Does Not Meet Expectations"
-        ) == "Low Performer"
+        # Does Not Meet + Meets Some = Low (either order)
         assert derive_overall_performance(
             "Meets Some Expectations", "Does Not Meet Expectations"
         ) == "Low Performer"
+        assert derive_overall_performance(
+            "Does Not Meet Expectations", "Meets Some Expectations"
+        ) == "Low Performer"
+
+    def test_does_not_meet_with_good_rating_yields_evolving(self):
+        """Does Not Meet + Meets or Surpasses = Evolving Performer."""
+        # Does Not Meet + Meets = Evolving (either order)
+        assert derive_overall_performance(
+            "Meets Expectations", "Does Not Meet Expectations"
+        ) == "Evolving Performer"
+        assert derive_overall_performance(
+            "Does Not Meet Expectations", "Meets Expectations"
+        ) == "Evolving Performer"
+        # Does Not Meet + Surpasses = Evolving (either order)
+        assert derive_overall_performance(
+            "Surpasses Expectations", "Does Not Meet Expectations"
+        ) == "Evolving Performer"
+        assert derive_overall_performance(
+            "Does Not Meet Expectations", "Surpasses Expectations"
+        ) == "Evolving Performer"
 
     def test_null_what_returns_none(self):
         """None or empty What returns None."""
@@ -108,7 +127,7 @@ class TestDeriveOverallPerformance:
     def test_case_insensitive(self):
         """Function handles case variations."""
         assert derive_overall_performance(
-            "SURPASSES EXPECTATIONS", "MEETS EXPECTATIONS"
+            "SURPASSES EXPECTATIONS", "SURPASSES EXPECTATIONS"
         ) == "High Impact Performer"
         assert derive_overall_performance(
             "meets expectations", "meets some expectations"

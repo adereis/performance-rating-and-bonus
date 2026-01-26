@@ -23,7 +23,7 @@ from datetime import datetime
 # Add parent directory to path for imports when running as standalone script
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from models import Employee, get_db, init_db
+from models import Employee, get_db, init_db, derive_overall_performance, derive_future_talent
 
 
 # ============================================================================
@@ -53,51 +53,6 @@ MOVEMENT_READINESS_OPTIONS = [
     'Ready Now to be promoted in current role',
     'Ready for lateral move'
 ]
-
-
-def derive_overall_performance(what: str, how: str) -> str:
-    """
-    Derive Overall Performance from What and How per Spec §4.1 decision table.
-    """
-    if not what or not how:
-        return 'Successful Performer'
-
-    w, h = what.lower(), how.lower()
-
-    # Rule: Any "Does Not Meet" in How → Low Performer
-    if 'does not meet' in h:
-        return 'Low Performer'
-
-    # Rule: Both "Meets Some" → Low Performer
-    if 'some' in w and 'some' in h:
-        return 'Low Performer'
-
-    # Surpasses What
-    if 'surpasses' in w:
-        if 'surpasses' in h or ('meets' in h and 'some' not in h):
-            return 'High Impact Performer'
-        return 'Successful Performer'
-
-    # Meets What (not "Meets Some")
-    if 'meets' in w and 'some' not in w:
-        if 'surpasses' in h or ('meets' in h and 'some' not in h):
-            return 'Successful Performer'
-        return 'Evolving Performer'
-
-    # Meets Some What
-    if 'some' in w:
-        return 'Evolving Performer'
-
-    return 'Successful Performer'
-
-
-def derive_future_talent(growth: str, change: str) -> bool:
-    """
-    Derive Future Talent from agility ratings (Spec §4.2).
-    Both must contain 'Always' to be identified as Future Talent.
-    """
-    g, c = (growth or '').lower(), (change or '').lower()
-    return 'always' in g and 'always' in c
 
 
 def generate_talent_data(bonus_rating: int) -> dict:

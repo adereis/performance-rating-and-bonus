@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, Employee, BonusSettings, Period, RatingSnapshot
+from models import Base, Employee, BonusSettings, Period, RatingSnapshot, derive_overall_performance, derive_future_talent
 
 
 # ============================================================================
@@ -52,34 +52,6 @@ MOVEMENT_READINESS_OPTIONS = [
     'Ready Now to be promoted in current role',
     'Ready for lateral move'
 ]
-
-
-def derive_overall_performance(what: str, how: str) -> str:
-    """Derive Overall Performance from What and How per Spec §4.1."""
-    if not what or not how:
-        return 'Successful Performer'
-    w, h = what.lower(), how.lower()
-    if 'does not meet' in h:
-        return 'Low Performer'
-    if 'some' in w and 'some' in h:
-        return 'Low Performer'
-    if 'surpasses' in w:
-        if 'surpasses' in h or ('meets' in h and 'some' not in h):
-            return 'High Impact Performer'
-        return 'Successful Performer'
-    if 'meets' in w and 'some' not in w:
-        if 'surpasses' in h or ('meets' in h and 'some' not in h):
-            return 'Successful Performer'
-        return 'Evolving Performer'
-    if 'some' in w:
-        return 'Evolving Performer'
-    return 'Successful Performer'
-
-
-def derive_future_talent(growth: str, change: str) -> bool:
-    """Derive Future Talent from agility ratings (Spec §4.2)."""
-    g, c = (growth or '').lower(), (change or '').lower()
-    return 'always' in g and 'always' in c
 
 
 def generate_talent_data(bonus_rating: int) -> dict:
