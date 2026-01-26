@@ -3048,6 +3048,28 @@ def import_current():
         if not success:
             return jsonify({'success': False, 'error': error}), 400
 
+        # Validate Overall Performance derivation for talent imports
+        derivation_mismatches = []
+        if spreadsheet_type == 'talent':
+            from models import derive_overall_performance
+            for emp_data in employees:
+                imported_what = emp_data.get('talent_perf_what')
+                imported_how = emp_data.get('talent_perf_how')
+                imported_overall = emp_data.get('talent_overall_perf')
+
+                # Only validate if all three fields are present
+                if imported_what and imported_how and imported_overall:
+                    derived_overall = derive_overall_performance(imported_what, imported_how)
+                    if derived_overall and derived_overall != imported_overall:
+                        derivation_mismatches.append({
+                            'associate': emp_data.get('associate'),
+                            'associate_id': emp_data.get('associate_id'),
+                            'what': imported_what,
+                            'how': imported_how,
+                            'imported': imported_overall,
+                            'expected': derived_overall
+                        })
+
         db = get_db()
         try:
             # Clear existing employees if requested
@@ -3182,6 +3204,9 @@ def import_current():
             }
             if clear_existing:
                 result['cleared'] = cleared
+            if derivation_mismatches:
+                result['derivation_mismatches'] = derivation_mismatches
+                result['derivation_mismatch_count'] = len(derivation_mismatches)
             return jsonify(result)
 
         except Exception as e:

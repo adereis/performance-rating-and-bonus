@@ -564,6 +564,92 @@ class TestTalentImportEndpoints:
         assert employee.talent_proposed_actions == 'Promote to Senior'
         assert employee.talent_tenets_strengths == 'Customer Obsession'
 
+    def test_import_detects_derivation_mismatch(self, client, tmp_path):
+        """Import detects when Overall Performance doesn't match What/How derivation."""
+        from openpyxl import Workbook
+
+        # Create a talent file with intentional mismatch
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Talent Calibration"
+
+        # Headers at row 5 (matching real Workday format)
+        ws['A1'] = 'Talent Report'
+        headers = [
+            'Associate ID', 'Worker', 'Supervisory Organization',
+            'Current Job Profile', 'Performance: What', 'Performance: How',
+            'Overall Performance Rating'  # This is what we'll mismatch
+        ]
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=5, column=col, value=header)
+
+        # Employee with MISMATCH: Surpasses + Meets = Successful (not High Impact)
+        # We'll put "High Impact Performer" which is WRONG per our logic
+        ws.cell(row=6, column=1, value='MISMATCH01')
+        ws.cell(row=6, column=2, value='Mismatch Employee')
+        ws.cell(row=6, column=3, value='Engineering (Manager)')
+        ws.cell(row=6, column=4, value='Engineer')
+        ws.cell(row=6, column=5, value='Surpasses Expectations')  # What
+        ws.cell(row=6, column=6, value='Meets Expectations')       # How
+        ws.cell(row=6, column=7, value='High Impact Performer')    # WRONG: should be Successful
+
+        # Employee with MATCH: Surpasses + Surpasses = High Impact (correct)
+        ws.cell(row=7, column=1, value='MATCH01')
+        ws.cell(row=7, column=2, value='Match Employee')
+        ws.cell(row=7, column=3, value='Engineering (Manager)')
+        ws.cell(row=7, column=4, value='Senior Engineer')
+        ws.cell(row=7, column=5, value='Surpasses Expectations')   # What
+        ws.cell(row=7, column=6, value='Surpasses Expectations')   # How
+        ws.cell(row=7, column=7, value='High Impact Performer')    # CORRECT
+
+        # Save to temp file
+        test_file = tmp_path / 'mismatch_test.xlsx'
+        wb.save(test_file)
+
+        # Import the file
+        with open(test_file, 'rb') as f:
+            response = client.post(
+                '/api/import/current',
+                data={'file': (f, 'mismatch_test.xlsx')},
+                content_type='multipart/form-data'
+            )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['imported'] == 2
+
+        # Should detect 1 mismatch
+        assert 'derivation_mismatch_count' in data
+        assert data['derivation_mismatch_count'] == 1
+        assert len(data['derivation_mismatches']) == 1
+
+        # Verify mismatch details
+        mismatch = data['derivation_mismatches'][0]
+        assert mismatch['associate_id'] == 'MISMATCH01'
+        assert mismatch['what'] == 'Surpasses Expectations'
+        assert mismatch['how'] == 'Meets Expectations'
+        assert mismatch['imported'] == 'High Impact Performer'
+        assert mismatch['expected'] == 'Successful Performer'
+
+    def test_import_no_mismatch_when_all_match(self, client, talent_xlsx_file):
+        """Import returns no mismatch data when all derivations match."""
+        # The standard talent_xlsx_file fixture doesn't have Overall Performance column
+        # so there should be no mismatches (nothing to compare)
+        with open(talent_xlsx_file, 'rb') as f:
+            response = client.post(
+                '/api/import/current',
+                data={'file': (f, 'talent-report.xlsx')},
+                content_type='multipart/form-data'
+            )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        # No mismatch fields when there are no mismatches
+        assert 'derivation_mismatch_count' not in data
+        assert 'derivation_mismatches' not in data
+
 
 class TestCalibrateAPIValidation:
     """Tests for /api/calibrate endpoint validation."""

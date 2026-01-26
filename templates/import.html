@@ -1158,6 +1158,20 @@ function resetDemoForm() {
                     <div class="label">Full Details</div>
                 </div>
             </div>
+            <div id="derivationWarning" class="alert alert-warning" style="display: none; margin-top: 1rem; text-align: left; padding: 1rem; border-radius: 0.5rem; background: #fff3cd; border: 1px solid #ffc107;">
+                <strong>⚠️ Derivation Mismatch Detected</strong>
+                <p style="margin: 0.5rem 0; font-size: 0.9rem;">
+                    <span id="mismatchCount">0</span> employee(s) have Overall Performance that doesn't match what we derive from What/How.
+                    This may indicate Workday's logic differs from our implementation.
+                </p>
+                <details style="font-size: 0.85rem;">
+                    <summary style="cursor: pointer; color: #856404;">Show details</summary>
+                    <ul id="mismatchList" style="margin: 0.5rem 0; padding-left: 1.5rem; max-height: 150px; overflow-y: auto;"></ul>
+                    <p style="margin: 0.5rem 0; font-size: 0.8rem; color: #666;">
+                        Please <a href="https://github.com/adereis/performance-rating-and-bonus/issues" target="_blank" style="color: #856404;">report this issue</a> so we can update our derivation logic.
+                    </p>
+                </details>
+            </div>
             <div class="actions">
                 <button class="btn btn-secondary" onclick="resetImport()">Import Another</button>
                 <a href="{{ url_for('index') }}" class="btn btn-primary">Go to Dashboard</a>
@@ -1481,11 +1495,36 @@ function resetDemoForm() {
                 document.getElementById('resultFullItem').style.display = 'block';
                 document.getElementById('resultFull').textContent = data.full_details;
             }
+
+            // Show derivation mismatch warning if present
+            const warningDiv = document.getElementById('derivationWarning');
+            if (data.derivation_mismatch_count > 0) {
+                document.getElementById('mismatchCount').textContent = data.derivation_mismatch_count;
+                const list = document.getElementById('mismatchList');
+                list.innerHTML = '';
+                data.derivation_mismatches.forEach(m => {
+                    const li = document.createElement('li');
+                    const strong = document.createElement('strong');
+                    strong.textContent = m.associate;
+                    li.appendChild(strong);
+                    li.appendChild(document.createTextNode(`: ${m.what} + ${m.how} → imported "${m.imported}", expected "${m.expected}"`));
+                    list.appendChild(li);
+                });
+                warningDiv.style.display = 'block';
+            } else {
+                warningDiv.style.display = 'none';
+            }
         } else {
             results.classList.add('error');
             results.querySelector('svg').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />';
             document.getElementById('resultTitle').textContent = 'Import Failed';
-            document.getElementById('resultImported').parentElement.innerHTML = `<div class="value" style="color: #e74c3c;">${data.error}</div>`;
+            const errorDiv = document.getElementById('resultImported').parentElement;
+            errorDiv.textContent = '';
+            const valueDiv = document.createElement('div');
+            valueDiv.className = 'value';
+            valueDiv.style.color = '#e74c3c';
+            valueDiv.textContent = data.error;
+            errorDiv.appendChild(valueDiv);
             document.getElementById('resultUpdated').parentElement.style.display = 'none';
         }
     }
@@ -1527,6 +1566,7 @@ function resetDemoForm() {
 
         // Reset results display for next import
         document.getElementById('resultFullItem').style.display = 'none';
+        document.getElementById('derivationWarning').style.display = 'none';
         document.getElementById('resultUpdated').parentElement.style.display = 'block';
 
         document.getElementById('importBtn').disabled = true;
