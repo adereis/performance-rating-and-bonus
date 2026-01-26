@@ -1360,6 +1360,64 @@
         </div>
         {% endif %}
 
+        <!-- Mentoring Mismatch -->
+        {% if inconsistencies.mentoring_mismatch %}
+        <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #f9f5fc; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #8e44ad;">🔄 Mentoring Changes Between Cycles ({{ inconsistencies.mentoring_mismatch | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+                Mentor or mentee data differs between Bonus and Talent Calibration cycles
+            </p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.mentoring_mismatch %}
+                <li style="margin-bottom: 8px;">
+                    <strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}):
+                    {% if emp.mentor_differs %}
+                    <span style="display: block; font-size: 12px; color: #666; margin-left: 10px;">
+                        Mentor: <span style="color: #3498db;">Bonus: {% if emp.bonus_mentor == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.bonus_mentor }}{% endif %}</span> → <span style="color: #9b59b6;">Talent: {% if emp.talent_mentor == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.talent_mentor }}{% endif %}</span>
+                    </span>
+                    {% endif %}
+                    {% if emp.mentees_differs %}
+                    <span style="display: block; font-size: 12px; color: #666; margin-left: 10px;">
+                        Mentees: <span style="color: #3498db;">Bonus: {% if emp.bonus_mentees == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.bonus_mentees }}{% endif %}</span> → <span style="color: #9b59b6;">Talent: {% if emp.talent_mentees == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.talent_mentees }}{% endif %}</span>
+                    </span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Tenet Mismatch -->
+        {% if inconsistencies.tenet_mismatch %}
+        <div class="inconsistency-section" style="border-left: 4px solid #16a085; padding-left: 15px; background: #f0fdf9; padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #0d6656;">📋 Tenet Changes Between Cycles ({{ inconsistencies.tenet_mismatch | length }})</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+                Tenet selections differ between Bonus and Talent Calibration cycles
+            </p>
+            <ul style="margin: 0; padding-left: 20px;">
+                {% for emp in inconsistencies.tenet_mismatch %}
+                <li style="margin-bottom: 12px;">
+                    <strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}):
+                    {% if emp.strengths_differ %}
+                    <span style="display: block; font-size: 12px; color: #666; margin-left: 10px; margin-top: 4px;">
+                        <strong style="color: #27ae60;">Strengths:</strong>
+                        <span style="color: #3498db;">Bonus: {% if emp.bonus_strengths %}{{ emp.bonus_strengths | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span>
+                        → <span style="color: #16a085;">Talent: {% if emp.talent_strengths %}{{ emp.talent_strengths | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span>
+                    </span>
+                    {% endif %}
+                    {% if emp.improvements_differ %}
+                    <span style="display: block; font-size: 12px; color: #666; margin-left: 10px; margin-top: 4px;">
+                        <strong style="color: #e67e22;">Improvements:</strong>
+                        <span style="color: #3498db;">Bonus: {% if emp.bonus_improvements %}{{ emp.bonus_improvements | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span>
+                        → <span style="color: #16a085;">Talent: {% if emp.talent_improvements %}{{ emp.talent_improvements | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span>
+                    </span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
     </div>
     </div>
 </div>

@@ -1849,7 +1849,9 @@ def analytics():
         'promotion_ready_not_high': [],   # Ready Now but not High Impact (talent measured in current role)
         'high_performer_not_future': [],  # High Impact but not Future Talent
         'bonus_only': [],               # Has performance rating but no talent data
-        'talent_only': []               # Has talent data but no performance rating
+        'talent_only': [],              # Has talent data but no performance rating
+        'mentoring_mismatch': [],       # Mentor/mentees differ between bonus and talent cycles
+        'tenet_mismatch': []            # Tenets differ between bonus and talent cycles
     }
 
     for emp in team_data:
@@ -1897,6 +1899,88 @@ def analytics():
             inconsistencies['bonus_only'].append(emp_info)
         elif talent_perf and not rating:
             inconsistencies['talent_only'].append(emp_info)
+
+        # Mentoring mismatch between cycles
+        bonus_mentor = (emp.get('mentor') or '').strip()
+        bonus_mentees = (emp.get('mentees') or '').strip()
+        talent_mentor = (emp.get('talent_mentor') or '').strip()
+        talent_mentees = (emp.get('talent_mentees') or '').strip()
+
+        # Check if there's any mentoring data and if it differs between cycles
+        has_any_mentoring = any([bonus_mentor, bonus_mentees, talent_mentor, talent_mentees])
+        if has_any_mentoring:
+            mentor_differs = (bool(bonus_mentor) != bool(talent_mentor)) or \
+                           (bonus_mentor and talent_mentor and bonus_mentor.lower() != talent_mentor.lower())
+            mentees_differs = (bool(bonus_mentees) != bool(talent_mentees)) or \
+                            (bonus_mentees and talent_mentees and bonus_mentees.lower() != talent_mentees.lower())
+
+            if mentor_differs or mentees_differs:
+                mentoring_info = {
+                    'name': emp.get('Associate', 'Unknown'),
+                    'id': emp.get('Associate ID', ''),
+                    'job': emp.get('Current Job Profile', ''),
+                    'bonus_mentor': bonus_mentor or '-',
+                    'bonus_mentees': bonus_mentees or '-',
+                    'talent_mentor': talent_mentor or '-',
+                    'talent_mentees': talent_mentees or '-',
+                    'mentor_differs': mentor_differs,
+                    'mentees_differs': mentees_differs
+                }
+                inconsistencies['mentoring_mismatch'].append(mentoring_info)
+
+        # Tenet mismatch between cycles (compare same categories: strengths→strengths, improvements→improvements)
+        bonus_strengths = set()
+        bonus_improvements = set()
+        talent_strengths = set()
+        talent_improvements = set()
+
+        # Parse bonus cycle tenets
+        if emp.get('tenets_strengths'):
+            try:
+                bonus_strengths = set(json.loads(emp['tenets_strengths']))
+            except json.JSONDecodeError:
+                pass
+        if emp.get('tenets_improvements'):
+            try:
+                bonus_improvements = set(json.loads(emp['tenets_improvements']))
+            except json.JSONDecodeError:
+                pass
+
+        # Parse talent cycle tenets
+        if emp.get('talent_tenets_strengths'):
+            try:
+                talent_strengths = set(json.loads(emp['talent_tenets_strengths']))
+            except json.JSONDecodeError:
+                pass
+        if emp.get('talent_tenets_improvements'):
+            try:
+                talent_improvements = set(json.loads(emp['talent_tenets_improvements']))
+            except json.JSONDecodeError:
+                pass
+
+        # Check if there's any tenet data and if it differs between cycles
+        has_any_tenets = any([bonus_strengths, bonus_improvements, talent_strengths, talent_improvements])
+        if has_any_tenets:
+            strengths_differ = bonus_strengths != talent_strengths
+            improvements_differ = bonus_improvements != talent_improvements
+
+            if strengths_differ or improvements_differ:
+                # Convert IDs to names for display
+                def tenet_names(tenet_ids):
+                    return [tenets_map.get(tid, {}).get('name', tid) for tid in sorted(tenet_ids)]
+
+                tenet_info = {
+                    'name': emp.get('Associate', 'Unknown'),
+                    'id': emp.get('Associate ID', ''),
+                    'job': emp.get('Current Job Profile', ''),
+                    'bonus_strengths': tenet_names(bonus_strengths) if bonus_strengths else [],
+                    'bonus_improvements': tenet_names(bonus_improvements) if bonus_improvements else [],
+                    'talent_strengths': tenet_names(talent_strengths) if talent_strengths else [],
+                    'talent_improvements': tenet_names(talent_improvements) if talent_improvements else [],
+                    'strengths_differ': strengths_differ,
+                    'improvements_differ': improvements_differ
+                }
+                inconsistencies['tenet_mismatch'].append(tenet_info)
 
     # Calculate total count
     total_inconsistencies = sum(len(v) for v in inconsistencies.values())
