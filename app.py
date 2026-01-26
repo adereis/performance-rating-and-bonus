@@ -884,8 +884,6 @@ TALENT_MOVEMENT_VALUES = [
 @app.route('/calibrate')
 def calibrate_page():
     """Talent calibration page."""
-    from models import derive_overall_performance, derive_future_talent
-
     # Get filter params from URL
     filter_params = get_filter_params()
 
