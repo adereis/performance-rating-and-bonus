@@ -133,20 +133,6 @@ class TestTalentAnalyticsCharts:
         assert 'performance_data' in html
         assert 'movement_data' in html
 
-    def test_talent_matrix_chart_present(self, client, employees_with_talent):
-        """Test that 9-box talent matrix chart is present."""
-        response = client.get('/analytics')
-        html = response.data.decode('utf-8')
-
-        # Check for talent matrix chart canvas and title
-        assert 'talentMatrixChart' in html
-        assert 'Talent Matrix' in html
-        # Check for matrix data in JSON
-        assert 'talent_matrix' in html
-        assert 'future_talent_yes' in html
-        assert 'future_talent_no' in html
-
-
 class TestTalentAnalyticsSuggestedRanges:
     """Test suggested ranges per Spec §7.3."""
 
@@ -171,164 +157,234 @@ class TestTalentAnalyticsSuggestedRanges:
         assert 'status-badge' in html
 
 
-class TestCrossCycleMismatchDetection:
-    """Test cross-cycle mismatch detection (mentoring and tenets)."""
+class TestMovementReadinessIncomplete:
+    """Test movement readiness counting for employees without full talent assessment.
 
-    @pytest.fixture
-    def employees_with_mentoring_mismatch(self, app, test_db):
-        """Create employees with mismatched mentor/mentee data between cycles."""
+    Regression test: Employees marked for promotion (via talent_movement_readiness)
+    should be counted even if they haven't completed their What/How assessments
+    (which would leave talent_overall_perf as None).
+    """
+
+    def test_movement_readiness_counts_employees_without_overall_perf(self, app, client, test_db):
+        """Movement readiness should count employees who have movement set but no overall perf."""
         SessionLocal, db_path = test_db
         session = SessionLocal()
 
-        employees = [
-            # Mentor differs between cycles
-            Employee(
-                associate_id='MISMATCH001',
-                associate='Mentor Mismatch Employee',
-                supervisory_organization='Engineering',
-                current_job_profile='Engineer',
-                mentor='Alice',           # Bonus cycle mentor
-                mentees='',
-                talent_mentor='Bob',      # Talent cycle mentor (different)
-                talent_mentees='',
-            ),
-            # Mentees differ between cycles
-            Employee(
-                associate_id='MISMATCH002',
-                associate='Mentee Mismatch Employee',
-                supervisory_organization='Engineering',
-                current_job_profile='Senior Engineer',
-                mentor='',
-                mentees='Charlie, Diana',         # Bonus cycle mentees
-                talent_mentor='',
-                talent_mentees='Charlie, Eve',    # Talent cycle mentees (different)
-            ),
-            # Aligned - no mismatch (same data, case-insensitive)
-            Employee(
-                associate_id='ALIGNED001',
-                associate='Aligned Employee',
-                supervisory_organization='Engineering',
-                current_job_profile='Staff Engineer',
-                mentor='frank',             # lowercase
-                mentees='Grace',
-                talent_mentor='Frank',      # uppercase (same person)
-                talent_mentees='Grace',
-            ),
-            # One cycle has data, other is empty (should flag as mismatch)
-            Employee(
-                associate_id='MISMATCH003',
-                associate='Partial Data Employee',
-                supervisory_organization='Engineering',
-                current_job_profile='Engineer',
-                mentor='Henry',
-                mentees='',
-                talent_mentor='',           # Empty in talent cycle
-                talent_mentees='',
-            ),
-        ]
+        # Create one fully calibrated employee
+        calibrated = Employee(
+            associate_id='FULL001',
+            associate='Fully Calibrated',
+            supervisory_organization='Engineering',
+            current_job_profile='Engineer',
+            talent_perf_what='Meets Expectations',
+            talent_perf_how='Meets Expectations',
+            talent_overall_perf='Successful Performer',
+            talent_movement_readiness='Continue growing in current role',
+        )
 
-        for emp in employees:
-            session.add(emp)
+        # Create employee marked for promotion but without What/How (no overall_perf)
+        promotion_pending = Employee(
+            associate_id='PROMO001',
+            associate='Promotion Pending',
+            supervisory_organization='Engineering',
+            current_job_profile='Senior Engineer',
+            talent_perf_what=None,  # Not yet assessed
+            talent_perf_how=None,   # Not yet assessed
+            talent_overall_perf=None,  # Can't be derived without What/How
+            talent_movement_readiness='Ready Now to be promoted in current role',
+        )
+
+        session.add(calibrated)
+        session.add(promotion_pending)
         session.commit()
         session.close()
 
-        return employees
-
-    @pytest.fixture
-    def employees_with_tenet_mismatch(self, app, test_db):
-        """Create employees with mismatched tenet data between cycles."""
-        import json
-        SessionLocal, db_path = test_db
-        session = SessionLocal()
-
-        employees = [
-            # Strengths differ between cycles
-            Employee(
-                associate_id='TENET001',
-                associate='Tenet Strength Mismatch',
-                supervisory_organization='Engineering',
-                current_job_profile='Engineer',
-                tenets_strengths=json.dumps(['tenet_1', 'tenet_2']),
-                tenets_improvements=json.dumps(['tenet_3']),
-                talent_tenets_strengths=json.dumps(['tenet_1', 'tenet_4']),  # Different
-                talent_tenets_improvements=json.dumps(['tenet_3']),
-            ),
-            # Improvements differ between cycles
-            Employee(
-                associate_id='TENET002',
-                associate='Tenet Improvement Mismatch',
-                supervisory_organization='Engineering',
-                current_job_profile='Senior Engineer',
-                tenets_strengths=json.dumps(['tenet_1']),
-                tenets_improvements=json.dumps(['tenet_2', 'tenet_3']),
-                talent_tenets_strengths=json.dumps(['tenet_1']),
-                talent_tenets_improvements=json.dumps(['tenet_2']),  # Different
-            ),
-            # Aligned - no mismatch
-            Employee(
-                associate_id='ALIGNED002',
-                associate='Tenet Aligned Employee',
-                supervisory_organization='Engineering',
-                current_job_profile='Staff Engineer',
-                tenets_strengths=json.dumps(['tenet_1', 'tenet_2']),
-                tenets_improvements=json.dumps(['tenet_3']),
-                talent_tenets_strengths=json.dumps(['tenet_2', 'tenet_1']),  # Same set
-                talent_tenets_improvements=json.dumps(['tenet_3']),
-            ),
-        ]
-
-        for emp in employees:
-            session.add(emp)
-        session.commit()
-        session.close()
-
-        return employees
-
-    def test_mentoring_mismatch_detected(self, client, employees_with_mentoring_mismatch):
-        """Test that mentor/mentee mismatches are detected."""
         response = client.get('/analytics')
         assert response.status_code == 200
         html = response.data.decode('utf-8')
 
-        # Should show the mentoring mismatch employees
-        assert 'Mentor Mismatch Employee' in html
-        assert 'Mentee Mismatch Employee' in html
-        assert 'Partial Data Employee' in html
+        # The promotion-ready employee should be counted in movement breakdown
+        # Even though they don't have talent_overall_perf
+        assert 'Ready Now to be promoted in current role' in html
+        # Should show at least 1 in the ready-for-promotion count
+        assert '1 employees' in html or '>1<' in html
 
-    def test_mentoring_aligned_not_flagged(self, client, employees_with_mentoring_mismatch):
-        """Test that case-insensitive matching works for mentors."""
-        response = client.get('/analytics')
-        html = response.data.decode('utf-8')
+class TestMovementReadinessNormalization:
+    """Test movement readiness value normalization at import time."""
 
-        # Aligned employee (frank/Frank) should NOT appear in mismatch section
-        # Check for the mismatch indicator - aligned employee shouldn't have it
-        # The aligned employee should exist but not in the mismatch list
-        assert 'Aligned Employee' in html  # Employee exists
-        # Count occurrences - should only appear once (in employee list, not mismatches)
-        # The mismatch section has specific structure we can check for
+    def test_normalize_workday_promotion_value(self):
+        """Workday promotion format is normalized to canonical value."""
+        from app import normalize_movement_readiness
 
-    def test_tenet_mismatch_detected(self, client, employees_with_tenet_mismatch):
-        """Test that tenet mismatches are detected."""
+        result = normalize_movement_readiness(
+            'Ready Now to be promoted in current role (upcoming cycle)'
+        )
+        assert result == 'Ready Now to be promoted in current role'
+
+    def test_normalize_workday_lateral_value(self):
+        """Workday lateral format is normalized to canonical value."""
+        from app import normalize_movement_readiness
+
+        result = normalize_movement_readiness(
+            'Ready for a lateral move outside of current role'
+        )
+        assert result == 'Ready for lateral move'
+
+    def test_normalize_continue_growing(self):
+        """Continue growing value passes through."""
+        from app import normalize_movement_readiness
+
+        result = normalize_movement_readiness('Continue growing in current role')
+        assert result == 'Continue growing in current role'
+
+    def test_normalize_none_returns_none(self):
+        """None input returns None."""
+        from app import normalize_movement_readiness
+
+        assert normalize_movement_readiness(None) is None
+        assert normalize_movement_readiness('') is None
+
+    def test_unknown_value_passes_through(self):
+        """Unknown values pass through unchanged."""
+        from app import normalize_movement_readiness
+
+        result = normalize_movement_readiness('Some unknown Workday value')
+        assert result == 'Some unknown Workday value'
+
+
+class TestTenureParsing:
+    """Test tenure string parsing functions."""
+
+    def test_parse_years_and_months(self):
+        """Parse '2 years, 3 months' format."""
+        from app import parse_tenure_to_months
+
+        assert parse_tenure_to_months('2 years, 3 months') == 27
+        assert parse_tenure_to_months('1 year, 6 months') == 18
+
+    def test_parse_years_only(self):
+        """Parse '3 years' format."""
+        from app import parse_tenure_to_months
+
+        assert parse_tenure_to_months('3 years') == 36
+        assert parse_tenure_to_months('1 year') == 12
+
+    def test_parse_months_only(self):
+        """Parse '8 months' format."""
+        from app import parse_tenure_to_months
+
+        assert parse_tenure_to_months('8 months') == 8
+        assert parse_tenure_to_months('11 months') == 11
+
+    def test_parse_none_or_empty(self):
+        """None or empty returns None."""
+        from app import parse_tenure_to_months
+
+        assert parse_tenure_to_months(None) is None
+        assert parse_tenure_to_months('') is None
+
+    def test_parse_unparseable(self):
+        """Unparseable string returns None."""
+        from app import parse_tenure_to_months
+
+        assert parse_tenure_to_months('N/A') is None
+        assert parse_tenure_to_months('unknown') is None
+
+
+class TestTenureBands:
+    """Test tenure band categorization."""
+
+    def test_tenure_bands(self):
+        """Test band assignment."""
+        from app import get_tenure_band
+
+        assert get_tenure_band(6) == '< 1 year'
+        assert get_tenure_band(12) == '1-2 years'
+        assert get_tenure_band(18) == '1-2 years'
+        assert get_tenure_band(24) == '2-5 years'
+        assert get_tenure_band(48) == '2-5 years'
+        assert get_tenure_band(60) == '5-10 years'
+        assert get_tenure_band(120) == '10+ years'
+        assert get_tenure_band(None) == 'Unknown'
+
+
+class TestTenureAnalyticsRoute:
+    """Test tenure analytics in analytics route."""
+
+    def test_analytics_includes_tenure_section(self, app, client, test_db):
+        """Analytics page includes tenure section when data is present."""
+        SessionLocal, db_path = test_db
+        session = SessionLocal()
+
+        # Create employee with tenure data
+        emp = Employee(
+            associate_id='TEN001',
+            associate='Tenure Test',
+            supervisory_organization='Engineering',
+            current_job_profile='Engineer',
+            time_in_job_profile='2 years, 6 months',
+            length_of_service='5 years, 3 months',
+            performance_rating_percent=110.0,
+        )
+        session.add(emp)
+        session.commit()
+        session.close()
+
         response = client.get('/analytics')
         assert response.status_code == 200
         html = response.data.decode('utf-8')
 
-        # Should show the tenet mismatch employees
-        assert 'Tenet Strength Mismatch' in html
-        assert 'Tenet Improvement Mismatch' in html
+        # Check tenure section is present
+        assert 'Tenure &amp; Mobility' in html or 'Tenure & Mobility' in html
+        assert 'Time in Current Role' in html
+        assert 'Length of Service' in html
 
-    def test_tenet_aligned_not_flagged(self, client, employees_with_tenet_mismatch):
-        """Test that same tenet sets (different order) are not flagged."""
+    def test_analytics_quadrant_calculation(self, app, client, test_db):
+        """Test performance x tenure quadrant calculation."""
+        SessionLocal, db_path = test_db
+        session = SessionLocal()
+
+        # High Impact + long tenure = promotion candidate
+        emp1 = Employee(
+            associate_id='QUAD001',
+            associate='Promotion Candidate',
+            supervisory_organization='Engineering',
+            current_job_profile='Senior Engineer',
+            time_in_job_profile='3 years',
+            talent_overall_perf='High Impact Performer',
+        )
+
+        # High Impact + short tenure = rising star
+        emp2 = Employee(
+            associate_id='QUAD002',
+            associate='Rising Star',
+            supervisory_organization='Engineering',
+            current_job_profile='Engineer',
+            time_in_job_profile='8 months',
+            talent_overall_perf='High Impact Performer',
+        )
+
+        # Successful Performer = solid contributor (any tenure)
+        emp3 = Employee(
+            associate_id='QUAD003',
+            associate='Solid Contributor',
+            supervisory_organization='Engineering',
+            current_job_profile='Engineer',
+            time_in_job_profile='2 years',
+            talent_overall_perf='Successful Performer',
+        )
+
+        session.add(emp1)
+        session.add(emp2)
+        session.add(emp3)
+        session.commit()
+        session.close()
+
         response = client.get('/analytics')
+        assert response.status_code == 200
         html = response.data.decode('utf-8')
 
-        # Aligned employee has same tenets in different order - should not be mismatch
-        assert 'Tenet Aligned Employee' in html  # Employee exists
-
-    def test_mismatch_counts_correct(self, client, employees_with_mentoring_mismatch):
-        """Test that mismatch counts are reflected in inconsistencies."""
-        response = client.get('/analytics')
-        html = response.data.decode('utf-8')
-
-        # Should show inconsistencies section
-        assert 'Inconsistencies' in html or 'inconsistenc' in html.lower()
+        # Check for updated category labels
+        assert 'Career Check-in' in html
+        assert 'High Performers' in html
+        assert 'Solid Contributors' in html

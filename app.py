@@ -7,6 +7,7 @@ import csv
 import io
 from datetime import datetime
 from collections import defaultdict
+import re
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from sqlalchemy import text
@@ -2113,7 +2114,13 @@ def analytics():
         'bonus_only': [],               # Has performance rating but no talent data
         'talent_only': [],              # Has talent data but no performance rating
         'mentoring_mismatch': [],       # Mentor/mentees differ between bonus and talent cycles
-        'tenet_mismatch': []            # Tenets differ between bonus and talent cycles
+        'tenet_mismatch': [],           # Tenets differ between bonus and talent cycles
+        # Tenure-based inconsistencies
+        'new_hire_low_rating': [],      # < 6 months total tenure but rated Low/Evolving
+        'promotion_ready_short_tenure': [],  # Ready Now but < 2 years in role
+        'long_tenure_continue_growing': [],  # 5+ years in role but "Continue growing"
+        'high_impact_long_no_movement': [],  # Currently High Impact + 3+ years in role, no movement set
+        'new_in_role_mentoring': []     # < 1 year in role but mentoring others
     }
 
     for emp in team_data:
@@ -2161,6 +2168,49 @@ def analytics():
             inconsistencies['bonus_only'].append(emp_info)
         elif talent_perf and not rating:
             inconsistencies['talent_only'].append(emp_info)
+
+        # Tenure-based inconsistency checks
+        los_months = parse_tenure_to_months(emp.get('length_of_service'))
+        tijp_months = parse_tenure_to_months(emp.get('time_in_job_profile'))
+
+        tenure_emp_info = {
+            'name': emp.get('Associate', 'Unknown'),
+            'id': emp.get('Associate ID', ''),
+            'job': emp.get('Current Job Profile', ''),
+            'rating': rating,
+            'talent': talent_perf,
+            'movement': movement,
+            'length_of_service': emp.get('length_of_service') or 'N/A',
+            'time_in_job_profile': emp.get('time_in_job_profile') or 'N/A'
+        }
+
+        # New hire rated Low: < 6 months total tenure but rated Low/Evolving
+        if los_months is not None and los_months < 6:
+            if talent_perf in ['Low Performer', 'Evolving Performer']:
+                inconsistencies['new_hire_low_rating'].append(tenure_emp_info)
+
+        # Ready Now but < 2 years in role
+        if 'Ready Now' in movement and tijp_months is not None and tijp_months < 24:
+            inconsistencies['promotion_ready_short_tenure'].append(tenure_emp_info)
+
+        # Long tenure (5+ years in role) but "Continue growing"
+        if tijp_months is not None and tijp_months >= 60:
+            if 'Continue growing' in movement:
+                inconsistencies['long_tenure_continue_growing'].append(tenure_emp_info)
+
+        # High Impact 3+ years in role but not marked for any movement
+        if tijp_months is not None and tijp_months >= 36:
+            if talent_perf == 'High Impact Performer':
+                # Check if no movement readiness set or explicitly "Continue growing"
+                if not movement or 'Continue growing' in movement:
+                    inconsistencies['high_impact_long_no_movement'].append(tenure_emp_info)
+
+        # New in role (< 1 year) but mentoring others
+        if tijp_months is not None and tijp_months < 12:
+            mentees = (emp.get('mentees') or emp.get('talent_mentees') or '').strip()
+            if mentees:
+                tenure_emp_info['mentees'] = mentees
+                inconsistencies['new_in_role_mentoring'].append(tenure_emp_info)
 
         # Mentoring mismatch between cycles
         bonus_mentor = (emp.get('mentor') or '').strip()
@@ -2247,6 +2297,202 @@ def analytics():
     # Calculate total count
     total_inconsistencies = sum(len(v) for v in inconsistencies.values())
 
+    # Calculate tenure analytics
+    tenure_bands = ['< 1 year', '1-2 years', '2-5 years', '5-10 years', '10+ years']
+
+    # Length of Service distribution
+    los_distribution = {band: 0 for band in tenure_bands}
+    los_distribution['Unknown'] = 0
+
+    # Time in Job Profile distribution
+    tijp_distribution = {band: 0 for band in tenure_bands}
+    tijp_distribution['Unknown'] = 0
+
+    # For averages and performance quadrant
+    los_values = []
+    tijp_values = []
+    performance_tenure_data = []
+
+    for emp in team_data:
+        # Parse tenure values
+        los_months = parse_tenure_to_months(emp.get('length_of_service'))
+        tijp_months = parse_tenure_to_months(emp.get('time_in_job_profile'))
+
+        # Distribution counts
+        los_distribution[get_tenure_band(los_months)] += 1
+        tijp_distribution[get_tenure_band(tijp_months)] += 1
+
+        # Collect for averages
+        if los_months is not None:
+            los_values.append(los_months)
+        if tijp_months is not None:
+            tijp_values.append(tijp_months)
+
+        # Performance × Tenure quadrant data
+        # Include employees with either a performance rating or talent overall perf
+        rating = emp.get('performance_rating_percent')
+        talent_perf = emp.get('talent_overall_perf')
+
+        if tijp_months is not None and (rating or talent_perf):
+            # Determine quadrant based on time in role and performance
+            tijp_years = tijp_months / 12
+
+            # Map talent overall perf to a numeric score for quadrant analysis
+            perf_score = None
+            if rating:
+                try:
+                    perf_score = float(rating)
+                except (ValueError, TypeError):
+                    pass
+
+            # Determine performance level for display
+            if talent_perf:
+                perf_level = talent_perf
+            elif perf_score is not None:
+                if perf_score >= 120:
+                    perf_level = 'High Impact'
+                elif perf_score >= 90:
+                    perf_level = 'Successful'
+                elif perf_score >= 70:
+                    perf_level = 'Evolving'
+                else:
+                    perf_level = 'Low'
+            else:
+                perf_level = None
+
+            if perf_level:
+                # Determine quadrant
+                # Only High Impact Performers are career check-in candidates
+                # Successful = meeting expectations (solid, but not exceptional)
+                is_high_impact = perf_level in ['High Impact Performer', 'High Impact']
+                is_successful = perf_level in ['Successful Performer', 'Successful']
+                is_long_tenure_for_checkin = tijp_years >= 2  # 2+ years for career check-in
+                is_past_ramping = tijp_months >= 6  # 6+ months = no longer ramping
+
+                if is_high_impact and is_long_tenure_for_checkin:
+                    quadrant = 'promotion_candidate'  # Career Check-in
+                elif is_high_impact:
+                    quadrant = 'rising_star'  # High Performers
+                elif is_successful:
+                    quadrant = 'solid_contributor'
+                elif is_past_ramping:
+                    quadrant = 'needs_attention'  # Development Focus (6+ months)
+                else:
+                    quadrant = 'developing'  # Still Ramping (< 6 months)
+
+                performance_tenure_data.append({
+                    'name': emp.get('Associate', 'Unknown'),
+                    'id': emp.get('Associate ID', ''),
+                    'job': emp.get('Current Job Profile', ''),
+                    'time_in_role': emp.get('time_in_job_profile', 'N/A'),
+                    'time_in_role_months': tijp_months,
+                    'time_in_role_years': round(tijp_years, 1),
+                    'performance_rating': rating,
+                    'talent_perf': talent_perf,
+                    'perf_level': perf_level,
+                    'quadrant': quadrant,
+                    'movement_readiness': emp.get('talent_movement_readiness')
+                })
+
+    # Calculate averages
+    avg_los_months = round(sum(los_values) / len(los_values), 1) if los_values else None
+    avg_tijp_months = round(sum(tijp_values) / len(tijp_values), 1) if tijp_values else None
+
+    # Format averages for display
+    def format_months_display(months):
+        if months is None:
+            return 'N/A'
+        years = int(months // 12)
+        remaining_months = int(months % 12)
+        if years > 0 and remaining_months > 0:
+            return f"{years}y {remaining_months}m"
+        elif years > 0:
+            return f"{years} years"
+        else:
+            return f"{remaining_months} months"
+
+    # Promotion readiness candidates (high perf + long tenure + ready for movement)
+    promotion_candidates = [
+        emp for emp in performance_tenure_data
+        if emp['quadrant'] == 'promotion_candidate'
+        and emp.get('movement_readiness') in [
+            'Ready Now to be promoted in current role',
+            'Ready for lateral move'
+        ]
+    ]
+    # Sort by time in role descending
+    promotion_candidates.sort(key=lambda x: x['time_in_role_months'], reverse=True)
+
+    # Count by quadrant for chart
+    quadrant_counts = {
+        'promotion_candidate': 0,
+        'rising_star': 0,
+        'solid_contributor': 0,
+        'needs_attention': 0,
+        'developing': 0
+    }
+    for emp in performance_tenure_data:
+        quadrant_counts[emp['quadrant']] += 1
+
+    # Employees with long tenure (3+ years in role) for attention
+    long_tenure_employees = [
+        emp for emp in performance_tenure_data
+        if emp['time_in_role_months'] >= 36
+    ]
+    long_tenure_employees.sort(key=lambda x: x['time_in_role_months'], reverse=True)
+
+    # Tenure by Job Profile (role)
+    tenure_by_role = defaultdict(lambda: {'los_values': [], 'tijp_values': [], 'count': 0})
+    for emp in team_data:
+        job = emp.get('Current Job Profile', 'Unknown')
+        los_months = parse_tenure_to_months(emp.get('length_of_service'))
+        tijp_months = parse_tenure_to_months(emp.get('time_in_job_profile'))
+
+        tenure_by_role[job]['count'] += 1
+        if los_months is not None:
+            tenure_by_role[job]['los_values'].append(los_months)
+        if tijp_months is not None:
+            tenure_by_role[job]['tijp_values'].append(tijp_months)
+
+    # Calculate averages per role
+    tenure_by_role_summary = []
+    for job, data in tenure_by_role.items():
+        if data['tijp_values'] or data['los_values']:
+            avg_los = sum(data['los_values']) / len(data['los_values']) if data['los_values'] else None
+            avg_tijp = sum(data['tijp_values']) / len(data['tijp_values']) if data['tijp_values'] else None
+            tenure_by_role_summary.append({
+                'job': job,
+                'count': data['count'],
+                'avg_length_of_service': format_months_display(avg_los),
+                'avg_time_in_role': format_months_display(avg_tijp),
+                'avg_los_months': avg_los,
+                'avg_tijp_months': avg_tijp
+            })
+
+    # Sort by avg time in role descending
+    tenure_by_role_summary.sort(
+        key=lambda x: x['avg_tijp_months'] if x['avg_tijp_months'] else 0,
+        reverse=True
+    )
+
+    # Tenure analytics summary
+    tenure_analytics = {
+        'los_distribution': los_distribution,
+        'tijp_distribution': tijp_distribution,
+        'avg_length_of_service': format_months_display(avg_los_months),
+        'avg_time_in_role': format_months_display(avg_tijp_months),
+        'avg_los_months': avg_los_months,
+        'avg_tijp_months': avg_tijp_months,
+        'employees_with_tenure_data': len(tijp_values),
+        'total_employees': len(team_data),
+        'quadrant_counts': quadrant_counts,
+        'performance_tenure_data': performance_tenure_data,
+        'promotion_candidates': promotion_candidates,
+        'long_tenure_employees': long_tenure_employees[:10],  # Top 10
+        'pct_long_tenure': round(len([v for v in tijp_values if v >= 36]) / len(tijp_values) * 100, 1) if tijp_values else 0,
+        'tenure_by_role': tenure_by_role_summary
+    }
+
     return render_template('analytics.html',
                          team=sorted_team,
                          chart_data=chart_data,
@@ -2268,6 +2514,7 @@ def analytics():
                          talent_calibration=talent_calibration,
                          inconsistencies=inconsistencies,
                          total_inconsistencies=total_inconsistencies,
+                         tenure_analytics=tenure_analytics,
                          filter_info=filter_info)
 
 

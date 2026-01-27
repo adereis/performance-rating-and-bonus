@@ -29,6 +29,14 @@
             <label>Associate ID</label>
             <span>{{ employee['Associate ID'] }}</span>
         </div>
+        <div>
+            <label>Time in Job Profile</label>
+            <span>{{ employee.time_in_job_profile or 'N/A' }}</span>
+        </div>
+        <div>
+            <label>Length of Service</label>
+            <span>{{ employee.length_of_service or 'N/A' }}</span>
+        </div>
     </div>
 
     <!-- Performance Assessment Section (Collapsible) -->
