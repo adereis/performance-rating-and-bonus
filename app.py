@@ -1087,9 +1087,40 @@ def calibrate_page():
     # Count calibrated employees (What + How + Actions + Tenets)
     calibrated_count = sum(1 for e in team_data if is_employee_calibrated(e))
 
+    # Detect multi-team scenario and group by supervisory organization
+    unique_orgs = set()
+    for emp in team_data:
+        org = emp.get('Supervisory Organization')
+        if org:
+            unique_orgs.add(org)
+
+    is_multi_team = len(unique_orgs) > 1
+
+    # Group employees by supervisory organization for multi-team view
+    teams_grouped = []
+    if is_multi_team:
+        teams_by_org = {}
+        for emp in team_data:
+            org = emp.get('Supervisory Organization', 'Unknown')
+            if org not in teams_by_org:
+                teams_by_org[org] = []
+            teams_by_org[org].append(emp)
+
+        # Build grouped structure with per-team calibration counts
+        for org, members in sorted(teams_by_org.items()):
+            team_calibrated = sum(1 for e in members if is_employee_calibrated(e))
+            teams_grouped.append({
+                'org': org,
+                'members': members,
+                'total': len(members),
+                'calibrated': team_calibrated,
+            })
+
     return render_template(
         'calibrate.html',
         team=team_data,
+        teams_grouped=teams_grouped,
+        is_multi_team=is_multi_team,
         filter_info=filter_info,
         calibrated_count=calibrated_count,
         perf_what_values=TALENT_PERF_WHAT_VALUES,

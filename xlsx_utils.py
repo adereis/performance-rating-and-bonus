@@ -815,7 +815,9 @@ TALENT_COLUMN_MAP = {
     'Associate': 'associate',
 
     # Standard context (shared with bonus)
+    # Note: Talent files use "Associate's Manager" instead of "Supervisory Organization"
     'Supervisory Organization': 'supervisory_organization',
+    "Associate's Manager": 'supervisory_organization',
     'Job Profile': 'current_job_profile',
     'Current Job Profile': 'current_job_profile',
 

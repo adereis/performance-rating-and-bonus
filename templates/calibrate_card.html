@@ -1,0 +1,258 @@
+{# Employee Calibration Card - Partial template included by calibrate.html #}
+{# Expects: employee, is_calibrated, has_tenets, perf_what_values, perf_how_values, agility_values, movement_values #}
+
+{% set perf_complete = employee.talent_perf_what and employee.talent_perf_how %}
+{% set future_complete = employee.talent_growth_agility and employee.talent_change_agility %}
+{% set movement_complete = employee.talent_movement_readiness and employee.talent_proposed_actions %}
+
+<div class="employee-card {% if is_calibrated %}calibrated{% endif %}"
+     data-employee-id="{{ employee['Associate ID'] }}"
+     data-is-calibrated="{{ 'true' if is_calibrated else 'false' }}">
+
+    <div class="employee-header">
+        <div>
+            <label>Name</label>
+            <span class="employee-name" data-employee-id="{{ employee['Associate ID'] }}">{{ employee.Associate }}</span>
+        </div>
+        <div>
+            <label>Job Profile</label>
+            <span>{{ employee['Current Job Profile'] }}</span>
+        </div>
+    </div>
+
+    <div class="workday-info">
+        <div>
+            <label>Supervisory Org</label>
+            <span>{{ employee['Supervisory Organization'] }}</span>
+        </div>
+        <div>
+            <label>Associate ID</label>
+            <span>{{ employee['Associate ID'] }}</span>
+        </div>
+    </div>
+
+    <!-- Performance Assessment Section (Collapsible) -->
+    <div class="calibration-section" data-section="performance">
+        <div class="card-section-header" onclick="toggleCardSection(this)">
+            <h4>
+                <span class="section-toggle">▼</span>
+                Performance Assessment
+            </h4>
+            <span class="section-status {% if perf_complete %}complete{% else %}incomplete{% endif %}">
+                {% if perf_complete %}
+                    {{ employee.talent_overall_perf or 'Complete' }}
+                {% else %}
+                    Incomplete
+                {% endif %}
+            </span>
+        </div>
+        <div class="card-section-content">
+            <div class="calibration-input-group">
+                <label>Performance: What</label>
+                <select data-field="talent_perf_what">
+                    <option value="">-- Select --</option>
+                    {% for value in perf_what_values %}
+                    <option value="{{ value }}" {% if employee.talent_perf_what == value %}selected{% endif %}>{{ value }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="calibration-input-group">
+                <label>Performance: How</label>
+                <select data-field="talent_perf_how">
+                    <option value="">-- Select --</option>
+                    {% for value in perf_how_values %}
+                    <option value="{{ value }}" {% if employee.talent_perf_how == value %}selected{% endif %}>{{ value }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="calibration-input-group">
+                <label>Overall Performance</label>
+                <div class="derived-value overall-perf-display {% if employee.talent_overall_perf == 'High Impact Performer' %}high-impact{% elif employee.talent_overall_perf == 'Successful Performer' %}successful{% elif employee.talent_overall_perf == 'Evolving Performer' %}evolving{% elif employee.talent_overall_perf == 'Low Performer' %}low{% endif %}">
+                    {{ employee.talent_overall_perf or '(auto-calculated)' }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Future Talent Section (Collapsible) -->
+    <div class="calibration-section" data-section="future-talent">
+        <div class="card-section-header" onclick="toggleCardSection(this)">
+            <h4>
+                <span class="section-toggle">▼</span>
+                Future Talent Assessment
+            </h4>
+            <span class="section-status {% if future_complete %}complete{% else %}incomplete{% endif %}">
+                {% if employee.talent_identified_future %}Future Talent{% elif future_complete %}No{% else %}Incomplete{% endif %}
+            </span>
+        </div>
+        <div class="card-section-content">
+            <div class="calibration-input-group">
+                <label>Growth Agility</label>
+                <select data-field="talent_growth_agility">
+                    <option value="">-- Select --</option>
+                    {% for value in agility_values %}
+                    <option value="{{ value }}" {% if employee.talent_growth_agility == value %}selected{% endif %}>{{ value }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="calibration-input-group">
+                <label>Change Agility</label>
+                <select data-field="talent_change_agility">
+                    <option value="">-- Select --</option>
+                    {% for value in agility_values %}
+                    <option value="{{ value }}" {% if employee.talent_change_agility == value %}selected{% endif %}>{{ value }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="calibration-input-group">
+                <label>Future Talent?</label>
+                <div class="derived-value future-talent-display {% if employee.talent_identified_future %}future-talent{% endif %}">
+                    {% if employee.talent_identified_future %}Yes{% elif employee.talent_identified_future == false %}No{% else %}(auto-calculated){% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Movement & Career Section (Collapsible) -->
+    <div class="calibration-section" data-section="movement">
+        <div class="card-section-header" onclick="toggleCardSection(this)">
+            <h4>
+                <span class="section-toggle">▼</span>
+                Movement & Career
+            </h4>
+            <span class="section-status {% if movement_complete %}complete{% else %}incomplete{% endif %}">
+                {% if movement_complete %}Complete{% else %}Incomplete{% endif %}
+            </span>
+        </div>
+        <div class="card-section-content">
+            <div class="calibration-input-group">
+                <label>Movement Readiness</label>
+                <select data-field="talent_movement_readiness">
+                    <option value="">-- Select --</option>
+                    {% for value in movement_values %}
+                    <option value="{{ value }}" {% if employee.talent_movement_readiness == value %}selected{% endif %}>{{ value }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="calibration-input-group">
+                <label>Proposed Actions</label>
+                <textarea data-field="talent_proposed_actions" placeholder="Recommended development actions...">{{ employee.talent_proposed_actions or '' }}</textarea>
+            </div>
+
+            <div class="calibration-input-group">
+                <label>Mentor</label>
+                <input type="text" data-field="talent_mentor" placeholder="Who is mentoring this person?" value="{{ employee.talent_mentor or '' }}">
+                {% if employee.mentor %}
+                <div class="cross-cycle-hint show">
+                    <span class="hint-label">From Bonus Cycle:</span>
+                    <span class="hint-value">{{ employee.mentor }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="calibration-input-group">
+                <label>Mentee(s)</label>
+                <input type="text" data-field="talent_mentees" placeholder="Who is this person mentoring?" value="{{ employee.talent_mentees or '' }}">
+                {% if employee.mentees %}
+                <div class="cross-cycle-hint show">
+                    <span class="hint-label">From Bonus Cycle:</span>
+                    <span class="hint-value">{{ employee.mentees }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tenets Section (Collapsible) -->
+    <div class="calibration-section tenets-section" data-section="tenets">
+        <div class="card-section-header" onclick="toggleCardSection(this)">
+            <h4>
+                <span class="section-toggle">▼</span>
+                Leadership Tenets
+            </h4>
+            <span class="section-status {% if has_tenets %}complete{% else %}incomplete{% endif %}">
+                {% if has_tenets %}Selected{% else %}Select 3 + 2-3{% endif %}
+            </span>
+        </div>
+        <div class="card-section-content">
+            <p style="font-size: 12px; color: #666; margin: 0 0 10px 0;">Select 3 strengths and 2-3 areas for improvement</p>
+            <div class="loading-tenets">Loading tenets...</div>
+            <div class="tenets-grid" style="display: none;">
+                <div class="tenet-category">
+                    <h6>Strengths (Select 3)</h6>
+                    <div class="tenet-items" data-tenet-type="talent_strengths"></div>
+                    <div class="tenet-count-warning" data-warning-type="talent_strengths">Please select exactly 3 strengths</div>
+                </div>
+                <div class="tenet-category">
+                    <h6>Areas for Improvement (Select 2-3)</h6>
+                    <div class="tenet-items" data-tenet-type="talent_improvements"></div>
+                    <div class="tenet-count-warning" data-warning-type="talent_improvements">Please select 2 or 3 areas for improvement</div>
+                </div>
+            </div>
+            <div class="tenets-legend">
+                <span class="legend-item"><span class="legend-indicator"></span> Also selected in Bonus Rating</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Promotion Section (Collapsible) -->
+    <div class="collapsible-section">
+        <div class="collapsible-header" onclick="toggleCollapsible(this)">
+            <span class="promotion-label">
+                <span class="promotion-label-text">Promotion Details (Optional)</span>
+            </span>
+            <span class="toggle-icon">&#9660;</span>
+        </div>
+        <div class="collapsible-content">
+            <div class="calibration-input-group">
+                <label>Proposed Job Profile</label>
+                <input type="text" data-field="talent_promo_job_profile" placeholder="e.g., Senior SRE, 1534" value="{{ employee.talent_promo_job_profile or '' }}">
+            </div>
+            <div class="calibration-input-group">
+                <label>Business Need</label>
+                <textarea data-field="talent_promo_business_need" placeholder="Why is this promotion needed?">{{ employee.talent_promo_business_need or '' }}</textarea>
+            </div>
+            <div class="calibration-input-group">
+                <label>Expanded Role Scope</label>
+                <textarea data-field="talent_promo_role_scope" placeholder="How will the role expand?">{{ employee.talent_promo_role_scope or '' }}</textarea>
+            </div>
+            <div class="calibration-input-group">
+                <label>Associate Readiness</label>
+                <textarea data-field="talent_promo_readiness" placeholder="Evidence of readiness...">{{ employee.talent_promo_readiness or '' }}</textarea>
+            </div>
+            <div class="promotion-incomplete-warning">
+                ⚠️ Please complete promotion details when "Ready Now to be promoted" is selected.
+            </div>
+        </div>
+    </div>
+
+    <!-- Bonus Context (Read-only) -->
+    {% if employee.performance_rating_percent %}
+    <div class="bonus-context">
+        <h5>Bonus Cycle Context</h5>
+        <div class="context-grid">
+            <div class="context-item">
+                <label>Performance Rating</label>
+                <span>{{ employee.performance_rating_percent }}%</span>
+            </div>
+            <div class="context-item">
+                <label>Grade</label>
+                <span>{{ employee.Grade or 'N/A' }}</span>
+            </div>
+            <div class="context-item">
+                <label>Last Updated</label>
+                <span>{{ employee.last_updated or 'N/A' }}</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div style="margin-top: 20px; text-align: right;">
+        <span class="saved-indicator">Auto-saved {% if employee.talent_last_updated %}({{ employee.talent_last_updated }}){% endif %}</span>
+    </div>
+</div>
