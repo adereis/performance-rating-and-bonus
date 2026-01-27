@@ -1176,7 +1176,8 @@ function updateTenetValidation(card, type) {
 }
 
 function createTenetCheckbox(tenet, type, checked, card, isInOtherCycle = false) {
-    const item = document.createElement('div');
+    // Use <label> as container so clicking anywhere (including flex gap) toggles checkbox
+    const item = document.createElement('label');
     item.className = 'tenet-item';
 
     const checkbox = document.createElement('input');
@@ -1195,26 +1196,20 @@ function createTenetCheckbox(tenet, type, checked, card, isInOtherCycle = false)
         autoSaveCalibration(associateId, card);
     });
 
-    // Build label with optional cross-reference indicator
+    // Build label content with optional cross-reference indicator
     const indicatorHTML = isInOtherCycle
         ? '<span class="tenet-cross-ref" title="Also selected in Bonus Rating"></span>'
         : '';
 
-    const label = document.createElement('div');
-    label.className = 'tenet-label';
-    label.innerHTML = `
+    const labelContent = document.createElement('span');
+    labelContent.className = 'tenet-label';
+    labelContent.innerHTML = `
         <span class="tenet-name">${tenet.name}${indicatorHTML}</span>
-        <div class="tenet-description">${tenet.description}</div>
+        <span class="tenet-description">${tenet.description}</span>
     `;
 
-    // Click on label toggles checkbox
-    label.addEventListener('click', () => {
-        checkbox.checked = !checkbox.checked;
-        checkbox.dispatchEvent(new Event('change'));
-    });
-
     item.appendChild(checkbox);
-    item.appendChild(label);
+    item.appendChild(labelContent);
 
     return item;
 }

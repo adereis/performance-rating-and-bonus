@@ -1246,7 +1246,8 @@ function renderTenets() {
 }
 
 function createTenetCheckbox(tenet, type, checked, isInOtherCycle = false) {
-    const item = document.createElement('div');
+    // Use <label> as container so clicking anywhere (including flex gap) toggles checkbox
+    const item = document.createElement('label');
     item.className = 'tenet-item';
 
     const checkbox = document.createElement('input');
@@ -1254,11 +1255,9 @@ function createTenetCheckbox(tenet, type, checked, isInOtherCycle = false) {
     checkbox.value = tenet.id;
     checkbox.checked = checked;
     checkbox.setAttribute('data-tenet-type', type);
-    checkbox.id = `tenet-${type}-${tenet.id}-${Math.random().toString(36).substr(2, 9)}`;
 
-    const label = document.createElement('label');
-    label.className = 'tenet-label';
-    label.htmlFor = checkbox.id;
+    const labelContent = document.createElement('span');
+    labelContent.className = 'tenet-label';
 
     const name = document.createElement('span');
     name.className = 'tenet-name';
@@ -1276,11 +1275,11 @@ function createTenetCheckbox(tenet, type, checked, isInOtherCycle = false) {
     description.className = 'tenet-description';
     description.textContent = tenet.description;
 
-    label.appendChild(name);
-    label.appendChild(description);
+    labelContent.appendChild(name);
+    labelContent.appendChild(description);
 
     item.appendChild(checkbox);
-    item.appendChild(label);
+    item.appendChild(labelContent);
 
     return item;
 }

@@ -474,6 +474,7 @@
             gap: 6px;
             padding: 4px 0;
             font-size: 12px;
+            cursor: pointer;
         }
 
         .modal-tenet-item input[type="checkbox"] {
@@ -481,7 +482,7 @@
             flex-shrink: 0;
         }
 
-        .modal-tenet-item label {
+        .modal-tenet-item .tenet-label-content {
             cursor: pointer;
             flex: 1;
             font-size: 12px;
@@ -491,11 +492,11 @@
             position: relative;
         }
 
-        .modal-tenet-item label .tenet-name {
+        .modal-tenet-item .tenet-label-content .tenet-name {
             font-weight: 600;
         }
 
-        .modal-tenet-item label .tenet-description {
+        .modal-tenet-item .tenet-label-content .tenet-description {
             display: none;
             position: absolute;
             left: 0;
@@ -513,7 +514,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
 
-        .modal-tenet-item label .tenet-description::before {
+        .modal-tenet-item .tenet-label-content .tenet-description::before {
             content: '';
             position: absolute;
             bottom: 100%;
@@ -522,7 +523,7 @@
             border-bottom-color: #2c3e50;
         }
 
-        .modal-tenet-item label:hover .tenet-description {
+        .modal-tenet-item .tenet-label-content:hover .tenet-description {
             display: block;
         }
 
@@ -1856,17 +1857,16 @@
                     if (isStrengthInTalent) hasCrossRef = true;
                     const indicator = isStrengthInTalent ? '<span class="modal-tenet-cross-ref" title="Also selected as strength in Talent Calibration"></span>' : '';
                     return `
-                    <div class="modal-tenet-item">
+                    <label class="modal-tenet-item">
                         <input type="checkbox"
-                               id="modal_strength_${tenet.id}"
                                value="${tenet.id}"
                                data-tenet-type="strengths"
                                ${existingStrengths.includes(tenet.id) ? 'checked' : ''}>
-                        <label for="modal_strength_${tenet.id}">
+                        <span class="tenet-label-content">
                             <span class="tenet-name">${tenet.name}${indicator}</span>
                             <span class="tenet-description">${tenet.description}</span>
-                        </label>
-                    </div>
+                        </span>
+                    </label>
                 `}).join('');
 
                 const improvementsHTML = activeTenets.map(tenet => {
@@ -1875,17 +1875,16 @@
                     if (isImprovementInTalent) hasCrossRef = true;
                     const indicator = isImprovementInTalent ? '<span class="modal-tenet-cross-ref" title="Also selected as improvement in Talent Calibration"></span>' : '';
                     return `
-                    <div class="modal-tenet-item">
+                    <label class="modal-tenet-item">
                         <input type="checkbox"
-                               id="modal_improvement_${tenet.id}"
                                value="${tenet.id}"
                                data-tenet-type="improvements"
                                ${existingImprovements.includes(tenet.id) ? 'checked' : ''}>
-                        <label for="modal_improvement_${tenet.id}">
+                        <span class="tenet-label-content">
                             <span class="tenet-name">${tenet.name}${indicator}</span>
                             <span class="tenet-description">${tenet.description}</span>
-                        </label>
-                    </div>
+                        </span>
+                    </label>
                 `}).join('');
 
                 const legendHTML = hasCrossRef
