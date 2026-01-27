@@ -91,18 +91,18 @@ open_browser() {
     # Wait for server to be ready (up to 3 seconds)
     for i in {1..30}; do
         if curl -s --head --fail "$URL" >/dev/null 2>&1; then
-            break
+            echo -e "${GREEN}Server ready${NC} - opening browser"
+            if command -v open &> /dev/null; then
+                # macOS
+                open "$URL"
+            elif command -v xdg-open &> /dev/null; then
+                # Linux with desktop
+                xdg-open "$URL" 2>/dev/null || true
+            fi
+            return
         fi
         sleep 0.1
     done
-
-    if command -v open &> /dev/null; then
-        # macOS
-        open "$URL"
-    elif command -v xdg-open &> /dev/null; then
-        # Linux with desktop
-        xdg-open "$URL" 2>/dev/null || true
-    fi
 }
 
 echo ""
