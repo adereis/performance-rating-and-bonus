@@ -88,7 +88,14 @@ URL="http://${HOST}:${PORT}"
 
 # Function to open browser (works on macOS and Linux)
 open_browser() {
-    sleep 1  # Give the server a moment to start
+    # Wait for server to be ready (up to 3 seconds)
+    for i in {1..30}; do
+        if curl -s --head --fail "$URL" >/dev/null 2>&1; then
+            break
+        fi
+        sleep 0.1
+    done
+
     if command -v open &> /dev/null; then
         # macOS
         open "$URL"
