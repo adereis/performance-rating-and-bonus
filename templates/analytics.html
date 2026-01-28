@@ -2221,8 +2221,11 @@ document.addEventListener('DOMContentLoaded', function() {
         rows.forEach(row => tbody.appendChild(row));
     }
 
-    // Set initial sort indicator
-    document.querySelector('th[data-sort="rating"]').classList.add('desc');
+    // Set initial sort indicator (only if rating table exists)
+    const ratingHeader = document.querySelector('th[data-sort="rating"]');
+    if (ratingHeader) {
+        ratingHeader.classList.add('desc');
+    }
 
     // Primary tab switching (scoped to parent card)
     const primaryTabButtons = document.querySelectorAll('.primary-tab:not(.disabled)');
