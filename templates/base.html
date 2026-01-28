@@ -4,6 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Performance Rating{% endblock %}</title>
+    <!-- Early filter redirect: apply sessionStorage filters before body renders to prevent flash of unfiltered content -->
+    <script>
+    (function() {
+        window.__filterRedirectPending = false;
+
+        // Pages that don't support filtering
+        var noFilterPages = ['/history'];
+        if (noFilterPages.indexOf(window.location.pathname) !== -1) return;
+
+        // Skip if URL already has filter params
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('exclude_managers') || urlParams.has('exclude_titles') || urlParams.has('exclude_ids')) return;
+
+        var saved = sessionStorage.getItem('filters');
+        if (!saved) return;
+
+        try {
+            var filters = JSON.parse(saved);
+            var hasActiveFilters = filters.exclude_managers ||
+                (filters.exclude_titles && filters.exclude_titles.length) ||
+                (filters.exclude_ids && filters.exclude_ids.length);
+
+            if (hasActiveFilters) {
+                // Mark that we're about to redirect - body will be hidden via CSS
+                window.__filterRedirectPending = true;
+                document.documentElement.classList.add('filter-redirect-pending');
+
+                var params = new URLSearchParams(window.location.search);
+                if (filters.exclude_managers) params.set('exclude_managers', 'true');
+                if (filters.exclude_titles && filters.exclude_titles.length) params.set('exclude_titles', filters.exclude_titles.join(','));
+                if (filters.exclude_ids && filters.exclude_ids.length) params.set('exclude_ids', filters.exclude_ids.join(','));
+
+                window.location.search = params.toString();
+            }
+        } catch(e) {}
+    })();
+    </script>
+    <style>
+        /* Hide body during filter redirect to prevent flash of unfiltered content */
+        html.filter-redirect-pending body {
+            visibility: hidden !important;
+        }
+    </style>
     <style>
         * {
             margin: 0;
@@ -1643,7 +1686,9 @@
         const TALENT_MOVEMENT_VALUES = [
             'Continue growing in current role',
             'Ready Now to be promoted in current role',
-            'Ready for lateral move'
+            'Ready for lateral move',
+            'Ready to be promoted outside of current role',
+            'Not well placed'
         ];
 
         // Client-side derivation functions (match models.py logic)

@@ -51,7 +51,9 @@ AGILITY_OPTIONS = [
 MOVEMENT_READINESS_OPTIONS = [
     'Continue growing in current role',
     'Ready Now to be promoted in current role',
-    'Ready for lateral move'
+    'Ready for lateral move',
+    'Ready to be promoted outside of current role',
+    'Not well placed'
 ]
 
 

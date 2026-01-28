@@ -50,33 +50,36 @@ AGILITY_OPTIONS = [
 MOVEMENT_READINESS_OPTIONS = [
     'Continue growing in current role',
     'Ready Now to be promoted in current role',
-    'Ready for lateral move'
+    'Ready for lateral move',
+    'Ready to be promoted outside of current role',
+    'Not well placed'
 ]
 
 
 def generate_talent_data(bonus_rating: int) -> dict:
     """Generate talent calibration data aligned with performance rating."""
     # Weight distributions based on performance rating (aligned with Spec §7.4)
+    # movement_weights order: [Continue, ReadyNow, Lateral, Outside, NotWell]
     if bonus_rating >= 120:
         what_weights = [0.6, 0.35, 0.05]
         how_weights = [0.5, 0.45, 0.05, 0.0]
         agility_weight = 0.6
-        movement_weights = [0.5, 0.4, 0.1]
+        movement_weights = [0.45, 0.35, 0.10, 0.08, 0.02]
     elif bonus_rating >= 90:
         what_weights = [0.2, 0.70, 0.10]
         how_weights = [0.15, 0.70, 0.15, 0.0]
         agility_weight = 0.35
-        movement_weights = [0.70, 0.25, 0.05]
+        movement_weights = [0.65, 0.20, 0.05, 0.08, 0.02]
     elif bonus_rating >= 70:
         what_weights = [0.05, 0.50, 0.45]
         how_weights = [0.05, 0.45, 0.50, 0.0]
         agility_weight = 0.20
-        movement_weights = [0.85, 0.10, 0.05]
+        movement_weights = [0.80, 0.08, 0.05, 0.04, 0.03]
     else:
         what_weights = [0.0, 0.25, 0.75]
         how_weights = [0.0, 0.20, 0.50, 0.30]
         agility_weight = 0.10
-        movement_weights = [0.95, 0.03, 0.02]
+        movement_weights = [0.85, 0.02, 0.02, 0.01, 0.10]
 
     perf_what = random.choices(PERF_WHAT_OPTIONS, weights=what_weights)[0]
     perf_how = random.choices(PERF_HOW_OPTIONS, weights=how_weights)[0]
@@ -395,26 +398,27 @@ def generate_snapshot_talent_data(emp: dict) -> dict:
 
     # Generate talent data based on varied historical rating
     # Use same weighted generation as current data but with historical rating
+    # movement_weights order: [Continue, ReadyNow, Lateral, Outside, NotWell]
     if historical_rating >= 120:
         what_weights = [0.6, 0.35, 0.05]
         how_weights = [0.5, 0.45, 0.05, 0.0]
         agility_weight = 0.55
-        movement_weights = [0.55, 0.35, 0.10]
+        movement_weights = [0.50, 0.30, 0.10, 0.08, 0.02]
     elif historical_rating >= 90:
         what_weights = [0.2, 0.70, 0.10]
         how_weights = [0.15, 0.70, 0.15, 0.0]
         agility_weight = 0.30
-        movement_weights = [0.75, 0.20, 0.05]
+        movement_weights = [0.70, 0.15, 0.05, 0.08, 0.02]
     elif historical_rating >= 70:
         what_weights = [0.05, 0.50, 0.45]
         how_weights = [0.05, 0.45, 0.50, 0.0]
         agility_weight = 0.20
-        movement_weights = [0.85, 0.10, 0.05]
+        movement_weights = [0.80, 0.08, 0.05, 0.04, 0.03]
     else:
         what_weights = [0.0, 0.25, 0.75]
         how_weights = [0.0, 0.20, 0.50, 0.30]
         agility_weight = 0.10
-        movement_weights = [0.95, 0.03, 0.02]
+        movement_weights = [0.85, 0.02, 0.02, 0.01, 0.10]
 
     perf_what = random.choices(PERF_WHAT_OPTIONS, weights=what_weights)[0]
     perf_how = random.choices(PERF_HOW_OPTIONS, weights=how_weights)[0]

@@ -1963,13 +1963,17 @@ new Chart(movementCtx, {
             data: talentCalibrationData.movement_data.map(d => d.count),
             backgroundColor: [
                 'rgba(52, 152, 219, 0.7)',   // Continue growing - blue
-                'rgba(39, 174, 96, 0.7)',    // Ready for promotion - green
-                'rgba(155, 89, 182, 0.7)'    // Ready for lateral - purple
+                'rgba(39, 174, 96, 0.7)',    // Ready Now for promotion - green
+                'rgba(155, 89, 182, 0.7)',   // Ready for lateral - purple
+                'rgba(241, 196, 15, 0.7)',   // Ready to promote outside - yellow
+                'rgba(231, 76, 60, 0.7)'     // Not well placed - red
             ],
             borderColor: [
                 '#3498db',
                 '#27ae60',
-                '#9b59b6'
+                '#9b59b6',
+                '#f1c40f',
+                '#e74c3c'
             ],
             borderWidth: 2
         }]

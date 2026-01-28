@@ -992,7 +992,84 @@ TALENT_MOVEMENT_VALUES = [
     'Continue growing in current role',
     'Ready Now to be promoted in current role',
     'Ready for lateral move',
+    'Ready to be promoted outside of current role',
+    'Not well placed',
 ]
+
+
+def normalize_movement_readiness(value: str | None) -> str | None:
+    """Normalize Workday movement readiness values to canonical form.
+
+    Workday exports longer variants like:
+    - 'Ready Now to be promoted in current role (upcoming cycle)'
+    - 'Ready for a lateral move outside of current role'
+
+    This normalizes them to the canonical TALENT_MOVEMENT_VALUES.
+    """
+    if not value:
+        return None
+
+    # Pattern matching: find which canonical value is contained in the input
+    # Order matters: check more specific patterns first
+    patterns = [
+        ('Continue growing', 'Continue growing in current role'),
+        ('Ready Now', 'Ready Now to be promoted in current role'),
+        ('lateral move', 'Ready for lateral move'),
+        ('promoted outside', 'Ready to be promoted outside of current role'),
+        ('Not well placed', 'Not well placed'),
+    ]
+    for pattern, canonical in patterns:
+        if pattern in value:
+            return canonical
+
+    # If no pattern matches, return original (may be a new Workday value)
+    return value
+
+
+def parse_tenure_to_months(tenure_str: str | None) -> int | None:
+    """Parse Workday tenure strings like '2 years, 3 months' to total months.
+
+    Handles various formats:
+    - '2 years, 3 months'
+    - '1 year, 6 months'
+    - '8 months'
+    - '3 years'
+
+    Returns None if unparseable or empty.
+    """
+    if not tenure_str or not isinstance(tenure_str, str):
+        return None
+
+    tenure_str = tenure_str.lower().strip()
+    total_months = 0
+
+    # Extract years
+    years_match = re.search(r'(\d+)\s*year', tenure_str)
+    if years_match:
+        total_months += int(years_match.group(1)) * 12
+
+    # Extract months
+    months_match = re.search(r'(\d+)\s*month', tenure_str)
+    if months_match:
+        total_months += int(months_match.group(1))
+
+    return total_months if total_months > 0 else None
+
+
+def get_tenure_band(months: int | None) -> str:
+    """Convert months to a tenure band for histogram bucketing."""
+    if months is None:
+        return 'Unknown'
+    elif months < 12:
+        return '< 1 year'
+    elif months < 24:
+        return '1-2 years'
+    elif months < 60:
+        return '2-5 years'
+    elif months < 120:
+        return '5-10 years'
+    else:
+        return '10+ years'
 
 
 @app.route('/calibrate')
@@ -1866,7 +1943,9 @@ def analytics():
         movement_counts = {
             'Continue growing in current role': 0,
             'Ready Now to be promoted in current role': 0,
-            'Ready for lateral move': 0
+            'Ready for lateral move': 0,
+            'Ready to be promoted outside of current role': 0,
+            'Not well placed': 0,
         }
         for emp in employees_with_talent:
             movement = emp.get('talent_movement_readiness')
