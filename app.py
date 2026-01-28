@@ -2824,8 +2824,11 @@ def export_page():
                              has_talent_data=False,
                              export_mode='bonus',
                              bonus_pending_sync_count=0,
+                             total_employees=len(team_data),
                              rated_count=len(rated_employees),
                              calibrated_count=len(calibrated_employees),
+                             total_calibrated=0,
+                             history_period_count=0,
                              filter_info=filter_info)
 
     # Get bonus calculation settings
@@ -3067,6 +3070,16 @@ def export_page():
     # Sort talent export data by employee name
     talent_export_data.sort(key=lambda x: x['employee']['Associate'])
 
+    # Count employees needing sync
+    pending_sync_count = sum(1 for item in talent_export_data if item.get('needs_sync'))
+
+    # Get history period count for snapshot stats
+    db = get_db()
+    try:
+        history_period_count = db.query(Period).count()
+    finally:
+        db.close()
+
     return render_template('export.html',
                          export_data=export_data,
                          talent_export_data=talent_export_data,
@@ -3074,11 +3087,13 @@ def export_page():
                          has_bonus_data=has_bonus_data,
                          has_talent_data=has_talent_data,
                          export_mode=export_mode,
-                         total_employees=len(export_data),
+                         total_employees=len(team_data),
                          rated_count=len(rated_employees),
                          calibrated_count=len(calibrated_employees),
                          total_calibrated=len(talent_export_data),
                          bonus_pending_sync_count=bonus_pending_sync_count,
+                         pending_sync_count=pending_sync_count,
+                         history_period_count=history_period_count,
                          filter_info=filter_info)
 
 
@@ -4586,6 +4601,927 @@ def period_comparison(period_id):
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# FULL ORGANIZATION SNAPSHOT EXPORT
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def parse_manager_name_from_org(supervisory_org):
+    """Extract manager name from 'Supervisory Organization (Manager Name)' format.
+
+    Args:
+        supervisory_org: String like "Engineering (John Smith)"
+
+    Returns:
+        Manager name if found, otherwise empty string
+    """
+    if not supervisory_org:
+        return ''
+    match = re.search(r'\(([^)]+)\)\s*$', supervisory_org)
+    return match.group(1) if match else ''
+
+
+def build_context_sheet_data():
+    """Build domain knowledge rows for the _context sheet.
+
+    Returns structured key-value format explaining the business domain.
+    """
+    return [
+        ['Section', 'Key', 'Value'],
+        #
+        # === RATING PHILOSOPHY ===
+        #
+        ['Rating Philosophy', 'Performance Rating scale', '0-200%'],
+        ['Rating Philosophy', '100%', 'Met expectations (baseline, not average)'],
+        ['Rating Philosophy', '90-110%', 'Solid performer range (most employees should be here)'],
+        ['Rating Philosophy', '110-130%', 'Exceeded expectations'],
+        ['Rating Philosophy', '130%+', 'Exceptional (rare, typically <10% of team)'],
+        ['Rating Philosophy', '60-90%', 'Needs improvement'],
+        ['Rating Philosophy', '<60%', 'Significant performance concerns'],
+        ['', '', ''],
+        #
+        # === EXPECTED DISTRIBUTIONS ===
+        #
+        ['Expected Distribution', 'Healthy team pattern', 'Bell curve centered around 100%, slight right skew'],
+        ['Expected Distribution', 'Typical breakdown', '~60-70% at 90-110%, ~15-25% at 110-130%, ~5-10% at 130%+, ~5-10% below 90%'],
+        ['Expected Distribution', 'Warning: All high ratings', 'If >50% are 120%+, ratings may lack differentiation (grade inflation)'],
+        ['Expected Distribution', 'Warning: All clustered', 'If everyone is 95-105%, manager may be avoiding differentiation'],
+        ['Expected Distribution', 'Warning: Bimodal', 'Two distinct clusters may indicate team culture issues or inconsistent standards'],
+        ['', '', ''],
+        #
+        # === BONUS CALCULATION ===
+        #
+        ['Bonus Calculation', 'Algorithm', 'Split curve with different exponents above/below 100%'],
+        ['Bonus Calculation', 'Upside exponent (default)', '1.35 - controls reward for ratings >= 100%'],
+        ['Bonus Calculation', 'Downside exponent (default)', '1.9 - controls penalty for ratings < 100%'],
+        ['Bonus Calculation', 'Pool normalization', 'sum(final_bonuses) == Workday pool + budget_override'],
+        ['Bonus Calculation', 'Formula (above 100%)', 'perf_multiplier = (rating/100)^1.35'],
+        ['Bonus Calculation', 'Formula (below 100%)', 'perf_multiplier = (rating/100)^1.9'],
+        ['Bonus Calculation', 'Final bonus', 'bonus_target * perf_multiplier * normalization_factor'],
+        ['', '', ''],
+        ['Bonus Examples', '140% rating', 'Multiplier = 1.40^1.35 = 1.58x target (exceptional)'],
+        ['Bonus Examples', '120% rating', 'Multiplier = 1.20^1.35 = 1.28x target'],
+        ['Bonus Examples', '100% rating', 'Multiplier = 1.00x target'],
+        ['Bonus Examples', '80% rating', 'Multiplier = 0.80^1.9 = 0.65x target'],
+        ['Bonus Examples', '60% rating', 'Multiplier = 0.60^1.9 = 0.39x target'],
+        ['', '', ''],
+        ['Normalization', 'Purpose', 'Ensures total bonuses exactly match available pool'],
+        ['Normalization', 'Balanced team (norm ~0.90)', 'High performers compress budget, 100% performers get ~90% of target'],
+        ['Normalization', 'All average team (norm = 1.0)', 'Everyone at 100% rating gets exactly their target bonus'],
+        ['Normalization', 'Low performing team (norm ~1.5)', 'Budget surplus means everyone gets more than raw calculation'],
+        ['', '', ''],
+        ['Budget Override', 'Definition', 'Optional adjustment to Workday pool (can be positive or negative)'],
+        ['Budget Override', 'Formula', 'Adjusted Pool = Workday Pool + Budget Override'],
+        ['', '', ''],
+        ['Partial Ratings', 'Definition', 'Calculation when not all employees have been rated'],
+        ['Partial Ratings', 'Pool allocation', 'Uses proportional share based on rated employees bonus targets'],
+        ['Partial Ratings', 'Example', 'If rated employees have 50% of total targets, they get 50% of Workday pool'],
+        ['', '', ''],
+        #
+        # === CURRENCY ===
+        #
+        ['Currency Handling', 'Domestic employees', 'Uses Bonus Target - Local Currency (same as manager currency)'],
+        ['Currency Handling', 'International employees', 'Uses converted Bonus Target Manager Currency column'],
+        ['Currency Handling', 'Fallback logic', 'bonus_target_manager_currency OR bonus_target_local_currency'],
+        ['', '', ''],
+        #
+        # === TALENT CALIBRATION ===
+        #
+        ['Talent Calibration', 'Assessment dimensions', 'What (results) and How (behaviors)'],
+        ['Talent Calibration', 'Dimension values', 'Surpasses / Meets / Meets Some / Does Not Meet Expectations'],
+        ['Talent Calibration', 'High Impact Performer', 'Both Surpasses, or one Surpasses + one Meets'],
+        ['Talent Calibration', 'Successful Performer', 'Both Meets, or Surpasses + Meets Some'],
+        ['Talent Calibration', 'Evolving Performer', 'One Meets + one Meets Some, or both Meets Some'],
+        ['Talent Calibration', 'Low Performer', 'Any "Does Not Meet"'],
+        ['Talent Calibration', 'Future Talent criteria', 'True if BOTH Growth Agility AND Change Agility contain "Always"'],
+        ['', '', ''],
+        #
+        # === CROSS-CYCLE ALIGNMENT ===
+        #
+        ['Cross-Cycle Alignment', 'Purpose', 'Bonus rating should align with talent calibration result'],
+        ['Cross-Cycle Alignment', 'High Impact Performer', 'Expected rating: 120-200%'],
+        ['Cross-Cycle Alignment', 'Successful Performer', 'Expected rating: 90-119%'],
+        ['Cross-Cycle Alignment', 'Evolving Performer', 'Expected rating: 70-89%'],
+        ['Cross-Cycle Alignment', 'Low Performer', 'Expected rating: 0-69%'],
+        ['Cross-Cycle Alignment', 'aligned', 'Rating matches talent calibration - no action needed'],
+        ['Cross-Cycle Alignment', 'review', 'Rating and calibration disagree - investigate the mismatch'],
+        ['Cross-Cycle Alignment', 'incomplete', 'Missing either bonus rating or talent calibration'],
+        ['', '', ''],
+        #
+        # === TENET ASSESSMENT ===
+        #
+        ['Tenet Assessment', 'Definition', 'Employees rated on behavioral competencies (tenets)'],
+        ['Tenet Assessment', 'Selection', '3 strengths and 2-3 improvement areas per employee'],
+        ['Tenet Assessment', 'Categories', 'Ownership, Trust, Results, Collaboration, Continuous Improvement'],
+        ['Tenet Assessment', 'Reference', 'Full tenet definitions in _tenets sheet'],
+        ['', '', ''],
+        #
+        # === MANAGEMENT LEVELS ===
+        #
+        ['Management Levels', 'IC (Individual Contributor)', 'No direct reports, technical/specialist track'],
+        ['Management Levels', 'IC levels', 'IC 1-2 (early career), IC 3-4 (mid-level), IC 5+ (senior/staff)'],
+        ['Management Levels', 'Manager', 'First-line manager with direct reports'],
+        ['Management Levels', 'Senior Manager', 'Manages managers or large teams'],
+        ['Management Levels', 'Director', 'Manages multiple teams or functions'],
+        ['Management Levels', 'VP/Executive', 'Senior leadership, organizational strategy'],
+        ['', '', ''],
+        #
+        # === TENURE ANALYSIS ===
+        #
+        ['Tenure Analysis', 'Length of Service', 'Total time at company (e.g., "2 years, 3 months")'],
+        ['Tenure Analysis', 'Time in Current Role', 'Time in current job profile (for role-specific evaluation)'],
+        ['Tenure Analysis', 'New hire consideration', '<1 year tenure: ratings may be incomplete picture'],
+        ['Tenure Analysis', 'Role transition', 'Recent role change (<6 months): expect learning curve'],
+        ['', '', ''],
+        #
+        # === RED FLAGS ===
+        #
+        ['Red Flags', 'High rating + Low Performer calibration', 'Possible over-rating, or calibration data outdated'],
+        ['Red Flags', 'Low rating + High Impact calibration', 'Possible under-rating, or calibration data outdated'],
+        ['Red Flags', 'Long tenure + consistent low ratings', 'May indicate development stagnation or role mismatch'],
+        ['Red Flags', 'New hire + very high rating', 'Verify not just "honeymoon effect" - ensure evidence-based'],
+        ['Red Flags', 'Manager with low-rated direct reports', 'May indicate leadership development need'],
+        ['Red Flags', 'Same improvement tenets across team', 'May indicate team-wide skill gap or manager bias'],
+        ['Red Flags', 'No justification for outlier ratings', 'Ratings <80% or >130% should have clear justification'],
+        ['', '', ''],
+        #
+        # === ANALYTICAL QUESTIONS ===
+        #
+        ['Analysis Questions', 'Distribution', 'What is the rating distribution? Does it match expected curve?'],
+        ['Analysis Questions', 'By level', 'Do ratings correlate with job level? (seniors should trend higher)'],
+        ['Analysis Questions', 'By tenure', 'Are new hires rated differently than tenured employees?'],
+        ['Analysis Questions', 'Alignment', 'How many employees have "review" cross-cycle alignment?'],
+        ['Analysis Questions', 'Outliers', 'Who are the top/bottom performers? Is justification adequate?'],
+        ['Analysis Questions', 'Trends', 'Compare to history: are ratings improving, declining, or stable?'],
+        ['Analysis Questions', 'Tenets', 'Which tenets appear most as strengths? As improvements?'],
+        ['Analysis Questions', 'Mentorship', 'Is mentorship well-distributed? Do high performers mentor?'],
+        ['Analysis Questions', 'Future Talent', 'What % identified as future talent? Is pipeline healthy?'],
+        ['Analysis Questions', 'Movement Readiness', 'Who is "Ready Now" for promotion? Any blockers?'],
+        ['', '', ''],
+        #
+        # === HISTORY INTERPRETATION ===
+        #
+        ['History Sheet', 'Purpose', 'Archived snapshots from previous rating/calibration cycles'],
+        ['History Sheet', 'Period ID', 'Unique identifier for the archived cycle'],
+        ['History Sheet', 'Cycle Type', 'bonus = performance rating cycle, talent = calibration cycle'],
+        ['History Sheet', 'Snapshot data', 'Employee data at time of archive (may differ from current)'],
+        ['History Sheet', 'Trend analysis', 'Compare current vs historical ratings for same employee'],
+        ['History Sheet', 'Mobility tracking', 'Track job profile changes, org moves between periods'],
+        ['', '', ''],
+        #
+        # === DATA QUALITY ===
+        #
+        ['Data Quality', 'Missing ratings', 'Employees in employees sheet but not in bonus_cycle may be unrated'],
+        ['Data Quality', 'Missing calibration', 'Employees without talent_cycle data have incomplete picture'],
+        ['Data Quality', 'Empty justifications', 'Non-100% ratings should have justification - empty is a gap'],
+        ['Data Quality', 'Incomplete tenets', 'Should have 3 strengths and 2-3 improvements per employee'],
+    ]
+
+
+def build_tenets_sheet_data(tenets_config):
+    """Build tenet definition rows for the _tenets sheet.
+
+    Args:
+        tenets_config: Dict from tenets.json
+
+    Returns:
+        List of rows with headers and one row per tenet
+    """
+    rows = [['Tenet ID', 'Tenet Name', 'Description', 'Category']]
+
+    if tenets_config and 'tenets' in tenets_config:
+        for tenet in tenets_config['tenets']:
+            if tenet.get('active', True):
+                rows.append([
+                    tenet.get('id', ''),
+                    tenet.get('name', ''),
+                    tenet.get('description', ''),
+                    tenet.get('category', '')
+                ])
+
+    return rows
+
+
+def get_rating_category(rating_percent):
+    """Derive rating category from performance rating percentage.
+
+    Args:
+        rating_percent: Performance rating (0-200%)
+
+    Returns:
+        'High', 'Solid', 'Below', or '' if no rating
+    """
+    if rating_percent is None:
+        return ''
+    if rating_percent >= 110:
+        return 'High'
+    if rating_percent >= 90:
+        return 'Solid'
+    return 'Below'
+
+
+def is_manager(employee):
+    """Check if employee has direct reports based on management level.
+
+    Args:
+        employee: Employee dict
+
+    Returns:
+        'Yes', 'No', or '' if unknown
+    """
+    mgmt_level = employee.get('management_level', '')
+    if not mgmt_level:
+        return ''
+    level_lower = mgmt_level.lower()
+    if 'manager' in level_lower or 'director' in level_lower or 'vp' in level_lower:
+        return 'Yes'
+    if 'ic' in level_lower:
+        return 'No'
+    return ''
+
+
+def get_all_history_snapshots():
+    """Query all RatingSnapshot records joined with Period data.
+
+    Returns:
+        List of dicts with snapshot and period information
+    """
+    db = get_db()
+    try:
+        snapshots = db.query(RatingSnapshot, Period).join(
+            Period, RatingSnapshot.period_id == Period.id
+        ).order_by(Period.archived_at.desc(), RatingSnapshot.snapshot_name).all()
+
+        results = []
+        for snapshot, period in snapshots:
+            results.append({
+                'period_id': period.id,
+                'period_name': period.name,
+                'cycle_type': period.cycle_type or 'bonus',
+                'archived_at': period.archived_at.strftime('%Y-%m-%d') if period.archived_at else '',
+                'associate_id': snapshot.associate_id,
+                'snapshot_name': snapshot.snapshot_name or '',
+                'snapshot_org': snapshot.snapshot_org or '',
+                'snapshot_job_profile': snapshot.snapshot_job_profile or '',
+                'performance_rating': snapshot.performance_rating,
+                'bonus_allocation': snapshot.bonus_allocation,
+                'snapshot_bonus_target_manager_currency': snapshot.snapshot_bonus_target_manager_currency,
+                'justification': snapshot.justification or '',
+                'tenets_strengths': snapshot.tenets_strengths or '',
+                'tenets_improvements': snapshot.tenets_improvements or '',
+                'mentors': snapshot.mentors or '',
+                'mentees': snapshot.mentees or '',
+                'ai_related_activities': snapshot.ai_related_activities or '',
+                'snapshot_talent_overall_perf': snapshot.snapshot_talent_overall_perf or '',
+                'snapshot_talent_perf_what': snapshot.snapshot_talent_perf_what or '',
+                'snapshot_talent_perf_how': snapshot.snapshot_talent_perf_how or '',
+                'snapshot_talent_growth_agility': snapshot.snapshot_talent_growth_agility or '',
+                'snapshot_talent_change_agility': snapshot.snapshot_talent_change_agility or '',
+                'snapshot_talent_movement_readiness': snapshot.snapshot_talent_movement_readiness or '',
+            })
+        return results
+    finally:
+        db.close()
+
+
+@app.route('/export/snapshot/xlsx')
+def export_snapshot_xlsx():
+    """Export full multi-tab Excel snapshot with complete organizational data.
+
+    Creates a workbook with 6 sheets:
+    - _context: Domain knowledge (rating philosophy, algorithms, etc.)
+    - _tenets: Full tenet definitions
+    - employees: Core identity, compensation, manager info
+    - bonus_cycle: Performance ratings, justifications, calculated bonuses
+    - talent_cycle: Calibration data, agility, movement, promotions
+    - history: Historical rating snapshots by period
+    """
+    from openpyxl.utils import get_column_letter
+    from models import get_cross_cycle_alignment
+    import zipfile
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Load tenets config
+    tenets_config, tenets_map = load_tenets_config()
+
+    # Calculate bonuses for rated employees
+    rated_employees = [e for e in all_employees if is_employee_rated(e)]
+    params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+
+    bonus_results = {}
+    if rated_employees:
+        bonus_calc = calculate_bonus_for_employees(rated_employees, params)
+        bonus_results = bonus_calc.get('results_by_id', {})
+
+    # Get history snapshots
+    history_data = get_all_history_snapshots()
+
+    # Create workbook
+    wb = Workbook()
+
+    # Sheet 1: _context
+    ws_context = wb.active
+    ws_context.title = "_context"
+
+    # Add demo mode warning if applicable
+    demo_row_offset = 0
+    if DEMO_MODE:
+        demo_warning_fill = PatternFill(start_color='FF6B6B', end_color='FF6B6B', fill_type='solid')
+        demo_warning_font = Font(bold=True, color='FFFFFF', size=14)
+        ws_context.merge_cells('A1:C1')
+        demo_cell = ws_context.cell(row=1, column=1, value='*** DEMO MODE - FICTITIOUS DATA ONLY ***')
+        demo_cell.fill = demo_warning_fill
+        demo_cell.font = demo_warning_font
+        demo_cell.alignment = Alignment(horizontal='center', vertical='center')
+        demo_row_offset = 2
+
+    context_data = build_context_sheet_data()
+    header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    header_font = Font(bold=True, color='FFFFFF')
+
+    for row_idx, row in enumerate(context_data, 1 + demo_row_offset):
+        for col_idx, value in enumerate(row, 1):
+            cell = ws_context.cell(row=row_idx, column=col_idx, value=value)
+            if row_idx == 1 + demo_row_offset:  # Header row
+                cell.fill = header_fill
+                cell.font = header_font
+
+    # Sheet 2: _tenets
+    ws_tenets = wb.create_sheet("_tenets")
+    tenets_data = build_tenets_sheet_data(tenets_config)
+
+    for row_idx, row in enumerate(tenets_data, 1):
+        for col_idx, value in enumerate(row, 1):
+            cell = ws_tenets.cell(row=row_idx, column=col_idx, value=value)
+            if row_idx == 1:
+                cell.fill = header_fill
+                cell.font = header_font
+
+    # Sheet 3: employees
+    ws_employees = wb.create_sheet("employees")
+    emp_headers = [
+        'Employee ID (unique identifier)',
+        'Employee Name',
+        'Manager Name',
+        'Supervisory Organization',
+        'Job Title',
+        'Management Level (IC/Manager/Director)',
+        'Grade',
+        'Country',
+        'Region',
+        'Currency (local)',
+        'Hire Date',
+        'Length of Service',
+        'Time in Current Role',
+        'Annual Base Pay (local currency)',
+        'Annual Base Pay (manager currency)',
+        'Bonus Target % of Base Pay',
+        'Bonus Target Amount (local currency)',
+        'Bonus Target Amount (manager currency)',
+        'Is Manager (has direct reports)',
+    ]
+
+    for col_idx, header in enumerate(emp_headers, 1):
+        cell = ws_employees.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+
+    for row_idx, emp in enumerate(sorted(all_employees, key=lambda x: x.get('Associate', '')), 2):
+        ws_employees.cell(row=row_idx, column=1, value=emp.get('Associate ID', ''))
+        ws_employees.cell(row=row_idx, column=2, value=emp.get('Associate', ''))
+        ws_employees.cell(row=row_idx, column=3, value=parse_manager_name_from_org(emp.get('Supervisory Organization', '')))
+        ws_employees.cell(row=row_idx, column=4, value=emp.get('Supervisory Organization', ''))
+        ws_employees.cell(row=row_idx, column=5, value=emp.get('Current Job Profile', ''))
+        ws_employees.cell(row=row_idx, column=6, value=emp.get('management_level', ''))
+        ws_employees.cell(row=row_idx, column=7, value=emp.get('Grade', ''))
+        ws_employees.cell(row=row_idx, column=8, value=emp.get('country', ''))
+        ws_employees.cell(row=row_idx, column=9, value=emp.get('region', ''))
+        ws_employees.cell(row=row_idx, column=10, value=emp.get('Currency', ''))
+        ws_employees.cell(row=row_idx, column=11, value=emp.get('hire_date', ''))
+        ws_employees.cell(row=row_idx, column=12, value=emp.get('length_of_service', ''))
+        ws_employees.cell(row=row_idx, column=13, value=emp.get('time_in_job_profile', ''))
+        ws_employees.cell(row=row_idx, column=14, value=emp.get('Current Base Pay All Countries', ''))
+        ws_employees.cell(row=row_idx, column=15, value=emp.get('Current Base Pay Manager Currency', ''))
+        ws_employees.cell(row=row_idx, column=16, value=emp.get('Annual Bonus Target Percent', ''))
+        ws_employees.cell(row=row_idx, column=17, value=emp.get('Bonus Target - Local Currency', ''))
+        ws_employees.cell(row=row_idx, column=18, value=emp.get('Bonus Target Manager Currency', ''))
+        ws_employees.cell(row=row_idx, column=19, value=is_manager(emp))
+
+    # Sheet 4: bonus_cycle
+    ws_bonus = wb.create_sheet("bonus_cycle")
+    bonus_headers = [
+        'Employee ID',
+        'Employee Name',
+        'Performance Rating (0-200%, 100=met expectations)',
+        'Rating Category (High/Solid/Below)',
+        'Calculated Bonus Amount (manager currency)',
+        'Bonus % of Target',
+        'Justification',
+        'Strength Tenets',
+        'Improvement Tenets',
+        'Mentor',
+        'Mentees',
+        'AI-Related Activities',
+        'Last Updated',
+    ]
+
+    for col_idx, header in enumerate(bonus_headers, 1):
+        cell = ws_bonus.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+
+    for row_idx, emp in enumerate(sorted(all_employees, key=lambda x: x.get('Associate', '')), 2):
+        emp_id = emp.get('Associate ID', '')
+        bonus_result = bonus_results.get(emp_id, {})
+
+        # Parse tenet names
+        strengths_text = ''
+        improvements_text = ''
+        try:
+            if emp.get('tenets_strengths'):
+                strength_ids = json.loads(emp['tenets_strengths']) if isinstance(emp['tenets_strengths'], str) else emp['tenets_strengths']
+                strengths_text = '; '.join([tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map])
+            if emp.get('tenets_improvements'):
+                improvement_ids = json.loads(emp['tenets_improvements']) if isinstance(emp['tenets_improvements'], str) else emp['tenets_improvements']
+                improvements_text = '; '.join([tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map])
+        except Exception:
+            pass
+
+        ws_bonus.cell(row=row_idx, column=1, value=emp_id)
+        ws_bonus.cell(row=row_idx, column=2, value=emp.get('Associate', ''))
+        ws_bonus.cell(row=row_idx, column=3, value=emp.get('performance_rating_percent', ''))
+        ws_bonus.cell(row=row_idx, column=4, value=get_rating_category(emp.get('performance_rating_percent')))
+        ws_bonus.cell(row=row_idx, column=5, value=bonus_result.get('final_bonus', ''))
+        ws_bonus.cell(row=row_idx, column=6, value=bonus_result.get('percent_of_target', ''))
+        ws_bonus.cell(row=row_idx, column=7, value=emp.get('justification', ''))
+        ws_bonus.cell(row=row_idx, column=8, value=strengths_text)
+        ws_bonus.cell(row=row_idx, column=9, value=improvements_text)
+        ws_bonus.cell(row=row_idx, column=10, value=emp.get('mentor', ''))
+        ws_bonus.cell(row=row_idx, column=11, value=emp.get('mentees', ''))
+        ws_bonus.cell(row=row_idx, column=12, value=emp.get('ai_related_activities', ''))
+        ws_bonus.cell(row=row_idx, column=13, value=emp.get('last_updated', ''))
+
+    # Sheet 5: talent_cycle
+    ws_talent = wb.create_sheet("talent_cycle")
+    talent_headers = [
+        'Employee ID',
+        'Employee Name',
+        'Performance: What (Results)',
+        'Performance: How (Behaviors)',
+        'Overall Performance (derived)',
+        'Previous Overall Performance',
+        'Growth Agility',
+        'Change Agility',
+        'Identified as Future Talent',
+        'Previous Future Talent Status',
+        'Movement Readiness',
+        'Previous Movement Readiness',
+        'Proposed Talent Actions',
+        'Talent Strength Tenets',
+        'Talent Improvement Tenets',
+        'Talent Mentor',
+        'Talent Mentees',
+        'Promotion: Proposed Job Profile',
+        'Promotion: Business Need',
+        'Promotion: Expanded Role Scope',
+        'Promotion: Associate Readiness',
+        'Cross-Cycle Alignment (aligned/review/incomplete)',
+        'Last Updated',
+    ]
+
+    for col_idx, header in enumerate(talent_headers, 1):
+        cell = ws_talent.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+
+    for row_idx, emp in enumerate(sorted(all_employees, key=lambda x: x.get('Associate', '')), 2):
+        # Parse talent tenet names
+        talent_strengths_text = ''
+        talent_improvements_text = ''
+        try:
+            if emp.get('talent_tenets_strengths'):
+                strength_ids = json.loads(emp['talent_tenets_strengths']) if isinstance(emp['talent_tenets_strengths'], str) else emp['talent_tenets_strengths']
+                talent_strengths_text = '; '.join([tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map])
+            if emp.get('talent_tenets_improvements'):
+                improvement_ids = json.loads(emp['talent_tenets_improvements']) if isinstance(emp['talent_tenets_improvements'], str) else emp['talent_tenets_improvements']
+                talent_improvements_text = '; '.join([tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map])
+        except Exception:
+            pass
+
+        cross_align = get_cross_cycle_alignment(
+            emp.get('performance_rating_percent'),
+            emp.get('talent_overall_perf')
+        )
+
+        ws_talent.cell(row=row_idx, column=1, value=emp.get('Associate ID', ''))
+        ws_talent.cell(row=row_idx, column=2, value=emp.get('Associate', ''))
+        ws_talent.cell(row=row_idx, column=3, value=emp.get('talent_perf_what', ''))
+        ws_talent.cell(row=row_idx, column=4, value=emp.get('talent_perf_how', ''))
+        ws_talent.cell(row=row_idx, column=5, value=emp.get('talent_overall_perf', ''))
+        ws_talent.cell(row=row_idx, column=6, value=emp.get('talent_last_overall_perf', ''))
+        ws_talent.cell(row=row_idx, column=7, value=emp.get('talent_growth_agility', ''))
+        ws_talent.cell(row=row_idx, column=8, value=emp.get('talent_change_agility', ''))
+        ws_talent.cell(row=row_idx, column=9, value='Yes' if emp.get('talent_identified_future') else 'No' if emp.get('talent_identified_future') is False else '')
+        ws_talent.cell(row=row_idx, column=10, value='Yes' if emp.get('talent_last_identified_future') else 'No' if emp.get('talent_last_identified_future') is False else '')
+        ws_talent.cell(row=row_idx, column=11, value=emp.get('talent_movement_readiness', ''))
+        ws_talent.cell(row=row_idx, column=12, value=emp.get('talent_last_movement_readiness', ''))
+        ws_talent.cell(row=row_idx, column=13, value=emp.get('talent_proposed_actions', ''))
+        ws_talent.cell(row=row_idx, column=14, value=talent_strengths_text)
+        ws_talent.cell(row=row_idx, column=15, value=talent_improvements_text)
+        ws_talent.cell(row=row_idx, column=16, value=emp.get('talent_mentor', ''))
+        ws_talent.cell(row=row_idx, column=17, value=emp.get('talent_mentees', ''))
+        ws_talent.cell(row=row_idx, column=18, value=emp.get('talent_promo_job_profile', ''))
+        ws_talent.cell(row=row_idx, column=19, value=emp.get('talent_promo_business_need', ''))
+        ws_talent.cell(row=row_idx, column=20, value=emp.get('talent_promo_role_scope', ''))
+        ws_talent.cell(row=row_idx, column=21, value=emp.get('talent_promo_readiness', ''))
+        ws_talent.cell(row=row_idx, column=22, value=cross_align)
+        ws_talent.cell(row=row_idx, column=23, value=emp.get('talent_last_updated', ''))
+
+    # Sheet 6: history
+    ws_history = wb.create_sheet("history")
+    history_headers = [
+        'Period ID',
+        'Period Name',
+        'Cycle Type (bonus/talent)',
+        'Archived Date',
+        'Employee ID',
+        'Employee Name (at snapshot)',
+        'Supervisory Org (at snapshot)',
+        'Job Profile (at snapshot)',
+        'Performance Rating (0-200%)',
+        'Final Bonus Allocation',
+        'Bonus Target (at snapshot)',
+        'Justification',
+        'Strength Tenets',
+        'Improvement Tenets',
+        'Mentors',
+        'Mentees',
+        'AI Activities',
+        'Talent: Overall Performance',
+        'Talent: What',
+        'Talent: How',
+        'Talent: Growth Agility',
+        'Talent: Change Agility',
+        'Talent: Movement Readiness',
+    ]
+
+    for col_idx, header in enumerate(history_headers, 1):
+        cell = ws_history.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+
+    for row_idx, snap in enumerate(history_data, 2):
+        ws_history.cell(row=row_idx, column=1, value=snap.get('period_id', ''))
+        ws_history.cell(row=row_idx, column=2, value=snap.get('period_name', ''))
+        ws_history.cell(row=row_idx, column=3, value=snap.get('cycle_type', ''))
+        ws_history.cell(row=row_idx, column=4, value=snap.get('archived_at', ''))
+        ws_history.cell(row=row_idx, column=5, value=snap.get('associate_id', ''))
+        ws_history.cell(row=row_idx, column=6, value=snap.get('snapshot_name', ''))
+        ws_history.cell(row=row_idx, column=7, value=snap.get('snapshot_org', ''))
+        ws_history.cell(row=row_idx, column=8, value=snap.get('snapshot_job_profile', ''))
+        ws_history.cell(row=row_idx, column=9, value=snap.get('performance_rating', ''))
+        ws_history.cell(row=row_idx, column=10, value=snap.get('bonus_allocation', ''))
+        ws_history.cell(row=row_idx, column=11, value=snap.get('snapshot_bonus_target_manager_currency', ''))
+        ws_history.cell(row=row_idx, column=12, value=snap.get('justification', ''))
+        ws_history.cell(row=row_idx, column=13, value=snap.get('tenets_strengths', ''))
+        ws_history.cell(row=row_idx, column=14, value=snap.get('tenets_improvements', ''))
+        ws_history.cell(row=row_idx, column=15, value=snap.get('mentors', ''))
+        ws_history.cell(row=row_idx, column=16, value=snap.get('mentees', ''))
+        ws_history.cell(row=row_idx, column=17, value=snap.get('ai_related_activities', ''))
+        ws_history.cell(row=row_idx, column=18, value=snap.get('snapshot_talent_overall_perf', ''))
+        ws_history.cell(row=row_idx, column=19, value=snap.get('snapshot_talent_perf_what', ''))
+        ws_history.cell(row=row_idx, column=20, value=snap.get('snapshot_talent_perf_how', ''))
+        ws_history.cell(row=row_idx, column=21, value=snap.get('snapshot_talent_growth_agility', ''))
+        ws_history.cell(row=row_idx, column=22, value=snap.get('snapshot_talent_change_agility', ''))
+        ws_history.cell(row=row_idx, column=23, value=snap.get('snapshot_talent_movement_readiness', ''))
+
+    # Auto-adjust column widths for all sheets
+    for sheet in wb.worksheets:
+        for col_idx in range(1, sheet.max_column + 1):
+            max_length = 0
+            for row in sheet.iter_rows(min_col=col_idx, max_col=col_idx):
+                for cell in row:
+                    try:
+                        if cell.value:
+                            max_length = max(max_length, len(str(cell.value)))
+                    except Exception:
+                        pass
+            if max_length > 0:
+                adjusted_width = min(max_length + 2, 50)
+                sheet.column_dimensions[get_column_letter(col_idx)].width = adjusted_width
+
+    # Save to BytesIO
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='organization_snapshot.xlsx'
+    )
+
+
+@app.route('/export/snapshot/csv')
+def export_snapshot_csv():
+    """Export full ZIP with multiple CSV files containing complete organizational data.
+
+    Creates a ZIP archive with 6 CSV files:
+    - _context.csv: Domain knowledge
+    - _tenets.csv: Tenet definitions
+    - employees.csv: Core identity and compensation
+    - bonus_cycle.csv: Performance ratings and bonuses
+    - talent_cycle.csv: Calibration and development data
+    - history.csv: Historical snapshots
+    """
+    from models import get_cross_cycle_alignment
+    import zipfile
+
+    # Get all employees
+    all_employees = get_all_employees()
+
+    # Load tenets config
+    tenets_config, tenets_map = load_tenets_config()
+
+    # Calculate bonuses for rated employees
+    rated_employees = [e for e in all_employees if is_employee_rated(e)]
+    params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+
+    bonus_results = {}
+    if rated_employees:
+        bonus_calc = calculate_bonus_for_employees(rated_employees, params)
+        bonus_results = bonus_calc.get('results_by_id', {})
+
+    # Get history snapshots
+    history_data = get_all_history_snapshots()
+
+    # Create ZIP in memory
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+
+        # CSV 1: _context.csv
+        context_output = io.StringIO()
+        context_writer = csv.writer(context_output)
+        if DEMO_MODE:
+            context_writer.writerow(['*** DEMO MODE - FICTITIOUS DATA ONLY ***'])
+            context_writer.writerow([])
+        for row in build_context_sheet_data():
+            context_writer.writerow(row)
+        zip_file.writestr('_context.csv', context_output.getvalue())
+
+        # CSV 2: _tenets.csv
+        tenets_output = io.StringIO()
+        tenets_writer = csv.writer(tenets_output)
+        for row in build_tenets_sheet_data(tenets_config):
+            tenets_writer.writerow(row)
+        zip_file.writestr('_tenets.csv', tenets_output.getvalue())
+
+        # CSV 3: employees.csv
+        emp_output = io.StringIO()
+        emp_writer = csv.writer(emp_output)
+        emp_writer.writerow([
+            'Employee ID (unique identifier)',
+            'Employee Name',
+            'Manager Name',
+            'Supervisory Organization',
+            'Job Title',
+            'Management Level (IC/Manager/Director)',
+            'Grade',
+            'Country',
+            'Region',
+            'Currency (local)',
+            'Hire Date',
+            'Length of Service',
+            'Time in Current Role',
+            'Annual Base Pay (local currency)',
+            'Annual Base Pay (manager currency)',
+            'Bonus Target % of Base Pay',
+            'Bonus Target Amount (local currency)',
+            'Bonus Target Amount (manager currency)',
+            'Is Manager (has direct reports)',
+        ])
+
+        for emp in sorted(all_employees, key=lambda x: x.get('Associate', '')):
+            emp_writer.writerow([
+                emp.get('Associate ID', ''),
+                emp.get('Associate', ''),
+                parse_manager_name_from_org(emp.get('Supervisory Organization', '')),
+                emp.get('Supervisory Organization', ''),
+                emp.get('Current Job Profile', ''),
+                emp.get('management_level', ''),
+                emp.get('Grade', ''),
+                emp.get('country', ''),
+                emp.get('region', ''),
+                emp.get('Currency', ''),
+                emp.get('hire_date', ''),
+                emp.get('length_of_service', ''),
+                emp.get('time_in_job_profile', ''),
+                emp.get('Current Base Pay All Countries', ''),
+                emp.get('Current Base Pay Manager Currency', ''),
+                emp.get('Annual Bonus Target Percent', ''),
+                emp.get('Bonus Target - Local Currency', ''),
+                emp.get('Bonus Target Manager Currency', ''),
+                is_manager(emp),
+            ])
+        zip_file.writestr('employees.csv', emp_output.getvalue())
+
+        # CSV 4: bonus_cycle.csv
+        bonus_output = io.StringIO()
+        bonus_writer = csv.writer(bonus_output)
+        bonus_writer.writerow([
+            'Employee ID',
+            'Employee Name',
+            'Performance Rating (0-200%, 100=met expectations)',
+            'Rating Category (High/Solid/Below)',
+            'Calculated Bonus Amount (manager currency)',
+            'Bonus % of Target',
+            'Justification',
+            'Strength Tenets',
+            'Improvement Tenets',
+            'Mentor',
+            'Mentees',
+            'AI-Related Activities',
+            'Last Updated',
+        ])
+
+        for emp in sorted(all_employees, key=lambda x: x.get('Associate', '')):
+            emp_id = emp.get('Associate ID', '')
+            bonus_result = bonus_results.get(emp_id, {})
+
+            strengths_text = ''
+            improvements_text = ''
+            try:
+                if emp.get('tenets_strengths'):
+                    strength_ids = json.loads(emp['tenets_strengths']) if isinstance(emp['tenets_strengths'], str) else emp['tenets_strengths']
+                    strengths_text = '; '.join([tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map])
+                if emp.get('tenets_improvements'):
+                    improvement_ids = json.loads(emp['tenets_improvements']) if isinstance(emp['tenets_improvements'], str) else emp['tenets_improvements']
+                    improvements_text = '; '.join([tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map])
+            except Exception:
+                pass
+
+            bonus_writer.writerow([
+                emp_id,
+                emp.get('Associate', ''),
+                emp.get('performance_rating_percent', ''),
+                get_rating_category(emp.get('performance_rating_percent')),
+                bonus_result.get('final_bonus', ''),
+                bonus_result.get('percent_of_target', ''),
+                emp.get('justification', ''),
+                strengths_text,
+                improvements_text,
+                emp.get('mentor', ''),
+                emp.get('mentees', ''),
+                emp.get('ai_related_activities', ''),
+                emp.get('last_updated', ''),
+            ])
+        zip_file.writestr('bonus_cycle.csv', bonus_output.getvalue())
+
+        # CSV 5: talent_cycle.csv
+        talent_output = io.StringIO()
+        talent_writer = csv.writer(talent_output)
+        talent_writer.writerow([
+            'Employee ID',
+            'Employee Name',
+            'Performance: What (Results)',
+            'Performance: How (Behaviors)',
+            'Overall Performance (derived)',
+            'Previous Overall Performance',
+            'Growth Agility',
+            'Change Agility',
+            'Identified as Future Talent',
+            'Previous Future Talent Status',
+            'Movement Readiness',
+            'Previous Movement Readiness',
+            'Proposed Talent Actions',
+            'Talent Strength Tenets',
+            'Talent Improvement Tenets',
+            'Talent Mentor',
+            'Talent Mentees',
+            'Promotion: Proposed Job Profile',
+            'Promotion: Business Need',
+            'Promotion: Expanded Role Scope',
+            'Promotion: Associate Readiness',
+            'Cross-Cycle Alignment (aligned/review/incomplete)',
+            'Last Updated',
+        ])
+
+        for emp in sorted(all_employees, key=lambda x: x.get('Associate', '')):
+            talent_strengths_text = ''
+            talent_improvements_text = ''
+            try:
+                if emp.get('talent_tenets_strengths'):
+                    strength_ids = json.loads(emp['talent_tenets_strengths']) if isinstance(emp['talent_tenets_strengths'], str) else emp['talent_tenets_strengths']
+                    talent_strengths_text = '; '.join([tenets_map.get(tid, tid) for tid in strength_ids if tid in tenets_map])
+                if emp.get('talent_tenets_improvements'):
+                    improvement_ids = json.loads(emp['talent_tenets_improvements']) if isinstance(emp['talent_tenets_improvements'], str) else emp['talent_tenets_improvements']
+                    talent_improvements_text = '; '.join([tenets_map.get(tid, tid) for tid in improvement_ids if tid in tenets_map])
+            except Exception:
+                pass
+
+            cross_align = get_cross_cycle_alignment(
+                emp.get('performance_rating_percent'),
+                emp.get('talent_overall_perf')
+            )
+
+            talent_writer.writerow([
+                emp.get('Associate ID', ''),
+                emp.get('Associate', ''),
+                emp.get('talent_perf_what', ''),
+                emp.get('talent_perf_how', ''),
+                emp.get('talent_overall_perf', ''),
+                emp.get('talent_last_overall_perf', ''),
+                emp.get('talent_growth_agility', ''),
+                emp.get('talent_change_agility', ''),
+                'Yes' if emp.get('talent_identified_future') else 'No' if emp.get('talent_identified_future') is False else '',
+                'Yes' if emp.get('talent_last_identified_future') else 'No' if emp.get('talent_last_identified_future') is False else '',
+                emp.get('talent_movement_readiness', ''),
+                emp.get('talent_last_movement_readiness', ''),
+                emp.get('talent_proposed_actions', ''),
+                talent_strengths_text,
+                talent_improvements_text,
+                emp.get('talent_mentor', ''),
+                emp.get('talent_mentees', ''),
+                emp.get('talent_promo_job_profile', ''),
+                emp.get('talent_promo_business_need', ''),
+                emp.get('talent_promo_role_scope', ''),
+                emp.get('talent_promo_readiness', ''),
+                cross_align,
+                emp.get('talent_last_updated', ''),
+            ])
+        zip_file.writestr('talent_cycle.csv', talent_output.getvalue())
+
+        # CSV 6: history.csv
+        history_output = io.StringIO()
+        history_writer = csv.writer(history_output)
+        history_writer.writerow([
+            'Period ID',
+            'Period Name',
+            'Cycle Type (bonus/talent)',
+            'Archived Date',
+            'Employee ID',
+            'Employee Name (at snapshot)',
+            'Supervisory Org (at snapshot)',
+            'Job Profile (at snapshot)',
+            'Performance Rating (0-200%)',
+            'Final Bonus Allocation',
+            'Bonus Target (at snapshot)',
+            'Justification',
+            'Strength Tenets',
+            'Improvement Tenets',
+            'Mentors',
+            'Mentees',
+            'AI Activities',
+            'Talent: Overall Performance',
+            'Talent: What',
+            'Talent: How',
+            'Talent: Growth Agility',
+            'Talent: Change Agility',
+            'Talent: Movement Readiness',
+        ])
+
+        for snap in history_data:
+            history_writer.writerow([
+                snap.get('period_id', ''),
+                snap.get('period_name', ''),
+                snap.get('cycle_type', ''),
+                snap.get('archived_at', ''),
+                snap.get('associate_id', ''),
+                snap.get('snapshot_name', ''),
+                snap.get('snapshot_org', ''),
+                snap.get('snapshot_job_profile', ''),
+                snap.get('performance_rating', ''),
+                snap.get('bonus_allocation', ''),
+                snap.get('snapshot_bonus_target_manager_currency', ''),
+                snap.get('justification', ''),
+                snap.get('tenets_strengths', ''),
+                snap.get('tenets_improvements', ''),
+                snap.get('mentors', ''),
+                snap.get('mentees', ''),
+                snap.get('ai_related_activities', ''),
+                snap.get('snapshot_talent_overall_perf', ''),
+                snap.get('snapshot_talent_perf_what', ''),
+                snap.get('snapshot_talent_perf_how', ''),
+                snap.get('snapshot_talent_growth_agility', ''),
+                snap.get('snapshot_talent_change_agility', ''),
+                snap.get('snapshot_talent_movement_readiness', ''),
+            ])
+        zip_file.writestr('history.csv', history_output.getvalue())
+
+    zip_buffer.seek(0)
+
+    return send_file(
+        zip_buffer,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name='organization_snapshot.zip'
+    )
 
 
 if __name__ == '__main__':

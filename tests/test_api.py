@@ -381,7 +381,7 @@ class TestExportPage:
         """Test export page with no employees."""
         response = client.get('/export')
         assert response.status_code == 200
-        assert b'No Data Available' in response.data or b'No rated employees' in response.data
+        assert b'No Employees Found' in response.data or b'Import Data' in response.data
 
     def test_export_page_renders_successfully(self, client, populated_db):
         """Test that export page renders without errors."""
@@ -389,3 +389,170 @@ class TestExportPage:
         assert response.status_code == 200
         # Page should have export-related content
         assert b'Workday' in response.data or b'Export' in response.data
+
+
+class TestSnapshotExport:
+    """Test full organization snapshot export functionality."""
+
+    def test_export_snapshot_xlsx_structure(self, client, populated_db):
+        """Test that Excel snapshot has correct sheet structure and headers."""
+        from openpyxl import load_workbook
+        import io
+
+        response = client.get('/export/snapshot/xlsx')
+        assert response.status_code == 200
+        assert response.mimetype == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+        # Load the workbook from response
+        wb = load_workbook(io.BytesIO(response.data))
+
+        # Verify 6 sheets exist
+        expected_sheets = ['_context', '_tenets', 'employees', 'bonus_cycle', 'talent_cycle', 'history']
+        assert len(wb.sheetnames) == 6
+        for sheet_name in expected_sheets:
+            assert sheet_name in wb.sheetnames, f"Sheet '{sheet_name}' not found"
+
+        # Verify employees sheet has correct headers
+        ws_employees = wb['employees']
+        emp_headers = [cell.value for cell in ws_employees[1]]
+        assert 'Employee ID (unique identifier)' in emp_headers
+        assert 'Employee Name' in emp_headers
+        assert 'Manager Name' in emp_headers
+        assert 'Supervisory Organization' in emp_headers
+
+        # Verify bonus_cycle sheet has correct headers
+        ws_bonus = wb['bonus_cycle']
+        bonus_headers = [cell.value for cell in ws_bonus[1]]
+        assert 'Employee ID' in bonus_headers
+        assert 'Performance Rating (0-200%, 100=met expectations)' in bonus_headers
+        assert 'Calculated Bonus Amount (manager currency)' in bonus_headers
+
+        # Verify talent_cycle sheet has correct headers
+        ws_talent = wb['talent_cycle']
+        talent_headers = [cell.value for cell in ws_talent[1]]
+        assert 'Employee ID' in talent_headers
+        assert 'Performance: What (Results)' in talent_headers
+        assert 'Cross-Cycle Alignment (aligned/review/incomplete)' in talent_headers
+
+    def test_export_snapshot_csv_structure(self, client, populated_db):
+        """Test that CSV snapshot ZIP has correct file structure."""
+        import zipfile
+        import io
+        import csv
+
+        response = client.get('/export/snapshot/csv')
+        assert response.status_code == 200
+        assert response.mimetype == 'application/zip'
+
+        # Load the ZIP from response
+        zip_buffer = io.BytesIO(response.data)
+        with zipfile.ZipFile(zip_buffer, 'r') as zf:
+            # Verify 6 CSV files exist
+            expected_files = ['_context.csv', '_tenets.csv', 'employees.csv',
+                            'bonus_cycle.csv', 'talent_cycle.csv', 'history.csv']
+            assert len(zf.namelist()) == 6
+            for filename in expected_files:
+                assert filename in zf.namelist(), f"File '{filename}' not found in ZIP"
+
+            # Verify employees.csv has correct headers
+            with zf.open('employees.csv') as f:
+                reader = csv.reader(io.TextIOWrapper(f, encoding='utf-8'))
+                headers = next(reader)
+                assert 'Employee ID (unique identifier)' in headers
+                assert 'Employee Name' in headers
+                assert 'Manager Name' in headers
+
+            # Verify bonus_cycle.csv has correct headers
+            with zf.open('bonus_cycle.csv') as f:
+                reader = csv.reader(io.TextIOWrapper(f, encoding='utf-8'))
+                headers = next(reader)
+                assert 'Performance Rating (0-200%, 100=met expectations)' in headers
+
+    def test_export_snapshot_context_sheet(self, client, populated_db):
+        """Test that context sheet contains domain knowledge and analysis guidance."""
+        from openpyxl import load_workbook
+        import io
+
+        response = client.get('/export/snapshot/xlsx')
+        wb = load_workbook(io.BytesIO(response.data))
+
+        ws_context = wb['_context']
+
+        # Collect all values from the context sheet
+        values = []
+        for row in ws_context.iter_rows(values_only=True):
+            values.extend([str(v) for v in row if v])
+
+        # Verify key domain knowledge is present
+        context_text = ' '.join(values)
+        assert 'Rating Philosophy' in context_text
+        assert 'Bonus Calculation' in context_text
+        assert 'Talent Calibration' in context_text
+        assert '0-200%' in context_text
+        assert '1.35' in context_text  # upside exponent
+        assert '1.9' in context_text   # downside exponent
+
+        # Verify analytical guidance is present
+        assert 'Expected Distribution' in context_text
+        assert 'Red Flags' in context_text
+        assert 'Analysis Questions' in context_text
+        assert 'Management Levels' in context_text
+        assert 'Data Quality' in context_text
+
+    def test_export_snapshot_tenets_sheet(self, client, populated_db, sample_tenets):
+        """Test that tenets sheet contains all tenet definitions."""
+        from openpyxl import load_workbook
+        import io
+
+        response = client.get('/export/snapshot/xlsx')
+        wb = load_workbook(io.BytesIO(response.data))
+
+        ws_tenets = wb['_tenets']
+
+        # Verify headers
+        headers = [cell.value for cell in ws_tenets[1]]
+        assert 'Tenet ID' in headers
+        assert 'Tenet Name' in headers
+        assert 'Description' in headers
+        assert 'Category' in headers
+
+        # Verify at least some tenets are present (row count > 1 means data exists)
+        row_count = ws_tenets.max_row
+        assert row_count > 1, "No tenets found in _tenets sheet"
+
+    def test_export_snapshot_employees_data(self, client, populated_db):
+        """Test that employee data is correctly exported."""
+        from openpyxl import load_workbook
+        import io
+
+        response = client.get('/export/snapshot/xlsx')
+        wb = load_workbook(io.BytesIO(response.data))
+
+        ws_employees = wb['employees']
+
+        # Verify employees are present (should have 4 from sample_employees fixture)
+        assert ws_employees.max_row >= 5  # 1 header + 4 employees
+
+        # Get all employee names
+        names = [ws_employees.cell(row=i, column=2).value for i in range(2, ws_employees.max_row + 1)]
+        assert 'Alice Johnson' in names
+        assert 'Bob Smith' in names
+        assert 'Charlie Brown' in names
+        assert 'Diana Prince' in names
+
+    def test_export_snapshot_with_no_employees(self, client, db_session):
+        """Test snapshot export with empty database."""
+        response = client.get('/export/snapshot/xlsx')
+        assert response.status_code == 200
+
+        from openpyxl import load_workbook
+        import io
+
+        wb = load_workbook(io.BytesIO(response.data))
+
+        # All sheets should still exist
+        assert len(wb.sheetnames) == 6
+
+        # Employees sheet should only have headers
+        ws_employees = wb['employees']
+        assert ws_employees.max_row == 1  # Only header row
