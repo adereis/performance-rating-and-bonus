@@ -497,7 +497,6 @@
         }
 
         .modal-tenet-item .tenet-label-content .tenet-description {
-            display: none;
             position: absolute;
             left: 0;
             top: 100%;
@@ -512,6 +511,9 @@
             max-width: 90vw;
             z-index: 1000;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            /* Delayed tooltip: invisible by default, appears after 500ms hover */
+            opacity: 0;
+            visibility: hidden;
         }
 
         .modal-tenet-item .tenet-label-content .tenet-description::before {
@@ -524,7 +526,9 @@
         }
 
         .modal-tenet-item .tenet-label-content:hover .tenet-description {
-            display: block;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0s linear 0.5s, visibility 0s linear 0.5s;
         }
 
         .modal-tenet-item.disabled {

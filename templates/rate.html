@@ -429,7 +429,6 @@
     }
 
     .tenet-description {
-        display: none;
         position: absolute;
         left: 0;
         top: 100%;
@@ -444,6 +443,9 @@
         max-width: 90vw;
         z-index: 1000;
         box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        /* Delayed tooltip: invisible by default, appears after 500ms hover */
+        opacity: 0;
+        visibility: hidden;
     }
 
     .tenet-description::before {
@@ -456,7 +458,9 @@
     }
 
     .tenet-label:hover .tenet-description {
-        display: block;
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0s linear 0.5s, visibility 0s linear 0.5s;
     }
 
     .tenet-count-warning {
