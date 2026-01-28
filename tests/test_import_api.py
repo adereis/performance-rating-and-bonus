@@ -940,3 +940,89 @@ class TestValidation:
             assert 'old export format' in result['error']
         finally:
             os.remove(temp_path)
+
+
+class TestPeriodDetection:
+    """Tests for the period detection logic in xlsx_utils."""
+
+    def test_detect_import_type_current_quarter(self):
+        """Test that current quarter is detected as current."""
+        from xlsx_utils import detect_import_type, get_current_period_name
+
+        current = get_current_period_name()
+        result = detect_import_type(current, 'bonus')
+
+        assert result['suggested_type'] == 'current'
+        assert result['is_current_period'] is True
+        assert result['is_talent_file'] is False
+
+    def test_detect_import_type_previous_quarter(self):
+        """Test that previous quarter is also detected as current.
+
+        This reflects business reality: bonus processing for Q4 happens in Q1,
+        so CY25 Q4 files imported in CY26 Q1 should suggest 'current'.
+        """
+        from xlsx_utils import detect_import_type, get_previous_period_name
+
+        previous = get_previous_period_name()
+        result = detect_import_type(previous, 'bonus')
+
+        assert result['suggested_type'] == 'current'
+        assert result['is_current_period'] is True
+        assert result['is_talent_file'] is False
+
+    def test_detect_import_type_historical_quarter(self):
+        """Test that quarters older than previous are detected as historical."""
+        from xlsx_utils import detect_import_type
+
+        # CY20 Q1 should definitely be historical
+        result = detect_import_type('CY20 Q1', 'bonus')
+
+        assert result['suggested_type'] == 'historical'
+        assert result['is_current_period'] is False
+        assert result['period_id'] == '2020-Q1'
+
+    def test_get_previous_period_name_q1_rollover(self):
+        """Test that previous period correctly handles year rollover from Q1."""
+        from xlsx_utils import get_previous_period_name
+        from datetime import datetime
+        from unittest.mock import patch
+
+        # Mock: January 2026 (Q1) → previous should be Q4 2025
+        with patch('xlsx_utils.datetime') as mock_datetime:
+            mock_datetime.now.return_value = datetime(2026, 1, 15)
+            result = get_previous_period_name()
+            assert result == 'CY25 Q4'
+
+    def test_get_previous_period_name_mid_year(self):
+        """Test previous period calculation for mid-year quarters."""
+        from xlsx_utils import get_previous_period_name
+        from datetime import datetime
+        from unittest.mock import patch
+
+        # Mock: July 2025 (Q3) → previous should be Q2 2025
+        with patch('xlsx_utils.datetime') as mock_datetime:
+            mock_datetime.now.return_value = datetime(2025, 7, 15)
+            result = get_previous_period_name()
+            assert result == 'CY25 Q2'
+
+    def test_detect_import_type_talent_file(self):
+        """Test that talent files always suggest current import."""
+        from xlsx_utils import detect_import_type
+
+        # Even with an old period, talent files should suggest current
+        result = detect_import_type('CY20 Q1', 'talent')
+
+        assert result['suggested_type'] == 'current'
+        assert result['is_current_period'] is True
+        assert result['is_talent_file'] is True
+
+    def test_detect_import_type_unknown_period(self):
+        """Test handling of unknown/missing period."""
+        from xlsx_utils import detect_import_type
+
+        result = detect_import_type(None, 'bonus')
+
+        assert result['suggested_type'] == 'historical'
+        assert result['is_current_period'] is False
+        assert result['period_display'] == 'Unknown'

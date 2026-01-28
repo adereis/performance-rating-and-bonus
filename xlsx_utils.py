@@ -39,12 +39,33 @@ def get_current_period_name() -> str:
     return f"CY{year_short:02d} Q{quarter}"
 
 
+def get_previous_period_name() -> str:
+    """
+    Get the previous period name in Workday format (e.g., "CY24 Q4").
+
+    Returns the quarter immediately before the current one.
+    Handles year rollover (Q1 → previous year's Q4).
+    """
+    now = datetime.now()
+    quarter = (now.month - 1) // 3 + 1  # 1-4
+
+    if quarter == 1:
+        # Previous quarter is Q4 of the previous year
+        prev_year_short = (now.year - 1) % 100
+        return f"CY{prev_year_short:02d} Q4"
+    else:
+        year_short = now.year % 100
+        return f"CY{year_short:02d} Q{quarter - 1}"
+
+
 def detect_import_type(period_name: str, spreadsheet_type: str = 'bonus') -> Dict[str, Any]:
     """
     Suggest import type based on period from metadata and spreadsheet type.
 
-    For bonus files: Compares the file's period to the current quarter to suggest
-    whether this is likely a current period import or historical archive.
+    For bonus files: Compares the file's period to the current AND previous quarter
+    to suggest whether this is likely a current period import or historical archive.
+    The previous quarter is included because bonus processing typically happens in
+    the quarter following the performance period (e.g., Q4 bonuses are processed in Q1).
 
     For talent files: Always suggests 'current' since talent calibration reports
     are for the current cycle and don't include period metadata.
@@ -61,10 +82,11 @@ def detect_import_type(period_name: str, spreadsheet_type: str = 'bonus') -> Dic
             - period_id: Suggested period ID (e.g., "2025-Q3")
             - period_display: Period display name (e.g., "CY25 Q3")
             - current_period: The current period for reference
-            - is_current_period: Whether file period matches current
+            - is_current_period: Whether file period matches current or previous quarter
             - is_talent_file: Whether this is a talent calibration file
     """
     current_period = get_current_period_name()
+    previous_period = get_previous_period_name()
 
     # Talent files don't have period metadata - always import as current
     if spreadsheet_type == 'talent':
@@ -87,7 +109,9 @@ def detect_import_type(period_name: str, spreadsheet_type: str = 'bonus') -> Dic
             period_suffix = match.group(2)  # Q1, Q2, H1, etc.
             period_id = f"{year}-{period_suffix}"
 
-    is_current = period_name == current_period if period_name else False
+    # Consider both current and previous quarter as "current" for bonus files,
+    # since bonus processing happens in the quarter after the performance period
+    is_current = period_name in (current_period, previous_period) if period_name else False
 
     return {
         'suggested_type': 'current' if is_current else 'historical',
