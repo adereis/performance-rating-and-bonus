@@ -1,6 +1,6 @@
-# Use Red Hat Universal Base Image (UBI) 9
+# Use Red Hat Universal Base Image (UBI) 10
 # UBI is freely redistributable, built from RHEL, and recommended for OpenShift
-FROM registry.access.redhat.com/ubi9/ubi:latest
+FROM registry.access.redhat.com/ubi10/ubi:latest
 
 # Set working directory
 WORKDIR /app
@@ -14,7 +14,7 @@ ENV PYTHONUNBUFFERED=1 \
 # Install Python dependencies
 # - python3-pip: not included in UBI base
 # - gcc: needed for compiling some Python packages
-# Note: python3 and curl-minimal are already in UBI 9
+# Note: python3 (3.12) and curl-minimal are already in UBI 10
 RUN dnf install -y python3-pip gcc && \
     dnf clean all
 
