@@ -790,13 +790,17 @@ function collectRatingData(associateId, card) {
     return data;
 }
 
-function validateRating(ratingInput) {
-    const value = ratingInput.value.trim();
-    const errorSpan = ratingInput.parentElement.querySelector('.validation-error');
+// Unified validation for rating inputs (works for both views)
+function validateRatingInput(input) {
+    const value = input.value.trim();
+    // Find error span - it's either a sibling (compact) or inside parent (detailed)
+    const errorSpan = input.nextElementSibling?.classList.contains('validation-error')
+        ? input.nextElementSibling
+        : input.parentElement.querySelector('.validation-error');
 
     // Clear previous validation state
-    ratingInput.classList.remove('invalid');
-    errorSpan.style.display = 'none';
+    input.classList.remove('invalid');
+    if (errorSpan) errorSpan.style.display = 'none';
 
     if (value === '') {
         return true; // Empty is valid (not rated yet)
@@ -805,90 +809,111 @@ function validateRating(ratingInput) {
     const numValue = parseFloat(value);
 
     if (isNaN(numValue)) {
-        ratingInput.classList.add('invalid');
-        errorSpan.textContent = 'Must be a number';
-        errorSpan.style.display = 'inline';
+        input.classList.add('invalid');
+        if (errorSpan) {
+            errorSpan.textContent = 'Must be a number';
+            errorSpan.style.display = 'inline-block';
+        }
         return false;
     }
 
     if (numValue < 0 || numValue > 200) {
-        ratingInput.classList.add('invalid');
-        errorSpan.textContent = 'Must be between 0 and 200';
-        errorSpan.style.display = 'inline';
+        input.classList.add('invalid');
+        if (errorSpan) {
+            errorSpan.textContent = 'Must be 0-200';
+            errorSpan.style.display = 'inline-block';
+        }
         return false;
     }
 
     return true;
 }
 
+// Update rated/incomplete status on BOTH views for an employee
+function updateEmployeeStatus(associateId, ratingPercent, justification, hasTenets) {
+    const isRated = ratingPercent && justification && hasTenets;
+    const isIncomplete = ratingPercent && !isRated;
+
+    // Update detailed view card
+    const card = document.querySelector(`.employee-card[data-associate-id="${associateId}"]`);
+    if (card) {
+        if (isRated) {
+            card.classList.add('rated');
+        } else {
+            card.classList.remove('rated');
+        }
+        card.setAttribute('data-is-rated', isRated ? 'true' : 'false');
+        card.setAttribute('data-is-incomplete', isIncomplete ? 'true' : 'false');
+    }
+
+    // Update compact view row
+    const row = document.querySelector(`tr[data-associate-id="${associateId}"]`);
+    if (row) {
+        if (isRated) {
+            row.classList.add('has-rating');
+        } else {
+            row.classList.remove('has-rating');
+        }
+        row.setAttribute('data-is-rated', isRated ? 'true' : 'false');
+        row.setAttribute('data-is-incomplete', isIncomplete ? 'true' : 'false');
+        row.setAttribute('data-rating', ratingPercent || '0');
+    }
+}
+
 function saveRating(associateId, card, useKeepalive = false) {
-    // Validate rating input first
     const ratingInput = card.querySelector('[data-field="rating_percent"]');
-    if (!validateRating(ratingInput)) {
-        console.log('Validation failed, not saving');
-        return; // Don't save if validation fails
+    if (!validateRatingInput(ratingInput)) {
+        return;
     }
 
     const data = collectRatingData(associateId, card);
 
     fetch('/api/rate', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
         keepalive: useKeepalive
     })
     .then(response => response.json())
     .then(result => {
         if (result.success) {
+            // Show save indicator
             const indicator = card.querySelector('.saved-indicator');
-
-            // Update timestamp in indicator
-            const now = new Date();
-            const timestamp = now.toLocaleTimeString();
+            const timestamp = new Date().toLocaleTimeString();
             indicator.textContent = `✓ Auto-saved (${timestamp})`;
-
             indicator.classList.add('show');
             setTimeout(() => indicator.classList.remove('show'), 3000);
 
-            // Update rated/incomplete status based on required fields
-            const hasTenets = (data.tenets_strengths && data.tenets_strengths.length > 0) ||
-                              (data.tenets_improvements && data.tenets_improvements.length > 0);
-            const isRated = data.rating_percent && data.justification && hasTenets;
-            const isIncomplete = data.rating_percent && !isRated;
-
-            if (isRated) {
-                card.classList.add('rated');
-                card.setAttribute('data-is-rated', 'true');
-                card.setAttribute('data-is-incomplete', 'false');
-            } else {
-                card.classList.remove('rated');
-                card.setAttribute('data-is-rated', 'false');
-                card.setAttribute('data-is-incomplete', isIncomplete ? 'true' : 'false');
+            // Sync rating value to compact view
+            const compactInput = document.querySelector(`.compact-rating-input[data-associate-id="${associateId}"]`);
+            if (compactInput && compactInput.value !== data.rating_percent) {
+                compactInput.value = data.rating_percent;
             }
+
+            // Update status on BOTH views
+            const hasTenets = (data.tenets_strengths?.length > 0) || (data.tenets_improvements?.length > 0);
+            updateEmployeeStatus(associateId, data.rating_percent, data.justification, hasTenets);
         } else {
             // Only show errors for non-tenet validation issues
-            // Tenet validation is handled by the inline warnings
             const errorMessage = result.error || 'Save failed';
-            const isTenetsError = errorMessage.toLowerCase().includes('tenet');
-
-            if (!isTenetsError) {
-                // Show error in rating field
+            if (!errorMessage.toLowerCase().includes('tenet')) {
                 const errorSpan = ratingInput.parentElement.querySelector('.validation-error');
                 ratingInput.classList.add('invalid');
-                errorSpan.textContent = errorMessage;
-                errorSpan.style.display = 'inline';
+                if (errorSpan) {
+                    errorSpan.textContent = errorMessage;
+                    errorSpan.style.display = 'inline';
+                }
             }
-            // Tenet errors are silently ignored - the inline warnings provide guidance
         }
     })
     .catch(error => {
         console.error('Auto-save error:', error);
         const errorSpan = ratingInput.parentElement.querySelector('.validation-error');
         ratingInput.classList.add('invalid');
-        errorSpan.textContent = 'Network error';
-        errorSpan.style.display = 'inline';
+        if (errorSpan) {
+            errorSpan.textContent = 'Network error';
+            errorSpan.style.display = 'inline';
+        }
     });
 }
 
@@ -896,6 +921,13 @@ function switchView(view) {
     const detailedView = document.getElementById('detailed-view');
     const compactView = document.getElementById('compact-view');
     const viewButtons = document.querySelectorAll('.view-btn');
+
+    // Flush any pending saves before switching views
+    // This ensures all debounced saves complete before we sync values
+    flushAllPendingSaves();
+
+    // Sync rating values between views to prevent data loss
+    syncRatingsBetweenViews(view);
 
     viewButtons.forEach(btn => btn.classList.remove('active'));
 
@@ -907,6 +939,55 @@ function switchView(view) {
         detailedView.classList.remove('inactive');
         compactView.classList.remove('active');
         event.target.classList.add('active');
+    }
+}
+
+// Flush all pending AutoSave entries for ratings
+function flushAllPendingSaves() {
+    document.querySelectorAll('.employee-card').forEach(card => {
+        const associateId = card.getAttribute('data-associate-id');
+        window.AutoSave.flush(`rating_${associateId}`);
+        window.AutoSave.flush(`compact_${associateId}`);
+    });
+}
+
+// Sync rating values from the current view to the target view
+function syncRatingsBetweenViews(targetView) {
+    const compactInputs = document.querySelectorAll('.compact-rating-input');
+    const detailedCards = document.querySelectorAll('.employee-card');
+
+    if (targetView === 'detailed') {
+        // Switching TO detailed: copy values FROM compact inputs TO detailed inputs
+        compactInputs.forEach(compactInput => {
+            const associateId = compactInput.getAttribute('data-associate-id');
+            const card = document.querySelector(`.employee-card[data-associate-id="${associateId}"]`);
+            if (card) {
+                const detailedInput = card.querySelector('[data-field="rating_percent"]');
+                if (detailedInput && compactInput.value !== detailedInput.value) {
+                    detailedInput.value = compactInput.value;
+                    // Also update the data-rating attribute on the row for sorting consistency
+                    const row = compactInput.closest('tr');
+                    if (row) {
+                        row.setAttribute('data-rating', compactInput.value || '0');
+                    }
+                }
+            }
+        });
+    } else {
+        // Switching TO compact: copy values FROM detailed inputs TO compact inputs
+        detailedCards.forEach(card => {
+            const associateId = card.getAttribute('data-associate-id');
+            const detailedInput = card.querySelector('[data-field="rating_percent"]');
+            const compactInput = document.querySelector(`.compact-rating-input[data-associate-id="${associateId}"]`);
+            if (detailedInput && compactInput && detailedInput.value !== compactInput.value) {
+                compactInput.value = detailedInput.value;
+                // Also update the data-rating attribute on the row for sorting consistency
+                const row = compactInput.closest('tr');
+                if (row) {
+                    row.setAttribute('data-rating', detailedInput.value || '0');
+                }
+            }
+        });
     }
 }
 
@@ -951,91 +1032,70 @@ function filterEmployees(filter) {
     });
 }
 
-// Compact view validation and auto-save
-function validateCompactRating(input) {
-    const value = input.value.trim();
-    const errorSpan = input.nextElementSibling;
-
-    // Clear previous validation state
-    input.classList.remove('invalid');
-    errorSpan.style.display = 'none';
-
-    if (value === '') {
-        return true; // Empty is valid
-    }
-
-    const numValue = parseFloat(value);
-
-    if (isNaN(numValue)) {
-        input.classList.add('invalid');
-        errorSpan.textContent = 'Must be a number';
-        errorSpan.style.display = 'block';
-        return false;
-    }
-
-    if (numValue < 0 || numValue > 200) {
-        input.classList.add('invalid');
-        errorSpan.textContent = 'Must be 0-200';
-        errorSpan.style.display = 'block';
-        return false;
-    }
-
-    return true;
-}
-
 function saveCompactRating(associateId, input, useKeepalive = false) {
-    if (!validateCompactRating(input)) {
+    if (!validateRatingInput(input)) {
         return;
     }
 
     const ratingValue = input.value.trim();
 
-    // Only send rating - don't overwrite other fields
     fetch('/api/rate', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            associate_id: associateId,
-            rating_percent: ratingValue
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ associate_id: associateId, rating_percent: ratingValue }),
         keepalive: useKeepalive
     })
     .then(response => response.json())
     .then(result => {
         if (result.success) {
+            // Show save indicator
             const indicator = document.querySelector(`.compact-save-indicator[data-associate-id="${associateId}"]`);
-            const now = new Date();
-            const timestamp = now.toLocaleTimeString();
-            indicator.textContent = `✓ ${timestamp}`;
-            indicator.classList.add('show');
-            setTimeout(() => indicator.classList.remove('show'), 3000);
-
-            // Update row styling - compact view only has rating, so we can only mark as incomplete
-            // Full "rated" status requires justification + tenets from detailed view
-            const row = input.closest('tr');
-            if (ratingValue) {
-                // Has rating but may be incomplete - set incomplete until other fields are filled
-                row.setAttribute('data-is-incomplete', 'true');
-            } else {
-                row.classList.remove('has-rating');
-                row.setAttribute('data-is-rated', 'false');
-                row.setAttribute('data-is-incomplete', 'false');
+            if (indicator) {
+                indicator.textContent = `✓ ${new Date().toLocaleTimeString()}`;
+                indicator.classList.add('show');
+                setTimeout(() => indicator.classList.remove('show'), 3000);
             }
+
+            // Sync rating value to detailed view
+            const card = document.querySelector(`.employee-card[data-associate-id="${associateId}"]`);
+            if (card) {
+                const detailedInput = card.querySelector('[data-field="rating_percent"]');
+                if (detailedInput && detailedInput.value !== ratingValue) {
+                    detailedInput.value = ratingValue;
+                }
+            }
+
+            // Get current justification and tenets from detailed view to determine full status
+            // (compact view only has rating, so we read the rest from detailed view's DOM)
+            let justification = '';
+            let hasTenets = false;
+            if (card) {
+                const justificationInput = card.querySelector('[data-field="justification"]');
+                justification = justificationInput?.value || '';
+                const strengthsChecked = card.querySelectorAll('input[data-tenet-type="strengths"]:checked').length;
+                const improvementsChecked = card.querySelectorAll('input[data-tenet-type="improvements"]:checked').length;
+                hasTenets = strengthsChecked > 0 || improvementsChecked > 0;
+            }
+
+            // Update status on BOTH views
+            updateEmployeeStatus(associateId, ratingValue, justification, hasTenets);
         } else {
             const errorSpan = input.nextElementSibling;
             input.classList.add('invalid');
-            errorSpan.textContent = result.error || 'Save failed';
-            errorSpan.style.display = 'block';
+            if (errorSpan) {
+                errorSpan.textContent = result.error || 'Save failed';
+                errorSpan.style.display = 'block';
+            }
         }
     })
     .catch(error => {
         console.error('Auto-save error:', error);
         const errorSpan = input.nextElementSibling;
         input.classList.add('invalid');
-        errorSpan.textContent = 'Network error';
-        errorSpan.style.display = 'block';
+        if (errorSpan) {
+            errorSpan.textContent = 'Network error';
+            errorSpan.style.display = 'block';
+        }
     });
 }
 
@@ -1348,7 +1408,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Real-time validation for rating input
             if (input.getAttribute('data-field') === 'rating_percent') {
                 input.addEventListener('input', () => {
-                    validateRating(input);
+                    validateRatingInput(input);
                     autoSave(associateId, card);
                 });
             }
@@ -1368,7 +1428,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const associateId = input.getAttribute('data-associate-id');
 
         input.addEventListener('input', () => {
-            validateCompactRating(input);
+            validateRatingInput(input);
             autoSaveCompact(associateId, input);
         });
 
