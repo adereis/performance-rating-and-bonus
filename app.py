@@ -2303,10 +2303,16 @@ def export_page():
     rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
     calibrated_employees = [emp for emp in team_data if is_employee_calibrated(emp)]
 
-    has_bonus_data = len(rated_employees) > 0
+    # has_bonus_data: true only if rated employees have actual bonus target data from Workday
+    # (not just ratings without bonus targets)
+    rated_with_bonus_targets = [
+        emp for emp in rated_employees
+        if emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
+    ]
+    has_bonus_data = len(rated_with_bonus_targets) > 0
     has_talent_data = len(calibrated_employees) > 0
 
-    # Determine default mode: prefer bonus if available, else talent
+    # Determine default mode: prefer bonus if available (ratings + targets), else talent
     export_mode = request.args.get('mode', 'bonus' if has_bonus_data else 'talent')
 
     # If no data at all, show empty state
