@@ -2185,7 +2185,8 @@ def bonus_calculation():
                              value_per_share=1.0,
                              has_data=False,
                              missing_bonus_data=False,
-                             is_multi_team=False)
+                             is_multi_team=False,
+                             filter_info=filter_info)
 
     # Detect multi-team scenario by checking unique supervisory organizations
     unique_orgs = set()
@@ -2261,7 +2262,8 @@ def bonus_calculation():
                              value_per_share=1.0,
                              has_data=False,
                              missing_bonus_data=True,
-                             is_multi_team=False)
+                             is_multi_team=False,
+                             filter_info=filter_info)
 
     # Sort by final bonus descending
     org_level_calc['results'].sort(key=lambda x: x['final_bonus'], reverse=True)
