@@ -1460,25 +1460,31 @@ def analytics():
     for emp in team_data:
         has_tenets = False
 
-        # Count strengths
-        if emp.get('tenets_strengths'):
-            try:
-                strengths = json.loads(emp['tenets_strengths'])
-                for tenet_id in strengths:
-                    strength_counts[tenet_id] += 1
-                    has_tenets = True
-            except json.JSONDecodeError:
-                pass
+        # Count strengths (combine bonus + talent cycle fields, deduplicate)
+        all_strengths = set()
+        for field in ['tenets_strengths', 'talent_tenets_strengths']:
+            if emp.get(field):
+                try:
+                    strengths = json.loads(emp[field])
+                    all_strengths.update(strengths)
+                except json.JSONDecodeError:
+                    pass
+        for tenet_id in all_strengths:
+            strength_counts[tenet_id] += 1
+            has_tenets = True
 
-        # Count improvements
-        if emp.get('tenets_improvements'):
-            try:
-                improvements = json.loads(emp['tenets_improvements'])
-                for tenet_id in improvements:
-                    improvement_counts[tenet_id] += 1
-                    has_tenets = True
-            except json.JSONDecodeError:
-                pass
+        # Count improvements (combine bonus + talent cycle fields, deduplicate)
+        all_improvements = set()
+        for field in ['tenets_improvements', 'talent_tenets_improvements']:
+            if emp.get(field):
+                try:
+                    improvements = json.loads(emp[field])
+                    all_improvements.update(improvements)
+                except json.JSONDecodeError:
+                    pass
+        for tenet_id in all_improvements:
+            improvement_counts[tenet_id] += 1
+            has_tenets = True
 
         if has_tenets:
             employees_with_tenets += 1
