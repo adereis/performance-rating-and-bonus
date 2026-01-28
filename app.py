@@ -1297,15 +1297,23 @@ def calculate_mentorship_stats(employees):
     mentors_list = []
 
     for emp in employees:
-        # Check if employee has a mentor
-        mentor_str = emp.get('mentor', '') or ''
-        has_mentor = bool(mentor_str.strip())
+        # Check if employee has a mentor (combine bonus + talent cycle fields)
+        bonus_mentor = (emp.get('mentor') or '').strip()
+        talent_mentor = (emp.get('talent_mentor') or '').strip()
+        has_mentor = bool(bonus_mentor or talent_mentor)
         if has_mentor:
             with_mentor += 1
 
-        # Check if employee is mentoring others (has mentees)
-        mentees_str = emp.get('mentees', '') or ''
-        mentee_names = [m.strip() for m in mentees_str.split(',') if m.strip()]
+        # Check if employee is mentoring others (combine bonus + talent cycle fields)
+        bonus_mentees = emp.get('mentees') or ''
+        talent_mentees = emp.get('talent_mentees') or ''
+        # Combine both fields, avoiding duplicates
+        all_mentees = set()
+        for mentee_str in [bonus_mentees, talent_mentees]:
+            for m in mentee_str.split(','):
+                if m.strip():
+                    all_mentees.add(m.strip())
+        mentee_names = list(all_mentees)
         mentee_count = len(mentee_names)
         has_mentees = mentee_count > 0
         if has_mentees:
@@ -1654,12 +1662,20 @@ def analytics():
 
     for emp in team_data:
         job_profile = (emp.get('Current Job Profile') or '').lower()
-        mentees_str = emp.get('mentees') or ''
-        mentor_str = emp.get('mentor') or ''
-        mentee_names = [m.strip() for m in mentees_str.split(',') if m.strip()]
-        mentee_count = len(mentee_names)
+        # Combine bonus + talent cycle mentorship fields
+        bonus_mentees = emp.get('mentees') or ''
+        talent_mentees = emp.get('talent_mentees') or ''
+        bonus_mentor = (emp.get('mentor') or '').strip()
+        talent_mentor = (emp.get('talent_mentor') or '').strip()
+        # Combine mentees from both fields, avoiding duplicates
+        all_mentees = set()
+        for mentee_str in [bonus_mentees, talent_mentees]:
+            for m in mentee_str.split(','):
+                if m.strip():
+                    all_mentees.add(m.strip())
+        mentee_count = len(all_mentees)
         has_mentees = mentee_count > 0
-        has_mentor = bool(mentor_str.strip())
+        has_mentor = bool(bonus_mentor or talent_mentor)
 
         emp_info = {
             'name': emp.get('Associate', 'Unknown'),
