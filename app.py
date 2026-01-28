@@ -1003,21 +1003,22 @@ def calibrate_employee():
                 return jsonify({'success': False, 'error': 'Cannot select the same tenet as both strength and improvement'}), 400
 
         # Update talent tenets (JSON arrays)
+        # Layer 3: Only update if tenets is a non-empty list (defensive check)
+        # Empty arrays now mean "no change" rather than "clear" - this prevents
+        # race conditions where unrendered checkboxes send empty arrays
         if 'talent_tenets_strengths' in data:
             tenets = data.get('talent_tenets_strengths')
-            if isinstance(tenets, list):
+            if isinstance(tenets, list) and tenets:  # Only update if non-empty list
                 import json
-                employee.talent_tenets_strengths = json.dumps(tenets) if tenets else None
-            else:
-                employee.talent_tenets_strengths = tenets if tenets else None
+                employee.talent_tenets_strengths = json.dumps(tenets)
+            # Empty array or non-list: preserve existing value (do nothing)
 
         if 'talent_tenets_improvements' in data:
             tenets = data.get('talent_tenets_improvements')
-            if isinstance(tenets, list):
+            if isinstance(tenets, list) and tenets:  # Only update if non-empty list
                 import json
-                employee.talent_tenets_improvements = json.dumps(tenets) if tenets else None
-            else:
-                employee.talent_tenets_improvements = tenets if tenets else None
+                employee.talent_tenets_improvements = json.dumps(tenets)
+            # Empty array or non-list: preserve existing value (do nothing)
 
         # Compute derived fields
         employee.talent_overall_perf = derive_overall_performance(

@@ -792,6 +792,12 @@
 </div>
 
 <script>
+// Race condition guards for tenet saving
+// Layer 1: Prevents saving tenets before they're rendered
+let tenetsRendered = false;
+// Layer 2: Only include tenets in save when user actually modified them
+const tenetsDirty = {};  // Map of associateId → boolean
+
 // Auto-save functionality using global AutoSave manager
 function autoSaveCalibration(associateId, card) {
     window.AutoSave.debounce(
@@ -822,23 +828,34 @@ function collectCalibrationData(associateId, card) {
         data[field] = input.value || null;
     });
 
-    // Collect tenet selections
+    // Collect tenet selections - guarded to prevent race condition
+    // Only include tenets if: (1) they've been rendered AND (2) user modified them OR has existing selections
     const strengthsContainer = card.querySelector('.tenet-items[data-tenet-type="talent_strengths"]');
     const improvementsContainer = card.querySelector('.tenet-items[data-tenet-type="talent_improvements"]');
 
-    if (strengthsContainer) {
-        data.talent_tenets_strengths = [];
-        strengthsContainer.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
-            data.talent_tenets_strengths.push(cb.getAttribute('data-tenet-id'));
-        });
-    }
+    if (tenetsRendered && strengthsContainer && improvementsContainer) {
+        const strengthsChecked = strengthsContainer.querySelectorAll('input[type="checkbox"]:checked');
+        const improvementsChecked = improvementsContainer.querySelectorAll('input[type="checkbox"]:checked');
 
-    if (improvementsContainer) {
-        data.talent_tenets_improvements = [];
-        improvementsContainer.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
-            data.talent_tenets_improvements.push(cb.getAttribute('data-tenet-id'));
-        });
+        // Only include tenets if user explicitly modified them OR there are existing selections
+        // This prevents empty arrays from overwriting saved data during unrelated field saves
+        const shouldIncludeTenets = tenetsDirty[associateId] ||
+            strengthsChecked.length > 0 ||
+            improvementsChecked.length > 0;
+
+        if (shouldIncludeTenets) {
+            data.talent_tenets_strengths = [];
+            strengthsChecked.forEach(cb => {
+                data.talent_tenets_strengths.push(cb.getAttribute('data-tenet-id'));
+            });
+
+            data.talent_tenets_improvements = [];
+            improvementsChecked.forEach(cb => {
+                data.talent_tenets_improvements.push(cb.getAttribute('data-tenet-id'));
+            });
+        }
     }
+    // If tenets not rendered yet, simply don't include them in the save - preserves existing data
 
     return data;
 }
@@ -1100,6 +1117,9 @@ function renderTenets() {
         updateTenetValidation(card, 'talent_strengths');
         updateTenetValidation(card, 'talent_improvements');
     });
+
+    // Mark tenets as rendered - enables tenet collection in saves
+    tenetsRendered = true;
 }
 
 // Tenet validation - enforces exactly 3 strengths, 2-3 improvements
@@ -1170,6 +1190,8 @@ function createTenetCheckbox(tenet, type, checked, card, isInOtherCycle = false)
         updateTenetValidation(card, 'talent_strengths');
         updateTenetValidation(card, 'talent_improvements');
         const associateId = card.getAttribute('data-employee-id');
+        // Mark this employee's tenets as modified (Layer 2: dirty tracking)
+        tenetsDirty[associateId] = true;
         autoSaveCalibration(associateId, card);
     });
 
