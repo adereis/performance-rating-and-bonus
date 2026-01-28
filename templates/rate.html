@@ -571,12 +571,206 @@
     .cross-cycle-hint .hint-value {
         color: #2c3e50;
     }
+
+    /* Rating guidelines panel */
+    .guidelines-panel {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 1px solid #dee2e6;
+        border-left: 4px solid #667eea;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .guidelines-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .guidelines-header:hover {
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .guidelines-header h4 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #495057;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .guidelines-header h4::before {
+        content: '📋';
+        font-size: 16px;
+    }
+
+    .guidelines-toggle {
+        background: none;
+        border: none;
+        font-size: 12px;
+        color: #667eea;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+
+    .guidelines-toggle:hover {
+        background: rgba(102, 126, 234, 0.1);
+    }
+
+    .guidelines-content {
+        padding: 0 16px 16px 16px;
+        display: none;
+    }
+
+    .guidelines-content.expanded {
+        display: block;
+    }
+
+    .guidelines-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+        .guidelines-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .guidelines-section {
+        background: white;
+        border-radius: 6px;
+        padding: 14px;
+        border: 1px solid #e9ecef;
+    }
+
+    .guidelines-section h5 {
+        font-size: 13px;
+        font-weight: 600;
+        color: #495057;
+        margin: 0 0 10px 0;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .rating-scale-table {
+        width: 100%;
+        font-size: 12px;
+        border-collapse: collapse;
+    }
+
+    .rating-scale-table td {
+        padding: 4px 0;
+        vertical-align: top;
+    }
+
+    .rating-scale-table td:first-child {
+        font-weight: 600;
+        width: 70px;
+        color: #495057;
+    }
+
+    .rating-scale-table tr.baseline td {
+        background: #e8f5e9;
+        padding: 4px 6px;
+        border-radius: 3px;
+    }
+
+    .guidelines-list {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 12px;
+        color: #555;
+    }
+
+    .guidelines-list li {
+        margin-bottom: 5px;
+        line-height: 1.4;
+    }
+
+    .guidelines-list li strong {
+        color: #333;
+    }
+
+    .guidelines-note {
+        font-size: 11px;
+        color: #6c757d;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px dashed #dee2e6;
+        font-style: italic;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="card">
     <h2>Rate Team</h2>
+
+    {% if team|length > 0 %}
+    <!-- Rating Guidelines Panel -->
+    <div class="guidelines-panel" id="guidelines-panel">
+        <div class="guidelines-header" onclick="toggleGuidelines()">
+            <h4>Rating Guidelines</h4>
+            <button class="guidelines-toggle" id="guidelines-toggle-btn">Show ▼</button>
+        </div>
+        <div class="guidelines-content" id="guidelines-content">
+            <div class="guidelines-grid">
+                <div class="guidelines-section">
+                    <h5>Rating Scale</h5>
+                    <table class="rating-scale-table">
+                        <tr>
+                            <td>130-200%</td>
+                            <td>Exceptional — rare, sustained outstanding impact</td>
+                        </tr>
+                        <tr>
+                            <td>110-130%</td>
+                            <td>Exceeded expectations</td>
+                        </tr>
+                        <tr class="baseline">
+                            <td>90-110%</td>
+                            <td><strong>Met expectations</strong> — where most employees should fall</td>
+                        </tr>
+                        <tr>
+                            <td>60-90%</td>
+                            <td>Needs improvement</td>
+                        </tr>
+                        <tr>
+                            <td>0-60%</td>
+                            <td>Significant performance concerns</td>
+                        </tr>
+                    </table>
+                    <div class="guidelines-note">
+                        💡 100% is the baseline — a solid performer who met all expectations, not an "average" rating.
+                    </div>
+                </div>
+                <div class="guidelines-section">
+                    <h5>How Ratings Affect Bonuses</h5>
+                    <ul class="guidelines-list">
+                        <li><strong>High performers</strong> receive exponentially more than their target (e.g., 120% rating → ~128% of bonus target)</li>
+                        <li><strong>Low performers</strong> are penalized more steeply (e.g., 80% rating → ~65% of bonus target)</li>
+                        <li>The <strong>total bonus pool is fixed</strong> — giving one person more means others receive less</li>
+                    </ul>
+                    <h5 style="margin-top: 14px;">Required for Each Person</h5>
+                    <ul class="guidelines-list">
+                        <li>Performance Rating (0-200%)</li>
+                        <li>Justification explaining the rating</li>
+                        <li>3 strength tenets and 2-3 improvement tenets</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     {% if team|length == 0 %}
     <div class="no-data-message">
@@ -755,6 +949,42 @@
 </div>
 
 <script>
+// Guidelines panel toggle with localStorage persistence
+function toggleGuidelines() {
+    const content = document.getElementById('guidelines-content');
+    const btn = document.getElementById('guidelines-toggle-btn');
+    const isExpanded = content.classList.contains('expanded');
+
+    if (isExpanded) {
+        content.classList.remove('expanded');
+        btn.textContent = 'Show ▼';
+        localStorage.setItem('ratingGuidelinesExpanded', 'false');
+    } else {
+        content.classList.add('expanded');
+        btn.textContent = 'Hide ▲';
+        localStorage.setItem('ratingGuidelinesExpanded', 'true');
+    }
+}
+
+// Initialize guidelines panel state on load
+function initGuidelinesPanel() {
+    const content = document.getElementById('guidelines-content');
+    const btn = document.getElementById('guidelines-toggle-btn');
+    if (!content || !btn) return;
+
+    // Default to expanded on first visit, then respect saved preference
+    const savedState = localStorage.getItem('ratingGuidelinesExpanded');
+    const shouldExpand = savedState === null ? true : savedState === 'true';
+
+    if (shouldExpand) {
+        content.classList.add('expanded');
+        btn.textContent = 'Hide ▲';
+    } else {
+        content.classList.remove('expanded');
+        btn.textContent = 'Show ▼';
+    }
+}
+
 // Auto-save functionality using global AutoSave manager
 function autoSave(associateId, card) {
     // Use global AutoSave manager - handles debounce and keepalive on unload
@@ -1369,6 +1599,9 @@ function setupTenetListeners(card) {
 
 // Set up auto-save listeners on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize guidelines panel
+    initGuidelinesPanel();
+
     // Load tenets configuration
     loadTenets();
 
