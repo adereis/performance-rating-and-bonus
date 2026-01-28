@@ -2279,7 +2279,7 @@ def export_page():
 
     # Detect which data types are available
     rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
-    calibrated_employees = [emp for emp in team_data if emp.get('talent_overall_perf')]
+    calibrated_employees = [emp for emp in team_data if is_employee_calibrated(emp)]
 
     has_bonus_data = len(rated_employees) > 0
     has_talent_data = len(calibrated_employees) > 0
