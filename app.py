@@ -2546,6 +2546,8 @@ def export_page():
                              has_talent_data=False,
                              export_mode='bonus',
                              bonus_pending_sync_count=0,
+                             rated_count=len(rated_employees),
+                             calibrated_count=len(calibrated_employees),
                              filter_info=filter_info)
 
     # Get bonus calculation settings
@@ -2795,6 +2797,8 @@ def export_page():
                          has_talent_data=has_talent_data,
                          export_mode=export_mode,
                          total_employees=len(export_data),
+                         rated_count=len(rated_employees),
+                         calibrated_count=len(calibrated_employees),
                          total_calibrated=len(talent_export_data),
                          bonus_pending_sync_count=bonus_pending_sync_count,
                          filter_info=filter_info)
