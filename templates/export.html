@@ -268,14 +268,6 @@
         border-radius: 0 4px 4px 0;
     }
 
-    .tool-additions-item {
-        margin-bottom: 4px;
-    }
-
-    .tool-additions-item:last-child {
-        margin-bottom: 0;
-    }
-
     .promo-field {
         margin-bottom: 10px;
     }
@@ -816,19 +808,7 @@
                                 <span class="sync-badge">NEEDS SYNC</span>
                                 {% endif %}
                             </div>
-                            {% if item.talent_strengths %}
-                            <div class="tool-additions-item"><strong>Strengths:</strong> {{ item.talent_strengths|join('; ') }}</div>
-                            {% endif %}
-                            {% if item.talent_improvements %}
-                            <div class="tool-additions-item"><strong>Improvements:</strong> {{ item.talent_improvements|join('; ') }}</div>
-                            {% endif %}
-                            {% if item.talent_mentor %}
-                            <div class="tool-additions-item"><strong>Mentor:</strong> {{ item.talent_mentor }}</div>
-                            {% endif %}
-                            {% if item.talent_mentees %}
-                            <div class="tool-additions-item"><strong>Mentees:</strong> {{ item.talent_mentees }}</div>
-                            {% endif %}
-                            <div id="tool_{{ loop.index }}" style="display:none;">{{ item.tool_additions_text }}</div>
+                            <div class="description-text" id="tool_{{ loop.index }}">{{ item.tool_additions_text }}</div>
                             <button class="copy-btn-small" style="margin-top: 8px;" onclick="copyDescription('tool_{{ loop.index }}', this)">
                                 Copy
                             </button>
