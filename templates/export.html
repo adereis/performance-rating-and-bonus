@@ -236,18 +236,6 @@
         color: white;
     }
 
-    /* Modification indicators for talent export */
-    .modified-badge {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-size: 11px;
-        font-weight: 600;
-        background: #fff3cd;
-        color: #856404;
-        margin-left: 8px;
-    }
-
     .section-header {
         font-size: 11px;
         font-weight: 600;
@@ -312,6 +300,25 @@
         margin-left: 8px;
     }
 
+    /* Field-level sync badges - same style as sync-badge but inline with field details */
+    .field-sync-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 600;
+        background: #cce5ff;
+        color: #004085;
+        margin-left: 6px;
+        white-space: nowrap;
+    }
+
+    .field-sync-badge .sync-icon {
+        font-size: 16px;
+        vertical-align: middle;
+        margin-right: 2px;
+    }
+
     /* Sync status bar */
     .sync-status-bar {
         display: flex;
@@ -362,6 +369,10 @@
     }
 
     .section-hidden {
+        display: none !important;
+    }
+
+    .field-hidden {
         display: none !important;
     }
 
@@ -751,7 +762,7 @@
             </thead>
             <tbody id="exportTableBody">
                 {% for item in talent_export_data %}
-                <tr data-name="{{ item.employee.Associate }}" data-needs-sync="{{ 'true' if item.needs_sync else 'false' }}" data-workday-modified="{{ 'true' if item.workday_content_modified else 'false' }}" data-tool-sync="{{ 'true' if item.tool_additions_modified else 'false' }}">
+                <tr data-name="{{ item.employee.Associate }}" data-needs-sync="{{ 'true' if item.needs_sync else 'false' }}" data-workday-modified="{{ 'true' if item.workday_content_modified else 'false' }}" data-tool-sync="{{ 'true' if item.tool_additions_modified else 'false' }}" data-calibration-modified="{{ 'true' if item.calibration_modified else 'false' }}">
                     <td>
                         <strong>
                             <span class="employee-name" data-employee-id="{{ item.employee['Associate ID'] }}">
@@ -769,6 +780,12 @@
                             {% else %}talent-low{% endif %}">
                             {{ item.overall_perf }}
                         </span>
+                        {% if item.perf_what_modified %}
+                        <span class="field-sync-badge" title="Update in Workday: Performance What"><span class="sync-icon">⟳</span>What: {{ item.perf_what }}</span>
+                        {% endif %}
+                        {% if item.perf_how_modified %}
+                        <span class="field-sync-badge" title="Update in Workday: Performance How"><span class="sync-icon">⟳</span>How: {{ item.perf_how }}</span>
+                        {% endif %}
                     </td>
                     <td>
                         {% if item.identified_future %}
@@ -776,9 +793,18 @@
                         {% else %}
                         <span style="color: #999;">—</span>
                         {% endif %}
+                        {% if item.growth_agility_modified %}
+                        <span class="field-sync-badge" title="Update in Workday: Growth Agility"><span class="sync-icon">⟳</span>Growth: {{ item.growth_agility }}</span>
+                        {% endif %}
+                        {% if item.change_agility_modified %}
+                        <span class="field-sync-badge" title="Update in Workday: Change Agility"><span class="sync-icon">⟳</span>Change: {{ item.change_agility }}</span>
+                        {% endif %}
                     </td>
                     <td>
                         {{ item.movement_readiness }}
+                        {% if item.movement_readiness_modified %}
+                        <span class="field-sync-badge" title="Update in Workday: Movement Readiness"><span class="sync-icon">⟳</span></span>
+                        {% endif %}
                     </td>
                     <td class="description-cell">
                         <!-- Workday Content Section -->
@@ -786,7 +812,7 @@
                             <div class="section-header">
                                 Workday Content
                                 {% if item.workday_content_modified %}
-                                <span class="modified-badge">MODIFIED</span>
+                                <span class="sync-badge">NEEDS SYNC</span>
                                 {% endif %}
                             </div>
                             {% if item.workday_content %}
@@ -819,28 +845,28 @@
                     <td class="description-cell">
                         {% if item.promo_job_profile or item.promo_business_need or item.promo_role_scope or item.promo_readiness %}
                         {% if item.promo_job_profile %}
-                        <div class="promo-field"><strong>Job Profile:</strong> {{ item.promo_job_profile }}</div>
+                        <div class="promo-field" data-field-needs-sync="false"><strong>Job Profile:</strong> {{ item.promo_job_profile }}</div>
                         {% endif %}
                         {% if item.promo_business_need %}
-                        <div class="promo-field">
+                        <div class="promo-field" data-field-needs-sync="{{ 'true' if item.promo_business_need_modified else 'false' }}">
                             <strong>Business Need:</strong>
-                            {% if item.promo_business_need_modified %}<span class="modified-badge">MODIFIED</span>{% endif %}
+                            {% if item.promo_business_need_modified %}<span class="sync-badge">NEEDS SYNC</span>{% endif %}
                             <div class="description-text" id="promo_bn_{{ loop.index }}">{{ item.promo_business_need }}</div>
                             <button class="copy-btn-small" onclick="copyDescription('promo_bn_{{ loop.index }}', this)">Copy</button>
                         </div>
                         {% endif %}
                         {% if item.promo_role_scope %}
-                        <div class="promo-field">
+                        <div class="promo-field" data-field-needs-sync="{{ 'true' if item.promo_role_scope_modified else 'false' }}">
                             <strong>Role Scope:</strong>
-                            {% if item.promo_role_scope_modified %}<span class="modified-badge">MODIFIED</span>{% endif %}
+                            {% if item.promo_role_scope_modified %}<span class="sync-badge">NEEDS SYNC</span>{% endif %}
                             <div class="description-text" id="promo_rs_{{ loop.index }}">{{ item.promo_role_scope }}</div>
                             <button class="copy-btn-small" onclick="copyDescription('promo_rs_{{ loop.index }}', this)">Copy</button>
                         </div>
                         {% endif %}
                         {% if item.promo_readiness %}
-                        <div class="promo-field">
+                        <div class="promo-field" data-field-needs-sync="{{ 'true' if item.promo_readiness_modified else 'false' }}">
                             <strong>Readiness:</strong>
-                            {% if item.promo_readiness_modified %}<span class="modified-badge">MODIFIED</span>{% endif %}
+                            {% if item.promo_readiness_modified %}<span class="sync-badge">NEEDS SYNC</span>{% endif %}
                             <div class="description-text" id="promo_rd_{{ loop.index }}">{{ item.promo_readiness }}</div>
                             <button class="copy-btn-small" onclick="copyDescription('promo_rd_{{ loop.index }}', this)">Copy</button>
                         </div>
@@ -1003,7 +1029,9 @@
                 rows.forEach(row => {
                     const needsSync = row.getAttribute('data-needs-sync') === 'true';
                     const workdayModified = row.getAttribute('data-workday-modified') === 'true';
+                    const toolSyncModified = row.getAttribute('data-tool-sync') === 'true';
                     const workdaySection = row.querySelector('.workday-content-section');
+                    const toolAdditionsSection = row.querySelector('.tool-additions');
 
                     if (showPendingOnly && !needsSync) {
                         row.classList.add('row-hidden');
@@ -1019,6 +1047,26 @@
                             workdaySection.classList.remove('section-hidden');
                         }
                     }
+
+                    // Hide tool additions section if pending filter is on and tool additions aren't modified
+                    if (toolAdditionsSection) {
+                        if (showPendingOnly && !toolSyncModified) {
+                            toolAdditionsSection.classList.add('section-hidden');
+                        } else {
+                            toolAdditionsSection.classList.remove('section-hidden');
+                        }
+                    }
+
+                    // Hide individual promo fields that don't need sync
+                    const promoFields = row.querySelectorAll('.promo-field[data-field-needs-sync]');
+                    promoFields.forEach(field => {
+                        const fieldNeedsSync = field.getAttribute('data-field-needs-sync') === 'true';
+                        if (showPendingOnly && !fieldNeedsSync) {
+                            field.classList.add('field-hidden');
+                        } else {
+                            field.classList.remove('field-hidden');
+                        }
+                    });
                 });
             }
 
