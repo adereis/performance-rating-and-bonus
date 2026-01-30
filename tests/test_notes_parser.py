@@ -164,7 +164,7 @@ class TestFormatNotesField:
         assert "Performance Rating: 125.0%" in result
         assert "Justification: Great work this quarter." in result
         assert "Mentor: Alice" in result
-        assert "Mentees: Bob, Carol" in result
+        assert "Mentees: Bob; Carol" in result  # Normalized to semicolons
         assert "Strengths: Leadership, Teamwork" in result
         assert "Areas for Improvement: Communication" in result
 

@@ -3019,7 +3019,9 @@ def export_talent_xlsx():
         if talent_mentor:
             metadata_markers.append(f"[Mentor: {talent_mentor}]")
         if talent_mentees:
-            metadata_markers.append(f"[Mentees: {talent_mentees}]")
+            # Normalize to semicolon-separated for consistency with tenets
+            normalized_mentees = '; '.join(m.strip() for m in talent_mentees.replace(';', ',').split(',') if m.strip())
+            metadata_markers.append(f"[Mentees: {normalized_mentees}]")
 
         if metadata_markers:
             # Append to proposed actions with separator
@@ -3160,7 +3162,9 @@ def export_talent_csv():
         if talent_mentor:
             metadata_markers.append(f"[Mentor: {talent_mentor}]")
         if talent_mentees:
-            metadata_markers.append(f"[Mentees: {talent_mentees}]")
+            # Normalize to semicolon-separated for consistency with tenets
+            normalized_mentees = '; '.join(m.strip() for m in talent_mentees.replace(';', ',').split(',') if m.strip())
+            metadata_markers.append(f"[Mentees: {normalized_mentees}]")
 
         if metadata_markers:
             if proposed_actions:

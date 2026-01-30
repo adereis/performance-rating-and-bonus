@@ -152,7 +152,9 @@ def format_notes_field(
         lines.append(f"Mentor: {mentor}")
 
     if mentees:
-        lines.append(f"Mentees: {mentees}")
+        # Normalize to semicolon-separated for consistency with tenets
+        normalized_mentees = '; '.join(m.strip() for m in mentees.replace(';', ',').split(',') if m.strip())
+        lines.append(f"Mentees: {normalized_mentees}")
 
     if tenets_strengths:
         lines.append(f"Strengths: {tenets_strengths}")
