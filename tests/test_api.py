@@ -80,7 +80,7 @@ class TestAPIEndpoints:
         assert employee.performance_rating_percent == 130.0
         assert employee.justification == 'Updated justification'
 
-    def test_rate_employee_missing_name(self, client):
+    def test_rate_employee_missing_name(self, client, populated_db):
         """Test rating without associate name."""
         data = {
             'rating_percent': '100',
@@ -275,6 +275,36 @@ class TestAPIEndpoints:
         result = json.loads(response.data)
         assert result['success'] is False
         assert 'not found' in result['error'].lower()
+
+    def test_rate_blocked_without_bonus_data(self, client, db_session):
+        """Test that rating is blocked when no bonus data has been imported."""
+        # Create employee without bonus target data (simulating talent-only import)
+        employee = Employee(
+            associate_id='EMP_TALENT',
+            associate='Talent Only Employee',
+            supervisory_organization='Engineering',
+            current_job_profile='Software Engineer',
+            current_base_pay_manager_currency=100000.0,
+            currency='USD',
+            # No bonus_target_local_currency or bonus_target_manager_currency
+        )
+        db_session.add(employee)
+        db_session.commit()
+
+        data = {
+            'associate_id': 'EMP_TALENT',
+            'rating_percent': '100',
+            'justification': 'Test'
+        }
+
+        response = client.post('/api/rate',
+                              data=json.dumps(data),
+                              content_type='application/json')
+
+        assert response.status_code == 400
+        result = json.loads(response.data)
+        assert 'error' in result
+        assert 'bonus data' in result['error'].lower()
 
 
 class TestDashboardStatistics:

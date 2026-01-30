@@ -764,7 +764,66 @@ def rate_page():
     # Apply filters
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
-    return render_template('rate.html', team=team_data, filter_info=filter_info)
+    # Pre-compute rating status for each employee
+    for emp in team_data:
+        has_tenets = bool(
+            (emp.get('tenets_strengths') and emp.get('tenets_strengths') != '[]') or
+            (emp.get('tenets_improvements') and emp.get('tenets_improvements') != '[]')
+        )
+        emp['_is_rated'] = bool(
+            emp.get('performance_rating_percent') and
+            emp.get('justification') and
+            has_tenets
+        )
+
+    # Count rated employees
+    rated_count = sum(1 for e in team_data if e['_is_rated'])
+
+    # Check if bonus data has been imported (employees have bonus targets)
+    employees_with_bonus_targets = [
+        emp for emp in team_data
+        if emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
+    ]
+    has_bonus_data = len(employees_with_bonus_targets) > 0
+
+    # Detect multi-team scenario and group by supervisory organization
+    unique_orgs = set()
+    for emp in team_data:
+        org = emp.get('Supervisory Organization')
+        if org:
+            unique_orgs.add(org)
+
+    is_multi_team = len(unique_orgs) > 1
+
+    # Group employees by supervisory organization for multi-team view
+    teams_grouped = []
+    if is_multi_team:
+        teams_by_org = {}
+        for emp in team_data:
+            org = emp.get('Supervisory Organization', 'Unknown')
+            if org not in teams_by_org:
+                teams_by_org[org] = []
+            teams_by_org[org].append(emp)
+
+        # Build grouped structure with per-team rating counts
+        for org, members in sorted(teams_by_org.items()):
+            team_rated = sum(1 for e in members if e['_is_rated'])
+            teams_grouped.append({
+                'org': org,
+                'members': members,
+                'total': len(members),
+                'rated': team_rated,
+            })
+
+    return render_template(
+        'rate.html',
+        team=team_data,
+        teams_grouped=teams_grouped,
+        is_multi_team=is_multi_team,
+        filter_info=filter_info,
+        rated_count=rated_count,
+        has_bonus_data=has_bonus_data,
+    )
 
 
 @app.route('/api/rate', methods=['POST'])
@@ -774,6 +833,15 @@ def rate_employee():
     Only updates fields that are explicitly provided in the request.
     This allows partial updates (e.g., compact view only sends rating).
     """
+    # Check if bonus data has been imported before allowing ratings
+    all_employees = get_all_employees()
+    employees_with_bonus_targets = [
+        emp for emp in all_employees
+        if emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
+    ]
+    if not employees_with_bonus_targets:
+        return jsonify({'error': 'Cannot save ratings until bonus data is imported'}), 400
+
     data = request.get_json()
     associate_id = data.get('associate_id')
 

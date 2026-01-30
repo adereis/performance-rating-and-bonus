@@ -53,6 +53,7 @@ def sample_employee_data():
         'current_base_pay_manager_currency': 120000.0,
         'currency': 'USD',
         'annual_bonus_target_percent': 15.0,
+        'bonus_target_local_currency': 18000.0,  # Required for rating functionality
         'performance_rating_percent': None,
         'justification': '',
         'mentor': '',
@@ -71,6 +72,7 @@ def sample_employees():
             'current_job_profile': 'Senior Software Engineer',
             'current_base_pay_manager_currency': 130000.0,
             'currency': 'USD',
+            'bonus_target_local_currency': 19500.0,  # Required for rating functionality
             'performance_rating_percent': 120.0,
             'justification': 'Excellent performance',
             'mentor': 'Bob Smith',
@@ -83,6 +85,7 @@ def sample_employees():
             'current_job_profile': 'Staff Software Engineer',
             'current_base_pay_manager_currency': 160000.0,
             'currency': 'USD',
+            'bonus_target_local_currency': 24000.0,  # Required for rating functionality
             'performance_rating_percent': 140.0,
             'justification': 'Outstanding contributions',
             'mentor': '',
@@ -95,6 +98,7 @@ def sample_employees():
             'current_job_profile': 'Software Engineer',
             'current_base_pay_manager_currency': 95000.0,
             'currency': 'USD',
+            'bonus_target_local_currency': 14250.0,  # Required for rating functionality
             'performance_rating_percent': 85.0,
             'justification': 'Good progress, needs more experience',
             'mentor': 'Alice Johnson',
@@ -107,6 +111,7 @@ def sample_employees():
             'current_job_profile': 'Product Manager',
             'current_base_pay_manager_currency': 125000.0,
             'currency': 'USD',
+            'bonus_target_local_currency': 18750.0,  # Required for rating functionality
             'performance_rating_percent': None,
             'justification': '',
             'mentor': '',
