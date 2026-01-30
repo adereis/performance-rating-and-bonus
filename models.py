@@ -127,6 +127,9 @@ class BonusSettings(Base):
     id = Column(Integer, primary_key=True)
     workday_pool = Column(Float)  # Total pool from Workday metadata (source of truth)
     budget_override = Column(Float, default=0.0)  # Manager adjustment to pool
+    manager_currency = Column(String)  # Currency code extracted from column headers (e.g., 'USD')
+    pool_source = Column(String)  # 'workday_metadata' | 'calculated_sum' - how pool was determined
+    pool_verified = Column(Boolean, default=False)  # Has user verified the calculated pool?
     last_updated = Column(DateTime)
 
     def to_dict(self):
@@ -134,6 +137,9 @@ class BonusSettings(Base):
         return {
             'workday_pool': self.workday_pool,
             'budget_override': self.budget_override,
+            'manager_currency': self.manager_currency,
+            'pool_source': self.pool_source,
+            'pool_verified': self.pool_verified,
             'last_updated': self.last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.last_updated else ''
         }
 
@@ -493,6 +499,9 @@ def _migrate_add_new_columns(engine):
     # Define new columns: (table, column_name, column_type)
     new_columns = [
         ('bonus_settings', 'workday_pool', 'REAL'),
+        ('bonus_settings', 'manager_currency', 'TEXT'),
+        ('bonus_settings', 'pool_source', 'TEXT'),
+        ('bonus_settings', 'pool_verified', 'BOOLEAN'),
         # Period table
         ('periods', 'cycle_type', 'TEXT'),
         # Employee table - Extended identity

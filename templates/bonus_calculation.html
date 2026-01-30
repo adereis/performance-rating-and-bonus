@@ -389,6 +389,15 @@
     </div>
     {% endif %}
 
+    {% if pool_source == 'calculated_sum' and not pool_verified %}
+    <div class="small-team-warning" style="margin-bottom: 20px; background: #fff3cd; border-color: #ffc107;">
+        ⚠️ <strong>Pool amount needs verification:</strong> The bonus pool was calculated from employee targets ({{ base_pool|format_currency }})
+        because the Workday export didn't contain pool metadata. This may differ from your actual allocated budget.
+        Please verify and use <strong>Budget Override</strong> if different, or
+        <a href="#" onclick="verifyPool(); return false;" style="color: #856404; text-decoration: underline;">click here to confirm this amount is correct</a>.
+    </div>
+    {% endif %}
+
     <div class="summary-stats">
         <div class="summary-card">
             <h4 title="{% if workday_pool %}From Workday export metadata{% else %}Sum of employee bonus targets (no Workday pool in file){% endif %}">
@@ -1042,6 +1051,26 @@ if (budgetInput) {
         }
         window.AutoSave.flush('budget_override');
         saveBudgetOverride();
+    });
+}
+
+// Verify pool function for the warning banner
+function verifyPool() {
+    fetch('/api/bonus-settings/verify-pool', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('Error verifying pool: ' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error verifying pool');
     });
 }
 </script>

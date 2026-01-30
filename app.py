@@ -1183,6 +1183,23 @@ def bonus_settings_api():
             return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/bonus-settings/verify-pool', methods=['POST'])
+def verify_pool_api():
+    """Mark the calculated bonus pool as verified by the user."""
+    try:
+        db = get_db()
+        settings = db.query(BonusSettings).first()
+        if not settings:
+            return jsonify({'success': False, 'error': 'No bonus settings found'}), 404
+
+        settings.pool_verified = True
+        db.commit()
+        return jsonify({'success': True, 'message': 'Pool verified'})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/employee/<associate_id>', methods=['GET'])
 def get_employee_details(associate_id):
     """API endpoint to get details for a specific employee by ID."""
@@ -2255,7 +2272,9 @@ def bonus_calculation():
                              has_data=False,
                              missing_bonus_data=False,
                              is_multi_team=False,
-                             filter_info=filter_info)
+                             filter_info=filter_info,
+                             pool_source=settings.pool_source,
+                             pool_verified=settings.pool_verified)
 
     # Detect multi-team scenario by checking unique supervisory organizations
     unique_orgs = set()
@@ -2332,7 +2351,9 @@ def bonus_calculation():
                              has_data=False,
                              missing_bonus_data=True,
                              is_multi_team=False,
-                             filter_info=filter_info)
+                             filter_info=filter_info,
+                             pool_source=settings.pool_source,
+                             pool_verified=settings.pool_verified)
 
     # Sort by final bonus descending
     org_level_calc['results'].sort(key=lambda x: x['final_bonus'], reverse=True)
@@ -2355,7 +2376,9 @@ def bonus_calculation():
                          is_multi_team=is_multi_team,
                          team_comparisons=team_comparisons,
                          teams_data=teams_data,
-                         filter_info=filter_info)
+                         filter_info=filter_info,
+                         pool_source=settings.pool_source,
+                         pool_verified=settings.pool_verified)
 
 
 @app.route('/export')
@@ -3327,6 +3350,9 @@ def import_current():
                     settings = BonusSettings()
                     db.add(settings)
                 settings.workday_pool = workday_pool
+                # Pool came from Workday metadata, so it's verified
+                settings.pool_source = 'workday_metadata'
+                settings.pool_verified = True
                 settings.last_updated = datetime.now()
 
             imported = 0
