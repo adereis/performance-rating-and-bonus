@@ -534,6 +534,43 @@ def load_tenets_config():
     return None, {}
 
 
+def convert_tenet_names_to_ids(names_str: str, tenets_config: dict) -> str:
+    """
+    Convert comma-separated tenet names to JSON array of tenet IDs.
+
+    Used when importing from Notes field which stores human-readable names
+    like "We Serve Our Customers, We Champion Ownership" but the database
+    expects JSON arrays of IDs like '["ownership-1", "ownership-2"]'.
+
+    Args:
+        names_str: Comma-separated tenet names (or semicolon-separated)
+        tenets_config: Tenets configuration dict with 'tenets' list
+
+    Returns:
+        JSON string of tenet IDs, or None if no valid tenets found
+    """
+    if not names_str or not tenets_config:
+        return None
+
+    # Build name-to-id mapping (case-insensitive)
+    name_to_id = {}
+    for t in tenets_config.get('tenets', []):
+        name_to_id[t['name'].lower().strip()] = t['id']
+
+    # Parse the names (handle both comma and semicolon separators)
+    separator = ';' if ';' in names_str else ','
+    names = [n.strip() for n in names_str.split(separator) if n.strip()]
+
+    # Convert to IDs
+    ids = []
+    for name in names:
+        tenet_id = name_to_id.get(name.lower())
+        if tenet_id:
+            ids.append(tenet_id)
+
+    return json.dumps(ids) if ids else None
+
+
 def get_filter_params():
     """
     Extract filter parameters from URL query string.
@@ -3476,14 +3513,32 @@ def import_current():
                     employee.notes = emp_data['notes']
                     employee.zero_bonus_allocated = emp_data['zero_bonus_allocated']
 
-                # Initialize manager input fields as empty if new employee
+                # Initialize manager input fields for new employees
+                # Parse Notes field for re-imported data if present
                 if not existing:
-                    employee.performance_rating_percent = None
-                    employee.tenets_strengths = None
-                    employee.tenets_improvements = None
-                    employee.justification = ''
-                    employee.mentor = ''
-                    employee.mentees = ''
+                    notes_data = parse_notes_field(emp_data.get('notes', '')) if spreadsheet_type != 'talent' else {}
+                    tenets_config, _ = load_tenets_config()
+
+                    if notes_data.get('performance_rating') is not None:
+                        employee.performance_rating_percent = notes_data.get('performance_rating')
+                        employee.justification = notes_data.get('justification') or ''
+                        employee.mentor = notes_data.get('mentors') or ''
+                        employee.mentees = notes_data.get('mentees') or ''
+                        employee.ai_related_activities = notes_data.get('ai_related_activities') or ''
+                        # Convert tenet names to JSON IDs for storage
+                        employee.tenets_strengths = convert_tenet_names_to_ids(
+                            notes_data.get('tenets_strengths'), tenets_config
+                        )
+                        employee.tenets_improvements = convert_tenet_names_to_ids(
+                            notes_data.get('tenets_improvements'), tenets_config
+                        )
+                    else:
+                        employee.performance_rating_percent = None
+                        employee.tenets_strengths = None
+                        employee.tenets_improvements = None
+                        employee.justification = ''
+                        employee.mentor = ''
+                        employee.mentees = ''
                     employee.last_updated = None
                     db.add(employee)
 
