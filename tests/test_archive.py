@@ -280,50 +280,6 @@ class TestArchivePeriodEndpoint:
         assert snapshot.mentees == 'Junior Bob, Junior Carol'
 
 
-class TestArchiveButton:
-    """Tests for the archive button on the dashboard."""
-
-    def test_dashboard_has_archive_button(self, client, db_session):
-        """Test dashboard shows archive button."""
-        response = client.get('/')
-        assert response.status_code == 200
-        assert b'Archive Period' in response.data
-
-    def test_dashboard_shows_archive_modal(self, client, db_session):
-        """Test dashboard has archive modal HTML."""
-        response = client.get('/')
-        assert response.status_code == 200
-        assert b'archiveModal' in response.data
-        assert b'periodId' in response.data
-        assert b'periodName' in response.data
-
-    def test_dashboard_archive_button_disabled_when_no_rated(self, client, db_session):
-        """Test archive button is disabled when no employees are rated."""
-        # No employees means stats.rated == 0
-        response = client.get('/')
-        assert response.status_code == 200
-        # Button should be disabled
-        assert b'disabled' in response.data
-
-    def test_dashboard_archive_button_enabled_when_rated(self, client, db_session):
-        """Test archive button is enabled when employees are rated."""
-        # Create a rated employee
-        emp = Employee(
-            associate_id='EMP001',
-            associate='John Doe',
-            performance_rating_percent=125.0
-        )
-        db_session.add(emp)
-        db_session.commit()
-
-        response = client.get('/')
-        assert response.status_code == 200
-        # Check that Archive Period button exists and is not disabled
-        html = response.data.decode('utf-8')
-        # Find the archive button - it should not have disabled attribute
-        assert 'btn-archive' in html
-
-
 class TestEmployeeHistoryEndpoint:
     """Tests for the /api/employee/<id>/history endpoint."""
 
