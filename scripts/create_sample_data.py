@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
 Create sample demo data for the Performance Rating System.
-This generates fictitious Workday employee data (no ratings/tenets).
+This generates fictitious Workday employee data.
 
 Usage:
-    python3 create_sample_data.py              # Creates small team (12 employees, 1 manager)
-    python3 create_sample_data.py --large      # Creates large org (55 employees: 5 managers + 50 ICs)
-    python3 create_sample_data.py --historical # Creates 6 quarterly historical spreadsheets
+    python3 create_sample_data.py              # Small team (12 employees, 1 manager)
+    python3 create_sample_data.py --large      # Large org (55 employees: 5 managers + 50 ICs)
+    python3 create_sample_data.py --historical # 6 quarterly historical spreadsheets
+    python3 create_sample_data.py --calibrated # Fully calibrated with ratings + talent data
 
-Note: This generates ONLY Workday export data (salaries, bonus targets, org structure).
-      To add sample ratings/tenets, use populate_sample_ratings.py after import.
+Note: Without --calibrated, generates blank Workday export (salaries, bonus targets, org).
+      Use populate_sample_ratings.py after import to add ratings manually.
 """
 import openpyxl
 from openpyxl import Workbook
@@ -752,6 +753,157 @@ def create_historical_xlsx():
     print("  5. Import all 6 files in chronological order")
 
 
+def generate_rating_for_employee(emp):
+    """
+    Generate a performance rating and justification for an employee.
+    Returns (rating_percent, justification).
+    """
+    # Vary ratings based on job level for realism
+    job = emp.get('job_profile', '')
+    if 'Senior' in job or 'Lead' in job:
+        # Senior folks: slightly higher average
+        rating = random.choice([95, 100, 105, 110, 115, 120, 125, 130])
+    elif 'Manager' in job or 'Director' in job:
+        # Managers: more varied
+        rating = random.choice([90, 95, 100, 105, 110, 115, 120, 125, 130, 135])
+    else:
+        # Standard distribution
+        rating = random.choice([85, 90, 95, 100, 100, 105, 105, 110, 115, 120, 125, 130, 135])
+
+    # Generate justification based on rating
+    if rating >= 130:
+        justifications = [
+            "Exceptional performer who consistently exceeds expectations.",
+            "Outstanding contributions across multiple high-impact projects.",
+            "Top performer with significant business impact this cycle.",
+        ]
+    elif rating >= 110:
+        justifications = [
+            "Strong performer who regularly exceeds expectations.",
+            "Solid contributions with notable achievements this cycle.",
+            "High quality work with positive team impact.",
+        ]
+    elif rating >= 90:
+        justifications = [
+            "Solid performer meeting all expectations.",
+            "Reliable contributor with consistent delivery.",
+            "Good work quality and team collaboration.",
+        ]
+    else:
+        justifications = [
+            "Developing performer working toward expectations.",
+            "Growth opportunity identified; coaching in progress.",
+            "Building skills with support from team.",
+        ]
+
+    return rating, random.choice(justifications)
+
+
+def write_calibrated_employee_data(sheet, employees):
+    """
+    Write employee data with pre-filled Notes column (ratings/justifications).
+    """
+    for emp in employees:
+        # Generate rating and justification
+        rating, justification = generate_rating_for_employee(emp)
+
+        # Format the Notes field
+        notes = format_notes_field(
+            performance_rating=float(rating),
+            justification=justification
+        )
+
+        # Bonus calculations (same as write_employee_data)
+        if emp['currency'] == 'USD':
+            base_pay_local = emp['salary']
+            base_pay_converted = None
+            bonus_target_local = emp['salary'] * (emp['bonus_pct'] / 100)
+            bonus_target_converted = None
+        else:
+            base_pay_local = emp['salary_local']
+            base_pay_converted = emp['salary']
+            bonus_target_local = emp['salary_local'] * (emp['bonus_pct'] / 100)
+            bonus_target_converted = emp['salary'] * (emp['bonus_pct'] / 100)
+
+        # Last bonus allocation
+        last_bonus_choices = [None, None, None, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15]
+        last_bonus_pct = random.choice(last_bonus_choices)
+
+        # Convert bonus target percent to decimal
+        bonus_pct_decimal = emp['bonus_pct'] / 100
+
+        # NEW FORMAT column order (matches create_headers)
+        row = [
+            emp['associate_id'],
+            emp['associate'],
+            emp['job_profile'],
+            emp.get('time_in_job_profile', ''),
+            emp.get('hire_date'),
+            base_pay_local,
+            base_pay_converted,
+            emp['grade'],
+            bonus_pct_decimal,
+            emp['currency'],
+            bonus_target_local,
+            bonus_target_converted,
+            last_bonus_pct,
+            None,  # Proposed Percent of Target Bonus
+            None,  # Proposed Bonus Amount (Local)
+            None,  # Proposed Bonus Amount (USD)
+            emp.get('direct_manager', ''),
+            notes,  # Pre-filled Notes with rating/justification
+            '',     # Error
+            emp.get('country', 'United States'),
+            emp.get('management_level', ''),
+            emp.get('perf_review_name', ''),
+            emp.get('perf_review_rating', ''),
+        ]
+
+        sheet.append(row)
+
+
+def create_calibrated_xlsx(size='small'):
+    """
+    Generate a Workday-format XLSX with ratings pre-filled in the Notes column.
+
+    This creates an importable file with:
+    - Standard Workday format (single sheet with metadata rows)
+    - Notes column pre-filled with [Rating: X%] and justification
+    - Ready to import directly through the app's Import page
+    """
+    if size == 'small':
+        employees = get_small_team_data()
+        filename = 'sample-data-calibrated-small.xlsx'
+        description = "12 employees with ratings pre-filled"
+    else:
+        employees = get_large_org_data()
+        filename = 'sample-data-calibrated-large.xlsx'
+        description = "55 employees with ratings pre-filled"
+
+    # Calculate total pool from bonus targets
+    total_pool = sum(emp['salary'] * (emp['bonus_pct'] / 100) for emp in employees)
+
+    wb = Workbook()
+    sheet = wb.active
+
+    create_headers(sheet, total_pool=total_pool)
+    write_calibrated_employee_data(sheet, employees)
+
+    wb.save(filename)
+
+    # Count rating distribution
+    ratings = [generate_rating_for_employee(emp)[0] for emp in employees]
+    high_count = sum(1 for r in ratings if r >= 120)
+    solid_count = sum(1 for r in ratings if 90 <= r < 120)
+    below_count = sum(1 for r in ratings if r < 90)
+
+    print(f"✓ Created {filename}")
+    print(f"  - {description}")
+    print(f"  - Total employees: {len(employees)}")
+    print(f"  - Ratings distribution: {high_count} high, {solid_count} solid, {below_count} below")
+    print(f"\nReady to import at http://localhost:5000/import")
+
+
 def main():
     """Main entry point with argument parsing."""
     import argparse
@@ -762,10 +914,9 @@ def main():
 Examples:
   python3 scripts/create_sample_data.py              # Small team (12 employees)
   python3 scripts/create_sample_data.py --large      # Large org (55 employees)
+  python3 scripts/create_sample_data.py --calibrated # Fully calibrated snapshot
+  python3 scripts/create_sample_data.py --large --calibrated  # Large calibrated
   python3 scripts/create_sample_data.py --historical # Historical quarterly data
-
-Note: This generates Workday export data (salaries, bonus targets, org structure).
-      To add sample ratings/tenets, use populate_sample_ratings.py after import.
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -780,11 +931,19 @@ Note: This generates Workday export data (salaries, bonus targets, org structure
         action='store_true',
         help='Create 6 quarterly historical spreadsheets (2023-Q3 through 2024-Q4)'
     )
+    parser.add_argument(
+        '--calibrated',
+        action='store_true',
+        help='Generate fully calibrated XLSX with ratings and talent data pre-filled'
+    )
 
     args = parser.parse_args()
 
     if args.historical:
         create_historical_xlsx()
+    elif args.calibrated:
+        size = 'large' if args.large else 'small'
+        create_calibrated_xlsx(size)
     else:
         size = 'large' if args.large else 'small'
         create_sample_xlsx(size)

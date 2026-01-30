@@ -67,30 +67,31 @@ def generate_talent_data(bonus_rating: int) -> dict:
     """
     # Map performance rating to talent calibration distribution
     # Higher performers more likely to have higher talent ratings
+    # Movement weights: [Continue, Promotion in role, Lateral, Promotion outside, Not well placed]
     if bonus_rating >= 130:
         # High performers: likely Surpasses
         what_weights = [0.6, 0.35, 0.05]  # Surpasses, Meets, MeetsSome
         how_weights = [0.5, 0.45, 0.05, 0.0]
         agility_weight = 0.6  # 60% chance of "Always"
-        movement_weights = [0.5, 0.4, 0.1]  # Continue, Promotion, Lateral
+        movement_weights = [0.45, 0.35, 0.1, 0.1, 0.0]
     elif bonus_rating >= 110:
         # Strong performers: likely Meets with some Surpasses
         what_weights = [0.3, 0.65, 0.05]
         how_weights = [0.25, 0.65, 0.1, 0.0]
         agility_weight = 0.4
-        movement_weights = [0.6, 0.3, 0.1]
+        movement_weights = [0.55, 0.25, 0.1, 0.1, 0.0]
     elif bonus_rating >= 90:
         # Solid performers: mostly Meets
         what_weights = [0.1, 0.8, 0.1]
         how_weights = [0.1, 0.75, 0.15, 0.0]
         agility_weight = 0.3
-        movement_weights = [0.75, 0.2, 0.05]
+        movement_weights = [0.75, 0.15, 0.05, 0.05, 0.0]
     else:
         # Underperformers: likely Meets Some or lower
         what_weights = [0.0, 0.4, 0.6]
         how_weights = [0.0, 0.3, 0.5, 0.2]
         agility_weight = 0.15
-        movement_weights = [0.9, 0.05, 0.05]
+        movement_weights = [0.80, 0.0, 0.05, 0.0, 0.15]
 
     # Generate What/How
     perf_what = random.choices(PERF_WHAT_OPTIONS, weights=what_weights)[0]
