@@ -9,6 +9,8 @@ import os
 import sys
 import tempfile
 
+DEMO_TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'demo-templates')
+
 
 class TestCreateSampleData:
     """Tests for scripts/create_sample_data.py"""
@@ -373,6 +375,10 @@ class TestCreateDemoTemplates:
             sys.path.remove(scripts_dir)
 
 
+@pytest.mark.skipif(
+    not os.path.exists(DEMO_TEMPLATES_DIR),
+    reason="Demo templates not generated (run scripts/create_demo_templates.py)"
+)
 class TestDemoTemplateSchemaValidation:
     """Verify demo template databases match the current model schema.
 
@@ -388,15 +394,10 @@ class TestDemoTemplateSchemaValidation:
         # Get expected columns from the Employee model
         expected_columns = {col.name for col in Employee.__table__.columns}
 
-        # Check each demo template
-        demo_templates_dir = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), 'demo-templates'
-        )
-
         template_files = ['small-team.db', 'large-team.db']
 
         for template_file in template_files:
-            db_path = os.path.join(demo_templates_dir, template_file)
+            db_path = os.path.join(DEMO_TEMPLATES_DIR, template_file)
             assert os.path.exists(db_path), f"Demo template not found: {template_file}"
 
             # Get actual columns from the database
