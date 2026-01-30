@@ -178,12 +178,12 @@ This will:
 
 ### Step 3: Start Rating
 
-Navigate to **Rate Team** to begin entering performance ratings.
+Navigate to **Bonus Rating** to begin entering performance ratings.
 
 ## Workflow
 
 ### 1. Enter Performance Ratings
-- Navigate to **Rate Team** tab
+- Navigate to **Bonus Rating** tab
 - For each employee:
   - Enter performance rating (0-200%, where 100% = met expectations)
   - Add justification explaining the rating
