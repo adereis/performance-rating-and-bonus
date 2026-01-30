@@ -709,6 +709,194 @@
         border-top: 1px dashed #dee2e6;
         font-style: italic;
     }
+
+    /* Main layout - sidebar + content (for detailed view) */
+    .rating-layout {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 20px;
+        align-items: start;
+    }
+
+    /* Sticky sidebar for employee index */
+    .employee-index {
+        position: sticky;
+        top: 20px;
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+    }
+
+    .employee-index h4 {
+        font-size: 13px;
+        color: #666;
+        margin: 0 0 12px 0;
+        text-transform: uppercase;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .index-search {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 13px;
+        margin-bottom: 12px;
+    }
+
+    .index-search:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .index-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .index-team-header {
+        font-size: 11px;
+        color: #888;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin: 12px 0 6px 0;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .index-team-header:first-child {
+        margin-top: 0;
+    }
+
+    .index-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        margin: 2px 0;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .index-item:hover {
+        background: #f0f0f0;
+    }
+
+    .index-item.active {
+        background: #667eea;
+        color: white;
+    }
+
+    .index-item .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .index-item .status-dot.rated {
+        background: #27ae60;
+    }
+
+    .index-item .status-dot.unrated {
+        background: #e0e0e0;
+        border: 1px solid #ccc;
+    }
+
+    .index-item .name {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Team group sections (collapsible per-manager boxes) */
+    .team-group {
+        margin-bottom: 20px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .team-group-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .team-group-header:hover {
+        filter: brightness(1.05);
+    }
+
+    .team-group-header .team-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .team-group-header .team-name {
+        font-weight: 600;
+        font-size: 15px;
+    }
+
+    .team-group-header .team-stats {
+        font-size: 13px;
+        opacity: 0.9;
+    }
+
+    .team-group-header .toggle-icon {
+        font-size: 12px;
+        transition: transform 0.3s;
+    }
+
+    .team-group-header.collapsed .toggle-icon {
+        transform: rotate(-90deg);
+    }
+
+    .team-group-content {
+        padding: 20px;
+        display: grid;
+        gap: 20px;
+    }
+
+    .team-group-content.collapsed {
+        display: none;
+    }
+
+    .rating-main {
+        min-width: 0; /* Prevent grid blowout */
+    }
+
+    .rating-form-inner {
+        display: grid;
+        gap: 20px;
+    }
+
+    /* Responsive - hide sidebar on small screens */
+    @media (max-width: 900px) {
+        .rating-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .employee-index {
+            display: none;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -853,114 +1041,164 @@
         </div>
     </div>
 
-    <!-- Detailed view -->
-    <div class="rating-form" id="detailed-view">
-        {% for employee in team %}
-        {% set has_tenets = (employee.tenets_strengths and employee.tenets_strengths != '[]') or (employee.tenets_improvements and employee.tenets_improvements != '[]') %}
-        {% set is_rated = employee.performance_rating_percent and employee.justification and has_tenets %}
-        {% set is_incomplete = employee.performance_rating_percent and not is_rated %}
-        <div class="employee-card {% if is_rated %}rated{% endif %}"
-             data-associate-id="{{ employee['Associate ID'] }}"
-             data-is-rated="{{ 'true' if is_rated else 'false' }}"
-             data-is-incomplete="{{ 'true' if is_incomplete else 'false' }}">
-
-            <div class="employee-header">
-                <div>
-                    <label>Name</label>
-                    <span class="employee-name" data-employee-id="{{ employee['Associate ID'] }}">{{ employee.Associate }}</span>
-                </div>
-                <div>
-                    <label>Job Profile</label>
-                    <span>{{ employee['Current Job Profile'] }}</span>
-                </div>
-            </div>
-
-            <div class="workday-info">
-                <div>
-                    <label>Supervisory Org</label>
-                    <span>{{ employee['Supervisory Organization'] }}</span>
-                </div>
-                <div>
-                    <label>Associate ID</label>
-                    <span>{{ employee['Associate ID'] }}</span>
-                </div>
-            </div>
-
-            <div class="rating-section">
-                <h4>Performance Rating & Manager Inputs</h4>
-
-                <div class="rating-input-group">
-                    <label>Performance Rating %:</label>
-                    <input type="number"
-                           min="0"
-                           max="200"
-                           step="1"
-                           placeholder="0-200"
-                           value="{{ employee.performance_rating_percent }}"
-                           data-field="rating_percent"
-                           class="rating-percent-input">
-                    <span class="validation-error" style="display: none; color: #e74c3c; font-size: 12px; margin-left: 10px;"></span>
-                </div>
-                <div class="rating-hint">0-200% (100% = met expectations, 200% = 2x performance)</div>
-
-                <div class="rating-input-group">
-                    <label>Justification:</label>
-                    <textarea data-field="justification" placeholder="One paragraph explaining the rating...">{{ employee.justification or '' }}</textarea>
-                </div>
-
-                <div class="rating-input-group">
-                    <label>Mentor:</label>
-                    <input type="text" data-field="mentor" placeholder="Who is mentoring this person?" value="{{ employee.mentor or '' }}">
-                    {% if employee.talent_mentor %}
-                    <div class="cross-cycle-hint show">
-                        <span class="hint-label">From Talent Calibration:</span>
-                        <span class="hint-value">{{ employee.talent_mentor }}</span>
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div class="rating-input-group">
-                    <label>Mentee(s):</label>
-                    <input type="text" data-field="mentees" placeholder="Who is this person mentoring?" value="{{ employee.mentees or '' }}">
-                    {% if employee.talent_mentees %}
-                    <div class="cross-cycle-hint show">
-                        <span class="hint-label">From Talent Calibration:</span>
-                        <span class="hint-value">{{ employee.talent_mentees }}</span>
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div class="tenets-section">
-                    <h5>Team Tenets Evaluation (Select 3 strengths and 2-3 areas for improvement)</h5>
-                    <div class="loading-tenets">Loading tenets...</div>
-                    <div class="tenets-grid" style="display: none;">
-                        <div class="tenet-category">
-                            <h6>Strengths (Select 3)</h6>
-                            <div class="tenet-items" data-tenet-type="strengths"></div>
-                            <div class="tenet-count-warning" data-warning-type="strengths">Please select exactly 3 strengths</div>
-                        </div>
-                        <div class="tenet-category">
-                            <h6>Areas for Improvement (Select 2-3)</h6>
-                            <div class="tenet-items" data-tenet-type="improvements"></div>
-                            <div class="tenet-count-warning" data-warning-type="improvements">Please select 2 or 3 areas for improvement</div>
-                        </div>
-                    </div>
-                    <div class="tenets-legend">
-                        <span class="legend-item"><span class="legend-indicator"></span> Also selected in Talent Calibration</span>
-                    </div>
-                </div>
-
-                <div style="margin-top: 20px; text-align: right;">
-                    <span class="saved-indicator">✓ Auto-saved {% if employee.last_updated %}({{ employee.last_updated }}){% endif %}</span>
-                </div>
-            </div>
+    <!-- Detailed view with sidebar navigation -->
+    <div class="rating-layout" id="detailed-view">
+        <!-- Sticky Employee Index Sidebar -->
+        <div class="employee-index">
+            <h4>Quick Jump <span style="font-size: 11px; color: #999;">({{ team|length }})</span></h4>
+            <input type="text" class="index-search" placeholder="Search..." oninput="filterIndex(this.value)">
+            <ul class="index-list">
+                {% if is_multi_team %}
+                    {% for team_group in teams_grouped %}
+                    <li class="index-team-header" data-org="{{ team_group.org }}">{{ team_group.org|truncate(25, True) }}</li>
+                    {% for employee in team_group.members %}
+                    <li class="index-item" data-employee-id="{{ employee['Associate ID'] }}" onclick="scrollToEmployee('{{ employee['Associate ID'] }}')">
+                        <span class="status-dot {% if employee._is_rated %}rated{% else %}unrated{% endif %}"></span>
+                        <span class="name">{{ employee.Associate }}</span>
+                    </li>
+                    {% endfor %}
+                    {% endfor %}
+                {% else %}
+                    {% for employee in team %}
+                    <li class="index-item" data-employee-id="{{ employee['Associate ID'] }}" onclick="scrollToEmployee('{{ employee['Associate ID'] }}')">
+                        <span class="status-dot {% if employee._is_rated %}rated{% else %}unrated{% endif %}"></span>
+                        <span class="name">{{ employee.Associate }}</span>
+                    </li>
+                    {% endfor %}
+                {% endif %}
+            </ul>
         </div>
-        {% endfor %}
-    </div>
+
+        <!-- Main Content Area -->
+        <div class="rating-main">
+        {% if is_multi_team %}
+            <!-- Multi-team view: grouped by supervisory organization -->
+            {% for team_group in teams_grouped %}
+            <div class="team-group" data-org="{{ team_group.org }}">
+                <div class="team-group-header" onclick="toggleTeamGroup(this)">
+                    <div class="team-info">
+                        <span class="team-name">{{ team_group.org }}</span>
+                        <span class="team-stats">{{ team_group.rated }}/{{ team_group.total }} rated</span>
+                    </div>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="team-group-content">
+                {% for employee in team_group.members %}
+                {% set has_tenets = (employee.tenets_strengths and employee.tenets_strengths != '[]') or (employee.tenets_improvements and employee.tenets_improvements != '[]') %}
+                {% set is_rated = employee.performance_rating_percent and employee.justification and has_tenets %}
+                {% set is_incomplete = employee.performance_rating_percent and not is_rated %}
+                {% include "rate_card.html" %}
+                {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <!-- Single team view: flat list -->
+            <div class="rating-form-inner">
+            {% for employee in team %}
+            {% set has_tenets = (employee.tenets_strengths and employee.tenets_strengths != '[]') or (employee.tenets_improvements and employee.tenets_improvements != '[]') %}
+            {% set is_rated = employee.performance_rating_percent and employee.justification and has_tenets %}
+            {% set is_incomplete = employee.performance_rating_percent and not is_rated %}
+            {% include "rate_card.html" %}
+            {% endfor %}
+            </div><!-- /.rating-form-inner -->
+        {% endif %}
+        </div><!-- /.rating-main -->
+    </div><!-- /.rating-layout -->
     {% endif %}
 </div>
 
 <script>
+// ============================================
+// Team Group Toggle (for multi-team view)
+// ============================================
+function toggleTeamGroup(header) {
+    header.classList.toggle('collapsed');
+    const content = header.nextElementSibling;
+    content.classList.toggle('collapsed');
+}
+
+// ============================================
+// Employee Index Navigation
+// ============================================
+function scrollToEmployee(associateId) {
+    const card = document.querySelector(`.employee-card[data-associate-id="${associateId}"]`);
+    if (!card) return;
+
+    // Ensure parent team group is expanded (for multi-team view)
+    const teamContent = card.closest('.team-group-content');
+    if (teamContent && teamContent.classList.contains('collapsed')) {
+        const teamHeader = teamContent.previousElementSibling;
+        if (teamHeader) {
+            teamHeader.classList.remove('collapsed');
+            teamContent.classList.remove('collapsed');
+        }
+    }
+
+    // Scroll to card
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Highlight in index
+    document.querySelectorAll('.index-item').forEach(item => item.classList.remove('active'));
+    const indexItem = document.querySelector(`.index-item[data-employee-id="${associateId}"]`);
+    if (indexItem) {
+        indexItem.classList.add('active');
+        // Remove highlight after a delay
+        setTimeout(() => indexItem.classList.remove('active'), 2000);
+    }
+}
+
+function filterIndex(searchTerm) {
+    const term = searchTerm.toLowerCase().trim();
+    const items = document.querySelectorAll('.index-item');
+    const teamHeaders = document.querySelectorAll('.index-team-header');
+
+    // Track which teams have visible items
+    const visibleTeams = new Set();
+
+    items.forEach(item => {
+        const name = item.querySelector('.name')?.textContent?.toLowerCase() || '';
+        const matches = term === '' || name.includes(term);
+        item.style.display = matches ? 'flex' : 'none';
+
+        // Track visible teams
+        if (matches) {
+            const prevHeader = findPreviousTeamHeader(item);
+            if (prevHeader) {
+                visibleTeams.add(prevHeader);
+            }
+        }
+    });
+
+    // Show/hide team headers based on visible items
+    teamHeaders.forEach(header => {
+        header.style.display = (term === '' || visibleTeams.has(header)) ? 'block' : 'none';
+    });
+}
+
+function findPreviousTeamHeader(item) {
+    let prev = item.previousElementSibling;
+    while (prev) {
+        if (prev.classList.contains('index-team-header')) {
+            return prev;
+        }
+        prev = prev.previousElementSibling;
+    }
+    return null;
+}
+
+// Update sidebar status dot when employee rating status changes
+function updateSidebarStatus(associateId, isRated) {
+    const indexItem = document.querySelector(`.index-item[data-employee-id="${associateId}"]`);
+    if (indexItem) {
+        const statusDot = indexItem.querySelector('.status-dot');
+        if (statusDot) {
+            statusDot.classList.remove('rated', 'unrated');
+            statusDot.classList.add(isRated ? 'rated' : 'unrated');
+        }
+    }
+}
+
 // Guidelines panel toggle with localStorage persistence
 function toggleGuidelines() {
     const content = document.getElementById('guidelines-content');
