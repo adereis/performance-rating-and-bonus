@@ -161,6 +161,64 @@
         color: #155724;
     }
 
+    /* Previous Cycle Comparison */
+    .overall-perf-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .previous-cycle-indicator {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        opacity: 0.85;
+    }
+
+    .previous-label {
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .previous-value {
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-weight: 500;
+    }
+
+    .previous-value.high-impact {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .previous-value.successful {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    .previous-value.evolving {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .previous-value.low {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .change-indicator {
+        font-size: 10px;
+        font-weight: 600;
+        color: #6c757d;
+        background: #e9ecef;
+        padding: 1px 5px;
+        border-radius: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
     .saved-indicator {
         color: #27ae60;
         font-size: 14px;
@@ -635,8 +693,21 @@
 
                 <div class="calibration-input-group">
                     <label>Overall Performance</label>
-                    <div class="derived-value overall-perf-display {% if employee.talent_overall_perf == 'High Impact Performer' %}high-impact{% elif employee.talent_overall_perf == 'Successful Performer' %}successful{% elif employee.talent_overall_perf == 'Evolving Performer' %}evolving{% elif employee.talent_overall_perf == 'Low Performer' %}low{% endif %}">
-                        {{ employee.talent_overall_perf or '(auto-calculated)' }}
+                    <div class="overall-perf-row">
+                        <div class="derived-value overall-perf-display {% if employee.talent_overall_perf == 'High Impact Performer' %}high-impact{% elif employee.talent_overall_perf == 'Successful Performer' %}successful{% elif employee.talent_overall_perf == 'Evolving Performer' %}evolving{% elif employee.talent_overall_perf == 'Low Performer' %}low{% endif %}">
+                            {{ employee.talent_overall_perf or '(auto-calculated)' }}
+                        </div>
+                        {% if employee.talent_last_overall_perf %}
+                        <div class="previous-cycle-indicator" title="Previous talent cycle result">
+                            <span class="previous-label">Prev:</span>
+                            <span class="previous-value {% if employee.talent_last_overall_perf == 'High Impact Performer' %}high-impact{% elif employee.talent_last_overall_perf == 'Successful Performer' %}successful{% elif employee.talent_last_overall_perf == 'Evolving Performer' %}evolving{% elif employee.talent_last_overall_perf == 'Low Performer' %}low{% endif %}">
+                                {{ employee.talent_last_overall_perf | replace(' Performer', '') }}
+                            </span>
+                            {% if employee.talent_overall_perf and employee.talent_overall_perf != employee.talent_last_overall_perf %}
+                            <span class="change-indicator">Changed</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

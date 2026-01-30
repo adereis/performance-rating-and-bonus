@@ -1080,6 +1080,64 @@
             color: #721c24;
         }
 
+        /* Previous Cycle Comparison (Modal) */
+        .overall-perf-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .previous-cycle-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            opacity: 0.85;
+        }
+
+        .previous-label {
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .previous-value {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        .previous-value.high-impact {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .previous-value.successful {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .previous-value.evolving {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .previous-value.low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .change-indicator {
+            font-size: 10px;
+            font-weight: 600;
+            color: #6c757d;
+            background: #e9ecef;
+            padding: 1px 5px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
         /* Future Talent Indicator */
         .future-talent-badge {
             display: inline-flex;
@@ -2042,10 +2100,19 @@
                             </div>
                             <div class="talent-field full-width">
                                 <div class="talent-field-label">Overall Performance</div>
-                                ${employee.talent_overall_perf ?
-                                    `<span class="talent-overall-perf ${getOverallPerfClass(employee.talent_overall_perf)}">${escapeHtml(employee.talent_overall_perf)}</span>` :
-                                    '<div class="talent-field-value empty">Not determined</div>'
-                                }
+                                <div class="overall-perf-row">
+                                    ${employee.talent_overall_perf ?
+                                        `<span class="talent-overall-perf ${getOverallPerfClass(employee.talent_overall_perf)}">${escapeHtml(employee.talent_overall_perf)}</span>` :
+                                        '<span class="talent-field-value empty">Not determined</span>'
+                                    }
+                                    ${employee.talent_last_overall_perf ?
+                                        `<span class="previous-cycle-indicator" title="Previous talent cycle result">
+                                            <span class="previous-label">Prev:</span>
+                                            <span class="previous-value ${getOverallPerfClass(employee.talent_last_overall_perf)}">${escapeHtml(employee.talent_last_overall_perf.replace(' Performer', ''))}</span>
+                                            ${employee.talent_overall_perf && employee.talent_overall_perf !== employee.talent_last_overall_perf ? '<span class="change-indicator">Changed</span>' : ''}
+                                        </span>` : ''
+                                    }
+                                </div>
                             </div>
                         </div>
                         <div class="talent-section-divider">
