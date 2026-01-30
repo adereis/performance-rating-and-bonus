@@ -3286,6 +3286,7 @@ def analyze_import():
             'has_bonus_column': analysis['has_bonus_column'],
             'notes_count': analysis['notes_count'],
             'allocation_count': analysis.get('allocation_count', 0),
+            'employees_with_allocations': analysis.get('employees_with_allocations', []),
             'metadata': analysis.get('metadata', {}),
             'import_detection': analysis.get('import_detection', {}),
             'period_exists': False,

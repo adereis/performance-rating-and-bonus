@@ -375,6 +375,7 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
         employee_count = 0
         notes_count = 0
         allocation_count = 0  # Employees with proposed bonus allocation
+        employees_with_allocations = []  # Names of employees with allocations
 
         # Find column indices
         col_indices = find_column_indices(headers)
@@ -402,6 +403,9 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
             bonus_idx = col_indices.get('proposed_percent_of_target')
             if bonus_idx is not None and bonus_idx < len(row) and row[bonus_idx]:
                 allocation_count += 1
+                # Record the employee name
+                if associate_idx is not None and associate_idx < len(row):
+                    employees_with_allocations.append(str(associate_val).strip())
 
         wb.close()
 
@@ -415,6 +419,7 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
             'has_bonus_column': col_indices.get('proposed_percent_of_target') is not None,
             'notes_count': notes_count,
             'allocation_count': allocation_count,
+            'employees_with_allocations': employees_with_allocations,
             'columns': headers,
             'metadata': metadata,
             'import_detection': import_detection

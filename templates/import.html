@@ -359,6 +359,52 @@
         cursor: pointer;
     }
 
+    .allocation-notice {
+        display: none;
+        background: #e8f4fd;
+        border: 1px solid #3498db;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .allocation-notice.visible {
+        display: block;
+    }
+
+    .allocation-notice h5 {
+        color: #1e5f8a;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .allocation-notice p {
+        color: #1e5f8a;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+
+    .allocation-notice .employee-list {
+        background: #fff;
+        border-radius: 4px;
+        padding: 10px 15px;
+        font-size: 13px;
+        color: #2c3e50;
+        max-height: 120px;
+        overflow-y: auto;
+    }
+
+    .allocation-notice .employee-list span {
+        display: inline-block;
+        margin-right: 8px;
+    }
+
+    .allocation-notice .employee-list span:not(:last-child)::after {
+        content: ",";
+    }
+
     .import-actions {
         display: flex;
         gap: 15px;
@@ -1088,6 +1134,18 @@ function resetDemoForm() {
                 </label>
             </div>
 
+            <!-- Allocation Notice -->
+            <div class="allocation-notice" id="allocationNotice">
+                <h5>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Employees With Workday Allocations (No Ratings)
+                </h5>
+                <p>These employees have a "Proposed % of Target Bonus" in Workday but no Performance Rating in this tool. You'll need to enter ratings for them on the Rate Team page.</p>
+                <div class="employee-list" id="allocationEmployeeList"></div>
+            </div>
+
             <!-- Actions -->
             <div class="import-actions">
                 <button class="btn btn-secondary" onclick="resetImport()">Reset</button>
@@ -1358,6 +1416,16 @@ function resetDemoForm() {
             document.getElementById('partialItem').style.display = 'block';
             document.getElementById('partialCount').textContent = data.allocation_count;
             document.querySelector('#partialItem .label').textContent = 'With Allocations';
+
+            // Show allocation notice with employee names
+            const notice = document.getElementById('allocationNotice');
+            const employeeList = document.getElementById('allocationEmployeeList');
+            if (data.employees_with_allocations && data.employees_with_allocations.length > 0) {
+                employeeList.innerHTML = data.employees_with_allocations
+                    .map(name => `<span>${name}</span>`)
+                    .join('');
+                notice.classList.add('visible');
+            }
         }
 
         // Show import options section
@@ -1557,6 +1625,8 @@ function resetDemoForm() {
 
         document.getElementById('analysisResults').classList.remove('visible');
         document.getElementById('overwriteWarning').classList.remove('visible');
+        document.getElementById('allocationNotice').classList.remove('visible');
+        document.getElementById('allocationEmployeeList').innerHTML = '';
         document.getElementById('confirmOverwrite').checked = false;
         document.getElementById('clearExisting').checked = false;
 
