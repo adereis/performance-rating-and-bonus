@@ -2208,7 +2208,8 @@ def calculate_bonus_for_employees(employees, params, budget_override=0.0, workda
     total_allocated = 0
     for result in bonus_results:
         result['final_bonus'] = result['raw_share'] * value_per_share
-        result['bonus_percent_of_target'] = (result['final_bonus'] / result['bonus_target'] * 100) if result['bonus_target'] > 0 else 0
+        # Round to integer - decimals are unnecessary and error-prone
+        result['bonus_percent_of_target'] = round(result['final_bonus'] / result['bonus_target'] * 100) if result['bonus_target'] > 0 else 0
         total_allocated += result['final_bonus']
 
     # Create lookup by Associate ID for easy access
@@ -2505,7 +2506,7 @@ def export_page():
 
         export_data.append({
             'employee': employee,
-            'bonus_percent': round(bonus_percent_of_target, 1),
+            'bonus_percent': bonus_percent_of_target,  # Already integer from calculation
             'description': description_text,
             'final_bonus': result['final_bonus'],
             'rating': result['rating']
