@@ -503,7 +503,47 @@ def find_column_indices(headers: List[str]) -> Dict[str, Optional[int]]:
     return indices
 
 
-def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], str]:
+def extract_manager_currency_from_headers(headers: List[str]) -> Optional[str]:
+    """
+    Extract the manager's currency code from column headers.
+
+    Workday exports include converted columns like "Bonus Target (USD)" or
+    "Base Pay All Countries (AUD)" where the 3-letter code in parentheses
+    indicates the manager's reporting currency.
+
+    Priority order:
+    1. Bonus Target (XXX) - most reliable indicator
+    2. Base Pay All Countries (XXX) - fallback
+
+    Args:
+        headers: List of header strings
+
+    Returns:
+        Currency code (e.g., 'USD', 'AUD') or None if not found
+    """
+    # Look for currency code in parentheses, excluding "(Local)"
+    # Priority: Bonus Target columns first, then Base Pay
+    priority_patterns = [
+        r'bonus target.*\(([a-z]{3})\)',
+        r'base pay all countries \(([a-z]{3})\)',
+        r'proposed bonus amount \(([a-z]{3})\)',
+    ]
+
+    for pattern in priority_patterns:
+        for header in headers:
+            if header:
+                header_lower = header.lower().strip()
+                # Skip "(Local)" columns
+                if '(local)' in header_lower:
+                    continue
+                match = re.search(pattern, header_lower)
+                if match:
+                    return match.group(1).upper()
+
+    return None
+
+
+def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], str, Dict[str, Any]]:
     """
     Parse all employee data from a Workday XLSX export.
 
@@ -511,8 +551,9 @@ def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], st
         file_path: Path to the XLSX file
 
     Returns:
-        Tuple of (success, employees_list, error_message)
+        Tuple of (success, employees_list, error_message, metadata)
         employees_list contains dicts with all parsed fields
+        metadata contains period_name, total_pool, currency
     """
     try:
         wb = openpyxl.load_workbook(file_path, read_only=True)
@@ -527,11 +568,16 @@ def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], st
         # Extract metadata from header rows (needed for validation)
         metadata = extract_workday_metadata(rows, header_idx) if header_idx is not None else {}
 
+        # Extract manager currency from column headers (e.g., "Bonus Target (USD)")
+        # This is more reliable than inferring from employee data
+        if headers and not metadata.get('currency'):
+            metadata['currency'] = extract_manager_currency_from_headers(headers)
+
         # Validate the file format (including metadata check)
         is_valid, validation_error = validate_workday_format(rows, header_idx, headers, metadata)
         if not is_valid:
             wb.close()
-            return False, [], validation_error
+            return False, [], validation_error, {}
 
         col_indices = find_column_indices(headers)
 
@@ -581,11 +627,20 @@ def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], st
 
             employees.append(emp)
 
+        # Calculate total_pool from bonus targets if not already in metadata
+        if not metadata.get('total_pool') and employees:
+            total_pool = sum(
+                e.get('bonus_target_manager_currency') or e.get('bonus_target_local_currency') or 0
+                for e in employees
+            )
+            if total_pool > 0:
+                metadata['total_pool'] = total_pool
+
         wb.close()
-        return True, employees, ''
+        return True, employees, '', metadata
 
     except Exception as e:
-        return False, [], str(e)
+        return False, [], str(e), {}
 
 
 def _get_val(row: tuple, idx: Optional[int]) -> Any:

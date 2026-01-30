@@ -401,11 +401,14 @@ def get_currency_format(currency_code):
 
 
 def get_manager_currency():
-    """Detect the manager's currency from employee data.
+    """Detect the manager's currency.
 
-    The manager's currency is determined by looking at domestic employees
-    (those whose bonus_target_manager_currency is NULL, meaning their local
-    currency IS the manager's currency).
+    Priority order:
+    1. BonusSettings.manager_currency - extracted from column headers during import
+       (e.g., 'USD' from 'Bonus Target (USD)')
+    2. Domestic employee detection - employees with NULL bonus_target_manager_currency
+    3. Majority currency fallback - most common currency among employees
+    4. Default to USD
 
     Returns:
         tuple: (currency_code, currency_symbol) e.g., ('AUD', 'A$')
@@ -422,33 +425,40 @@ def get_manager_currency():
 
     db = get_db()
     try:
-        # Domestic employees have NULL in bonus_target_manager_currency
-        # because their local currency IS the manager's currency
-        domestic = db.query(Employee).filter(
-            Employee.bonus_target_manager_currency.is_(None),
-            Employee.currency.isnot(None)
-        ).first()
-
-        if domestic and domestic.currency:
-            currency = domestic.currency
+        # Priority 1: Check BonusSettings for currency extracted from column headers
+        settings = db.query(BonusSettings).first()
+        if settings and settings.manager_currency:
+            currency = settings.manager_currency
             symbol = CURRENCY_SYMBOLS.get(currency, currency)
             result = (currency, symbol)
-        elif db.query(Employee).filter(Employee.currency.isnot(None)).first():
-            # If all employees have manager_currency set, use majority currency
-            from collections import Counter
-            all_employees = db.query(Employee).filter(
-                Employee.currency.isnot(None)
-            ).all()
-            currencies = [e.currency for e in all_employees]
-            if currencies:
-                most_common = Counter(currencies).most_common(1)[0][0]
-                symbol = CURRENCY_SYMBOLS.get(most_common, most_common)
-                result = (most_common, symbol)
-            else:
-                result = ('USD', '$')
         else:
-            # Default to USD
-            result = ('USD', '$')
+            # Priority 2: Domestic employees have NULL in bonus_target_manager_currency
+            # because their local currency IS the manager's currency
+            domestic = db.query(Employee).filter(
+                Employee.bonus_target_manager_currency.is_(None),
+                Employee.currency.isnot(None)
+            ).first()
+
+            if domestic and domestic.currency:
+                currency = domestic.currency
+                symbol = CURRENCY_SYMBOLS.get(currency, currency)
+                result = (currency, symbol)
+            elif db.query(Employee).filter(Employee.currency.isnot(None)).first():
+                # Priority 3: If all employees have manager_currency set, use majority currency
+                from collections import Counter
+                all_employees = db.query(Employee).filter(
+                    Employee.currency.isnot(None)
+                ).all()
+                currencies = [e.currency for e in all_employees]
+                if currencies:
+                    most_common = Counter(currencies).most_common(1)[0][0]
+                    symbol = CURRENCY_SYMBOLS.get(most_common, most_common)
+                    result = (most_common, symbol)
+                else:
+                    result = ('USD', '$')
+            else:
+                # Priority 4: Default to USD
+                result = ('USD', '$')
 
         # Cache result for this request
         if has_request_context():
@@ -3300,6 +3310,7 @@ def import_current():
 
         spreadsheet_type = analysis.get('spreadsheet_type', 'bonus')
         workday_pool = None
+        manager_currency = None
         if analysis.get('metadata'):
             workday_pool = analysis['metadata'].get('total_pool')
 
@@ -3308,7 +3319,12 @@ def import_current():
             from xlsx_utils import parse_talent_xlsx_employees
             success, employees, error = parse_talent_xlsx_employees(temp_path)
         else:
-            success, employees, error = parse_xlsx_employees(temp_path)
+            success, employees, error, parsed_metadata = parse_xlsx_employees(temp_path)
+            # Use calculated total_pool from parsing if not in analysis metadata
+            if not workday_pool and parsed_metadata.get('total_pool'):
+                workday_pool = parsed_metadata['total_pool']
+            # Extract manager currency from column headers (e.g., 'USD' from 'Bonus Target (USD)')
+            manager_currency = parsed_metadata.get('currency')
 
         if not success:
             return jsonify({'success': False, 'error': error}), 400
@@ -3343,16 +3359,19 @@ def import_current():
                 cleared = db.query(Employee).count()
                 db.query(Employee).delete()
 
-            # Store Workday pool in BonusSettings if extracted from metadata
-            if workday_pool is not None:
+            # Store Workday pool and manager currency in BonusSettings
+            if workday_pool is not None or manager_currency is not None:
                 settings = db.query(BonusSettings).first()
                 if not settings:
                     settings = BonusSettings()
                     db.add(settings)
-                settings.workday_pool = workday_pool
-                # Pool came from Workday metadata, so it's verified
-                settings.pool_source = 'workday_metadata'
-                settings.pool_verified = True
+                if workday_pool is not None:
+                    settings.workday_pool = workday_pool
+                    # Pool came from Workday metadata, so it's verified
+                    settings.pool_source = 'workday_metadata'
+                    settings.pool_verified = True
+                if manager_currency is not None:
+                    settings.manager_currency = manager_currency
                 settings.last_updated = datetime.now()
 
             imported = 0
@@ -3522,7 +3541,7 @@ def import_historical():
         file.save(temp_path)
 
         # Parse the file
-        success, employees, error = parse_xlsx_employees(temp_path)
+        success, employees, error, _metadata = parse_xlsx_employees(temp_path)
         if not success:
             return jsonify({'success': False, 'error': error}), 400
 

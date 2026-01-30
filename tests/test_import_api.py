@@ -599,7 +599,7 @@ class TestXlsxUtils:
             f.write(xlsx_file.read())
 
         try:
-            success, parsed, error = parse_xlsx_employees(temp_path)
+            success, parsed, error, metadata = parse_xlsx_employees(temp_path)
 
             assert success is True
             assert len(parsed) == 1
@@ -614,6 +614,8 @@ class TestXlsxUtils:
             assert emp['bonus_target_manager_currency'] == 22500
             assert emp['proposed_percent_of_target_bonus'] == 118.5
             assert 'Performance Rating: 125%' in emp['notes']
+            # Check that currency was extracted from headers
+            assert metadata.get('currency') == 'USD'
         finally:
             os.remove(temp_path)
 
@@ -664,7 +666,7 @@ class TestInternationalManagerCurrency:
             f.write(xlsx_file.read())
 
         try:
-            success, parsed, error = parse_xlsx_employees(temp_path)
+            success, parsed, error, metadata = parse_xlsx_employees(temp_path)
 
             assert success is True, f"Parse failed: {error}"
             assert len(parsed) == 2
@@ -680,6 +682,9 @@ class TestInternationalManagerCurrency:
             assert nzd_emp['currency'] == 'NZD'
             assert nzd_emp['bonus_target_local_currency'] == 12000  # NZD
             assert nzd_emp['bonus_target_manager_currency'] == 10800  # AUD conversion
+
+            # Check that currency was extracted from headers
+            assert metadata.get('currency') == 'AUD'
         finally:
             os.remove(temp_path)
 
@@ -883,7 +888,7 @@ class TestValidation:
         wb.save(temp_path)
 
         try:
-            success, employees, error = parse_xlsx_employees(temp_path)
+            success, employees, error, metadata = parse_xlsx_employees(temp_path)
             assert success is False
             assert len(employees) == 0
             assert 'Could not find expected Workday columns' in error
