@@ -25,27 +25,44 @@ REM Get script directory
 set SCRIPT_DIR=%~dp0
 cd /d "%SCRIPT_DIR%"
 
-REM Create virtual environment if it doesn't exist
-set VENV_DIR=%SCRIPT_DIR%.venv
+REM Create and use virtual environment (use relative path)
+set VENV_DIR=.venv
+
 if not exist "%VENV_DIR%" (
     echo.
-    echo Creating virtual environment (first run only)...
+    echo Creating virtual environment...
     python -m venv "%VENV_DIR%"
+    if %ERRORLEVEL% neq 0 (
+        echo Error: Failed to create virtual environment
+        pause
+        exit /b 1
+    )
     echo Virtual environment created
 )
 
 REM Activate virtual environment
 call "%VENV_DIR%\Scripts\activate.bat"
-
-REM Install dependencies if needed
-if not exist "%VENV_DIR%\.deps_installed" (
-    echo.
-    echo Installing dependencies...
-    pip install --quiet --upgrade pip
-    pip install --quiet -r requirements.txt
-    echo. > "%VENV_DIR%\.deps_installed"
-    echo Dependencies installed
+if %ERRORLEVEL% neq 0 (
+    echo Error: Failed to activate virtual environment
+    pause
+    exit /b 1
 )
+
+REM Install dependencies
+echo.
+echo Installing dependencies...
+pip install --quiet --upgrade pip
+if %ERRORLEVEL% neq 0 (
+    echo Warning: pip upgrade had issues, continuing anyway
+)
+
+pip install --quiet -r requirements.txt
+if %ERRORLEVEL% neq 0 (
+    echo Error: Failed to install dependencies
+    pause
+    exit /b 1
+)
+echo Dependencies installed successfully
 
 set HOST=127.0.0.1
 set PORT=5000
