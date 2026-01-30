@@ -4,6 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Performance Rating{% endblock %}</title>
+    <!-- Early filter redirect: apply sessionStorage filters before body renders to prevent flash of unfiltered content -->
+    <script>
+    (function() {
+        window.__filterRedirectPending = false;
+
+        // Pages that don't support filtering
+        var noFilterPages = ['/history'];
+        if (noFilterPages.indexOf(window.location.pathname) !== -1) return;
+
+        // Skip if URL already has filter params
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('exclude_managers') || urlParams.has('exclude_titles') || urlParams.has('exclude_ids')) return;
+
+        var saved = sessionStorage.getItem('filters');
+        if (!saved) return;
+
+        try {
+            var filters = JSON.parse(saved);
+            var hasActiveFilters = filters.exclude_managers ||
+                (filters.exclude_titles && filters.exclude_titles.length) ||
+                (filters.exclude_ids && filters.exclude_ids.length);
+
+            if (hasActiveFilters) {
+                // Mark that we're about to redirect - body will be hidden via CSS
+                window.__filterRedirectPending = true;
+                document.documentElement.classList.add('filter-redirect-pending');
+
+                var params = new URLSearchParams(window.location.search);
+                if (filters.exclude_managers) params.set('exclude_managers', 'true');
+                if (filters.exclude_titles && filters.exclude_titles.length) params.set('exclude_titles', filters.exclude_titles.join(','));
+                if (filters.exclude_ids && filters.exclude_ids.length) params.set('exclude_ids', filters.exclude_ids.join(','));
+
+                window.location.search = params.toString();
+            }
+        } catch(e) {}
+    })();
+    </script>
+    <style>
+        /* Hide body during filter redirect to prevent flash of unfiltered content */
+        html.filter-redirect-pending body {
+            visibility: hidden !important;
+        }
+    </style>
     <style>
         * {
             margin: 0;
@@ -3094,50 +3137,7 @@
             window.location.href = window.location.pathname;
         }
 
-        // Restore filters from sessionStorage on navigation
-        document.addEventListener('DOMContentLoaded', function() {
-            // Skip filter restoration on pages where filters don't apply
-            if (!document.getElementById('filterToggle')) {
-                return;
-            }
-
-            // Only restore if no URL params present (navigating from another page)
-            const urlParams = new URLSearchParams(window.location.search);
-            const hasUrlFilters = urlParams.has('exclude_managers') ||
-                                urlParams.has('exclude_titles') ||
-                                urlParams.has('exclude_ids');
-
-            if (!hasUrlFilters) {
-                const savedFilters = sessionStorage.getItem('filters');
-                if (savedFilters) {
-                    try {
-                        const filters = JSON.parse(savedFilters);
-
-                        // Apply filters via URL
-                        const params = new URLSearchParams();
-
-                        if (filters.exclude_managers) {
-                            params.set('exclude_managers', 'true');
-                        }
-
-                        if (filters.exclude_titles && filters.exclude_titles.length) {
-                            params.set('exclude_titles', filters.exclude_titles.join(','));
-                        }
-
-                        if (filters.exclude_ids && filters.exclude_ids.length) {
-                            params.set('exclude_ids', filters.exclude_ids.join(','));
-                        }
-
-                        // Only reload if there are filters to apply
-                        if (params.toString()) {
-                            window.location.search = params.toString();
-                        }
-                    } catch (e) {
-                        console.error('Error restoring filters:', e);
-                    }
-                }
-            }
-        });
+        // NOTE: Filter restoration moved to early <head> script to prevent flash of unfiltered content
 
         // Close filter panel when clicking outside
         document.addEventListener('click', function(event) {

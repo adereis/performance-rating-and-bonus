@@ -3130,7 +3130,12 @@ def export_talent_csv():
 @app.route('/import')
 def import_page():
     """Import data page."""
-    return render_template('import.html', demo_mode=DEMO_MODE)
+    # Get filter info so the filter panel can be populated (for pre-navigation filtering)
+    filter_params = get_filter_params()
+    all_employees = get_all_employees()
+    _, filter_info = apply_employee_filters(all_employees, filter_params)
+
+    return render_template('import.html', demo_mode=DEMO_MODE, filter_info=filter_info)
 
 
 @app.route('/history')
