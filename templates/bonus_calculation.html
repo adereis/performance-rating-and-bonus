@@ -117,6 +117,13 @@
         padding: 2px 4px !important;
     }
 
+    .budget-edit-hint {
+        font-size: 10px;
+        color: #888;
+        margin-top: 4px;
+        opacity: 0.8;
+    }
+
     .bonus-table {
         width: 100%;
         border-collapse: collapse;
@@ -385,7 +392,7 @@
     <div class="summary-stats">
         <div class="summary-card">
             <h4 title="{% if workday_pool %}From Workday export metadata{% else %}Sum of employee bonus targets (no Workday pool in file){% endif %}">
-                {% if workday_pool %}Workday Pool{% else %}Bonus Pool{% endif %}
+                {% if workday_pool %}Imported Pool{% else %}Bonus Pool{% endif %}
                 {% if workday_pool %}<span style="font-size: 10px; color: #27ae60; font-weight: normal;">✓</span>{% endif %}
             </h4>
             <div class="value">{% if workday_pool %}{{ workday_pool|format_currency }}{% else %}{{ base_pool|format_currency }}{% endif %}</div>
@@ -396,16 +403,25 @@
             {% endif %}
         </div>
         <div class="summary-card" style="position: relative;">
-            <h4 title="Additional budget (in your currency). Can be negative. Distributes proportionally across all employees. Click to edit.">
+            <h4 title="Only fill this if you received a different budget. Leave empty to use Imported Pool.">
                 Budget Override
-                <span style="cursor: help; opacity: 0.6;">ⓘ</span>
+                <span style="cursor: help; opacity: 0.6; font-size: 11px;">✏️</span>
             </h4>
-            <div class="value" style="{% if budget_override > 0 %}color: #27ae60;{% elif budget_override < 0 %}color: #dc3545;{% endif %}">
-                {{ currency.symbol }}{% if currency.space %} {% endif %}<input type="number"
+            <div class="value">
+                {{ currency.symbol }}{% if currency.space %} {% endif %}<input type="text"
+                       inputmode="numeric"
                        id="budget_override_input"
-                       value="{{ budget_override }}"
+                       value="{% if budget_override > 0 %}{{ '{:,.0f}'.format(budget_override) }}{% endif %}"
                        style="border: none; background: transparent; color: inherit; font-size: inherit; font-weight: inherit; width: 120px; text-align: center; font-family: inherit;"
-                       title="Additional budget (in your currency). Can be negative. Auto-saves after 2 seconds.">
+                       placeholder="—"
+                       title="Enter your total budget if different. Leave empty to use Imported Pool.">
+            </div>
+            <div class="budget-edit-hint" id="budget-hint">
+                {% if budget_override > 0 %}
+                    Override active
+                {% else %}
+                    Using Imported Pool
+                {% endif %}
             </div>
             <div style="position: absolute; bottom: 5px; right: 10px; font-size: 11px; color: #27ae60; opacity: 0; transition: opacity 0.3s;" id="budget-save-indicator">
                 ✓ Saved
@@ -944,59 +960,88 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endif %}
 });
 
-// Budget override auto-save functionality using global AutoSave manager
-function saveBudgetOverride(value) {
+// Budget override: empty = use Imported Pool, filled = use this value as absolute replacement
+const budgetInput = document.getElementById('budget_override_input');
+if (budgetInput) {
     const indicator = document.getElementById('budget-save-indicator');
+    const hint = document.getElementById('budget-hint');
 
-    fetch('/api/bonus-settings', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            budget_override: value
-        })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            // Show save indicator
-            indicator.style.opacity = '1';
-            setTimeout(() => {
-                indicator.style.opacity = '0';
-            }, 2000);
+    // Parse value: handle different formats (32,435 or 32.435 or 32 435 or 30344.0 or 30344,00)
+    // Detect decimal separator: period or comma followed by 1-2 digits at end
+    function getOverrideValue() {
+        let value = budgetInput.value.trim();
+        if (!value) return 0;
 
-            // Reload page to show updated bonuses
-            setTimeout(() => {
-                window.location.reload();
-            }, 500);
-        } else {
-            console.error('Error saving budget override:', result.error);
+        // Check if period is a decimal separator (1-2 digits after it at end of string)
+        const periodDecimal = value.match(/\.(\d{1,2})$/);
+        if (periodDecimal) {
+            const cleaned = value.replace(/[^\d.]/g, '');
+            return Math.round(parseFloat(cleaned)) || 0;
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
-}
 
-// Set up budget override input auto-save using global AutoSave manager
-const budgetOverrideInput = document.getElementById('budget_override_input');
-if (budgetOverrideInput) {
-    budgetOverrideInput.addEventListener('input', function() {
-        const inputValue = this.value;
-        // Use global AutoSave manager - handles debounce and keepalive on unload
+        // Check if comma is a decimal separator (European: 30344,00)
+        const commaDecimal = value.match(/,(\d{1,2})$/);
+        if (commaDecimal) {
+            // Replace comma with period for parseFloat, strip other non-digits
+            const cleaned = value.replace(/[^\d,]/g, '').replace(',', '.');
+            return Math.round(parseFloat(cleaned)) || 0;
+        }
+
+        // Otherwise treat all non-digits as thousand separators
+        const raw = value.replace(/[^\d]/g, '');
+        return raw ? parseInt(raw, 10) : 0;
+    }
+
+    // Format number with thousand separators
+    function formatWithCommas(num) {
+        return num.toLocaleString('en-US');
+    }
+
+    function updateHint() {
+        const value = getOverrideValue();
+        hint.innerHTML = value > 0 ? 'Override active' : 'Using Imported Pool';
+    }
+
+    function saveBudgetOverride() {
+        const value = getOverrideValue();
+        fetch('/api/bonus-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ budget_override: value })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                indicator.style.opacity = '1';
+                setTimeout(() => { indicator.style.opacity = '0'; }, 2000);
+                setTimeout(() => { window.location.reload(); }, 500);
+            } else {
+                console.error('Error saving budget:', result.error);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    budgetInput.addEventListener('input', function() {
+        updateHint();
         window.AutoSave.debounce(
             'budget_override',
             '/api/bonus-settings',
-            () => ({ budget_override: inputValue }),
+            () => ({ budget_override: getOverrideValue() }),
             2000
         );
     });
 
-    // Also save on blur (when leaving the field)
-    budgetOverrideInput.addEventListener('blur', function() {
+    budgetInput.addEventListener('blur', function() {
+        // Format with commas on blur
+        const value = getOverrideValue();
+        if (value > 0) {
+            this.value = formatWithCommas(value);
+        } else {
+            this.value = '';
+        }
         window.AutoSave.flush('budget_override');
-        saveBudgetOverride(this.value);
+        saveBudgetOverride();
     });
 }
 </script>

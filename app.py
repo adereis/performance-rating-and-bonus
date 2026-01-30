@@ -2193,8 +2193,8 @@ def calculate_bonus_for_employees(employees, params, budget_override=0.0, workda
         'workday_pool': workday_pool,        # From Workday metadata (may be None)
         'sum_of_targets': sum_of_targets,    # Calculated from employee targets
         'base_pool': base_pool,              # What we're using (workday_pool or sum_of_targets)
-        'budget_override': budget_override,
-        'total_pool': adjusted_pool,         # base_pool + budget_override
+        'budget_override': budget_override,  # Absolute pool replacement (if >0, replaces base_pool)
+        'total_pool': adjusted_pool,         # Final pool for calculation
         'total_allocated': total_allocated,
         'value_per_share': value_per_share,
         'employees_without_bonus_target': employees_without_bonus_target
