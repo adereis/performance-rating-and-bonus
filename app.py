@@ -2466,6 +2466,7 @@ def export_page():
                              has_bonus_data=False,
                              has_talent_data=False,
                              export_mode='bonus',
+                             bonus_pending_sync_count=0,
                              filter_info=filter_info)
 
     # Get bonus calculation settings
@@ -2495,8 +2496,37 @@ def export_page():
     # Load tenets configuration
     _, tenets_map = load_tenets_config()
 
+    # Helper functions for modification detection
+    def is_field_modified(emp, field_name):
+        """Check if a field was modified from its original imported value.
+
+        Conservative: only returns True if we have an original to compare against.
+        Used for Workday Content fields (justification, proposed_actions, promo fields).
+        """
+        current = emp.get(field_name) or ''
+        original = emp.get(f'{field_name}_original')
+        # Can only detect modification if we tracked the original value at import
+        if original is None:
+            return False
+        return current != original
+
+    def needs_sync_to_workday(emp, field_name):
+        """Check if a Tool Additions field needs to be synced to Workday.
+
+        More aggressive: returns True if content exists but wasn't in original import.
+        Used for tool-generated fields (tenets, mentor, mentees, ai_related_activities).
+        """
+        current = emp.get(field_name) or ''
+        original = emp.get(f'{field_name}_original')
+        # If we have content but no original, it's a new addition needing sync
+        if original is None:
+            return bool(current)
+        # If we have an original, compare
+        return current != (original or '')
+
     # Format export data
     export_data = []
+    bonus_pending_sync_count = 0
     for result in bonus_calc['results']:
         employee = result['employee']
 
@@ -2541,12 +2571,51 @@ def export_page():
         # Calculate bonus percent of target
         bonus_percent_of_target = result['bonus_percent_of_target']
 
+        # Format tenets as text for display
+        strengths_text = ', '.join(strengths) if strengths else ''
+        improvements_text = ', '.join(improvements) if improvements else ''
+
+        # Check modification status for each field
+        justification_modified = is_field_modified(employee, 'justification')
+        mentor_modified = needs_sync_to_workday(employee, 'mentor')
+        mentees_modified = needs_sync_to_workday(employee, 'mentees')
+        ai_modified = needs_sync_to_workday(employee, 'ai_related_activities')
+        tenets_strengths_modified = needs_sync_to_workday(employee, 'tenets_strengths')
+        tenets_improvements_modified = needs_sync_to_workday(employee, 'tenets_improvements')
+
+        # Combined "needs sync" flag
+        needs_sync = (
+            justification_modified or
+            mentor_modified or
+            mentees_modified or
+            ai_modified or
+            tenets_strengths_modified or
+            tenets_improvements_modified
+        )
+
+        if needs_sync:
+            bonus_pending_sync_count += 1
+
         export_data.append({
             'employee': employee,
             'bonus_percent': bonus_percent_of_target,  # Already integer from calculation
             'description': description_text,
             'final_bonus': result['final_bonus'],
-            'rating': result['rating']
+            'rating': result['rating'],
+            # Modification tracking
+            'justification_modified': justification_modified,
+            'mentor_modified': mentor_modified,
+            'mentees_modified': mentees_modified,
+            'ai_modified': ai_modified,
+            'tenets_strengths_modified': tenets_strengths_modified,
+            'tenets_improvements_modified': tenets_improvements_modified,
+            'needs_sync': needs_sync,
+            # Current field values for display
+            'mentor': employee.get('mentor') or '',
+            'mentees': employee.get('mentees') or '',
+            'ai_related_activities': employee.get('ai_related_activities') or '',
+            'tenets_strengths': strengths_text,
+            'tenets_improvements': improvements_text,
         })
 
     # Sort by employee name
@@ -2603,6 +2672,7 @@ def export_page():
                          export_mode=export_mode,
                          total_employees=len(export_data),
                          total_calibrated=len(talent_export_data),
+                         bonus_pending_sync_count=bonus_pending_sync_count,
                          filter_info=filter_info)
 
 
@@ -3518,32 +3588,47 @@ def import_current():
                     employee.notes = emp_data['notes']
                     employee.zero_bonus_allocated = emp_data['zero_bonus_allocated']
 
-                # Initialize manager input fields for new employees
-                # Parse Notes field for re-imported data if present
-                if not existing:
-                    notes_data = parse_notes_field(emp_data.get('notes', '')) if spreadsheet_type != 'talent' else {}
+                # Parse Notes field for bonus imports (both new and existing employees)
+                # This sets _original fields for modification tracking
+                if spreadsheet_type != 'talent':
+                    notes_data = parse_notes_field(emp_data.get('notes', ''))
                     tenets_config, _ = load_tenets_config()
 
-                    if notes_data.get('performance_rating') is not None:
-                        employee.performance_rating_percent = notes_data.get('performance_rating')
-                        employee.justification = notes_data.get('justification') or ''
-                        employee.mentor = notes_data.get('mentors') or ''
-                        employee.mentees = notes_data.get('mentees') or ''
-                        employee.ai_related_activities = notes_data.get('ai_related_activities') or ''
-                        # Convert tenet names to JSON IDs for storage
-                        employee.tenets_strengths = convert_tenet_names_to_ids(
-                            notes_data.get('tenets_strengths'), tenets_config
-                        )
-                        employee.tenets_improvements = convert_tenet_names_to_ids(
-                            notes_data.get('tenets_improvements'), tenets_config
-                        )
-                    else:
-                        employee.performance_rating_percent = None
-                        employee.tenets_strengths = None
-                        employee.tenets_improvements = None
-                        employee.justification = ''
-                        employee.mentor = ''
-                        employee.mentees = ''
+                    # Set _original fields from Workday data for modification tracking
+                    # These reflect what Workday has, so we can detect local changes
+                    employee.justification_original = notes_data.get('justification') or None
+                    employee.mentor_original = notes_data.get('mentors') or None
+                    employee.mentees_original = notes_data.get('mentees') or None
+                    employee.ai_related_activities_original = notes_data.get('ai_related_activities') or None
+                    # Convert tenet names to JSON IDs for storage
+                    employee.tenets_strengths_original = convert_tenet_names_to_ids(
+                        notes_data.get('tenets_strengths'), tenets_config
+                    )
+                    employee.tenets_improvements_original = convert_tenet_names_to_ids(
+                        notes_data.get('tenets_improvements'), tenets_config
+                    )
+
+                    # Initialize manager input fields for new employees only
+                    if not existing:
+                        if notes_data.get('performance_rating') is not None:
+                            employee.performance_rating_percent = notes_data.get('performance_rating')
+                            employee.justification = notes_data.get('justification') or ''
+                            employee.mentor = notes_data.get('mentors') or ''
+                            employee.mentees = notes_data.get('mentees') or ''
+                            employee.ai_related_activities = notes_data.get('ai_related_activities') or ''
+                            employee.tenets_strengths = employee.tenets_strengths_original
+                            employee.tenets_improvements = employee.tenets_improvements_original
+                        else:
+                            employee.performance_rating_percent = None
+                            employee.tenets_strengths = None
+                            employee.tenets_improvements = None
+                            employee.justification = ''
+                            employee.mentor = ''
+                            employee.mentees = ''
+                        employee.last_updated = None
+                        db.add(employee)
+                elif not existing:
+                    # Talent import for new employee
                     employee.last_updated = None
                     db.add(employee)
 

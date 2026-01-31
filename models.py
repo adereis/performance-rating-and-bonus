@@ -173,10 +173,17 @@ class Employee(Base):
     # Manager input fields (Bonus Cycle)
     performance_rating_percent = Column(Float)  # Performance Rating (0-200%)
     justification = Column(String)
+    justification_original = Column(String)  # Original from Workday (for modification detection)
     mentor = Column(String)
+    mentor_original = Column(String)  # Original from Workday (for modification detection)
     mentees = Column(String)
+    mentees_original = Column(String)  # Original from Workday (for modification detection)
+    ai_related_activities = Column(String)  # Free-form text for AI activities
+    ai_related_activities_original = Column(String)  # Original from Workday (for modification detection)
     tenets_strengths = Column(String)  # JSON array of 3 tenet IDs for strengths
+    tenets_strengths_original = Column(String)  # Original from Workday (for modification detection)
     tenets_improvements = Column(String)  # JSON array of 3 tenet IDs for improvements
+    tenets_improvements_original = Column(String)  # Original from Workday (for modification detection)
     last_updated = Column(DateTime)
 
     # ═══════════════════════════════════════════════════════════════
@@ -259,10 +266,17 @@ class Employee(Base):
             'Zero Bonus Allocated': self.zero_bonus_allocated,
             'performance_rating_percent': self.performance_rating_percent,
             'justification': self.justification,
+            'justification_original': self.justification_original,
             'mentor': self.mentor,
+            'mentor_original': self.mentor_original,
             'mentees': self.mentees,
+            'mentees_original': self.mentees_original,
+            'ai_related_activities': self.ai_related_activities,
+            'ai_related_activities_original': self.ai_related_activities_original,
             'tenets_strengths': self.tenets_strengths,
+            'tenets_strengths_original': self.tenets_strengths_original,
             'tenets_improvements': self.tenets_improvements,
+            'tenets_improvements_original': self.tenets_improvements_original,
             'last_updated': self.last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.last_updated else '',
             # Extended identity (from talent report)
             'management_level': self.management_level,
@@ -556,6 +570,13 @@ def _migrate_add_new_columns(engine):
         ('employees', 'talent_mentees', 'TEXT'),
         ('rating_snapshots', 'snapshot_talent_mentor', 'TEXT'),
         ('rating_snapshots', 'snapshot_talent_mentees', 'TEXT'),
+        # Original tracking for Bonus Cycle fields (justification, mentor, mentees, AI, tenets)
+        ('employees', 'justification_original', 'TEXT'),
+        ('employees', 'mentor_original', 'TEXT'),
+        ('employees', 'mentees_original', 'TEXT'),
+        ('employees', 'ai_related_activities_original', 'TEXT'),
+        ('employees', 'tenets_strengths_original', 'TEXT'),
+        ('employees', 'tenets_improvements_original', 'TEXT'),
     ]
 
     with engine.connect() as conn:
