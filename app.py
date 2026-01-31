@@ -3572,6 +3572,15 @@ def import_current():
                     # Calibration status (from Workday)
                     employee.talent_calibration_status = emp_data.get('talent_calibration_status')
 
+                    # Set _original fields from Workday data for modification tracking
+                    # These reflect what Workday has, so we can detect local changes
+                    employee.talent_perf_what_original = emp_data.get('talent_perf_what')
+                    employee.talent_perf_how_original = emp_data.get('talent_perf_how')
+                    employee.talent_growth_agility_original = emp_data.get('talent_growth_agility')
+                    employee.talent_change_agility_original = emp_data.get('talent_change_agility')
+                    employee.talent_movement_readiness_original = emp_data.get('talent_movement_readiness')
+                    employee.talent_proposed_actions_original = emp_data.get('talent_proposed_actions')
+
                     # Manager-input fields: ONLY set for new employees (per Spec §5.3)
                     # These are preserved on re-import to prevent data loss
                     if not existing:

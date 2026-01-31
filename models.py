@@ -202,7 +202,9 @@ class Employee(Base):
     # TALENT: PERFORMANCE ASSESSMENT
     # ═══════════════════════════════════════════════════════════════
     talent_perf_what = Column(String)        # ENUM: Surpasses/Meets/Meets Some Expectations
+    talent_perf_what_original = Column(String)  # Original from Workday (for modification detection)
     talent_perf_how = Column(String)         # ENUM: Surpasses/Meets/Meets Some/Does Not Meet
+    talent_perf_how_original = Column(String)  # Original from Workday (for modification detection)
     talent_overall_perf = Column(String)     # DERIVED: High Impact/Successful/Evolving/Low
     talent_last_overall_perf = Column(String)  # PRESERVED: from Workday historical
 
@@ -210,7 +212,9 @@ class Employee(Base):
     # TALENT: FUTURE TALENT
     # ═══════════════════════════════════════════════════════════════
     talent_growth_agility = Column(String)   # ENUM: Always/Most of the Time, Sometimes
+    talent_growth_agility_original = Column(String)  # Original from Workday (for modification detection)
     talent_change_agility = Column(String)   # ENUM: Always/Most of the Time, Sometimes
+    talent_change_agility_original = Column(String)  # Original from Workday (for modification detection)
     talent_identified_future = Column(Boolean)  # DERIVED: True when both agility = Always
     talent_last_identified_future = Column(Boolean)  # PRESERVED
 
@@ -218,8 +222,10 @@ class Employee(Base):
     # TALENT: MOVEMENT & CAREER
     # ═══════════════════════════════════════════════════════════════
     talent_movement_readiness = Column(String)  # ENUM: Continue/Ready Now/Ready Lateral
+    talent_movement_readiness_original = Column(String)  # Original from Workday (for modification detection)
     talent_last_movement_readiness = Column(String)  # PRESERVED
     talent_proposed_actions = Column(Text)   # Free-form text
+    talent_proposed_actions_original = Column(Text)  # Original from Workday (for modification detection)
     talent_mentor = Column(String)           # Mentor (talent cycle, separate from bonus)
     talent_mentees = Column(String)          # Mentees (talent cycle, separate from bonus)
 
@@ -290,18 +296,24 @@ class Employee(Base):
             'country': self.country,
             # Talent: Performance Assessment
             'talent_perf_what': self.talent_perf_what,
+            'talent_perf_what_original': self.talent_perf_what_original,
             'talent_perf_how': self.talent_perf_how,
+            'talent_perf_how_original': self.talent_perf_how_original,
             'talent_overall_perf': self.talent_overall_perf,
             'talent_last_overall_perf': self.talent_last_overall_perf,
             # Talent: Future Talent
             'talent_growth_agility': self.talent_growth_agility,
+            'talent_growth_agility_original': self.talent_growth_agility_original,
             'talent_change_agility': self.talent_change_agility,
+            'talent_change_agility_original': self.talent_change_agility_original,
             'talent_identified_future': self.talent_identified_future,
             'talent_last_identified_future': self.talent_last_identified_future,
             # Talent: Movement & Career
             'talent_movement_readiness': self.talent_movement_readiness,
+            'talent_movement_readiness_original': self.talent_movement_readiness_original,
             'talent_last_movement_readiness': self.talent_last_movement_readiness,
             'talent_proposed_actions': self.talent_proposed_actions,
+            'talent_proposed_actions_original': self.talent_proposed_actions_original,
             'talent_mentor': self.talent_mentor,
             'talent_mentees': self.talent_mentees,
             # Talent: Promotion
@@ -580,6 +592,13 @@ def _migrate_add_new_columns(engine):
         ('employees', 'ai_related_activities_original', 'TEXT'),
         ('employees', 'tenets_strengths_original', 'TEXT'),
         ('employees', 'tenets_improvements_original', 'TEXT'),
+        # Original tracking for Talent Calibration fields
+        ('employees', 'talent_perf_what_original', 'TEXT'),
+        ('employees', 'talent_perf_how_original', 'TEXT'),
+        ('employees', 'talent_growth_agility_original', 'TEXT'),
+        ('employees', 'talent_change_agility_original', 'TEXT'),
+        ('employees', 'talent_movement_readiness_original', 'TEXT'),
+        ('employees', 'talent_proposed_actions_original', 'TEXT'),
     ]
 
     with engine.connect() as conn:
