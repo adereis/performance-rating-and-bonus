@@ -229,21 +229,29 @@ class Employee(Base):
     talent_proposed_actions = Column(Text)   # Free-form text
     talent_proposed_actions_original = Column(Text)  # Original from Workday (for modification detection)
     talent_mentor = Column(String)           # Mentor (talent cycle, separate from bonus)
+    talent_mentor_original = Column(String)  # Original from Workday (for modification detection)
     talent_mentees = Column(String)          # Mentees (talent cycle, separate from bonus)
+    talent_mentees_original = Column(String)  # Original from Workday (for modification detection)
 
     # ═══════════════════════════════════════════════════════════════
     # TALENT: PROMOTION
     # ═══════════════════════════════════════════════════════════════
     talent_promo_job_profile = Column(String)   # "Senior SRE, 1534"
+    talent_promo_job_profile_original = Column(String)  # Original from Workday
     talent_promo_business_need = Column(Text)
+    talent_promo_business_need_original = Column(Text)  # Original from Workday
     talent_promo_role_scope = Column(Text)
+    talent_promo_role_scope_original = Column(Text)  # Original from Workday
     talent_promo_readiness = Column(Text)
+    talent_promo_readiness_original = Column(Text)  # Original from Workday
 
     # ═══════════════════════════════════════════════════════════════
     # TALENT: TENETS (parallel to bonus tenets)
     # ═══════════════════════════════════════════════════════════════
     talent_tenets_strengths = Column(String)     # JSON array of tenet IDs
+    talent_tenets_strengths_original = Column(String)  # Original from Workday (for modification detection)
     talent_tenets_improvements = Column(String)  # JSON array of tenet IDs
+    talent_tenets_improvements_original = Column(String)  # Original from Workday (for modification detection)
 
     # ═══════════════════════════════════════════════════════════════
     # TALENT: METADATA
@@ -318,15 +326,23 @@ class Employee(Base):
             'talent_proposed_actions': self.talent_proposed_actions,
             'talent_proposed_actions_original': self.talent_proposed_actions_original,
             'talent_mentor': self.talent_mentor,
+            'talent_mentor_original': self.talent_mentor_original,
             'talent_mentees': self.talent_mentees,
+            'talent_mentees_original': self.talent_mentees_original,
             # Talent: Promotion
             'talent_promo_job_profile': self.talent_promo_job_profile,
+            'talent_promo_job_profile_original': self.talent_promo_job_profile_original,
             'talent_promo_business_need': self.talent_promo_business_need,
+            'talent_promo_business_need_original': self.talent_promo_business_need_original,
             'talent_promo_role_scope': self.talent_promo_role_scope,
+            'talent_promo_role_scope_original': self.talent_promo_role_scope_original,
             'talent_promo_readiness': self.talent_promo_readiness,
+            'talent_promo_readiness_original': self.talent_promo_readiness_original,
             # Talent: Tenets
             'talent_tenets_strengths': self.talent_tenets_strengths,
+            'talent_tenets_strengths_original': self.talent_tenets_strengths_original,
             'talent_tenets_improvements': self.talent_tenets_improvements,
+            'talent_tenets_improvements_original': self.talent_tenets_improvements_original,
             # Talent: Metadata
             'talent_calibration_status': self.talent_calibration_status,
             'talent_last_updated': self.talent_last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.talent_last_updated else None
