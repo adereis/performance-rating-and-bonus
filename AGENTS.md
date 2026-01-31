@@ -69,17 +69,25 @@ Instructions for AI agents and human developers working on this codebase.
 
 **Spreadsheet Type Detection**: `detect_spreadsheet_type()` in xlsx_utils.py auto-detects bonus vs talent files based on column markers.
 
-**Bonus files** (required columns): `Associate`, `Associate ID`, `Supervisory Organization`, `Current Job Profile`, `Currency`, `Annual Bonus Target Percent`, `Bonus Target - Local Currency`
+**Format Support** (auto-detected):
+- **Legacy format**: Integer percentages (5 = 5%), columns like `Supervisory Organization`, `Current Job Profile`
+- **Report format**: Decimal percentages (0.05 = 5%), columns like `Direct Manager`, `Job Title`, `Management Level`
+
+**Proper format indicators**: Row 1 contains "Compensation Review: Bonus - CYxx Qx", decimal values in percentage columns.
+
+**New fields (Report format)**: `management_level`, `country`, `hire_date`, `time_in_job_profile`, `last_perf_review_name`, `last_perf_review_rating`
+
+**Bonus files** (required columns): `Associate`, `Associate ID`, `Supervisory Organization` (or `Direct Manager`), `Current Job Profile` (or `Job Title`), `Currency`, `Annual Bonus Target Percent`, `Bonus Target - Local Currency`
 
 **Talent files** (markers): `Performance: What`, `Performance: How`, `Future Talent`, `Movement Readiness`
 
-Manager name parsed from: `"Supervisory Organization (Manager Name)"` → extracts "Manager Name"
+Manager name parsed from: `"Supervisory Organization (Manager Name)"` or `"Direct Manager"` column → extracts manager name.
 
 **Preserved on re-import** (manager-entered):
 - Bonus cycle: `performance_rating`, `justification`, `mentors`, `mentees`, tenets
 - Talent cycle: `talent_perf_what`, `talent_perf_how`, `talent_growth_agility`, `talent_change_agility`, `talent_movement_readiness`, `talent_proposed_actions`, `talent_mentor`, `talent_mentees`, `talent_tenets_*`
 
-**Overwritten on re-import** (from Workday): salary, bonus targets, org structure, management_level
+**Overwritten on re-import** (from Workday): salary, bonus targets, org structure, management_level, country, tenure fields
 
 ### Talent Calibration
 
@@ -95,6 +103,39 @@ Manager name parsed from: `"Supervisory Organization (Manager Name)"` → extrac
 **Tenets integration**: Tenets and mentor/mentees embedded in "Proposed Talent Actions" on export using bracket markers (`[Strengths: ...]`, `[Mentor: ...]`, `[Mentees: ...]`), parsed back on import via `parse_proposed_actions_metadata()`.
 
 **Cross-cycle alignment** (Spec §7.4): Dashboard shows alignment between Performance Rating (0-200%) and Overall Performance. Alignment ranges: High Impact = 120-200%, Successful = 90-119%, Evolving = 70-89%, Low = 0-69%.
+
+### Tenure Analytics
+
+Built into `/analytics` page. Parses Workday tenure strings (e.g., "2 years, 3 months") via `parse_tenure_to_months()`.
+
+**Metrics**: Length of Service distribution, Time in Job Profile distribution, averages by role.
+
+**Performance quadrants** (based on time in role + performance):
+- `promotion_candidate`: High Impact + 2+ years in role → Career Check-in needed
+- `rising_star`: High Impact + < 2 years → High Performer
+- `solid_contributor`: Successful Performer
+- `needs_attention`: Low/Evolving + 6+ months → Attention needed
+- `developing`: < 6 months in role → Still Ramping
+
+**Tenure-based inconsistencies** (flagged in calibration review):
+- New hire (< 6 months) rated Low/Evolving
+- Ready Now but < 2 years in role
+- 5+ years in role but "Continue growing"
+- High Impact + 3+ years but no movement set
+
+### Organization Snapshot Export
+
+**Routes**: `/export/snapshot/xlsx`, `/export/snapshot/csv`
+
+**Purpose**: Self-documenting export for AI/analyst consumption (e.g., NotebookLM, Claude).
+
+**Sheets** (XLSX) / **Files** (CSV ZIP):
+- `_context`: Domain knowledge (rating philosophy, algorithms, terminology)
+- `_tenets`: Full tenet definitions with categories
+- `employees`: Core identity, compensation, manager info
+- `bonus_cycle`: Performance ratings, justifications, calculated bonuses
+- `talent_cycle`: Calibration data, agility, movement, promotions
+- `history`: Historical rating snapshots by period
 
 ---
 
