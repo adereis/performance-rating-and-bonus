@@ -850,8 +850,8 @@
                     {% for team_group in teams_grouped %}
                     <li class="index-team-header" data-org="{{ team_group.org }}">{{ team_group.org|truncate(25, True) }}</li>
                     {% for employee in team_group.members %}
-                    {% set has_tenets = (employee.talent_tenets_strengths and employee.talent_tenets_strengths not in ['', '[]', 'null']) or (employee.talent_tenets_improvements and employee.talent_tenets_improvements not in ['', '[]', 'null']) %}
-                    {% set is_calibrated = employee.talent_perf_what and employee.talent_perf_how and employee.talent_proposed_actions and has_tenets %}
+                    {% set has_tenets = employee._has_tenets %}
+                    {% set is_calibrated = employee._is_calibrated %}
                     <li class="index-item" data-employee-id="{{ employee['Associate ID'] }}" onclick="scrollToEmployee('{{ employee['Associate ID'] }}')">
                         <span class="status-dot {% if is_calibrated %}calibrated{% else %}uncalibrated{% endif %}"></span>
                         <span class="name">{{ employee.Associate }}</span>
@@ -860,8 +860,8 @@
                     {% endfor %}
                 {% else %}
                     {% for employee in team %}
-                    {% set has_tenets = (employee.talent_tenets_strengths and employee.talent_tenets_strengths not in ['', '[]', 'null']) or (employee.talent_tenets_improvements and employee.talent_tenets_improvements not in ['', '[]', 'null']) %}
-                    {% set is_calibrated = employee.talent_perf_what and employee.talent_perf_how and employee.talent_proposed_actions and has_tenets %}
+                    {% set has_tenets = employee._has_tenets %}
+                    {% set is_calibrated = employee._is_calibrated %}
                     <li class="index-item" data-employee-id="{{ employee['Associate ID'] }}" onclick="scrollToEmployee('{{ employee['Associate ID'] }}')">
                         <span class="status-dot {% if is_calibrated %}calibrated{% else %}uncalibrated{% endif %}"></span>
                         <span class="name">{{ employee.Associate }}</span>
@@ -886,8 +886,8 @@
                 </div>
                 <div class="team-group-content">
                 {% for employee in team_group.members %}
-                {% set has_tenets = (employee.talent_tenets_strengths and employee.talent_tenets_strengths not in ['', '[]', 'null']) or (employee.talent_tenets_improvements and employee.talent_tenets_improvements not in ['', '[]', 'null']) %}
-                {% set is_calibrated = employee.talent_perf_what and employee.talent_perf_how and employee.talent_proposed_actions and has_tenets %}
+                {% set has_tenets = employee._has_tenets %}
+                {% set is_calibrated = employee._is_calibrated %}
                 {% include "calibrate_card.html" %}
                 {% endfor %}
                 </div>
@@ -897,8 +897,8 @@
             <!-- Single team view: flat list -->
             <div class="calibration-form" id="calibration-view">
             {% for employee in team %}
-            {% set has_tenets = (employee.talent_tenets_strengths and employee.talent_tenets_strengths not in ['', '[]', 'null']) or (employee.talent_tenets_improvements and employee.talent_tenets_improvements not in ['', '[]', 'null']) %}
-            {% set is_calibrated = employee.talent_perf_what and employee.talent_perf_how and employee.talent_proposed_actions and has_tenets %}
+            {% set has_tenets = employee._has_tenets %}
+            {% set is_calibrated = employee._is_calibrated %}
             {% include "calibrate_card.html" %}
             {% endfor %}
             </div>
@@ -920,12 +920,14 @@ function autoSaveCalibration(associateId, card) {
 }
 
 // Check if an employee card is fully calibrated (What + How + Actions + Tenets)
+// Tenets require exactly 3 strengths AND 2-3 improvements
 function isCardCalibrated(card, data) {
     const hasWhat = data.talent_perf_what && data.talent_perf_what !== '';
     const hasHow = data.talent_perf_how && data.talent_perf_how !== '';
     const hasActions = data.talent_proposed_actions && data.talent_proposed_actions.trim() !== '';
-    const hasTenets = (data.talent_tenets_strengths && data.talent_tenets_strengths.length > 0) ||
-                      (data.talent_tenets_improvements && data.talent_tenets_improvements.length > 0);
+    const strengthsCount = data.talent_tenets_strengths?.length || 0;
+    const improvementsCount = data.talent_tenets_improvements?.length || 0;
+    const hasTenets = strengthsCount === 3 && improvementsCount >= 2 && improvementsCount <= 3;
     return hasWhat && hasHow && hasActions && hasTenets;
 }
 

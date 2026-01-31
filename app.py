@@ -1085,8 +1085,16 @@ def calibrate_page():
     # Apply filters
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
+    # Pre-compute calibration status for consistent Jinja/JS validation
+    for emp in team_data:
+        emp['_is_calibrated'] = is_employee_calibrated(emp)
+        emp['_has_tenets'] = _has_tenets(
+            emp.get('talent_tenets_strengths'),
+            emp.get('talent_tenets_improvements')
+        )
+
     # Count calibrated employees (What + How + Actions + Tenets)
-    calibrated_count = sum(1 for e in team_data if is_employee_calibrated(e))
+    calibrated_count = sum(1 for e in team_data if e['_is_calibrated'])
 
     # Detect multi-team scenario and group by supervisory organization
     unique_orgs = set()
@@ -1109,7 +1117,7 @@ def calibrate_page():
 
         # Build grouped structure with per-team calibration counts
         for org, members in sorted(teams_by_org.items()):
-            team_calibrated = sum(1 for e in members if is_employee_calibrated(e))
+            team_calibrated = sum(1 for e in members if e['_is_calibrated'])
             teams_grouped.append({
                 'org': org,
                 'members': members,
