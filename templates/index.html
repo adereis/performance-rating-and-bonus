@@ -310,6 +310,51 @@
         color: #6c757d;
     }
 
+    .alignment-badge.incomplete.missing_rating {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+
+    .alignment-badge.incomplete.missing_talent {
+        background: #fff8e1;
+        color: #f57c00;
+    }
+
+    .calibrated-badge {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        text-align: center;
+        border-radius: 50%;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: default;
+    }
+
+    .calibrated-badge.yes {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .calibrated-badge.no {
+        background: #f8f9fa;
+        color: #adb5bd;
+    }
+
+    .info-icon {
+        display: inline-block;
+        cursor: help;
+        font-size: 14px;
+        color: #6c757d;
+        margin-left: 4px;
+        vertical-align: middle;
+    }
+
+    .info-icon:hover {
+        color: #007bff;
+    }
+
     .talent-rating-badge {
         display: inline-block;
         padding: 4px 10px;
@@ -336,6 +381,31 @@
     .talent-rating-badge.low {
         background: #f8d7da;
         color: #721c24;
+    }
+
+    /* Promotion Nominations Table */
+    .promotion-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .promotion-table th,
+    .promotion-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .promotion-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+        font-size: 13px;
+        text-transform: uppercase;
+    }
+
+    .promotion-table tbody tr:hover {
+        background: #f8f9fa;
     }
 
     .collapsible-header {
@@ -853,15 +923,15 @@
     <h2>Team Overview</h2>
     <!-- Cross-Cycle Alignment Summary (Spec §7.4) -->
     <div class="alignment-summary">
-        <div class="alignment-stat aligned">
+        <div class="alignment-stat aligned" title="Performance Rating matches Overall Performance expectations">
             <span class="stat-value">{{ alignment_stats.aligned }}</span>
             <span class="stat-label">Aligned</span>
         </div>
-        <div class="alignment-stat review">
+        <div class="alignment-stat review" title="Performance Rating may not match Overall Performance — review recommended">
             <span class="stat-value">{{ alignment_stats.review }}</span>
             <span class="stat-label">Needs Review</span>
         </div>
-        <div class="alignment-stat incomplete">
+        <div class="alignment-stat incomplete" title="Missing data from bonus cycle (Performance Rating) or talent cycle (Overall Performance)">
             <span class="stat-value">{{ alignment_stats.incomplete }}</span>
             <span class="stat-label">Incomplete</span>
         </div>
@@ -874,7 +944,8 @@
                     <th class="sortable" data-sort="job">Job Profile</th>
                     <th class="sortable" data-sort="rating">Performance Rating</th>
                     <th class="sortable" data-sort="talent">Overall Performance</th>
-                    <th class="sortable" data-sort="alignment">Alignment</th>
+                    <th class="sortable" data-sort="calibrated">Calibrated</th>
+                    <th class="sortable" data-sort="alignment">Alignment <span class="info-icon" title="Compares Performance Rating (bonus cycle) with Overall Performance (talent cycle). Aligned = consistent ratings. Review = ratings may conflict. Incomplete = missing data from one or both cycles.">ⓘ</span></th>
                 </tr>
             </thead>
             <tbody id="teamTableBody">
@@ -883,6 +954,7 @@
                     data-job="{{ employee['Current Job Profile'] }}"
                     data-rating="{{ employee.performance_rating_percent or 0 }}"
                     data-talent="{{ employee.talent_overall_perf or '' }}"
+                    data-calibrated="{{ 'yes' if employee.is_calibrated else 'no' }}"
                     data-alignment="{{ employee.alignment or 'incomplete' }}">
                     <td><span class="employee-name" data-employee-id="{{ employee['Associate ID'] }}">{{ employee.Associate }}</span></td>
                     <td>{{ employee['Current Job Profile'] }}</td>
@@ -913,9 +985,18 @@
                         {% endif %}
                     </td>
                     <td>
-                        <span class="alignment-badge {{ employee.alignment }}">
+                        {% if employee.is_calibrated %}
+                            <span class="calibrated-badge yes" title="Talent calibration complete: What, How, Actions, and Tenets all filled">✓</span>
+                        {% else %}
+                            <span class="calibrated-badge no" title="Talent calibration incomplete">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="alignment-badge {{ employee.alignment }}{% if employee.alignment_detail %} {{ employee.alignment_detail }}{% endif %}">
                             {% if employee.alignment == 'aligned' %}✓ Aligned
                             {% elif employee.alignment == 'review' %}⚠ Review
+                            {% elif employee.alignment_detail == 'missing_rating' %}📊 Missing Rating
+                            {% elif employee.alignment_detail == 'missing_talent' %}🎯 Missing Calibration
                             {% else %}— Incomplete{% endif %}
                         </span>
                     </td>
@@ -925,6 +1006,49 @@
         </table>
     </div>
 </div>
+
+{% if promotion_ready %}
+<div class="card">
+    <h2>🚀 Promotion Nominations</h2>
+    <p style="color: #666; margin-bottom: 15px;">
+        {{ promotion_ready|length }} employee{% if promotion_ready|length != 1 %}s{% endif %} nominated for promotion in the current talent cycle.
+    </p>
+    <div style="overflow-x: auto;">
+        <table class="promotion-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Current Role</th>
+                    <th>Proposed Role</th>
+                    <th>Overall Performance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in promotion_ready %}
+                <tr>
+                    <td><span class="employee-name" data-employee-id="{{ emp['Associate ID'] }}">{{ emp.Associate }}</span></td>
+                    <td>{{ emp['Current Job Profile'] }}</td>
+                    <td>{{ emp.talent_promo_job_profile or '—' }}</td>
+                    <td>
+                        {% if emp.talent_overall_perf %}
+                            <span class="talent-rating-badge
+                                {% if emp.talent_overall_perf == 'High Impact Performer' %}high-impact
+                                {% elif emp.talent_overall_perf == 'Successful Performer' %}successful
+                                {% elif emp.talent_overall_perf == 'Evolving Performer' %}evolving
+                                {% elif emp.talent_overall_perf == 'Low Performer' %}low{% endif %}">
+                                {{ emp.talent_overall_perf }}
+                            </span>
+                        {% else %}
+                            <span class="rating-text rating-text-none">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 
 {% endif %}
 
@@ -996,6 +1120,12 @@ function sortTable(column) {
             const order = {'aligned': 3, 'review': 2, 'incomplete': 1};
             aVal = order[aVal] || 0;
             bVal = order[bVal] || 0;
+        }
+
+        // Handle calibrated column - sort by status (yes > no)
+        if (column === 'calibrated') {
+            aVal = aVal === 'yes' ? 1 : 0;
+            bVal = bVal === 'yes' ? 1 : 0;
         }
 
         let comparison = 0;
