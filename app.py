@@ -1684,6 +1684,29 @@ def analytics():
     rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
     total_rated = len(rated_employees)
 
+    # Count fully calibrated employees (talent cycle: What + How + Actions + Tenets)
+    calibrated_count = sum(1 for emp in team_data if is_employee_calibrated(emp))
+
+    # has_bonus_data: true only if rated employees have actual bonus target data from Workday
+    rated_with_bonus_targets = [
+        emp for emp in rated_employees
+        if emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
+    ]
+    has_bonus_data = len(rated_with_bonus_targets) > 0
+
+    # Job profile distribution for Team Overview
+    job_profile_counts = {}
+    for emp in team_data:
+        job = emp.get('Current Job Profile', 'Unknown') or 'Unknown'
+        job_profile_counts[job] = job_profile_counts.get(job, 0) + 1
+
+    # Sort by count descending for display
+    job_profile_distribution = sorted(
+        [{'job': job, 'count': count} for job, count in job_profile_counts.items()],
+        key=lambda x: x['count'],
+        reverse=True
+    )
+
     # Calculate org-level calibration using helper function
     org_calibration = calculate_calibration_for_employees(rated_employees, "Organization")
     calibration_data = org_calibration['data']
@@ -1807,6 +1830,93 @@ def analytics():
 
         org_tenets_summary[org] = {
             'tenets': org_summary,
+            'employees_with_tenets': data['employees_with_tenets']
+        }
+
+    # Analyze tenets data - Per Job Level
+    # Categories: Manager (has direct reports), Senior IC (Senior/Principal/Staff/Lead), Others
+    def categorize_job_level(emp, all_emps):
+        """Categorize employee into job level for tenet analysis."""
+        if has_direct_reports(emp, all_emps):
+            return 'Manager'
+        job_title = (emp.get('Current Job Profile') or '').lower()
+        senior_keywords = ['senior', 'principal', 'staff', 'lead']
+        if any(keyword in job_title for keyword in senior_keywords):
+            return 'Senior IC'
+        return 'Others'
+
+    job_level_tenets = {}
+    for emp in team_data:
+        level = categorize_job_level(emp, team_data)
+        if level not in job_level_tenets:
+            job_level_tenets[level] = {
+                'strength_counts': defaultdict(float),
+                'improvement_counts': defaultdict(float),
+                'employees_with_tenets': 0
+            }
+
+        has_tenets = False
+
+        # Count strengths per job level (combine bonus + talent cycle fields, deduplicate)
+        all_strengths = set()
+        for field in ['tenets_strengths', 'talent_tenets_strengths']:
+            if emp.get(field):
+                try:
+                    strengths = json.loads(emp[field])
+                    all_strengths.update(strengths)
+                except json.JSONDecodeError:
+                    pass
+        if all_strengths:
+            weight = 3.0 / len(all_strengths)
+            for tenet_id in all_strengths:
+                job_level_tenets[level]['strength_counts'][tenet_id] += weight
+            has_tenets = True
+
+        # Count improvements per job level (combine bonus + talent cycle fields, deduplicate)
+        all_improvements = set()
+        for field in ['tenets_improvements', 'talent_tenets_improvements']:
+            if emp.get(field):
+                try:
+                    improvements = json.loads(emp[field])
+                    all_improvements.update(improvements)
+                except json.JSONDecodeError:
+                    pass
+        if all_improvements:
+            weight = 3.0 / len(all_improvements)
+            for tenet_id in all_improvements:
+                job_level_tenets[level]['improvement_counts'][tenet_id] += weight
+            has_tenets = True
+
+        if has_tenets:
+            job_level_tenets[level]['employees_with_tenets'] += 1
+
+    # Build per-job-level tenets summary
+    job_level_tenets_summary = {}
+    # Define display order for job levels
+    job_level_order = ['Manager', 'Senior IC', 'Others']
+    for level in job_level_order:
+        if level not in job_level_tenets:
+            continue
+        data = job_level_tenets[level]
+        level_all_tenet_ids = set(data['strength_counts'].keys()) | set(data['improvement_counts'].keys())
+        level_summary = []
+
+        for tenet_id in level_all_tenet_ids:
+            tenet_info = tenets_map.get(tenet_id, {})
+            level_summary.append({
+                'id': tenet_id,
+                'name': tenet_info.get('name', tenet_id),
+                'category': tenet_info.get('category', 'Unknown'),
+                'strength_count': data['strength_counts'].get(tenet_id, 0),
+                'improvement_count': data['improvement_counts'].get(tenet_id, 0),
+                'total_mentions': data['strength_counts'].get(tenet_id, 0) + data['improvement_counts'].get(tenet_id, 0)
+            })
+
+        # Sort by net score (strengths - improvements) descending
+        level_summary.sort(key=lambda x: x['strength_count'] - x['improvement_count'], reverse=True)
+
+        job_level_tenets_summary[level] = {
+            'tenets': level_summary,
             'employees_with_tenets': data['employees_with_tenets']
         }
 
@@ -2498,12 +2608,16 @@ def analytics():
                          chart_data=chart_data,
                          dept_averages=dept_averages,
                          job_averages=job_averages,
+                         job_profile_distribution=job_profile_distribution,
                          calibration_data=calibration_data,
                          total_rated=total_rated,
+                         calibrated_count=calibrated_count,
+                         has_bonus_data=has_bonus_data,
                          total_employees=len(team_data),
                          tenets_summary=tenets_summary,
                          employees_with_tenets=employees_with_tenets,
                          org_tenets_summary=org_tenets_summary,
+                         job_level_tenets_summary=job_level_tenets_summary,
                          is_multi_team=is_multi_team,
                          team_calibrations=team_calibrations,
                          team_comparisons=team_comparisons,

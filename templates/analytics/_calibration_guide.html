@@ -1,0 +1,457 @@
+{# Calibration Guide Card - Bonus + Talent tabs #}
+<!-- 2. Calibration Guide (Bonus + Talent tabs) -->
+{% if total_rated > 0 or talent_calibration %}
+<div class="card" data-card-id="calibration-guide">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>📖 Calibration Guide</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
+
+    <!-- Primary Tabs: Bonus vs Talent -->
+    <div class="primary-tabs">
+        <button class="primary-tab {% if total_rated > 0 %}active{% else %}disabled{% endif %}" data-primary-tab="bonus-calibration-content" {% if total_rated == 0 %}disabled{% endif %}>
+            📊 Bonus Calibration
+            {% if total_rated > 0 %}<span class="primary-tab-count">({{ total_rated }})</span>{% endif %}
+        </button>
+        <button class="primary-tab {% if not total_rated > 0 and talent_calibration %}active{% elif not talent_calibration %}disabled{% endif %}" data-primary-tab="talent-calibration-content" {% if not talent_calibration %}disabled{% endif %}>
+            🎯 Talent Calibration
+            {% if talent_calibration %}<span class="primary-tab-count">({{ talent_calibration.total }})</span>{% endif %}
+        </button>
+    </div>
+
+    <!-- Bonus Calibration Content -->
+    <div class="primary-tab-content {% if total_rated > 0 %}active{% endif %}" id="bonus-calibration-content">
+    {% if total_rated > 0 %}
+
+    <!-- Sub-Tab Navigation (only if multi-team) -->
+    {% if is_multi_team %}
+    <div class="tabs" style="margin-bottom: 20px;">
+        <button class="tab-button active" data-tab="org-calibration">Organization Overview</button>
+        <button class="tab-button" data-tab="team-calibrations">Per-Team Calibration</button>
+        <button class="tab-button" data-tab="team-comparison">Team Comparison</button>
+    </div>
+    {% endif %}
+
+    <!-- Tab 1: Organization Overview (current view) -->
+    <div class="tab-content {% if not is_multi_team or true %}active{% endif %}" id="org-calibration">
+
+    <div class="calibration-disclaimer">
+        <h4>ℹ️ This is guidance, not a requirement</h4>
+        <p>
+            The suggested distribution below represents a typical performance curve for reference only.
+            <strong>This is not a quota or forced ranking.</strong> Your team's actual performance may legitimately differ.
+            Use this as a calibration tool to ensure your standards are appropriately set.
+        </p>
+    </div>
+
+    {% if total_rated < 10 %}
+    <div class="small-team-warning">
+        ⚠️ <strong>Small team size ({{ total_rated }} rated):</strong> Percentage-based distributions are less meaningful for small teams.
+        Focus on individual performance rather than fitting a curve.
+    </div>
+    {% endif %}
+
+    <div class="calibration-chart-container">
+        <canvas id="calibrationChart"></canvas>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table class="calibration-table">
+            <thead>
+                <tr>
+                    <th>Performance Band</th>
+                    <th>Your Team</th>
+                    <th>Suggested Range</th>
+                    <th>Delta</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in calibration_data %}
+                <tr>
+                    <td>
+                        <strong>
+                            {% if item.bucket == 'above_120' %}
+                                Above {{ rating_thresholds.high }}%
+                            {% elif item.bucket == '90_to_120' %}
+                                {{ rating_thresholds.mid }}-{{ rating_thresholds.high }}%
+                            {% elif item.bucket == '60_to_90' %}
+                                {{ rating_thresholds.low }}-{{ rating_thresholds.mid }}%
+                            {% else %}
+                                Below {{ rating_thresholds.low }}%
+                            {% endif %}
+                        </strong>
+                        <br>
+                        <span style="font-size: 12px; color: #666;">
+                            {% if item.bucket == 'above_120' %}
+                                Exceptional performers
+                            {% elif item.bucket == '90_to_120' %}
+                                Solid performers
+                            {% elif item.bucket == '60_to_90' %}
+                                Needs improvement
+                            {% else %}
+                                Significant concerns
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <strong>{{ item.percentage }}%</strong>
+                        <span style="color: #666; font-size: 13px;">({{ item.count }} people)</span>
+                    </td>
+                    <td>
+                        {{ item.suggested_min }}-{{ item.suggested_max }}%
+                        <span style="color: #666; font-size: 13px;">({{ item.suggested_min_people }}-{{ item.suggested_max_people }} people)</span>
+                    </td>
+                    <td>
+                        <span class="delta-value delta-{{ item.status }}">
+                            {% if item.delta > 0 %}+{% endif %}{{ "%.1f"|format(item.delta) }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge {{ item.status }}">
+                            {% if item.status == 'good' %}
+                                ✓ Within Range
+                            {% elif item.status == 'warning' %}
+                                ⚠ Slightly Off
+                            {% else %}
+                                ⚠️ Off Target
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    </div>
+    <!-- End Tab 1: Organization Overview -->
+
+    <!-- Tab 2: Per-Team Calibration -->
+    {% if is_multi_team %}
+    <div class="tab-content" id="team-calibrations">
+        <div class="calibration-disclaimer">
+            <h4>ℹ️ Per-Team Distribution Analysis</h4>
+            <p>
+                Each team's calibration is calculated independently. This helps identify teams with potential
+                rating inflation, deflation, or inconsistent standards compared to the organization-wide distribution.
+            </p>
+        </div>
+
+        {% for team_cal in team_calibrations %}
+        <div style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <h3 style="margin-top: 0;">{{ team_cal.team_name }}</h3>
+            <p style="color: #666; margin-bottom: 15px;">{{ team_cal.total_rated }} employees rated</p>
+
+            {% if team_cal.total_rated < 10 %}
+            <div class="small-team-warning" style="margin-bottom: 15px;">
+                ⚠️ <strong>Small team size:</strong> Percentage-based distributions are less meaningful for small teams.
+                Focus on individual performance rather than fitting a curve.
+            </div>
+            {% endif %}
+
+            <div style="overflow-x: auto;">
+                <table class="calibration-table">
+                    <thead>
+                        <tr>
+                            <th>Performance Band</th>
+                            <th>This Team</th>
+                            <th>Suggested Range</th>
+                            <th>Delta</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in team_cal.data %}
+                        <tr>
+                            <td>
+                                <strong>
+                                    {% if item.bucket == 'above_120' %}
+                                        Above {{ rating_thresholds.high }}%
+                                    {% elif item.bucket == '90_to_120' %}
+                                        {{ rating_thresholds.mid }}-{{ rating_thresholds.high }}%
+                                    {% elif item.bucket == '60_to_90' %}
+                                        {{ rating_thresholds.low }}-{{ rating_thresholds.mid }}%
+                                    {% else %}
+                                        Below {{ rating_thresholds.low }}%
+                                    {% endif %}
+                                </strong>
+                                <br>
+                                <span style="font-size: 12px; color: #666;">
+                                    {% if item.bucket == 'above_120' %}
+                                        Exceptional performers
+                                    {% elif item.bucket == '90_to_120' %}
+                                        Solid performers
+                                    {% elif item.bucket == '60_to_90' %}
+                                        Needs improvement
+                                    {% else %}
+                                        Significant concerns
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <strong>{{ item.percentage }}%</strong>
+                                <span style="color: #666; font-size: 13px;">({{ item.count }} people)</span>
+                            </td>
+                            <td>
+                                {{ item.suggested_min }}-{{ item.suggested_max }}%
+                                <span style="color: #666; font-size: 13px;">({{ item.suggested_min_people }}-{{ item.suggested_max_people }} people)</span>
+                            </td>
+                            <td>
+                                <span class="delta-value delta-{{ item.status }}">
+                                    {% if item.delta > 0 %}+{% endif %}{{ "%.1f"|format(item.delta) }}%
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge {{ item.status }}">
+                                    {% if item.status == 'good' %}
+                                        ✓ Within Range
+                                    {% elif item.status == 'warning' %}
+                                        ⚠ Slightly Off
+                                    {% else %}
+                                        ⚠️ Off Target
+                                    {% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <!-- End Tab 2: Per-Team Calibration -->
+
+    <!-- Tab 3: Team Comparison Matrix -->
+    {% if is_multi_team %}
+    <div class="tab-content" id="team-comparison">
+        <div class="calibration-disclaimer">
+            <h4>ℹ️ Cross-Team Calibration Comparison</h4>
+            <p>
+                Compare calibration distributions across all teams to identify potential inconsistencies in
+                rating standards. Teams significantly outside suggested ranges may benefit from calibration discussions.
+            </p>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="calibration-table">
+                <thead>
+                    <tr>
+                        <th>Team</th>
+                        <th>Size</th>
+                        <th>Avg Rating</th>
+                        <th>Std Dev</th>
+                        <th>Above {{ rating_thresholds.high }}%</th>
+                        <th>{{ rating_thresholds.mid }}-{{ rating_thresholds.high }}%</th>
+                        <th>{{ rating_thresholds.low }}-{{ rating_thresholds.mid }}%</th>
+                        <th>Below {{ rating_thresholds.low }}%</th>
+                        <th>Calibration Health</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for team in team_comparisons %}
+                    <tr>
+                        <td><strong>{{ team.team_name }}</strong></td>
+                        <td>{{ team.size }}</td>
+                        <td>{{ team.avg_rating }}%</td>
+                        <td>{{ team.std_dev }}%</td>
+                        {% for bucket in ['above_120', '90_to_120', '60_to_90', 'below_60'] %}
+                        <td style="{% if team.buckets[bucket].status != 'good' %}background: #fff3cd;{% endif %}">
+                            {{ team.buckets[bucket].percentage }}%
+                            {% if team.buckets[bucket].status != 'good' %}
+                            <span style="color: #856404;">⚠</span>
+                            {% else %}
+                            <span style="color: #155724;">✓</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                        <td>
+                            <span class="status-badge {{ team.calibration_health }}">
+                                {% if team.calibration_health == 'good' %}
+                                    ✓ Good
+                                {% elif team.calibration_health == 'warning' %}
+                                    ⚠ Review
+                                {% else %}
+                                    ⚠️ Issues
+                                {% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Calibration Insights -->
+        <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;">
+            <h4 style="margin: 0 0 10px 0; color: #1976D2;">📊 Calibration Insights</h4>
+            <ul style="margin: 0; padding-left: 20px; color: #555;">
+                {% set max_avg = team_comparisons | map(attribute='avg_rating') | max %}
+                {% set min_avg = team_comparisons | map(attribute='avg_rating') | min %}
+                {% set avg_spread = max_avg - min_avg %}
+
+                {% if avg_spread > 30 %}
+                <li><strong>Large rating variance:</strong> {{ "%.1f"|format(avg_spread) }}% spread between highest ({{ "%.1f"|format(max_avg) }}%) and lowest ({{ "%.1f"|format(min_avg) }}%) average teams. Consider calibration discussion.</li>
+                {% elif avg_spread > 20 %}
+                <li><strong>Moderate rating variance:</strong> {{ "%.1f"|format(avg_spread) }}% spread across teams. Monitor for consistency.</li>
+                {% else %}
+                <li><strong>Consistent ratings:</strong> Teams show similar average ratings ({{ "%.1f"|format(avg_spread) }}% spread). Well-calibrated organization.</li>
+                {% endif %}
+
+                {% set high_variance_teams = team_comparisons | selectattr('std_dev', '>', 20) | list %}
+                {% if high_variance_teams | length > 0 %}
+                <li><strong>High variance within teams:</strong> {{ high_variance_teams | map(attribute='team_name') | join(', ') }} show high standard deviation (>20%). Wide range of performance levels.</li>
+                {% endif %}
+
+                {% set problematic_teams = team_comparisons | selectattr('calibration_health', 'equalto', 'alert') | list %}
+                {% if problematic_teams | length > 0 %}
+                <li><strong>Calibration attention needed:</strong> {{ problematic_teams | map(attribute='team_name') | join(', ') }} have multiple buckets outside suggested ranges.</li>
+                {% endif %}
+
+                {% set good_teams = team_comparisons | selectattr('calibration_health', 'equalto', 'good') | list %}
+                {% if good_teams | length == team_comparisons | length %}
+                <li><strong>✓ All teams well-calibrated:</strong> Every team falls within suggested distribution ranges.</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+    <!-- End Tab 3: Team Comparison Matrix -->
+
+    {% endif %}
+    </div>
+    <!-- End Bonus Calibration Content -->
+
+    <!-- Talent Calibration Content -->
+    <div class="primary-tab-content {% if not total_rated > 0 and talent_calibration %}active{% endif %}" id="talent-calibration-content">
+    {% if talent_calibration %}
+
+    <div class="calibration-disclaimer">
+        <h4>ℹ️ Talent assessment guidance</h4>
+        <p>
+            The suggested ranges below represent typical talent distributions for reference only.
+            <strong>This is not a quota or forced ranking.</strong> Your team's actual talent profile may legitimately differ.
+            Use this to ensure calibration consistency across cycles.
+        </p>
+    </div>
+
+    {% if talent_calibration.total < 10 %}
+    <div class="small-team-warning">
+        ⚠️ <strong>Small team size ({{ talent_calibration.total }} calibrated):</strong> Percentage-based distributions are less meaningful for small teams.
+        Focus on individual assessments rather than fitting a curve.
+    </div>
+    {% endif %}
+
+    <!-- Overall Performance Distribution -->
+    <h3 style="margin-bottom: 15px;">Overall Performance Distribution</h3>
+
+    <div class="calibration-chart-container">
+        <canvas id="talentPerformanceChart"></canvas>
+    </div>
+
+    <div style="overflow-x: auto; margin-bottom: 30px;">
+        <table class="calibration-table">
+            <thead>
+                <tr>
+                    <th>Performance Level</th>
+                    <th>Your Team</th>
+                    <th>Suggested Range</th>
+                    <th>Delta</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in talent_calibration.performance_data %}
+                <tr>
+                    <td>
+                        <strong>{{ item.level }}</strong>
+                    </td>
+                    <td>
+                        <strong>{{ item.percentage }}%</strong>
+                        <span style="color: #666; font-size: 13px;">({{ item.count }} people)</span>
+                    </td>
+                    <td>
+                        {{ item.suggested_min }}-{{ item.suggested_max }}%
+                        <span style="color: #666; font-size: 13px;">({{ item.suggested_min_people }}-{{ item.suggested_max_people }} people)</span>
+                    </td>
+                    <td>
+                        <span class="delta-value delta-{{ item.status }}">
+                            {% if item.delta > 0 %}+{% endif %}{{ "%.1f"|format(item.delta) }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge {{ item.status }}">
+                            {% if item.status == 'good' %}
+                                ✓ Within Range
+                            {% elif item.status == 'warning' %}
+                                ⚠ Slightly Off
+                            {% else %}
+                                ⚠️ Off Target
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+
+                <!-- Future Talent row (separate metric) -->
+                <tr style="border-top: 2px solid #667eea;">
+                    <td>
+                        <strong>Identified as Future Talent</strong>
+                        <br><span style="font-size: 12px; color: #666;">Both agility traits "Always/Most of the Time"</span>
+                    </td>
+                    <td>
+                        <strong>{{ talent_calibration.future_talent.percentage }}%</strong>
+                        <span style="color: #666; font-size: 13px;">({{ talent_calibration.future_talent.count }} people)</span>
+                    </td>
+                    <td>
+                        {{ talent_calibration.future_talent.suggested_min }}-{{ talent_calibration.future_talent.suggested_max }}%
+                    </td>
+                    <td>
+                        {% set ft_delta = talent_calibration.future_talent.percentage - ((talent_calibration.future_talent.suggested_min + talent_calibration.future_talent.suggested_max) / 2) %}
+                        <span class="delta-value delta-{{ talent_calibration.future_talent.status }}">
+                            {% if ft_delta > 0 %}+{% endif %}{{ "%.1f"|format(ft_delta) }}%
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge {{ talent_calibration.future_talent.status }}">
+                            {% if talent_calibration.future_talent.status == 'good' %}
+                                ✓ Within Range
+                            {% elif talent_calibration.future_talent.status == 'warning' %}
+                                ⚠ Slightly Off
+                            {% else %}
+                                ⚠️ Off Target
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Movement Readiness Breakdown -->
+    <h3 style="margin-bottom: 15px;">Movement Readiness Breakdown</h3>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
+        {% for item in talent_calibration.movement_data %}
+        <div class="stat-box" style="border-left-color: {% if loop.index == 1 %}#3498db{% elif loop.index == 2 %}#27ae60{% else %}#9b59b6{% endif %};">
+            <h4>{{ item.level }}</h4>
+            <div class="avg">{{ item.percentage }}%</div>
+            <div style="font-size: 14px; color: #666;">{{ item.count }} employees</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="calibration-chart-container" style="height: 200px;">
+        <canvas id="movementReadinessChart"></canvas>
+    </div>
+
+    {% endif %}
+    </div>
+    <!-- End Talent Calibration Content -->
+
+    </div>
+</div>
+{% endif %}

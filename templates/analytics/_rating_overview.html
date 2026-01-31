@@ -1,0 +1,49 @@
+{# Performance Rating Overview Card - Conditional on total_rated #}
+<!-- 8. Performance Rating Overview -->
+{% if total_rated > 0 %}
+<div class="card" id="performanceRatingOverviewCard" data-card-id="team-rankings">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>📋 Performance Rating Overview</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
+    <div style="overflow-x: auto;">
+        <table class="ranking-table">
+            <thead>
+                <tr>
+                    <th class="sortable" data-sort="name">Name</th>
+                    <th class="sortable" data-sort="job">Job Profile</th>
+                    <th class="sortable" data-sort="rating">Performance Rating</th>
+                    <th>Justification</th>
+                </tr>
+            </thead>
+            <tbody id="rankingsTableBody">
+                {% for employee in team %}
+                    {% if employee.performance_rating_percent %}
+                    <tr data-name="{{ employee.Associate }}"
+                        data-job="{{ employee['Current Job Profile'] }}"
+                        data-rating="{{ employee.performance_rating_percent }}">
+                        <td><strong><span class="employee-name" data-employee-id="{{ employee['Associate ID'] }}">{{ employee.Associate }}</span></strong></td>
+                        <td>{{ employee['Current Job Profile'] }}</td>
+                        <td>
+                            <span class="rating-text
+                                {% if employee.performance_rating_percent >= rating_thresholds.high %}rating-text-high
+                                {% elif employee.performance_rating_percent >= rating_thresholds.mid %}rating-text-mid
+                                {% elif employee.performance_rating_percent >= rating_thresholds.low %}rating-text-low
+                                {% else %}rating-text-below{% endif %}"
+                                style="font-size: 16px;">
+                                {{ employee.performance_rating_percent }}%
+                            </span>
+                        </td>
+                        <td style="max-width: 400px; font-size: 13px;">
+                            {% if employee.justification %}{{ employee.justification[:200] }}{% if employee.justification|length > 200 %}...{% endif %}{% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    </div>
+</div>
+{% endif %}

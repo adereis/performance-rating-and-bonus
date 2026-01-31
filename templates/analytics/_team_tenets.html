@@ -1,0 +1,25 @@
+{# Team Tenets Analysis Card - Conditional on tenets_summary #}
+<!-- 1. Team Tenets Analysis -->
+{% if tenets_summary %}
+<div class="card" data-card-id="team-tenets">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>🎯 Team Tenets Analysis</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+        <div class="stat-box">
+            <h4>Employees Evaluated</h4>
+            <div class="avg">{{ employees_with_tenets }} / {{ total_employees }}</div>
+        </div>
+        <div class="stat-box">
+            <h4>Completion Rate</h4>
+            <div class="avg">{{ "%.0f"|format((employees_with_tenets / total_employees * 100) if total_employees > 0 else 0) }}%</div>
+        </div>
+    </div>
+
+    <div id="tenetsChartContainer"></div>
+    </div>
+</div>
+{% endif %}

@@ -1,0 +1,66 @@
+{# Team Overview Card - Always visible, expanded by default #}
+<!-- 0. Team Overview (expanded by default) -->
+<div class="card" id="teamOverviewCard" data-card-id="team-overview">
+    <div class="card-header" onclick="toggleCard(this)">
+        <h2>👥 Team Overview</h2>
+        <span class="collapse-icon">▼</span>
+    </div>
+    <div class="card-body">
+
+    <!-- Summary Stats Row -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px;">
+        <div class="stat-box">
+            <h4>Team Size</h4>
+            <div class="avg">{{ total_employees }}</div>
+        </div>
+        <div class="stat-box">
+            <h4>Unique Roles</h4>
+            <div class="avg">{{ job_profile_distribution|length }}</div>
+        </div>
+        {% if total_rated > 0 %}
+        <div class="stat-box">
+            <h4>Rated</h4>
+            <div class="avg">{{ total_rated }} / {{ total_employees }}</div>
+        </div>
+        {% endif %}
+        {% if talent_calibration %}
+        <div class="stat-box">
+            <h4>Calibrated</h4>
+            <div class="avg">{{ calibrated_count }} / {{ total_employees }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Job Profile Distribution -->
+    <h3 style="margin-bottom: 15px;">Role Distribution</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start;">
+        <!-- Pie Chart -->
+        <div class="chart-container" style="box-shadow: none; padding: 0;">
+            <canvas id="jobProfilePieChart" style="max-height: 280px;"></canvas>
+        </div>
+
+        <!-- Role List -->
+        <div style="overflow-x: auto;">
+            <table class="ranking-table tenure-sortable-table" id="jobProfileTable" style="font-size: 14px;">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="job" data-table="jobProfileTable">Job Profile</th>
+                        <th class="sortable" data-sort="count" data-table="jobProfileTable" style="text-align: right;">Count</th>
+                        <th class="sortable" data-sort="pct" data-table="jobProfileTable" style="text-align: right;">%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in job_profile_distribution %}
+                    <tr data-job="{{ item.job }}" data-count="{{ item.count }}" data-pct="{{ (item.count / total_employees * 100)|round(1) }}">
+                        <td>{{ item.job }}</td>
+                        <td style="text-align: right;">{{ item.count }}</td>
+                        <td style="text-align: right;">{{ "%.0f"|format(item.count / total_employees * 100) }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    </div>
+</div>
