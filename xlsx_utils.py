@@ -26,6 +26,63 @@ def parse_float(val) -> Optional[float]:
         return None
 
 
+def convert_decimal_to_percent(val: Optional[float], is_new_format: bool = True) -> Optional[float]:
+    """
+    Convert Workday decimal format to percentage.
+
+    The new Workday format (2025+) stores percentages as decimals:
+    - 0.05 = 5% bonus target
+    - 0.10 = 10% bonus target
+    - 1.20 = 120% bonus allocation (exceptional performer)
+
+    The old format stored as actual percentages (5 = 5%).
+
+    Args:
+        val: The value from the spreadsheet
+        is_new_format: If True, multiply by 100 to convert decimal to percent
+
+    Returns:
+        The percentage value (5 for 5%, 120 for 120%), or None
+    """
+    if val is None:
+        return None
+    if is_new_format:
+        return val * 100
+    return val
+
+
+def parse_date(val) -> Optional[datetime]:
+    """
+    Parse a date value from Workday export.
+
+    Handles both datetime objects (from Excel) and string formats.
+
+    Args:
+        val: The date value (datetime, string, or None)
+
+    Returns:
+        datetime object or None
+    """
+    if val is None:
+        return None
+
+    if isinstance(val, datetime):
+        return val
+
+    if isinstance(val, str):
+        val = val.strip()
+        if not val:
+            return None
+        # Try common date formats
+        for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%dT%H:%M:%S']:
+            try:
+                return datetime.strptime(val, fmt)
+            except ValueError:
+                continue
+
+    return None
+
+
 def get_current_period_name() -> str:
     """
     Get the current period name in Workday format (e.g., "CY25 Q1").
@@ -82,11 +139,10 @@ def detect_import_type(period_name: str, spreadsheet_type: str = 'bonus') -> Dic
             - period_id: Suggested period ID (e.g., "2025-Q3")
             - period_display: Period display name (e.g., "CY25 Q3")
             - current_period: The current period for reference
-            - is_current_period: Whether file period matches current or previous quarter
+            - is_current_period: Whether file period matches current
             - is_talent_file: Whether this is a talent calibration file
     """
     current_period = get_current_period_name()
-    previous_period = get_previous_period_name()
 
     # Talent files don't have period metadata - always import as current
     if spreadsheet_type == 'talent':
@@ -109,9 +165,13 @@ def detect_import_type(period_name: str, spreadsheet_type: str = 'bonus') -> Dic
             period_suffix = match.group(2)  # Q1, Q2, H1, etc.
             period_id = f"{year}-{period_suffix}"
 
-    # Consider both current and previous quarter as "current" for bonus files,
-    # since bonus processing happens in the quarter after the performance period
-    is_current = period_name in (current_period, previous_period) if period_name else False
+    previous_period = get_previous_period_name()
+    is_exact_current = period_name == current_period if period_name else False
+    is_previous = period_name == previous_period if period_name else False
+
+    # Treat previous quarter as "current" since bonus processing typically
+    # happens the quarter after performance period (e.g., Q4 bonuses in Q1)
+    is_current = is_exact_current or is_previous
 
     return {
         'suggested_type': 'current' if is_current else 'historical',
@@ -127,9 +187,17 @@ def extract_workday_metadata(rows: List[tuple], header_idx: int) -> Dict[str, An
     """
     Extract metadata from Workday export header rows.
 
-    The extended Workday format includes:
-    - Row 1: Report title with period info (e.g., "Associate Awards:: ... Bonus - CY25 Q3")
-    - Row 4: Budget summary (type, total spend, "of", total pool, %, style, currency)
+    Supports two formats:
+
+    NEW FORMAT (2025+):
+    - Row 0: Report title (e.g., "RH Compensation Review Process - Bonus")
+    - Row 2: Period info (e.g., "Compensation Review: Bonus - CY25 Q4")
+    - Row 4: Manager org context
+    - No budget row - total_pool calculated from sum of bonus targets
+
+    OLD FORMAT (pre-2025):
+    - Row 0: Report title with period (e.g., "Associate Awards:: ... Bonus - CY25 Q3")
+    - Row 3: Budget summary (type, total_spend, "of", total_pool, %, style, currency)
 
     Args:
         rows: All rows from the spreadsheet
@@ -138,42 +206,69 @@ def extract_workday_metadata(rows: List[tuple], header_idx: int) -> Dict[str, An
     Returns:
         Dict with:
             - period_name: str or None (e.g., "CY25 Q3")
-            - total_pool: float or None (budget amount)
+            - total_pool: float or None (budget amount, None for new format)
             - currency: str or None (e.g., "USD")
-            - report_title: str or None (full title from row 1)
+            - report_title: str or None (full title from row 0)
+            - is_new_format: bool (True if new 2025+ format detected)
     """
     metadata = {
         'period_name': None,
         'total_pool': None,
         'currency': None,
         'report_title': None,
+        'is_new_format': False,
     }
 
     if not rows or header_idx < 1:
         return metadata
 
-    # Row 1: Extract report title and period name
+    # Row 0: Extract report title
     if len(rows) > 0 and rows[0]:
         title = rows[0][0]
         if title and isinstance(title, str):
             metadata['report_title'] = title.strip()
-            # Extract period from patterns like "Bonus - CY25 Q3" or "Bonus CY25-H1"
-            # Look for common period patterns at the end of the title
-            period_patterns = [
-                r'[-–]\s*([A-Z]{2}\d{2}\s+[A-Z]\d)',      # "- CY25 Q3"
-                r'[-–]\s*([A-Z]{2}\d{2}-[A-Z]\d)',        # "- CY25-Q3"
-                r'[-–]\s*(\d{4}\s+[A-Z]\d)',              # "- 2025 Q3"
-                r'[-–]\s*(\d{4}-[A-Z]\d)',                # "- 2025-Q3"
-                r'[-–]\s*([A-Z]{2}\d{2}\s+H\d)',          # "- CY25 H1"
-                r'[-–]\s*(\d{4}\s+H\d)',                  # "- 2025 H1"
-            ]
-            for pattern in period_patterns:
-                match = re.search(pattern, title)
-                if match:
-                    metadata['period_name'] = match.group(1).strip()
-                    break
 
-    # Row 4 (index 3): Budget summary row
+    # Detect format based on row 2 or 3 content
+    # New format has "Compensation Review: Bonus - CY25 Q4" pattern
+    # In-progress reviews: period in row 2 (index 2)
+    # Completed reviews: period in row 3 (index 3)
+    for row_idx in [2, 3]:
+        if len(rows) > row_idx and rows[row_idx]:
+            for cell in rows[row_idx]:
+                if cell and isinstance(cell, str) and 'Bonus - CY' in cell:
+                    metadata['is_new_format'] = True
+                    # Extract period from "Compensation Review: Bonus - CY25 Q4"
+                    match = re.search(r'Bonus - (CY\d{2}\s*Q\d)', cell)
+                    if match:
+                        metadata['period_name'] = match.group(1).strip()
+                    break
+            if metadata['is_new_format']:
+                break
+
+    if metadata['is_new_format']:
+        # New format: no budget row, total_pool will be calculated from data
+        # Currency will be extracted from column headers (e.g., "Bonus Target (USD)")
+        return metadata
+
+    # Old format: try to extract period from row 0 title
+    if not metadata['period_name'] and metadata['report_title']:
+        title = metadata['report_title']
+        # Extract period from patterns like "Bonus - CY25 Q3" or "Bonus CY25-H1"
+        period_patterns = [
+            r'[-–]\s*([A-Z]{2}\d{2}\s+[A-Z]\d)',      # "- CY25 Q3"
+            r'[-–]\s*([A-Z]{2}\d{2}-[A-Z]\d)',        # "- CY25-Q3"
+            r'[-–]\s*(\d{4}\s+[A-Z]\d)',              # "- 2025 Q3"
+            r'[-–]\s*(\d{4}-[A-Z]\d)',                # "- 2025-Q3"
+            r'[-–]\s*([A-Z]{2}\d{2}\s+H\d)',          # "- CY25 H1"
+            r'[-–]\s*(\d{4}\s+H\d)',                  # "- 2025 H1"
+        ]
+        for pattern in period_patterns:
+            match = re.search(pattern, title)
+            if match:
+                metadata['period_name'] = match.group(1).strip()
+                break
+
+    # Old format Row 4 (index 3): Budget summary row
     # Format: [type, total_spend, "of", total_pool, %, style, currency, ...]
     if len(rows) > 3 and rows[3]:
         budget_row = rows[3]
@@ -265,10 +360,12 @@ def validate_workday_format(rows: List[tuple], header_idx: Optional[int], header
     if data_rows == 0:
         return False, "No employee data found after header row"
 
-    # Check for required metadata (new Workday format)
-    # Old format files without metadata are no longer supported
+    # Check for required metadata (Workday format validation)
+    # New format (2025+): total_pool will be calculated from data, not required in metadata
+    # Old format: requires total_pool in metadata
     if metadata is not None:
-        if not metadata.get('total_pool'):
+        is_new_format = metadata.get('is_new_format', False)
+        if not is_new_format and not metadata.get('total_pool'):
             return False, (
                 "Missing bonus pool metadata.\n\n"
                 "This file appears to be using an old export format that lacks required metadata.\n\n"
@@ -375,7 +472,6 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
         employee_count = 0
         notes_count = 0
         allocation_count = 0  # Employees with proposed bonus allocation
-        employees_with_allocations = []  # Names of employees with allocations
 
         # Find column indices
         col_indices = find_column_indices(headers)
@@ -403,9 +499,6 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
             bonus_idx = col_indices.get('proposed_percent_of_target')
             if bonus_idx is not None and bonus_idx < len(row) and row[bonus_idx]:
                 allocation_count += 1
-                # Record the employee name
-                if associate_idx is not None and associate_idx < len(row):
-                    employees_with_allocations.append(str(associate_val).strip())
 
         wb.close()
 
@@ -419,7 +512,6 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
             'has_bonus_column': col_indices.get('proposed_percent_of_target') is not None,
             'notes_count': notes_count,
             'allocation_count': allocation_count,
-            'employees_with_allocations': employees_with_allocations,
             'columns': headers,
             'metadata': metadata,
             'import_detection': import_detection
@@ -454,33 +546,72 @@ def find_column_indices(headers: List[str]) -> Dict[str, Optional[int]]:
 
     # Map of field name -> possible header variations
     # Variations with currency codes use regex patterns (marked with 're:' prefix)
+    #
+    # New Workday format (2025+):
+    # - Uses 'Direct Manager' instead of 'Supervisory Organization'
+    # - Uses 'Job Title' instead of 'Current Job Profile'
+    # - Uses 'Error' (singular) instead of 'Errors'
+    # - Uses 'Bonus Target (XXX)' pattern instead of 'Bonus Target - Local Currency (XXX)'
+    # - Uses 'Base Pay All Countries (XXX)' pattern
+    # - Includes new fields: Management Level, Country, Hire Date, Performance Review Name/Rating
     field_mappings = {
         'associate': ['associate'],
         'associate_id': ['associate id'],
-        'supervisory_org': ['supervisory organization'],
-        'job_profile': ['current job profile'],
+        # New format uses 'Direct Manager', old format used 'Supervisory Organization'
+        'supervisory_org': ['direct manager', 'supervisory organization'],
+        # New format uses 'Job Title', old format used 'Current Job Profile'
+        'job_profile': ['job title', 'current job profile'],
         'photo': ['photo'],
-        'errors': ['errors'],
-        'base_pay': ['current base pay - all countries', 'current base pay all countries'],
+        # New format uses 'Error' (singular), old format used 'Errors'
+        'errors': ['error', 'errors'],
+        # Base pay columns - new format uses different naming pattern
+        'base_pay': [
+            'base pay all countries (local)',
+            'current base pay - all countries',
+            'current base pay all countries'
+        ],
         # Match any 3-letter currency code: (USD), (AUD), (GBP), (EUR), etc.
         'base_pay_converted': [
+            're:base pay all countries \\([a-z]{3}\\)',
             're:current base pay - all countries \\([a-z]{3}\\)',
             're:current base pay all countries \\([a-z]{3}\\)'
         ],
         'currency': ['currency'],
         'grade': ['grade'],
         'annual_bonus_target': ['annual bonus target %', 'annual bonus target percent'],
-        'last_bonus_allocation': ['last bonus allocation %', 'last bonus allocation percent'],
-        'bonus_target_local': ['bonus target - local currency', 'bonus target local currency'],
+        # New format includes "(As of Report Run Date)" suffix
+        'last_bonus_allocation': [
+            're:last bonus allocation percent.*',
+            'last bonus allocation %',
+            'last bonus allocation percent'
+        ],
+        # New format uses 'Bonus Target (Local)' and 'Bonus Target (XXX)'
+        'bonus_target_local': [
+            'bonus target (local)',
+            'bonus target - local currency',
+            'bonus target local currency'
+        ],
         'bonus_target_converted': [
+            're:bonus target \\([a-z]{3}\\)',
             're:bonus target - local currency \\([a-z]{3}\\)',
             're:bonus target local currency \\([a-z]{3}\\)'
         ],
-        'proposed_bonus': ['proposed bonus amount'],
+        # New format uses 'Proposed Bonus Amount (Local)' and 'Proposed Bonus Amount (XXX)'
+        'proposed_bonus': [
+            'proposed bonus amount (local)',
+            'proposed bonus amount'
+        ],
         'proposed_bonus_converted': ['re:proposed bonus amount \\([a-z]{3}\\)'],
         'proposed_percent_of_target': ['proposed % of target bonus', 'proposed percent of target bonus'],
         'notes': ['notes', 'single description'],
         'zero_bonus': ['zero bonus allocated'],
+        # New fields in 2025 format
+        'management_level': ['management level'],
+        'country': ['country'],
+        'hire_date': ['hire date'],
+        'time_in_job_profile': ['time in job profile'],
+        'perf_review_name': ['performance review name'],
+        'perf_review_rating': ['re:overall performance rating.*'],
     }
 
     for field, variations in field_mappings.items():
@@ -508,49 +639,13 @@ def find_column_indices(headers: List[str]) -> Dict[str, Optional[int]]:
     return indices
 
 
-def extract_manager_currency_from_headers(headers: List[str]) -> Optional[str]:
-    """
-    Extract the manager's currency code from column headers.
-
-    Workday exports include converted columns like "Bonus Target (USD)" or
-    "Base Pay All Countries (AUD)" where the 3-letter code in parentheses
-    indicates the manager's reporting currency.
-
-    Priority order:
-    1. Bonus Target (XXX) - most reliable indicator
-    2. Base Pay All Countries (XXX) - fallback
-
-    Args:
-        headers: List of header strings
-
-    Returns:
-        Currency code (e.g., 'USD', 'AUD') or None if not found
-    """
-    # Look for currency code in parentheses, excluding "(Local)"
-    # Priority: Bonus Target columns first, then Base Pay
-    priority_patterns = [
-        r'bonus target.*\(([a-z]{3})\)',
-        r'base pay all countries \(([a-z]{3})\)',
-        r'proposed bonus amount \(([a-z]{3})\)',
-    ]
-
-    for pattern in priority_patterns:
-        for header in headers:
-            if header:
-                header_lower = header.lower().strip()
-                # Skip "(Local)" columns
-                if '(local)' in header_lower:
-                    continue
-                match = re.search(pattern, header_lower)
-                if match:
-                    return match.group(1).upper()
-
-    return None
-
-
 def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], str, Dict[str, Any]]:
     """
     Parse all employee data from a Workday XLSX export.
+
+    Handles both old and new (2025+) Workday formats:
+    - New format: Uses decimal percentages (0.05 = 5%), different column names
+    - Old format: Uses integer percentages (5 = 5%)
 
     Args:
         file_path: Path to the XLSX file
@@ -558,7 +653,7 @@ def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], st
     Returns:
         Tuple of (success, employees_list, error_message, metadata)
         employees_list contains dicts with all parsed fields
-        metadata contains period_name, total_pool, currency
+        metadata contains period_name, total_pool, currency, is_new_format
     """
     try:
         wb = openpyxl.load_workbook(file_path, read_only=True)
@@ -570,19 +665,15 @@ def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], st
         header_idx = _find_header_row(rows)
         headers = [str(h).strip() if h else '' for h in rows[header_idx]] if header_idx is not None else []
 
-        # Extract metadata from header rows (needed for validation)
+        # Extract metadata from header rows (needed for validation and format detection)
         metadata = extract_workday_metadata(rows, header_idx) if header_idx is not None else {}
-
-        # Extract manager currency from column headers (e.g., "Bonus Target (USD)")
-        # This is more reliable than inferring from employee data
-        if headers and not metadata.get('currency'):
-            metadata['currency'] = extract_manager_currency_from_headers(headers)
+        is_new_format = metadata.get('is_new_format', False)
 
         # Validate the file format (including metadata check)
         is_valid, validation_error = validate_workday_format(rows, header_idx, headers, metadata)
         if not is_valid:
             wb.close()
-            return False, [], validation_error, {}
+            return False, [], validation_error, metadata
 
         col_indices = find_column_indices(headers)
 
@@ -607,6 +698,17 @@ def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], st
             else:
                 associate_id = f"TEMP_{i}"
 
+            # Parse percentage fields with format-aware conversion
+            annual_bonus_pct = parse_float(_get_val(row, col_indices.get('annual_bonus_target')))
+            last_bonus_pct = parse_float(_get_val(row, col_indices.get('last_bonus_allocation')))
+            proposed_pct = parse_float(_get_val(row, col_indices.get('proposed_percent_of_target')))
+
+            # New format uses decimal (0.05 = 5%), old format uses integer (5 = 5%)
+            if is_new_format:
+                annual_bonus_pct = convert_decimal_to_percent(annual_bonus_pct, is_new_format=True)
+                last_bonus_pct = convert_decimal_to_percent(last_bonus_pct, is_new_format=True)
+                proposed_pct = convert_decimal_to_percent(proposed_pct, is_new_format=True)
+
             # Build employee dict
             emp = {
                 'associate_id': associate_id,
@@ -619,29 +721,36 @@ def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], st
                 'current_base_pay_manager_currency': parse_float(_get_val(row, col_indices.get('base_pay_converted'))),
                 'currency': _get_str(row, col_indices.get('currency')),
                 'grade': _get_str(row, col_indices.get('grade')),
-                'annual_bonus_target_percent': parse_float(_get_val(row, col_indices.get('annual_bonus_target'))),
-                'last_bonus_allocation_percent': parse_float(_get_val(row, col_indices.get('last_bonus_allocation'))),
+                'annual_bonus_target_percent': annual_bonus_pct,
+                'last_bonus_allocation_percent': last_bonus_pct,
                 'bonus_target_local_currency': parse_float(_get_val(row, col_indices.get('bonus_target_local'))),
                 'bonus_target_manager_currency': parse_float(_get_val(row, col_indices.get('bonus_target_converted'))),
                 'proposed_bonus_amount': parse_float(_get_val(row, col_indices.get('proposed_bonus'))),
                 'proposed_bonus_amount_manager_currency': parse_float(_get_val(row, col_indices.get('proposed_bonus_converted'))),
-                'proposed_percent_of_target_bonus': parse_float(_get_val(row, col_indices.get('proposed_percent_of_target'))),
+                'proposed_percent_of_target_bonus': proposed_pct,
                 'notes': _get_str(row, col_indices.get('notes')),
                 'zero_bonus_allocated': _get_str(row, col_indices.get('zero_bonus')),
+                # New fields in 2025 format
+                'management_level': _get_str(row, col_indices.get('management_level')),
+                'country': _get_str(row, col_indices.get('country')),
+                'hire_date': parse_date(_get_val(row, col_indices.get('hire_date'))),
+                'time_in_job_profile': _get_str(row, col_indices.get('time_in_job_profile')),
+                'last_perf_review_name': _get_str(row, col_indices.get('perf_review_name')),
+                'last_perf_review_rating': _get_str(row, col_indices.get('perf_review_rating')),
             }
 
             employees.append(emp)
 
-        # Calculate total_pool from bonus targets if not already in metadata
-        if not metadata.get('total_pool') and employees:
-            total_pool = sum(
-                e.get('bonus_target_manager_currency') or e.get('bonus_target_local_currency') or 0
-                for e in employees
-            )
-            if total_pool > 0:
-                metadata['total_pool'] = total_pool
-
         wb.close()
+
+        # For new format, calculate total_pool from sum of bonus targets
+        if is_new_format and not metadata.get('total_pool'):
+            total_pool = sum(
+                emp.get('bonus_target_manager_currency') or emp.get('bonus_target_local_currency') or 0
+                for emp in employees
+            )
+            metadata['total_pool'] = total_pool
+
         return True, employees, '', metadata
 
     except Exception as e:
@@ -667,7 +776,14 @@ def _get_str(row: tuple, idx: Optional[int]) -> str:
 
 # Markers used to detect spreadsheet type
 TALENT_MARKERS = ['Performance: What', 'Performance: How', 'Future Talent', 'Movement Readiness']
-BONUS_MARKERS = ['Bonus Target', 'Annual Bonus Target Percent', 'Current Base Pay', 'Proposed Bonus Amount']
+# Updated for new format: includes both old and new column naming patterns
+BONUS_MARKERS = [
+    'Bonus Target',                 # Matches both "Bonus Target (USD)" and old "Bonus Target - Local Currency"
+    'Annual Bonus Target Percent',  # Present in both formats
+    'Base Pay All Countries',       # New format uses this pattern
+    'Current Base Pay',             # Old format uses this pattern
+    'Proposed Bonus Amount'         # Present in both formats
+]
 
 
 def detect_spreadsheet_type(headers: List[str]) -> str:
@@ -939,13 +1055,22 @@ def parse_proposed_actions_metadata(proposed_actions: str, tenets_config: dict) 
     """
     Parse tenets and mentor/mentees from Proposed Actions field.
 
-    Looks for markers in format:
-        [Strengths: Tenet Name 1; Tenet Name 2]
-        [Improvements: Tenet Name 3]
-        [Mentor: Name]
-        [Mentees: Name1; Name2]
+    Supports two formats:
 
-    Also removes the metadata markers from the text, returning clean proposed actions.
+    1. New split format (from our tool's export):
+        === WORKDAY CONTENT ===
+        [Original text]
+
+        === TOOL ADDITIONS ===
+        Strengths: Tenet1; Tenet2
+        Improvements: Tenet3
+        Mentor: Name
+        Mentees: Name1; Name2
+
+        [MODIFIED] ← Update Workday with the content above
+
+    2. Legacy format (bracket markers inline):
+        [Strengths: Tenet1; Tenet2] [Improvements: Tenet3] [Mentor: Name]
 
     Args:
         proposed_actions: The raw Proposed Actions text
@@ -953,11 +1078,13 @@ def parse_proposed_actions_metadata(proposed_actions: str, tenets_config: dict) 
 
     Returns:
         dict with keys:
-            - clean_actions: Proposed Actions without metadata markers
+            - clean_actions: Proposed Actions without metadata markers (Workday content only)
             - strength_ids: List of tenet IDs matching strengths
             - improvement_ids: List of tenet IDs matching improvements
             - mentor: Mentor name string (or None)
             - mentees: Mentees string (or None)
+            - is_modified: True if [MODIFIED] marker present (new format only)
+            - has_new_format: True if using new split format
     """
     import re
 
@@ -967,7 +1094,9 @@ def parse_proposed_actions_metadata(proposed_actions: str, tenets_config: dict) 
             'strength_ids': [],
             'improvement_ids': [],
             'mentor': None,
-            'mentees': None
+            'mentees': None,
+            'is_modified': False,
+            'has_new_format': False
         }
 
     # Build name -> id mapping
@@ -980,6 +1109,61 @@ def parse_proposed_actions_metadata(proposed_actions: str, tenets_config: dict) 
     improvement_ids = []
     mentor = None
     mentees = None
+
+    # Check for new split format
+    if '=== WORKDAY CONTENT ===' in proposed_actions:
+        is_modified = '[MODIFIED]' in proposed_actions
+
+        # Extract WORKDAY CONTENT section
+        workday_match = re.search(
+            r'=== WORKDAY CONTENT ===\s*(.*?)(?:=== TOOL ADDITIONS ===|\[MODIFIED\]|$)',
+            proposed_actions,
+            re.DOTALL
+        )
+        workday_content = workday_match.group(1).strip() if workday_match else ''
+
+        # Extract TOOL ADDITIONS section
+        tool_match = re.search(
+            r'=== TOOL ADDITIONS ===\s*(.*?)(?:\[MODIFIED\]|$)',
+            proposed_actions,
+            re.DOTALL
+        )
+        tool_additions = tool_match.group(1).strip() if tool_match else ''
+
+        # Parse human-readable tool additions (line-based format)
+        if tool_additions:
+            for line in tool_additions.split('\n'):
+                line = line.strip()
+                if line.lower().startswith('strengths:'):
+                    content = line[len('strengths:'):].strip()
+                    names = [n.strip() for n in content.split(';')] if content else []
+                    for name in names:
+                        tenet_id = name_to_id.get(name.lower())
+                        if tenet_id:
+                            strength_ids.append(tenet_id)
+                elif line.lower().startswith('improvements:'):
+                    content = line[len('improvements:'):].strip()
+                    names = [n.strip() for n in content.split(';')] if content else []
+                    for name in names:
+                        tenet_id = name_to_id.get(name.lower())
+                        if tenet_id:
+                            improvement_ids.append(tenet_id)
+                elif line.lower().startswith('mentor:'):
+                    mentor = line[len('mentor:'):].strip() or None
+                elif line.lower().startswith('mentees:'):
+                    mentees = line[len('mentees:'):].strip() or None
+
+        return {
+            'clean_actions': workday_content,
+            'strength_ids': strength_ids,
+            'improvement_ids': improvement_ids,
+            'mentor': mentor,
+            'mentees': mentees,
+            'is_modified': is_modified,
+            'has_new_format': True
+        }
+
+    # Legacy format: bracket markers inline
     clean_text = proposed_actions
 
     # Parse [Strengths: name1; name2] - uses semicolon since tenet names may contain commas
@@ -1025,7 +1209,9 @@ def parse_proposed_actions_metadata(proposed_actions: str, tenets_config: dict) 
         'strength_ids': strength_ids,
         'improvement_ids': improvement_ids,
         'mentor': mentor if mentor else None,
-        'mentees': mentees if mentees else None
+        'mentees': mentees if mentees else None,
+        'is_modified': False,
+        'has_new_format': False
     }
 
 
@@ -1053,3 +1239,36 @@ def parse_proposed_actions_tenets(proposed_actions: str, tenets_config: dict) ->
     """
     result = parse_proposed_actions_metadata(proposed_actions, tenets_config)
     return result['clean_actions'], result['strength_ids'], result['improvement_ids']
+
+
+def parse_modified_text_field(text: str) -> dict:
+    """
+    Parse a text field that may have [MODIFIED] marker from our tool's export.
+
+    Used for promotion fields (Business Need, Role Scope, Readiness) which
+    are plain text with optional modification marker.
+
+    Format:
+        [Field content here]
+
+        [MODIFIED] ← Update Workday
+
+    Args:
+        text: The field text, possibly with [MODIFIED] marker
+
+    Returns:
+        dict with keys:
+            - content: The field content without the marker
+            - is_modified: True if [MODIFIED] marker was present
+    """
+    import re
+
+    if not text:
+        return {'content': '', 'is_modified': False}
+
+    is_modified = '[MODIFIED]' in text
+
+    # Remove the marker and any trailing instruction text
+    content = re.sub(r'\n*\[MODIFIED\].*$', '', text, flags=re.DOTALL).strip()
+
+    return {'content': content, 'is_modified': is_modified}

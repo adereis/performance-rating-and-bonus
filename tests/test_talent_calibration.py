@@ -377,8 +377,15 @@ class TestTalentMarkers:
         assert TALENT_MARKERS == expected
 
     def test_bonus_markers_match_spec(self):
-        """BONUS_MARKERS match Spec §5.1 markers."""
-        expected = ['Bonus Target', 'Annual Bonus Target Percent', 'Current Base Pay', 'Proposed Bonus Amount']
+        """BONUS_MARKERS match new format markers (updated 2025)."""
+        # Updated for new Workday format: includes both old and new column naming patterns
+        expected = [
+            'Bonus Target',                 # Matches both new and old format
+            'Annual Bonus Target Percent',  # Present in both formats
+            'Base Pay All Countries',       # New format uses this pattern
+            'Current Base Pay',             # Old format uses this pattern
+            'Proposed Bonus Amount'         # Present in both formats
+        ]
         assert BONUS_MARKERS == expected
 
 

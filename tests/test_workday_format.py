@@ -390,6 +390,138 @@ class TestInternationalManagerCurrencyHeaders:
         assert indices['bonus_target_converted'] == 5
 
 
+class TestNewFormatColumnHeaders:
+    """Test column header detection for new Workday format (2025+)."""
+
+    def test_new_format_direct_manager_detected(self):
+        """Test that 'Direct Manager' column is detected and mapped to supervisory_org."""
+        from xlsx_utils import find_column_indices
+
+        # NEW FORMAT: Uses 'Direct Manager' instead of 'Supervisory Organization'
+        headers = [
+            'Associate ID',
+            'Associate',
+            'Job Title',
+            'Direct Manager',
+            'Bonus Target (Local)',
+            'Bonus Target (USD)',
+        ]
+
+        indices = find_column_indices(headers)
+
+        assert indices['associate_id'] == 0
+        assert indices['associate'] == 1
+        assert indices['job_profile'] == 2
+        assert indices['supervisory_org'] == 3  # 'Direct Manager' maps to supervisory_org
+
+    def test_new_format_job_title_detected(self):
+        """Test that 'Job Title' column is detected."""
+        from xlsx_utils import find_column_indices
+
+        headers = [
+            'Associate',
+            'Job Title',  # NEW: was 'Current Job Profile'
+            'Direct Manager',
+        ]
+
+        indices = find_column_indices(headers)
+
+        assert indices['job_profile'] == 1
+
+    def test_new_format_bonus_target_pattern(self):
+        """Test that new 'Bonus Target (XXX)' pattern is detected."""
+        from xlsx_utils import find_column_indices
+
+        headers = [
+            'Associate ID',
+            'Bonus Target (Local)',   # NEW: was 'Bonus Target - Local Currency'
+            'Bonus Target (USD)',     # NEW: was 'Bonus Target - Local Currency (USD)'
+        ]
+
+        indices = find_column_indices(headers)
+
+        assert indices['bonus_target_local'] == 1
+        assert indices['bonus_target_converted'] == 2
+
+    def test_new_format_base_pay_pattern(self):
+        """Test that new 'Base Pay All Countries' pattern is detected."""
+        from xlsx_utils import find_column_indices
+
+        headers = [
+            'Associate ID',
+            'Base Pay All Countries (Local)',   # NEW naming
+            'Base Pay All Countries (USD)',
+        ]
+
+        indices = find_column_indices(headers)
+
+        assert indices['base_pay'] == 1
+        assert indices['base_pay_converted'] == 2
+
+    def test_new_format_error_column_singular(self):
+        """Test that 'Error' (singular) column is detected."""
+        from xlsx_utils import find_column_indices
+
+        headers = [
+            'Associate ID',
+            'Notes',
+            'Error',  # NEW: was 'Errors' (plural)
+        ]
+
+        indices = find_column_indices(headers)
+
+        assert indices['errors'] == 2
+
+    def test_new_format_management_level_detected(self):
+        """Test that new 'Management Level' column is detected."""
+        from xlsx_utils import find_column_indices
+
+        headers = [
+            'Associate ID',
+            'Management Level',
+            'Country',
+        ]
+
+        indices = find_column_indices(headers)
+
+        assert indices['management_level'] == 1
+        assert indices['country'] == 2
+
+    def test_new_format_performance_review_fields(self):
+        """Test that new performance review fields are detected."""
+        from xlsx_utils import find_column_indices
+
+        headers = [
+            'Associate ID',
+            'Performance Review Name',
+            'Overall Performance Rating (Note: From Most Recent Talent Cycle)',
+        ]
+
+        indices = find_column_indices(headers)
+
+        assert indices['perf_review_name'] == 1
+        assert indices['perf_review_rating'] == 2
+
+
+class TestNewFormatDecimalConversion:
+    """Test decimal percentage conversion for new Workday format."""
+
+    def test_convert_decimal_to_percent(self):
+        """Test that decimals are converted correctly."""
+        from xlsx_utils import convert_decimal_to_percent
+
+        # New format stores as decimal: 0.05 = 5%
+        assert convert_decimal_to_percent(0.05, is_new_format=True) == 5.0
+        assert convert_decimal_to_percent(0.10, is_new_format=True) == 10.0
+        assert convert_decimal_to_percent(1.20, is_new_format=True) == 120.0
+        assert convert_decimal_to_percent(2.00, is_new_format=True) == 200.0
+        assert convert_decimal_to_percent(None, is_new_format=True) is None
+
+        # Old format: already in percent form
+        assert convert_decimal_to_percent(5.0, is_new_format=False) == 5.0
+        assert convert_decimal_to_percent(120.0, is_new_format=False) == 120.0
+
+
 class TestManagerCurrencyDetection:
     """Tests for detecting the manager's currency from employee data."""
 

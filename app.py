@@ -3481,8 +3481,6 @@ def import_current():
             # Use calculated total_pool from parsing if not in analysis metadata
             if not workday_pool and parsed_metadata.get('total_pool'):
                 workday_pool = parsed_metadata['total_pool']
-            # Extract manager currency from column headers (e.g., 'USD' from 'Bonus Target (USD)')
-            manager_currency = parsed_metadata.get('currency')
 
         if not success:
             return jsonify({'success': False, 'error': error}), 400
@@ -3626,21 +3624,34 @@ def import_current():
                         employee.talent_promo_readiness = emp_data.get('talent_promo_readiness')
                 else:
                     # Update bonus-specific fields
-                    employee.photo = emp_data['photo']
-                    employee.errors = emp_data['errors']
-                    employee.current_base_pay_all_countries = emp_data['current_base_pay_all_countries']
-                    employee.current_base_pay_manager_currency = emp_data['current_base_pay_manager_currency']
-                    employee.currency = emp_data['currency']
-                    employee.grade = emp_data['grade']
-                    employee.annual_bonus_target_percent = emp_data['annual_bonus_target_percent']
-                    employee.last_bonus_allocation_percent = emp_data['last_bonus_allocation_percent']
-                    employee.bonus_target_local_currency = emp_data['bonus_target_local_currency']
-                    employee.bonus_target_manager_currency = emp_data['bonus_target_manager_currency']
-                    employee.proposed_bonus_amount = emp_data['proposed_bonus_amount']
-                    employee.proposed_bonus_amount_manager_currency = emp_data['proposed_bonus_amount_manager_currency']
-                    employee.proposed_percent_of_target_bonus = emp_data['proposed_percent_of_target_bonus']
-                    employee.notes = emp_data['notes']
-                    employee.zero_bonus_allocated = emp_data['zero_bonus_allocated']
+                    employee.photo = emp_data.get('photo', '')
+                    employee.errors = emp_data.get('errors', '')
+                    employee.current_base_pay_all_countries = emp_data.get('current_base_pay_all_countries')
+                    employee.current_base_pay_manager_currency = emp_data.get('current_base_pay_manager_currency')
+                    employee.currency = emp_data.get('currency', '')
+                    employee.grade = emp_data.get('grade', '')
+                    employee.annual_bonus_target_percent = emp_data.get('annual_bonus_target_percent')
+                    employee.last_bonus_allocation_percent = emp_data.get('last_bonus_allocation_percent')
+                    employee.bonus_target_local_currency = emp_data.get('bonus_target_local_currency')
+                    employee.bonus_target_manager_currency = emp_data.get('bonus_target_manager_currency')
+                    employee.proposed_bonus_amount = emp_data.get('proposed_bonus_amount')
+                    employee.proposed_bonus_amount_manager_currency = emp_data.get('proposed_bonus_amount_manager_currency')
+                    employee.proposed_percent_of_target_bonus = emp_data.get('proposed_percent_of_target_bonus')
+                    employee.notes = emp_data.get('notes', '')
+                    employee.zero_bonus_allocated = emp_data.get('zero_bonus_allocated', '')
+                    # New fields from 2025 Workday format
+                    if emp_data.get('management_level'):
+                        employee.management_level = emp_data['management_level']
+                    if emp_data.get('country'):
+                        employee.country = emp_data['country']
+                    if emp_data.get('hire_date'):
+                        employee.hire_date = emp_data['hire_date']
+                    if emp_data.get('time_in_job_profile'):
+                        employee.time_in_job_profile = emp_data['time_in_job_profile']
+                    if emp_data.get('last_perf_review_name'):
+                        employee.last_perf_review_name = emp_data['last_perf_review_name']
+                    if emp_data.get('last_perf_review_rating'):
+                        employee.last_perf_review_rating = emp_data['last_perf_review_rating']
 
                 # Parse Notes field for bonus imports (both new and existing employees)
                 # This sets _original fields for modification tracking
@@ -3742,7 +3753,7 @@ def import_historical():
         file.save(temp_path)
 
         # Parse the file
-        success, employees, error, _metadata = parse_xlsx_employees(temp_path)
+        success, employees, error, parsed_metadata = parse_xlsx_employees(temp_path)
         if not success:
             return jsonify({'success': False, 'error': error}), 400
 

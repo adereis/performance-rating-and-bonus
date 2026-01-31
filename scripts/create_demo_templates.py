@@ -209,6 +209,11 @@ def get_small_team_employees():
             'mentor': '',  # Empty string, not NULL
             'mentees': '',  # Empty string, not NULL
             'last_updated': datetime.now(),
+            # New fields from 2025 Workday format
+            'country': 'United States',
+            'management_level': grade.replace('IC', 'IC ') if 'IC' in grade else 'Manager',
+            'last_perf_review_name': '2025-Q2 Talent Assessment & Calibration',
+            'last_perf_review_rating': talent_data.get('talent_overall_perf', 'Successful Performer'),
             # Talent calibration fields
             **talent_data,
         }
@@ -358,6 +363,11 @@ def get_large_team_employees():
                 'mentor': '',  # Empty string, not NULL
                 'mentees': '',  # Empty string, not NULL
                 'last_updated': datetime.now(),
+                # New fields from 2025 Workday format
+                'country': 'United States',
+                'management_level': grade.replace('IC', 'IC ') if 'IC' in grade else 'Manager',
+                'last_perf_review_name': '2025-Q2 Talent Assessment & Calibration',
+                'last_perf_review_rating': talent_data.get('talent_overall_perf', 'Successful Performer'),
                 # Talent calibration fields
                 **talent_data,
             }

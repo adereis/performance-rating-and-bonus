@@ -58,6 +58,11 @@ def sample_employee_data():
         'justification': '',
         'mentor': '',
         'mentees': '',
+        # New fields from 2025 Workday format
+        'country': 'United States',
+        'management_level': 'IC 3',
+        'last_perf_review_name': None,
+        'last_perf_review_rating': None,
     }
 
 

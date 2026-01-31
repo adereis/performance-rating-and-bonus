@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """
 Create sample demo data for the Performance Rating System.
-This generates fictitious Workday employee data.
+This generates fictitious Workday employee data (no ratings/tenets).
 
 Usage:
-    python3 create_sample_data.py              # Small team (12 employees, 1 manager)
-    python3 create_sample_data.py --large      # Large org (55 employees: 5 managers + 50 ICs)
-    python3 create_sample_data.py --historical # 6 quarterly historical spreadsheets
-    python3 create_sample_data.py --calibrated # Fully calibrated with ratings + talent data
+    python3 create_sample_data.py              # Creates small team (12 employees, 1 manager)
+    python3 create_sample_data.py --large      # Creates large org (55 employees: 5 managers + 50 ICs)
+    python3 create_sample_data.py --historical # Creates 6 quarterly historical spreadsheets
 
-Note: Without --calibrated, generates blank Workday export (salaries, bonus targets, org).
-      Use populate_sample_ratings.py after import to add ratings manually.
+Note: This generates ONLY Workday export data (salaries, bonus targets, org structure).
+      To add sample ratings/tenets, use populate_sample_ratings.py after import.
 """
 import openpyxl
 from openpyxl import Workbook
@@ -22,34 +21,77 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from notes_parser import format_notes_field
+from xlsx_utils import get_current_period_name
 
 
-def create_headers(sheet):
-    """Add standard Workday export headers (exactly as they come from Workday)."""
-    # Row 1: Empty (matches Workday export format)
-    sheet.append([])
+def create_headers(sheet, period_name=None, total_pool=0, manager_currency='USD'):
+    """
+    Add Workday extended export headers with metadata rows (NEW FORMAT 2025+).
 
-    # Row 2: Headers (matches Workday export structure ONLY - no manager-entered fields)
+    The new format includes 7 metadata rows instead of 9:
+    - Row 0: Report title
+    - Row 1: Effective date
+    - Row 2: Period info (in-progress) - used for format detection
+    - Row 3: Completed (empty)
+    - Row 4: Manager org context
+    - Row 5: Subordinates flag
+    - Row 6: Section headers
+    - Row 7: Column headers
+
+    Note: No budget row - total_pool is calculated from sum of bonus targets
+    """
+    from datetime import datetime
+
+    if period_name is None:
+        period_name = get_current_period_name()
+
+    # Row 0: Report title
+    sheet.append(['RH Compensation Review Process - Bonus'])
+
+    # Row 1: Effective date
+    sheet.append(['Effective as of Date', datetime.now().strftime('%Y-%m-%d')])
+
+    # Row 2: Period info (in-progress) - This triggers new format detection
+    sheet.append(['Compensation Review Process - In Progress',
+                  f'Compensation Review: Bonus - {period_name}'])
+
+    # Row 3: Completed (empty)
+    sheet.append(['Compensation Review Process - Completed'])
+
+    # Row 4: Manager org context
+    sheet.append(['Supervisory Organization', 'Supervisory Organization (Sample Manager)'])
+
+    # Row 5: Subordinates flag
+    sheet.append(['Include Subordinate Organizations', 'Yes'])
+
+    # Row 6: Section headers
+    sheet.append(['Bonus Cycle Review', '', '', ''])
+
+    # Row 7: Column headers (NEW FORMAT - matches 2025 Workday export)
     headers = [
-        'Associate',
-        'Supervisory Organization',
-        'Current Job Profile',
-        'Photo',
-        'Errors',
         'Associate ID',
-        'Current Base Pay All Countries',
-        'Current Base Pay All Countries (USD)',
-        'Currency',
+        'Associate',
+        'Job Title',                   # NEW: was 'Current Job Profile'
+        'Time in Job Profile',         # NEW
+        'Hire Date',                   # NEW
+        'Base Pay All Countries (Local)',  # NEW naming
+        f'Base Pay All Countries ({manager_currency})',
         'Grade',
         'Annual Bonus Target Percent',
-        'Last Bonus Allocation Percent',
-        'Bonus Target - Local Currency',
-        'Bonus Target - Local Currency (USD)',
-        'Proposed Bonus Amount',
-        'Proposed Bonus Amount (USD)',
+        'Currency',
+        'Bonus Target (Local)',        # NEW naming
+        f'Bonus Target ({manager_currency})',
+        f'Last Bonus Allocation Percent (As of Report Run Date)',  # NEW: longer suffix
         'Proposed Percent of Target Bonus',
+        'Proposed Bonus Amount (Local)',  # NEW naming
+        f'Proposed Bonus Amount ({manager_currency})',
+        'Direct Manager',              # NEW: was 'Supervisory Organization'
         'Notes',
-        'Zero Bonus Allocated'
+        'Error',                       # NEW: was 'Errors'
+        'Country',                     # NEW
+        'Management Level',            # NEW
+        'Performance Review Name',     # NEW
+        'Overall Performance Rating (Note: From Most Recent Talent Cycle)',  # NEW
     ]
 
     sheet.append(headers)
@@ -60,39 +102,70 @@ def get_small_team_data():
     Small team: 12 employees under single manager (Della Gate).
     Perfect for testing with a manageable dataset.
     Generates Workday data only (no ratings/tenets).
-    """
-    # Workday format: "Supervisory Organization (Manager Name)"
-    manager = "Supervisory Organization (Della Gate)"
 
-    # (name, job, salary, grade, bonus_pct)
+    New format (2025+) includes additional fields:
+    - Direct Manager (replaces Supervisory Organization)
+    - Time in Job Profile
+    - Hire Date
+    - Country
+    - Management Level
+    - Performance Review Name/Rating
+    """
+    from datetime import datetime, timedelta
+
+    # New format uses "Direct Manager" instead of "Supervisory Organization (Manager Name)"
+    manager = "Della Gate"
+
+    # (name, job, salary, grade, bonus_pct, management_level, years_in_role)
     # Bonus percentages are for the rating period (configure as needed for your org)
     employees = [
-        ('Paige Duty', 'Staff SRE', 180000, 'IC4', 3.75),
-        ('Lee Latency', 'Senior Software Developer', 150000, 'IC3', 3.0),
-        ('Mona Torr', 'Senior SRE', 145000, 'IC3', 3.0),
-        ('Robin Rollback', 'Software Developer', 120000, 'IC2', 2.5),
-        ('Kenny Canary', 'Software Developer', 115000, 'IC2', 2.5),
-        ('Tracey Loggins', 'Senior SRE', 155000, 'IC3', 3.0),
-        ('Sue Q. Ell', 'Senior Software Developer', 148000, 'IC3', 3.0),
-        ('Jason Blob', 'Software Developer', 118000, 'IC2', 2.5),
-        ('Al Ert', 'Staff SRE', 175000, 'IC4', 3.75),
-        ('Addie Min', 'Senior Software Developer', 152000, 'IC3', 3.0),
-        ('Tim Out', 'Software Developer', 110000, 'IC2', 2.5),
-        ('Barbie Que', 'Senior SRE', 149000, 'IC3', 3.0),
+        ('Paige Duty', 'Principal SRE', 180000, 'IC4', 3.75, 'IC 4', 2),
+        ('Lee Latency', 'Senior Software Developer', 150000, 'IC3', 3.0, 'IC 3', 3),
+        ('Mona Torr', 'Senior SRE', 145000, 'IC3', 3.0, 'IC 3', 1),
+        ('Robin Rollback', 'Software Developer', 120000, 'IC2', 2.5, 'IC 2', 2),
+        ('Kenny Canary', 'Software Developer', 115000, 'IC2', 2.5, 'IC 2', 1),
+        ('Tracey Loggins', 'Senior SRE', 155000, 'IC3', 3.0, 'IC 3', 4),
+        ('Sue Q. Ell', 'Senior Software Developer', 148000, 'IC3', 3.0, 'IC 3', 2),
+        ('Jason Blob', 'Software Developer', 118000, 'IC2', 2.5, 'IC 2', 1),
+        ('Al Ert', 'Principal SRE', 175000, 'IC4', 3.75, 'IC 4', 3),
+        ('Addie Min', 'Senior Software Developer', 152000, 'IC3', 3.0, 'IC 3', 2),
+        ('Tim Out', 'Software Developer', 110000, 'IC2', 2.5, 'IC 2', 0),
+        ('Barbie Que', 'Senior SRE', 149000, 'IC3', 3.0, 'IC 3', 1),
+    ]
+
+    # Sample performance ratings from last talent cycle
+    perf_ratings = [
+        'High Impact Performer', 'Successful Performer', 'Successful Performer',
+        'Evolving Performer', 'Successful Performer', 'Successful Performer',
+        'High Impact Performer', 'Successful Performer', 'Successful Performer',
+        'Successful Performer', 'Successful Performer', 'Successful Performer',
     ]
 
     result = []
-    for i, (name, job, salary, grade, bonus_pct) in enumerate(employees):
+    base_date = datetime.now()
+    for i, (name, job, salary, grade, bonus_pct, mgmt_level, years_in_role) in enumerate(employees):
+        # Generate realistic hire date and time in job profile
+        total_years = years_in_role + random.randint(0, 3)
+        hire_date = base_date - timedelta(days=total_years * 365 + random.randint(0, 365))
+        time_in_role = f'{years_in_role} year(s), {random.randint(0, 11)} month(s)'
+
         result.append({
             'associate': name,
-            'supervisory_organization': manager,
+            'direct_manager': manager,  # NEW: replaces supervisory_organization
             'job_profile': job,
             'salary': salary,
             'salary_local': salary,  # USD employees
             'currency': 'USD',
             'grade': grade,
             'bonus_pct': bonus_pct,
-            'associate_id': f'EMP{1000 + i}'
+            'associate_id': f'EMP{1000 + i}',
+            # New fields for 2025 format
+            'management_level': mgmt_level,
+            'country': 'United States',
+            'hire_date': hire_date,
+            'time_in_job_profile': time_in_role,
+            'perf_review_name': '2025-Q2 Talent Assessment & Calibration',
+            'perf_review_rating': perf_ratings[i],
         })
 
     return result
@@ -102,23 +175,19 @@ def get_large_org_data():
     """
     Large org: 55 employees across 5 managers (50 ICs + 5 managers).
     Tests multi-manager/multi-org scenario with international employees.
-    Matches Workday export format where Supervisory Organization = "Supervisory Organization (Manager Name)"
+
+    NEW FORMAT (2025+): Uses Direct Manager instead of Supervisory Organization
 
     The 5 managers (Della Gate, Rhoda Map, Kay P. Eye, Agie Enda, Mai Stone) are included
     in the employee database and report to a VP (not in database).
     """
-    # Manager names from Gemini 3
-    # Format matches Workday: "Supervisory Organization (Manager Name)"
-    managers = {
-        'Della Gate': 'Supervisory Organization (Della Gate)',
-        'Rhoda Map': 'Supervisory Organization (Rhoda Map)',
-        'Kay P. Eye': 'Supervisory Organization (Kay P. Eye)',
-        'Agie Enda': 'Supervisory Organization (Agie Enda)',
-        'Mai Stone': 'Supervisory Organization (Mai Stone)'
-    }
+    from datetime import datetime, timedelta
+
+    # Manager names - NEW FORMAT uses just the name, not "Supervisory Organization (Name)"
+    manager_names = ['Della Gate', 'Rhoda Map', 'Kay P. Eye', 'Agie Enda', 'Mai Stone']
 
     # Director who manages the managers (not included in employee list - would be rated separately)
-    director_org = 'Supervisory Organization (Director)'
+    director_name = 'Sam Director'
 
     # Tech-themed employee names
     names = [
@@ -139,10 +208,10 @@ def get_large_org_data():
 
     # Job profiles per team (Workday data only - no ratings/justifications)
     # Format: (job, salary, grade, bonus_pct) for USD employees
-    #         (job, salary_usd, grade, bonus_pct, currency, salary_local) for international
+    #         (job, salary_usd, grade, bonus_pct, currency, salary_local, country) for international
     # NOTE: Bonus percentages are for the rating period: IC2=2.5%, IC3=3%, IC4=3.75%, IC5=5%, M3=4.5%
     team_configs = {
-        'Supervisory Organization (Della Gate)': [
+        'Della Gate': [
             ('Principal Software Developer', 220000, 'IC5', 5),
             ('Staff Software Developer', 180000, 'IC4', 3.75),
             ('Staff Software Developer', 175000, 'IC4', 3.75),
@@ -154,7 +223,7 @@ def get_large_org_data():
             ('Software Developer', 112000, 'IC2', 2.5),
             ('Senior Software Developer', 152000, 'IC3', 3),
         ],
-        'Supervisory Organization (Rhoda Map)': [
+        'Rhoda Map': [
             ('Staff Software Developer', 175000, 'IC4', 3.75),
             ('Staff Software Developer', 172000, 'IC4', 3.75),
             ('Senior Software Developer', 155000, 'IC3', 3),
@@ -166,7 +235,7 @@ def get_large_org_data():
             ('Software Developer', 119000, 'IC2', 2.5),
             ('Software Developer', 116000, 'IC2', 2.5),
         ],
-        'Supervisory Organization (Kay P. Eye)': [
+        'Kay P. Eye': [
             ('Principal Software Developer', 215000, 'IC5', 5),
             ('Staff Software Developer', 182000, 'IC4', 3.75),
             ('Staff Software Developer', 178000, 'IC4', 3.75),
@@ -178,11 +247,11 @@ def get_large_org_data():
             ('Senior Software Developer', 155000, 'IC3', 3),
             ('Software Developer', 125000, 'IC2', 2.5),
         ],
-        'Supervisory Organization (Agie Enda)': [
-            ('Senior SRE', 132911, 'IC3', 3, 'GBP', 105000),
-            ('SRE', 98734, 'IC2', 2.5, 'GBP', 78000),
-            ('Staff SRE', 185000, 'IC4', 3.75),
-            ('Staff SRE', 183000, 'IC4', 3.75),
+        'Agie Enda': [
+            ('Senior SRE', 132911, 'IC3', 3, 'GBP', 105000, 'United Kingdom'),
+            ('SRE', 98734, 'IC2', 2.5, 'GBP', 78000, 'United Kingdom'),
+            ('Principal SRE', 185000, 'IC4', 3.75),
+            ('Principal SRE', 183000, 'IC4', 3.75),
             ('Senior SRE', 155000, 'IC3', 3),
             ('Senior SRE', 152000, 'IC3', 3),
             ('SRE', 125000, 'IC2', 2.5),
@@ -190,9 +259,9 @@ def get_large_org_data():
             ('Senior SRE', 148000, 'IC3', 3),
             ('SRE', 130000, 'IC2', 2.5),
         ],
-        'Supervisory Organization (Mai Stone)': [
-            ('Staff SRE', 188000, 'IC4', 3.75),
-            ('Staff SRE', 186000, 'IC4', 3.75),
+        'Mai Stone': [
+            ('Principal SRE', 188000, 'IC4', 3.75),
+            ('Principal SRE', 186000, 'IC4', 3.75),
             ('Senior SRE', 160000, 'IC3', 3),
             ('Senior SRE', 156000, 'IC3', 3),
             ('Senior SRE', 153000, 'IC3', 3),
@@ -204,46 +273,86 @@ def get_large_org_data():
         ],
     }
 
+    # Performance ratings pool for random assignment
+    perf_ratings_pool = [
+        'High Impact Performer', 'High Impact Performer',
+        'Successful Performer', 'Successful Performer', 'Successful Performer',
+        'Successful Performer', 'Successful Performer', 'Successful Performer',
+        'Evolving Performer', 'Evolving Performer',
+    ]
+
+    # Grade to management level mapping
+    grade_to_level = {
+        'IC2': 'IC 2', 'IC3': 'IC 3', 'IC4': 'IC 4', 'IC5': 'IC 5',
+        'M3': 'Manager'
+    }
+
     result = []
     name_idx = 0
+    base_date = datetime.now()
 
     # First, add the 5 managers themselves as employees reporting to Director
     manager_salaries = [210000, 205000, 215000, 208000, 212000]  # M3 level salaries
-    for idx, (manager_name, org) in enumerate(managers.items()):
+    for idx, manager_name in enumerate(manager_names):
+        years_tenure = random.randint(3, 8)
+        hire_date = base_date - timedelta(days=years_tenure * 365 + random.randint(0, 365))
+        time_in_role = f'{random.randint(1, 3)} year(s), {random.randint(0, 11)} month(s)'
+
         result.append({
             'associate': manager_name,
-            'supervisory_organization': director_org,
+            'direct_manager': director_name,  # NEW FORMAT
             'job_profile': 'Engineering Manager',
             'salary': manager_salaries[idx],
             'salary_local': manager_salaries[idx],
             'currency': 'USD',
             'grade': 'M3',
             'bonus_pct': 4.5,  # Bonus target for M3 managers
-            'associate_id': f'MGR{100 + idx}'
+            'associate_id': f'MGR{100 + idx}',
+            # New fields for 2025 format
+            'management_level': 'Manager',
+            'country': 'United States',
+            'hire_date': hire_date,
+            'time_in_job_profile': time_in_role,
+            'perf_review_name': '2025-Q2 Talent Assessment & Calibration',
+            'perf_review_rating': random.choice(['High Impact Performer', 'Successful Performer']),
         })
 
     # Then add all the ICs (individual contributors) reporting to each manager
-    for manager_name, org in managers.items():
-        configs = team_configs[org]
+    for manager_name in manager_names:
+        configs = team_configs[manager_name]
 
         for config in configs:
-            if len(config) == 6:  # International employee
-                job, salary_usd, grade, bonus_pct, currency, salary_local = config
+            if len(config) == 7:  # International employee
+                job, salary_usd, grade, bonus_pct, currency, salary_local, country = config
             else:
                 job, salary_usd, grade, bonus_pct = config
                 currency = 'USD'
                 salary_local = salary_usd
+                country = 'United States'
+
+            # Generate tenure data
+            years_in_role = random.randint(0, 4)
+            total_years = years_in_role + random.randint(0, 3)
+            hire_date = base_date - timedelta(days=total_years * 365 + random.randint(0, 365))
+            time_in_role = f'{years_in_role} year(s), {random.randint(0, 11)} month(s)'
 
             result.append({
                 'associate': names[name_idx],
-                'supervisory_organization': org,
+                'direct_manager': manager_name,  # NEW FORMAT
                 'job_profile': job,
                 'salary': salary_usd,
                 'salary_local': salary_local,
                 'currency': currency,
                 'grade': grade,
                 'bonus_pct': bonus_pct,
-                'associate_id': f'EMP{1000 + name_idx}'
+                'associate_id': f'EMP{1000 + name_idx}',
+                # New fields for 2025 format
+                'management_level': grade_to_level.get(grade, 'IC 2'),
+                'country': country,
+                'hire_date': hire_date,
+                'time_in_job_profile': time_in_role,
+                'perf_review_name': '2025-Q2 Talent Assessment & Calibration',
+                'perf_review_rating': random.choice(perf_ratings_pool),
             })
 
             name_idx += 1
@@ -252,7 +361,14 @@ def get_large_org_data():
 
 
 def write_employee_data(sheet, employees):
-    """Write employee data to worksheet (Workday data only)."""
+    """
+    Write employee data to worksheet in NEW Workday format (2025+).
+
+    Key differences from old format:
+    - Bonus percentages as decimals (0.05 = 5%, 1.10 = 110%)
+    - New column order matching new Workday export
+    - New fields: Direct Manager, Time in Job Profile, Country, Management Level, etc.
+    """
     for i, emp in enumerate(employees):
         # Bonus calculations
         if emp['currency'] == 'USD':
@@ -266,29 +382,39 @@ def write_employee_data(sheet, employees):
             bonus_target_local = emp['salary_local'] * (emp['bonus_pct'] / 100)
             bonus_target_converted = emp['salary'] * (emp['bonus_pct'] / 100)
 
-        # Last bonus allocation (previous period)
-        last_bonus_pct = random.choice([None, None, None, 85, 90, 95, 100, 105, 110, 115])
+        # Last bonus allocation (previous period) - as DECIMAL in new format
+        # None means no prior allocation, otherwise decimals like 0.85, 1.10, etc.
+        last_bonus_choices = [None, None, None, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15]
+        last_bonus_pct = random.choice(last_bonus_choices)
 
+        # Convert bonus target percent to decimal format (3.75% -> 0.0375)
+        bonus_pct_decimal = emp['bonus_pct'] / 100
+
+        # NEW FORMAT column order (matches create_headers)
         row = [
-            emp['associate'],
-            emp['supervisory_organization'],
-            emp['job_profile'],
-            '',  # Photo
-            '',  # Errors
-            emp['associate_id'],
-            base_pay_local,
-            base_pay_converted,
-            emp['currency'],
-            emp['grade'],
-            emp['bonus_pct'],
-            last_bonus_pct,
-            bonus_target_local,
-            bonus_target_converted,
-            None,  # Proposed bonus
-            None,  # Proposed bonus (converted)
-            None,  # Proposed percent
-            '',  # Notes
-            ''  # Zero bonus allocated
+            emp['associate_id'],                              # Associate ID
+            emp['associate'],                                 # Associate
+            emp['job_profile'],                               # Job Title
+            emp.get('time_in_job_profile', ''),              # Time in Job Profile
+            emp.get('hire_date'),                            # Hire Date
+            base_pay_local,                                  # Base Pay All Countries (Local)
+            base_pay_converted,                              # Base Pay All Countries (USD)
+            emp['grade'],                                    # Grade
+            bonus_pct_decimal,                               # Annual Bonus Target Percent (DECIMAL)
+            emp['currency'],                                 # Currency
+            bonus_target_local,                              # Bonus Target (Local)
+            bonus_target_converted,                          # Bonus Target (USD)
+            last_bonus_pct,                                  # Last Bonus Allocation Percent (DECIMAL)
+            None,                                            # Proposed Percent of Target Bonus
+            None,                                            # Proposed Bonus Amount (Local)
+            None,                                            # Proposed Bonus Amount (USD)
+            emp.get('direct_manager', ''),                   # Direct Manager
+            '',                                              # Notes
+            '',                                              # Error
+            emp.get('country', 'United States'),             # Country
+            emp.get('management_level', ''),                 # Management Level
+            emp.get('perf_review_name', ''),                 # Performance Review Name
+            emp.get('perf_review_rating', ''),               # Overall Performance Rating
         ]
 
         sheet.append(row)
@@ -301,11 +427,6 @@ def create_sample_xlsx(size='small'):
     Args:
         size: 'small' for 12 employees (1 manager), 'large' for 55 employees (5 managers + 50 ICs)
     """
-    wb = Workbook()
-    sheet = wb.active
-
-    create_headers(sheet)
-
     if size == 'small':
         employees = get_small_team_data()
         filename = 'sample-data-small.xlsx'
@@ -315,6 +436,13 @@ def create_sample_xlsx(size='small'):
         filename = 'sample-data-large.xlsx'
         description = "55 employees (5 managers + 50 ICs)"
 
+    # Calculate total pool from bonus targets
+    total_pool = sum(emp['salary'] * (emp['bonus_pct'] / 100) for emp in employees)
+
+    wb = Workbook()
+    sheet = wb.active
+
+    create_headers(sheet, total_pool=total_pool)
     write_employee_data(sheet, employees)
 
     # Save the workbook
@@ -405,7 +533,7 @@ def get_historical_employee_timelines():
             'pre_promotion': ('SRE', 'IC2', -43000),  # Total salary increase is 18k + 25k = 43k
             'promotions': {
                 '2023-Q4': ('Senior SRE', 'IC3', 18000),
-                '2024-Q3': ('Staff SRE', 'IC4', 25000),
+                '2024-Q3': ('Principal SRE', 'IC4', 25000),
             },
             'performance_pattern': 'improving',
         },
@@ -620,10 +748,16 @@ def get_bonus_pct_for_grade(grade):
 
 def write_historical_employee_data(sheet, employees, quarter, timelines):
     """
-    Write employee data for a specific historical quarter.
+    Write employee data for a specific historical quarter in NEW FORMAT (2025+).
     Includes Notes field with rating data and Proposed % of Target Bonus.
     """
     q_idx = quarter_to_index(quarter)
+
+    # Grade to management level mapping
+    grade_to_level = {
+        'IC2': 'IC 2', 'IC3': 'IC 3', 'IC4': 'IC 4', 'IC5': 'IC 5',
+        'M3': 'Manager'
+    }
 
     for emp in employees:
         emp_id = emp['associate_id']
@@ -650,13 +784,16 @@ def write_historical_employee_data(sheet, employees, quarter, timelines):
         notes = generate_historical_notes(rating, include_full_details)
 
         # Calculate bonus allocation (slight variation from rating due to normalization)
-        bonus_allocation = rating * random.uniform(0.95, 1.05) if notes else None
+        # Convert to decimal format for new format (110% -> 1.10)
+        bonus_allocation = (rating / 100) * random.uniform(0.95, 1.05) if notes else None
 
-        # Last bonus allocation (from previous quarter)
-        last_bonus_pct = random.choice([None, None, 85, 90, 95, 100, 105, 110, 115])
+        # Last bonus allocation (from previous quarter) - as DECIMAL in new format
+        last_bonus_choices = [None, None, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15]
+        last_bonus_pct = random.choice(last_bonus_choices)
 
         # Build row
         currency = emp.get('currency', 'USD')
+        country = emp.get('country', 'United States')
         if currency == 'USD':
             base_pay_local = salary
             base_pay_converted = None
@@ -668,26 +805,34 @@ def write_historical_employee_data(sheet, employees, quarter, timelines):
             bonus_target_local = salary_local * (bonus_pct / 100)
             bonus_target_converted = salary * (bonus_pct / 100)
 
+        # Convert bonus target percent to decimal format (3.75% -> 0.0375)
+        bonus_pct_decimal = bonus_pct / 100
+
+        # NEW FORMAT column order (matches create_headers)
         row = [
-            emp['associate'],
-            emp['supervisory_organization'],
-            job,  # Use potentially updated job title
-            '',  # Photo
-            '',  # Errors
-            emp_id,
-            base_pay_local,
-            base_pay_converted,
-            currency,
-            grade,  # Use potentially updated grade
-            bonus_pct,
-            last_bonus_pct,
-            bonus_target_local,
-            bonus_target_converted,
-            None,  # Proposed bonus amount
-            None,  # Proposed bonus (converted)
-            round(bonus_allocation, 1) if bonus_allocation else None,  # Proposed % of target
-            notes,  # Notes with rating data
-            ''  # Zero bonus allocated
+            emp_id,                                          # Associate ID
+            emp['associate'],                                # Associate
+            job,                                             # Job Title
+            emp.get('time_in_job_profile', ''),             # Time in Job Profile
+            emp.get('hire_date'),                           # Hire Date
+            base_pay_local,                                 # Base Pay All Countries (Local)
+            base_pay_converted,                             # Base Pay All Countries (USD)
+            grade,                                          # Grade
+            bonus_pct_decimal,                              # Annual Bonus Target Percent (DECIMAL)
+            currency,                                       # Currency
+            bonus_target_local,                             # Bonus Target (Local)
+            bonus_target_converted,                         # Bonus Target (USD)
+            last_bonus_pct,                                 # Last Bonus Allocation Percent (DECIMAL)
+            round(bonus_allocation, 4) if bonus_allocation else None,  # Proposed % (DECIMAL)
+            None,                                           # Proposed Bonus Amount (Local)
+            None,                                           # Proposed Bonus Amount (USD)
+            emp.get('direct_manager', ''),                  # Direct Manager
+            notes,                                          # Notes
+            '',                                             # Error
+            country,                                        # Country
+            grade_to_level.get(grade, 'IC 2'),             # Management Level
+            emp.get('perf_review_name', ''),               # Performance Review Name
+            emp.get('perf_review_rating', ''),             # Overall Performance Rating
         ]
 
         sheet.append(row)
@@ -714,19 +859,29 @@ def create_historical_xlsx():
     print("Creating historical quarterly data...")
     print("=" * 60)
 
+    # Map quarter IDs to Workday period names
+    period_names = {
+        '2023-Q3': 'CY23 Q3', '2023-Q4': 'CY23 Q4',
+        '2024-Q1': 'CY24 Q1', '2024-Q2': 'CY24 Q2',
+        '2024-Q3': 'CY24 Q3', '2024-Q4': 'CY24 Q4',
+    }
+
     for quarter in quarters:
+        # Calculate pool for active employees in this quarter
+        active_employees = [emp for emp in employees
+                          if is_employee_active_in_quarter(emp['associate_id'], quarter, timelines)]
+        total_pool = sum(emp['salary'] * (emp['bonus_pct'] / 100) for emp in active_employees)
+
         wb = Workbook()
         sheet = wb.active
 
-        create_headers(sheet)
+        create_headers(sheet, period_name=period_names[quarter], total_pool=total_pool)
         write_historical_employee_data(sheet, employees, quarter, timelines)
 
         filename = f'samples/sample-historical-{quarter}.xlsx'
         wb.save(filename)
 
-        # Count employees in this quarter
-        active_count = sum(1 for emp in employees
-                         if is_employee_active_in_quarter(emp['associate_id'], quarter, timelines))
+        active_count = len(active_employees)
 
         print(f"✓ Created {filename} ({active_count} employees)")
 
@@ -753,157 +908,6 @@ def create_historical_xlsx():
     print("  5. Import all 6 files in chronological order")
 
 
-def generate_rating_for_employee(emp):
-    """
-    Generate a performance rating and justification for an employee.
-    Returns (rating_percent, justification).
-    """
-    # Vary ratings based on job level for realism
-    job = emp.get('job_profile', '')
-    if 'Senior' in job or 'Lead' in job:
-        # Senior folks: slightly higher average
-        rating = random.choice([95, 100, 105, 110, 115, 120, 125, 130])
-    elif 'Manager' in job or 'Director' in job:
-        # Managers: more varied
-        rating = random.choice([90, 95, 100, 105, 110, 115, 120, 125, 130, 135])
-    else:
-        # Standard distribution
-        rating = random.choice([85, 90, 95, 100, 100, 105, 105, 110, 115, 120, 125, 130, 135])
-
-    # Generate justification based on rating
-    if rating >= 130:
-        justifications = [
-            "Exceptional performer who consistently exceeds expectations.",
-            "Outstanding contributions across multiple high-impact projects.",
-            "Top performer with significant business impact this cycle.",
-        ]
-    elif rating >= 110:
-        justifications = [
-            "Strong performer who regularly exceeds expectations.",
-            "Solid contributions with notable achievements this cycle.",
-            "High quality work with positive team impact.",
-        ]
-    elif rating >= 90:
-        justifications = [
-            "Solid performer meeting all expectations.",
-            "Reliable contributor with consistent delivery.",
-            "Good work quality and team collaboration.",
-        ]
-    else:
-        justifications = [
-            "Developing performer working toward expectations.",
-            "Growth opportunity identified; coaching in progress.",
-            "Building skills with support from team.",
-        ]
-
-    return rating, random.choice(justifications)
-
-
-def write_calibrated_employee_data(sheet, employees):
-    """
-    Write employee data with pre-filled Notes column (ratings/justifications).
-    """
-    for emp in employees:
-        # Generate rating and justification
-        rating, justification = generate_rating_for_employee(emp)
-
-        # Format the Notes field
-        notes = format_notes_field(
-            performance_rating=float(rating),
-            justification=justification
-        )
-
-        # Bonus calculations (same as write_employee_data)
-        if emp['currency'] == 'USD':
-            base_pay_local = emp['salary']
-            base_pay_converted = None
-            bonus_target_local = emp['salary'] * (emp['bonus_pct'] / 100)
-            bonus_target_converted = None
-        else:
-            base_pay_local = emp['salary_local']
-            base_pay_converted = emp['salary']
-            bonus_target_local = emp['salary_local'] * (emp['bonus_pct'] / 100)
-            bonus_target_converted = emp['salary'] * (emp['bonus_pct'] / 100)
-
-        # Last bonus allocation
-        last_bonus_choices = [None, None, None, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15]
-        last_bonus_pct = random.choice(last_bonus_choices)
-
-        # Convert bonus target percent to decimal
-        bonus_pct_decimal = emp['bonus_pct'] / 100
-
-        # NEW FORMAT column order (matches create_headers)
-        row = [
-            emp['associate_id'],
-            emp['associate'],
-            emp['job_profile'],
-            emp.get('time_in_job_profile', ''),
-            emp.get('hire_date'),
-            base_pay_local,
-            base_pay_converted,
-            emp['grade'],
-            bonus_pct_decimal,
-            emp['currency'],
-            bonus_target_local,
-            bonus_target_converted,
-            last_bonus_pct,
-            None,  # Proposed Percent of Target Bonus
-            None,  # Proposed Bonus Amount (Local)
-            None,  # Proposed Bonus Amount (USD)
-            emp.get('direct_manager', ''),
-            notes,  # Pre-filled Notes with rating/justification
-            '',     # Error
-            emp.get('country', 'United States'),
-            emp.get('management_level', ''),
-            emp.get('perf_review_name', ''),
-            emp.get('perf_review_rating', ''),
-        ]
-
-        sheet.append(row)
-
-
-def create_calibrated_xlsx(size='small'):
-    """
-    Generate a Workday-format XLSX with ratings pre-filled in the Notes column.
-
-    This creates an importable file with:
-    - Standard Workday format (single sheet with metadata rows)
-    - Notes column pre-filled with [Rating: X%] and justification
-    - Ready to import directly through the app's Import page
-    """
-    if size == 'small':
-        employees = get_small_team_data()
-        filename = 'sample-data-calibrated-small.xlsx'
-        description = "12 employees with ratings pre-filled"
-    else:
-        employees = get_large_org_data()
-        filename = 'sample-data-calibrated-large.xlsx'
-        description = "55 employees with ratings pre-filled"
-
-    # Calculate total pool from bonus targets
-    total_pool = sum(emp['salary'] * (emp['bonus_pct'] / 100) for emp in employees)
-
-    wb = Workbook()
-    sheet = wb.active
-
-    create_headers(sheet, total_pool=total_pool)
-    write_calibrated_employee_data(sheet, employees)
-
-    wb.save(filename)
-
-    # Count rating distribution
-    ratings = [generate_rating_for_employee(emp)[0] for emp in employees]
-    high_count = sum(1 for r in ratings if r >= 120)
-    solid_count = sum(1 for r in ratings if 90 <= r < 120)
-    below_count = sum(1 for r in ratings if r < 90)
-
-    print(f"✓ Created {filename}")
-    print(f"  - {description}")
-    print(f"  - Total employees: {len(employees)}")
-    print(f"  - Ratings distribution: {high_count} high, {solid_count} solid, {below_count} below")
-    print(f"\nReady to import at http://localhost:5000/import")
-
-
 def main():
     """Main entry point with argument parsing."""
     import argparse
@@ -914,9 +918,10 @@ def main():
 Examples:
   python3 scripts/create_sample_data.py              # Small team (12 employees)
   python3 scripts/create_sample_data.py --large      # Large org (55 employees)
-  python3 scripts/create_sample_data.py --calibrated # Fully calibrated snapshot
-  python3 scripts/create_sample_data.py --large --calibrated  # Large calibrated
   python3 scripts/create_sample_data.py --historical # Historical quarterly data
+
+Note: This generates Workday export data (salaries, bonus targets, org structure).
+      To add sample ratings/tenets, use populate_sample_ratings.py after import.
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -931,19 +936,11 @@ Examples:
         action='store_true',
         help='Create 6 quarterly historical spreadsheets (2023-Q3 through 2024-Q4)'
     )
-    parser.add_argument(
-        '--calibrated',
-        action='store_true',
-        help='Generate fully calibrated XLSX with ratings and talent data pre-filled'
-    )
 
     args = parser.parse_args()
 
     if args.historical:
         create_historical_xlsx()
-    elif args.calibrated:
-        size = 'large' if args.large else 'small'
-        create_calibrated_xlsx(size)
     else:
         size = 'large' if args.large else 'small'
         create_sample_xlsx(size)

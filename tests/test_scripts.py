@@ -9,6 +9,7 @@ import os
 import sys
 import tempfile
 
+# Path to demo templates (generated at Docker build time, not in source repo)
 DEMO_TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'demo-templates')
 
 
@@ -47,11 +48,15 @@ class TestCreateSampleData:
                 create_sample_data.create_headers(sheet)
 
                 # Verify headers were created
-                # Row 2 (index 1) should have headers
-                headers = [cell.value for cell in sheet[2]]
+                # Row 8 has column headers in new Workday format (2025+)
+                headers = [cell.value for cell in sheet[8]]
                 assert 'Associate' in headers
-                assert 'Supervisory Organization' in headers
-                assert 'Current Job Profile' in headers
+                assert 'Direct Manager' in headers  # New format uses 'Direct Manager'
+                assert 'Job Title' in headers  # New format uses 'Job Title'
+
+                # Verify metadata rows exist (new format structure)
+                assert 'RH Compensation Review Process' in str(sheet[1][0].value)  # Row 1: title
+                assert 'Compensation Review' in str(sheet[3][1].value)  # Row 3: period info
 
                 wb.save(output_file)
                 assert os.path.exists(output_file)
@@ -110,14 +115,15 @@ class TestPopulateSampleRatings:
             # Should have ratings for multiple employees
             assert len(ratings) > 0
 
-            # Each entry should be (rating, justification)
+            # Each entry should be (rating, justification or None)
             for name, data in ratings.items():
                 assert isinstance(data, tuple)
                 assert len(data) == 2
                 rating, justification = data
                 assert isinstance(rating, int)
                 assert 0 <= rating <= 200  # Valid rating range
-                assert isinstance(justification, str)
+                # Justification can be str or None (generated dynamically)
+                assert justification is None or isinstance(justification, str)
         finally:
             sys.path.remove(scripts_dir)
 

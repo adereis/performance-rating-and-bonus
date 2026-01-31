@@ -198,6 +198,10 @@ class Employee(Base):
     region = Column(String)                  # "Americas", "EMEA", "APAC"
     country = Column(String)                 # "United States", "Australia"
 
+    # Historical performance reference (from bonus import, read-only)
+    last_perf_review_name = Column(String)   # e.g., "2025-Q2 Talent Assessment"
+    last_perf_review_rating = Column(String) # e.g., "Successful Performer"
+
     # ═══════════════════════════════════════════════════════════════
     # TALENT: PERFORMANCE ASSESSMENT
     # ═══════════════════════════════════════════════════════════════
@@ -294,6 +298,9 @@ class Employee(Base):
             'time_in_job_profile': self.time_in_job_profile,
             'region': self.region,
             'country': self.country,
+            # Historical performance reference (from bonus import)
+            'last_perf_review_name': self.last_perf_review_name,
+            'last_perf_review_rating': self.last_perf_review_rating,
             # Talent: Performance Assessment
             'talent_perf_what': self.talent_perf_what,
             'talent_perf_what_original': self.talent_perf_what_original,
@@ -599,6 +606,18 @@ def _migrate_add_new_columns(engine):
         ('employees', 'talent_change_agility_original', 'TEXT'),
         ('employees', 'talent_movement_readiness_original', 'TEXT'),
         ('employees', 'talent_proposed_actions_original', 'TEXT'),
+        ('employees', 'talent_promo_job_profile_original', 'TEXT'),
+        ('employees', 'talent_promo_business_need_original', 'TEXT'),
+        ('employees', 'talent_promo_role_scope_original', 'TEXT'),
+        ('employees', 'talent_promo_readiness_original', 'TEXT'),
+        # Original tracking for Tool Additions (tenets, mentor, mentees)
+        ('employees', 'talent_mentor_original', 'TEXT'),
+        ('employees', 'talent_mentees_original', 'TEXT'),
+        ('employees', 'talent_tenets_strengths_original', 'TEXT'),
+        ('employees', 'talent_tenets_improvements_original', 'TEXT'),
+        # Historical performance reference (from bonus import)
+        ('employees', 'last_perf_review_name', 'TEXT'),
+        ('employees', 'last_perf_review_rating', 'TEXT'),
     ]
 
     with engine.connect() as conn:
