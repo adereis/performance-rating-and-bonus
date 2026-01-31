@@ -411,7 +411,7 @@
                 <tr>
                     <th class="sortable" data-sort="name">Employee Name</th>
                     <th class="right sortable" data-sort="bonus">Bonus %</th>
-                    <th>Single Description</th>
+                    <th>Tool Additions</th>
                 </tr>
             </thead>
             <tbody id="exportTableBody">
@@ -436,15 +436,22 @@
                             {% else %}bonus-low{% endif %}">
                             {{ item.bonus_percent }}%
                         </span>
+                        {% if item.bonus_allocation_differs %}
+                        <div style="font-size: 11px; color: #856404; margin-top: 4px;">
+                            Workday: {% if item.workday_proposed_bonus is not none %}{{ item.workday_proposed_bonus }}%{% else %}—{% endif %}
+                        </div>
+                        {% endif %}
                     </td>
                     <td class="description-cell">
-                        <div class="description-text" id="desc_{{ loop.index }}">{{ item.description }}</div>
-                        <button class="copy-btn" onclick="copyDescription('desc_{{ loop.index }}', this)">
-                            Copy Description
+                        <!-- Tool Additions (bracketed metadata for Workday) -->
+                        <div class="description-text" id="tool_additions_{{ loop.index }}">{{ item.tool_additions_text }}</div>
+                        <button class="copy-btn" onclick="copyDescription('tool_additions_{{ loop.index }}', this)">
+                            Copy Tool Additions
                         </button>
-                        {% if item.needs_sync %}
+                        {% if item.tool_additions_modified %}
                         <div style="margin-top: 8px; font-size: 11px; color: #856404;">
-                            <strong>Modified fields:</strong>
+                            <strong>Modified:</strong>
+                            {% if item.rating_modified %}<span class="field-sync-indicator">Rating</span>{% endif %}
                             {% if item.justification_modified %}<span class="field-sync-indicator">Justification</span>{% endif %}
                             {% if item.mentor_modified %}<span class="field-sync-indicator">Mentor</span>{% endif %}
                             {% if item.mentees_modified %}<span class="field-sync-indicator">Mentees</span>{% endif %}

@@ -172,6 +172,7 @@ class Employee(Base):
 
     # Manager input fields (Bonus Cycle)
     performance_rating_percent = Column(Float)  # Performance Rating (0-200%)
+    performance_rating_percent_original = Column(Float)  # Original from Workday (for modification detection)
     justification = Column(String)
     justification_original = Column(String)  # Original from Workday (for modification detection)
     mentor = Column(String)
@@ -265,6 +266,7 @@ class Employee(Base):
             'Notes': self.notes,
             'Zero Bonus Allocated': self.zero_bonus_allocated,
             'performance_rating_percent': self.performance_rating_percent,
+            'performance_rating_percent_original': self.performance_rating_percent_original,
             'justification': self.justification,
             'justification_original': self.justification_original,
             'mentor': self.mentor,
@@ -570,7 +572,8 @@ def _migrate_add_new_columns(engine):
         ('employees', 'talent_mentees', 'TEXT'),
         ('rating_snapshots', 'snapshot_talent_mentor', 'TEXT'),
         ('rating_snapshots', 'snapshot_talent_mentees', 'TEXT'),
-        # Original tracking for Bonus Cycle fields (justification, mentor, mentees, AI, tenets)
+        # Original tracking for Bonus Cycle fields (rating, justification, mentor, mentees, AI, tenets)
+        ('employees', 'performance_rating_percent_original', 'REAL'),
         ('employees', 'justification_original', 'TEXT'),
         ('employees', 'mentor_original', 'TEXT'),
         ('employees', 'mentees_original', 'TEXT'),

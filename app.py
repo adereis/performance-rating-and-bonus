@@ -2575,7 +2575,41 @@ def export_page():
         strengths_text = ', '.join(strengths) if strengths else ''
         improvements_text = ', '.join(improvements) if improvements else ''
 
+        # Build tool additions text for copying (formatted for Workday paste)
+        tool_additions_parts = []
+        if employee.get('performance_rating_percent') is not None:
+            tool_additions_parts.append(f"[Performance Rating: {int(employee['performance_rating_percent'])}%]")
+        if strengths_text:
+            tool_additions_parts.append(f"[Strengths: {strengths_text}]")
+        if improvements_text:
+            tool_additions_parts.append(f"[Improvements: {improvements_text}]")
+        if employee.get('mentor'):
+            tool_additions_parts.append(f"[Mentor: {employee['mentor']}]")
+        if employee.get('mentees'):
+            # Normalize to semicolon-separated for consistency
+            normalized_mentees = '; '.join(m.strip() for m in employee['mentees'].replace(';', ',').split(',') if m.strip())
+            tool_additions_parts.append(f"[Mentees: {normalized_mentees}]")
+        if employee.get('ai_related_activities'):
+            tool_additions_parts.append(f"[YESAI: {employee['ai_related_activities']}]")
+        # Justification at the end with section header (allows multi-line)
+        if employee.get('justification'):
+            tool_additions_parts.append('')  # Blank line separator
+            tool_additions_parts.append('Justification:')
+            tool_additions_parts.append(employee['justification'])
+
+        # Compare calculated bonus to Workday's proposed bonus
+        workday_proposed_bonus = employee.get('Proposed Percent of Target Bonus')
+        bonus_allocation_differs = False
+        if bonus_percent_of_target is not None:
+            if workday_proposed_bonus is not None:
+                # Differs if more than 0.5% difference (handles rounding)
+                bonus_allocation_differs = abs(bonus_percent_of_target - workday_proposed_bonus) > 0.5
+            else:
+                # Workday has no value yet - needs sync if tool calculated something
+                bonus_allocation_differs = True
+
         # Check modification status for each field
+        rating_modified = needs_sync_to_workday(employee, 'performance_rating_percent')
         justification_modified = is_field_modified(employee, 'justification')
         mentor_modified = needs_sync_to_workday(employee, 'mentor')
         mentees_modified = needs_sync_to_workday(employee, 'mentees')
@@ -2583,8 +2617,9 @@ def export_page():
         tenets_strengths_modified = needs_sync_to_workday(employee, 'tenets_strengths')
         tenets_improvements_modified = needs_sync_to_workday(employee, 'tenets_improvements')
 
-        # Combined "needs sync" flag
-        needs_sync = (
+        # Combined flags - all tracked fields are in Tool Additions (bracketed)
+        tool_additions_modified = (
+            rating_modified or
             justification_modified or
             mentor_modified or
             mentees_modified or
@@ -2592,6 +2627,9 @@ def export_page():
             tenets_strengths_modified or
             tenets_improvements_modified
         )
+
+        # Combined "needs sync" flag - tool additions OR bonus allocation differs
+        needs_sync = tool_additions_modified or bonus_allocation_differs
 
         if needs_sync:
             bonus_pending_sync_count += 1
@@ -2602,7 +2640,14 @@ def export_page():
             'description': description_text,
             'final_bonus': result['final_bonus'],
             'rating': result['rating'],
-            # Modification tracking
+            # Tool Additions (bracketed metadata - parsed on re-import)
+            'tool_additions_text': '\n'.join(tool_additions_parts),
+            'tool_additions_modified': tool_additions_modified,
+            # Bonus allocation comparison (calculated vs Workday)
+            'bonus_allocation_differs': bonus_allocation_differs,
+            'workday_proposed_bonus': round(workday_proposed_bonus, 1) if workday_proposed_bonus is not None else None,
+            # Per-field modification tracking
+            'rating_modified': rating_modified,
             'justification_modified': justification_modified,
             'mentor_modified': mentor_modified,
             'mentees_modified': mentees_modified,
@@ -3596,6 +3641,7 @@ def import_current():
 
                     # Set _original fields from Workday data for modification tracking
                     # These reflect what Workday has, so we can detect local changes
+                    employee.performance_rating_percent_original = notes_data.get('performance_rating')
                     employee.justification_original = notes_data.get('justification') or None
                     employee.mentor_original = notes_data.get('mentors') or None
                     employee.mentees_original = notes_data.get('mentees') or None
