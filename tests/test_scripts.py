@@ -8,169 +8,135 @@ import pytest
 import os
 import sys
 import tempfile
+import importlib.util
 
 # Path to demo templates (generated at Docker build time, not in source repo)
 DEMO_TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'demo-templates')
+SCRIPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
 
 
-class TestCreateSampleData:
-    """Tests for scripts/create_sample_data.py"""
+def load_script(script_name):
+    """
+    Load a script as a module using importlib.
+
+    This allows loading scripts with kebab-case names that can't be
+    imported normally.
+    """
+    script_path = os.path.join(SCRIPTS_DIR, script_name)
+    # Create a valid module name from the script name
+    module_name = script_name.replace('-', '_').replace('.py', '')
+
+    spec = importlib.util.spec_from_file_location(module_name, script_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+class TestGenerateSampleXlsx:
+    """Tests for scripts/generate-sample-xlsx.py"""
 
     def test_script_can_be_imported(self):
         """Test that the script can be imported without errors"""
-        # Add scripts directory to path
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
-
-        try:
-            # Import should not raise any errors
-            import create_sample_data
-            assert hasattr(create_sample_data, 'create_headers')
-            assert hasattr(create_sample_data, 'create_sample_xlsx')
-        finally:
-            sys.path.remove(scripts_dir)
+        module = load_script('generate-sample-xlsx.py')
+        assert hasattr(module, 'create_bonus_headers')
+        assert hasattr(module, 'create_bonus_xlsx')
 
     def test_creates_xlsx_file(self):
-        """Test that create_sample_data generates a valid XLSX file"""
+        """Test that generate-sample-xlsx generates a valid XLSX file"""
         import openpyxl
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
+        module = load_script('generate-sample-xlsx.py')
 
-        try:
-            import create_sample_data
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, 'test-sample.xlsx')
 
-            with tempfile.TemporaryDirectory() as tmpdir:
-                output_file = os.path.join(tmpdir, 'test-sample.xlsx')
+            wb = openpyxl.Workbook()
+            sheet = wb.active
+            module.create_bonus_headers(sheet)
 
-                # Call the function to create sample data
-                wb = openpyxl.Workbook()
-                sheet = wb.active
-                create_sample_data.create_headers(sheet)
+            # Verify headers were created
+            # Row 8 has column headers in new Workday format (2025+)
+            headers = [cell.value for cell in sheet[8]]
+            assert 'Associate' in headers
+            assert 'Direct Manager' in headers
+            assert 'Job Title' in headers
 
-                # Verify headers were created
-                # Row 8 has column headers in new Workday format (2025+)
-                headers = [cell.value for cell in sheet[8]]
-                assert 'Associate' in headers
-                assert 'Direct Manager' in headers  # New format uses 'Direct Manager'
-                assert 'Job Title' in headers  # New format uses 'Job Title'
+            # Verify metadata rows exist (new format structure)
+            assert 'RH Compensation Review Process' in str(sheet[1][0].value)
+            assert 'Compensation Review' in str(sheet[3][1].value)
 
-                # Verify metadata rows exist (new format structure)
-                assert 'RH Compensation Review Process' in str(sheet[1][0].value)  # Row 1: title
-                assert 'Compensation Review' in str(sheet[3][1].value)  # Row 3: period info
-
-                wb.save(output_file)
-                assert os.path.exists(output_file)
-        finally:
-            sys.path.remove(scripts_dir)
+            wb.save(output_file)
+            assert os.path.exists(output_file)
 
     def test_small_team_data(self):
         """Test that small team data function returns properly structured data"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
+        module = load_script('generate-sample-xlsx.py')
 
-        try:
-            import create_sample_data
+        assert hasattr(module, 'get_small_team_data')
+        small_team = module.get_small_team_data()
 
-            # Verify get_small_team_data returns expected structure
-            assert hasattr(create_sample_data, 'get_small_team_data')
-            small_team = create_sample_data.get_small_team_data()
+        assert len(small_team) > 0
 
-            # Should have employees
-            assert len(small_team) > 0
-
-            # Each employee should have required fields (matching Workday column names)
-            for emp in small_team:
-                assert 'associate' in emp
-                assert 'job_profile' in emp
-                assert 'salary' in emp
-        finally:
-            sys.path.remove(scripts_dir)
+        for emp in small_team:
+            assert 'associate' in emp
+            assert 'job_profile' in emp
+            assert 'salary' in emp
 
 
-class TestPopulateSampleRatings:
-    """Tests for scripts/populate_sample_ratings.py"""
+class TestPopulateSampleDb:
+    """Tests for scripts/populate-sample-db.py"""
 
     def test_script_can_be_imported(self):
         """Test that the script can be imported without errors"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
-
-        try:
-            import populate_sample_ratings
-            assert hasattr(populate_sample_ratings, 'SMALL_TEAM_RATINGS')
-            assert hasattr(populate_sample_ratings, 'LARGE_ORG_RATINGS')
-        finally:
-            sys.path.remove(scripts_dir)
+        module = load_script('populate-sample-db.py')
+        assert hasattr(module, 'SMALL_TEAM_RATINGS')
+        assert hasattr(module, 'LARGE_ORG_RATINGS')
 
     def test_small_team_ratings_defined(self):
         """Test that small team ratings data is properly structured"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
+        module = load_script('populate-sample-db.py')
+        ratings = module.SMALL_TEAM_RATINGS
 
-        try:
-            import populate_sample_ratings
+        assert len(ratings) > 0
 
-            ratings = populate_sample_ratings.SMALL_TEAM_RATINGS
-
-            # Should have ratings for multiple employees
-            assert len(ratings) > 0
-
-            # Each entry should be (rating, justification or None)
-            for name, data in ratings.items():
-                assert isinstance(data, tuple)
-                assert len(data) == 2
-                rating, justification = data
-                assert isinstance(rating, int)
-                assert 0 <= rating <= 200  # Valid rating range
-                # Justification can be str or None (generated dynamically)
-                assert justification is None or isinstance(justification, str)
-        finally:
-            sys.path.remove(scripts_dir)
+        for name, data in ratings.items():
+            assert isinstance(data, tuple)
+            assert len(data) == 2
+            rating, justification = data
+            assert isinstance(rating, int)
+            assert 0 <= rating <= 200
+            assert justification is None or isinstance(justification, str)
 
     def test_large_org_ratings_defined(self):
         """Test that large org ratings data is properly structured"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
+        module = load_script('populate-sample-db.py')
+        ratings = module.LARGE_ORG_RATINGS
+        small_ratings = module.SMALL_TEAM_RATINGS
 
-        try:
-            import populate_sample_ratings
-
-            ratings = populate_sample_ratings.LARGE_ORG_RATINGS
-
-            # Should have ratings for multiple employees
-            assert len(ratings) > 0
-
-            # Large org should have more ratings than small team
-            small_ratings = populate_sample_ratings.SMALL_TEAM_RATINGS
-            assert len(ratings) >= len(small_ratings)
-        finally:
-            sys.path.remove(scripts_dir)
+        assert len(ratings) > 0
+        assert len(ratings) >= len(small_ratings)
 
 
 class TestScriptImportPaths:
     """Test that scripts handle import paths correctly for standalone execution"""
 
-    def test_create_sample_data_path_handling(self):
-        """Test that create_sample_data.py adds parent to sys.path"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        script_path = os.path.join(scripts_dir, 'create_sample_data.py')
+    def test_generate_sample_xlsx_path_handling(self):
+        """Test that generate-sample-xlsx.py adds parent to sys.path"""
+        script_path = os.path.join(SCRIPTS_DIR, 'generate-sample-xlsx.py')
 
         with open(script_path, 'r') as f:
             content = f.read()
 
-        # Should have the path manipulation for standalone execution
         assert 'sys.path.insert' in content
         assert 'os.path.dirname' in content
 
-    def test_populate_sample_ratings_path_handling(self):
-        """Test that populate_sample_ratings.py adds parent to sys.path"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        script_path = os.path.join(scripts_dir, 'populate_sample_ratings.py')
+    def test_populate_sample_db_path_handling(self):
+        """Test that populate-sample-db.py adds parent to sys.path"""
+        script_path = os.path.join(SCRIPTS_DIR, 'populate-sample-db.py')
 
         with open(script_path, 'r') as f:
             content = f.read()
 
-        # Should have the path manipulation for standalone execution
         assert 'sys.path.insert' in content
         assert 'os.path.dirname' in content
 
@@ -178,212 +144,139 @@ class TestScriptImportPaths:
 class TestScriptHelpSupport:
     """Test that scripts have proper --help support via argparse"""
 
-    def test_create_sample_data_has_main_function(self):
-        """Test that create_sample_data.py has a main() function with argparse"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
+    def test_generate_sample_xlsx_has_main_function(self):
+        """Test that generate-sample-xlsx.py has a main() function with argparse"""
+        module = load_script('generate-sample-xlsx.py')
+        assert hasattr(module, 'main')
 
-        try:
-            import create_sample_data
-            assert hasattr(create_sample_data, 'main')
+        script_path = os.path.join(SCRIPTS_DIR, 'generate-sample-xlsx.py')
+        with open(script_path, 'r') as f:
+            content = f.read()
+        assert 'argparse' in content
+        assert 'ArgumentParser' in content
 
-            # Check that argparse is used
-            script_path = os.path.join(scripts_dir, 'create_sample_data.py')
-            with open(script_path, 'r') as f:
-                content = f.read()
-            assert 'argparse' in content
-            assert 'ArgumentParser' in content
-        finally:
-            sys.path.remove(scripts_dir)
+    def test_populate_sample_db_has_main_function(self):
+        """Test that populate-sample-db.py has a main() function with argparse"""
+        module = load_script('populate-sample-db.py')
+        assert hasattr(module, 'main')
 
-    def test_populate_sample_ratings_has_main_function(self):
-        """Test that populate_sample_ratings.py has a main() function with argparse"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
-
-        try:
-            import populate_sample_ratings
-            assert hasattr(populate_sample_ratings, 'main')
-
-            # Check that argparse is used
-            script_path = os.path.join(scripts_dir, 'populate_sample_ratings.py')
-            with open(script_path, 'r') as f:
-                content = f.read()
-            assert 'argparse' in content
-            assert 'ArgumentParser' in content
-        finally:
-            sys.path.remove(scripts_dir)
+        script_path = os.path.join(SCRIPTS_DIR, 'populate-sample-db.py')
+        with open(script_path, 'r') as f:
+            content = f.read()
+        assert 'argparse' in content
+        assert 'ArgumentParser' in content
 
 
-class TestCreateDemoTemplates:
-    """Tests for scripts/create_demo_templates.py"""
+class TestGenerateDemoTemplates:
+    """Tests for scripts/generate-demo-templates.py"""
 
     def test_script_can_be_imported(self):
         """Test that the script can be imported without errors"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
-
-        try:
-            import create_demo_templates
-            assert hasattr(create_demo_templates, 'get_small_team_employees')
-            assert hasattr(create_demo_templates, 'get_large_team_employees')
-            assert hasattr(create_demo_templates, 'create_template_database')
-        finally:
-            sys.path.remove(scripts_dir)
+        module = load_script('generate-demo-templates.py')
+        assert hasattr(module, 'get_small_team_employees')
+        assert hasattr(module, 'get_large_team_employees')
+        assert hasattr(module, 'create_template_database')
 
     def test_small_team_structure(self):
         """Test that small team data has correct structure and no manager as employee"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
+        module = load_script('generate-demo-templates.py')
+        employees = module.get_small_team_employees()
 
-        try:
-            import create_demo_templates
+        assert len(employees) == 12, f"Expected 12 employees, got {len(employees)}"
 
-            employees = create_demo_templates.get_small_team_employees()
+        required_fields = [
+            'associate_id', 'associate', 'supervisory_organization',
+            'current_job_profile', 'performance_rating_percent', 'justification'
+        ]
+        for emp in employees:
+            for field in required_fields:
+                assert field in emp, f"Missing field {field} in employee {emp.get('associate', 'unknown')}"
 
-            # Should have 12 employees
-            assert len(employees) == 12, f"Expected 12 employees, got {len(employees)}"
+        employee_names = [emp['associate'] for emp in employees]
+        assert 'Della Gate' not in employee_names, \
+            "Della Gate should not be an employee - she is the manager using the system"
 
-            # Each employee should have required fields
-            required_fields = [
-                'associate_id', 'associate', 'supervisory_organization',
-                'current_job_profile', 'performance_rating_percent', 'justification'
-            ]
-            for emp in employees:
-                for field in required_fields:
-                    assert field in emp, f"Missing field {field} in employee {emp.get('associate', 'unknown')}"
-
-            # Manager (Della Gate) should NOT be an employee (she's the user)
-            employee_names = [emp['associate'] for emp in employees]
-            assert 'Della Gate' not in employee_names, \
-                "Della Gate should not be an employee - she is the manager using the system"
-
-            # All employees should belong to Della Gate's team
-            for emp in employees:
-                assert 'Della Gate' in emp['supervisory_organization'], \
-                    f"Employee {emp['associate']} should be under Della Gate's organization"
-
-        finally:
-            sys.path.remove(scripts_dir)
+        for emp in employees:
+            assert 'Della Gate' in emp['supervisory_organization'], \
+                f"Employee {emp['associate']} should be under Della Gate's organization"
 
     def test_large_team_structure(self):
         """Test that large team data includes managers as employees"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
+        module = load_script('generate-demo-templates.py')
+        employees = module.get_large_team_employees()
 
-        try:
-            import create_demo_templates
+        assert len(employees) == 55, f"Expected 55 employees, got {len(employees)}"
 
-            employees = create_demo_templates.get_large_team_employees()
+        employee_names = [emp['associate'] for emp in employees]
+        expected_managers = ['Della Gate', 'Rhoda Map', 'Kay P. Eye', 'Agie Enda', 'Mai Stone']
+        for manager in expected_managers:
+            assert manager in employee_names, \
+                f"Manager {manager} should be an employee in the large org (director rates them)"
 
-            # Should have 55 employees (10 ICs + 1 manager per team × 5 teams)
-            assert len(employees) == 55, f"Expected 55 employees, got {len(employees)}"
-
-            # Get all employee names
-            employee_names = [emp['associate'] for emp in employees]
-
-            # The 5 managers MUST be included as employees (director rates them)
-            expected_managers = ['Della Gate', 'Rhoda Map', 'Kay P. Eye', 'Agie Enda', 'Mai Stone']
-            for manager in expected_managers:
-                assert manager in employee_names, \
-                    f"Manager {manager} should be an employee in the large org (director rates them)"
-
-            # Managers should have manager job titles
-            for emp in employees:
-                if emp['associate'] in expected_managers:
-                    assert 'Manager' in emp['current_job_profile'], \
-                        f"{emp['associate']} should have a manager job title"
-
-        finally:
-            sys.path.remove(scripts_dir)
+        for emp in employees:
+            if emp['associate'] in expected_managers:
+                assert 'Manager' in emp['current_job_profile'], \
+                    f"{emp['associate']} should have a manager job title"
 
     def test_large_team_managers_in_own_teams(self):
         """Test that each manager is an employee in their own team"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
+        module = load_script('generate-demo-templates.py')
+        employees = module.get_large_team_employees()
 
-        try:
-            import create_demo_templates
+        manager_team_map = {
+            'Della Gate': 'Della Gate',
+            'Rhoda Map': 'Rhoda Map',
+            'Kay P. Eye': 'Kay P. Eye',
+            'Agie Enda': 'Agie Enda',
+            'Mai Stone': 'Mai Stone',
+        }
 
-            employees = create_demo_templates.get_large_team_employees()
-
-            # Map of manager name to expected team name substring
-            manager_team_map = {
-                'Della Gate': 'Della Gate',
-                'Rhoda Map': 'Rhoda Map',
-                'Kay P. Eye': 'Kay P. Eye',
-                'Agie Enda': 'Agie Enda',
-                'Mai Stone': 'Mai Stone',
-            }
-
-            for emp in employees:
-                if emp['associate'] in manager_team_map:
-                    expected_in_org = manager_team_map[emp['associate']]
-                    assert expected_in_org in emp['supervisory_organization'], \
-                        f"Manager {emp['associate']} should be in their own team"
-
-        finally:
-            sys.path.remove(scripts_dir)
+        for emp in employees:
+            if emp['associate'] in manager_team_map:
+                expected_in_org = manager_team_map[emp['associate']]
+                assert expected_in_org in emp['supervisory_organization'], \
+                    f"Manager {emp['associate']} should be in their own team"
 
     def test_rating_distribution_expressive(self):
         """Test that ratings span the full bonus curve range"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
+        module = load_script('generate-demo-templates.py')
 
-        try:
-            import create_demo_templates
+        small_employees = module.get_small_team_employees()
+        small_ratings = [emp['performance_rating_percent'] for emp in small_employees]
 
-            # Check small team
-            small_employees = create_demo_templates.get_small_team_employees()
-            small_ratings = [emp['performance_rating_percent'] for emp in small_employees]
+        assert any(r < 70 for r in small_ratings), \
+            "Small team should have at least one low performer (< 70%)"
 
-            # Should have low performers (< 70%)
-            assert any(r < 70 for r in small_ratings), \
-                "Small team should have at least one low performer (< 70%)"
+        assert any(r > 125 for r in small_ratings), \
+            "Small team should have at least one exceptional performer (> 125%)"
 
-            # Should have exceptional performers (> 125%)
-            assert any(r > 125 for r in small_ratings), \
-                "Small team should have at least one exceptional performer (> 125%)"
+        large_employees = module.get_large_team_employees()
+        large_ratings = [emp['performance_rating_percent'] for emp in large_employees]
 
-            # Check large team
-            large_employees = create_demo_templates.get_large_team_employees()
-            large_ratings = [emp['performance_rating_percent'] for emp in large_employees]
-
-            # Should have full range
-            assert min(large_ratings) < 70, \
-                f"Large team should have low performers, min is {min(large_ratings)}"
-            assert max(large_ratings) > 130, \
-                f"Large team should have exceptional performers, max is {max(large_ratings)}"
-
-        finally:
-            sys.path.remove(scripts_dir)
+        assert min(large_ratings) < 70, \
+            f"Large team should have low performers, min is {min(large_ratings)}"
+        assert max(large_ratings) > 130, \
+            f"Large team should have exceptional performers, max is {max(large_ratings)}"
 
     def test_all_employees_have_ratings(self):
         """Test that all demo employees have performance ratings assigned"""
-        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
-        sys.path.insert(0, scripts_dir)
+        module = load_script('generate-demo-templates.py')
 
-        try:
-            import create_demo_templates
-
-            for get_func, name in [
-                (create_demo_templates.get_small_team_employees, 'small team'),
-                (create_demo_templates.get_large_team_employees, 'large team'),
-            ]:
-                employees = get_func()
-                for emp in employees:
-                    assert emp.get('performance_rating_percent') is not None, \
-                        f"{emp['associate']} in {name} has no rating"
-                    assert emp.get('justification'), \
-                        f"{emp['associate']} in {name} has no justification"
-
-        finally:
-            sys.path.remove(scripts_dir)
+        for get_func, name in [
+            (module.get_small_team_employees, 'small team'),
+            (module.get_large_team_employees, 'large team'),
+        ]:
+            employees = get_func()
+            for emp in employees:
+                assert emp.get('performance_rating_percent') is not None, \
+                    f"{emp['associate']} in {name} has no rating"
+                assert emp.get('justification'), \
+                    f"{emp['associate']} in {name} has no justification"
 
 
 @pytest.mark.skipif(
     not os.path.exists(DEMO_TEMPLATES_DIR),
-    reason="Demo templates not generated (run scripts/create_demo_templates.py)"
+    reason="Demo templates not generated (run scripts/generate-demo-templates.py)"
 )
 class TestDemoTemplateSchemaValidation:
     """Verify demo template databases match the current model schema.
@@ -397,7 +290,6 @@ class TestDemoTemplateSchemaValidation:
         import sqlite3
         from models import Employee
 
-        # Get expected columns from the Employee model
         expected_columns = {col.name for col in Employee.__table__.columns}
 
         template_files = ['small-team.db', 'large-team.db']
@@ -406,15 +298,13 @@ class TestDemoTemplateSchemaValidation:
             db_path = os.path.join(DEMO_TEMPLATES_DIR, template_file)
             assert os.path.exists(db_path), f"Demo template not found: {template_file}"
 
-            # Get actual columns from the database
             conn = sqlite3.connect(db_path)
             cursor = conn.execute("PRAGMA table_info(employees)")
             actual_columns = {row[1] for row in cursor.fetchall()}
             conn.close()
 
-            # Check for missing columns
             missing = expected_columns - actual_columns
             assert not missing, (
                 f"Demo template '{template_file}' is missing columns: {missing}. "
-                f"Run 'python3 scripts/create_demo_templates.py' to regenerate."
+                f"Run 'python3 scripts/generate-demo-templates.py' to regenerate."
             )

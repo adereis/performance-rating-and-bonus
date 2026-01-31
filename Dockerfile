@@ -28,7 +28,7 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Generate demo template databases (ensures templates match current code)
-RUN python3 scripts/create_demo_templates.py
+RUN python3 scripts/generate-demo-templates.py
 
 # Create directory for database (will be created as volume, but ensure parent exists)
 RUN mkdir -p /app/data

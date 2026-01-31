@@ -392,14 +392,24 @@ class TestTenetsImport:
 class TestTenetsSampleDataGeneration:
     """Test sample data generation with tenets."""
 
+    def _load_populate_module(self):
+        """Load the populate-sample-db module."""
+        import importlib.util
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts')
+        script_path = os.path.join(scripts_dir, 'populate-sample-db.py')
+        spec = importlib.util.spec_from_file_location('populate_sample_db', script_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
     def test_generate_random_tenets(self):
         """Test that generate_random_tenets creates valid data structures."""
-        from populate_sample_ratings import generate_random_tenets
+        module = self._load_populate_module()
 
         all_tenets = ['delete_more', 'campfire_cleaner', 'tests_or_hallucination',
                       'ship_to_learn', 'yagni', 'fail_fast', 'rubber_duck']
 
-        strengths, improvements = generate_random_tenets(all_tenets)
+        strengths, improvements = module.generate_random_tenets(all_tenets)
 
         # Should return lists
         assert isinstance(strengths, list)
@@ -414,18 +424,18 @@ class TestTenetsSampleDataGeneration:
 
     def test_generate_random_tenets_with_empty_list(self):
         """Test generate_random_tenets with no tenets available."""
-        from populate_sample_ratings import generate_random_tenets
+        module = self._load_populate_module()
 
-        strengths, improvements = generate_random_tenets([])
+        strengths, improvements = module.generate_random_tenets([])
 
         assert strengths == []
         assert improvements == []
 
     def test_load_tenets(self):
         """Test loading tenets from configuration file."""
-        from populate_sample_ratings import load_tenets
+        module = self._load_populate_module()
 
-        tenets = load_tenets()
+        tenets = module.load_tenets()
 
         # Should return a list
         assert isinstance(tenets, list)

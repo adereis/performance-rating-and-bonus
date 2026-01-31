@@ -610,6 +610,24 @@ def create_template_database(db_path, employees, include_large_history=False):
 
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='Generate pre-built demo template databases for Docker deployment.',
+        epilog='''
+Creates SQLite databases pre-populated with fictitious employee data,
+ratings, and talent calibration data, ready to be copied for new demo sessions.
+
+Output:
+    demo-templates/small-team.db  - 12 employees, 1 manager
+    demo-templates/large-team.db  - 55 employees, 5 managers
+        ''',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument('--output-dir', type=str, default=None,
+                        help='Output directory (default: demo-templates/)')
+    parser.parse_args()
+
     print("Creating demo template databases...")
     print()
 

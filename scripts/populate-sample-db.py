@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-Populate performance ratings, justifications, tenets, and talent data for sample data.
+Populate performance ratings and talent data in the database for demo/testing.
 
 This script adds manager-entered data (ratings, justifications, tenets, talent
 calibration) to employees after Workday data has been imported. This separation
 maintains the architectural distinction between Workday export data and local ratings.
 
 Usage:
-    python3 populate_sample_ratings.py small     # For sample-data-small.xlsx
-    python3 populate_sample_ratings.py large     # For sample-data-large.xlsx
-    python3 populate_sample_ratings.py small --with-tenets  # Include tenets
-    python3 populate_sample_ratings.py large --with-tenets  # Include tenets
-    python3 populate_sample_ratings.py small --with-talent  # Include talent calibration
-    python3 populate_sample_ratings.py large --with-talent --with-tenets  # All data
+    python3 scripts/populate-sample-db.py                    # Small team
+    python3 scripts/populate-sample-db.py --large            # Large org
+    python3 scripts/populate-sample-db.py --with-tenets      # Include tenets
+    python3 scripts/populate-sample-db.py --with-talent      # Include talent calibration
+    python3 scripts/populate-sample-db.py --large --with-talent --with-tenets  # All data
 """
 import sys
 import os
@@ -67,53 +66,40 @@ def generate_talent_data(bonus_rating: int) -> dict:
     Returns:
         dict with talent fields
     """
-    # Map performance rating to talent calibration distribution
-    # Higher performers more likely to have higher talent ratings
-    # Movement weights: [Continue, Promotion in role, Lateral, Promotion outside, Not well placed]
     if bonus_rating >= 130:
-        # High performers: likely Surpasses
-        what_weights = [0.6, 0.35, 0.05]  # Surpasses, Meets, MeetsSome
+        what_weights = [0.6, 0.35, 0.05]
         how_weights = [0.5, 0.45, 0.05, 0.0]
-        agility_weight = 0.6  # 60% chance of "Always"
+        agility_weight = 0.6
         movement_weights = [0.45, 0.35, 0.1, 0.1, 0.0]
     elif bonus_rating >= 110:
-        # Strong performers: likely Meets with some Surpasses
         what_weights = [0.3, 0.65, 0.05]
         how_weights = [0.25, 0.65, 0.1, 0.0]
         agility_weight = 0.4
         movement_weights = [0.55, 0.25, 0.1, 0.1, 0.0]
     elif bonus_rating >= 90:
-        # Solid performers: mostly Meets
         what_weights = [0.1, 0.8, 0.1]
         how_weights = [0.1, 0.75, 0.15, 0.0]
         agility_weight = 0.3
         movement_weights = [0.75, 0.15, 0.05, 0.05, 0.0]
     else:
-        # Underperformers: likely Meets Some or lower
         what_weights = [0.0, 0.4, 0.6]
         how_weights = [0.0, 0.3, 0.5, 0.2]
         agility_weight = 0.15
         movement_weights = [0.80, 0.0, 0.05, 0.0, 0.15]
 
-    # Generate What/How
     perf_what = random.choices(PERF_WHAT_OPTIONS, weights=what_weights)[0]
     perf_how = random.choices(PERF_HOW_OPTIONS, weights=how_weights)[0]
 
-    # Generate agility ratings
     growth = 'Always/Most of the Time' if random.random() < agility_weight else 'Sometimes'
     change = 'Always/Most of the Time' if random.random() < agility_weight else 'Sometimes'
 
-    # Generate movement readiness
     movement = random.choices(MOVEMENT_READINESS_OPTIONS, weights=movement_weights)[0]
 
-    # Derive fields
     overall = derive_overall_performance(perf_what, perf_how)
     future_talent = derive_future_talent(growth, change)
 
-    # Generate "last cycle" data (for year-over-year comparison)
-    # Slightly different from current to show change
     last_what = random.choice(PERF_WHAT_OPTIONS)
-    last_how = random.choice(PERF_HOW_OPTIONS[:3])  # Exclude "Does Not Meet" from history
+    last_how = random.choice(PERF_HOW_OPTIONS[:3])
     last_overall = derive_overall_performance(last_what, last_how)
     last_growth = random.choice(AGILITY_OPTIONS)
     last_change = random.choice(AGILITY_OPTIONS)
@@ -128,17 +114,13 @@ def generate_talent_data(bonus_rating: int) -> dict:
         'talent_change_agility': change,
         'talent_identified_future': future_talent,
         'talent_movement_readiness': movement,
-        # Historical data
         'talent_last_overall_perf': last_overall,
         'talent_last_identified_future': last_future_talent,
         'talent_last_movement_readiness': last_movement,
     }
 
 
-# Sample promotion data for a few high performers
-# Includes candidates from both small (12) and large (55) datasets
 PROMO_CANDIDATES = {
-    # Small team candidates
     'Al Ert': {
         'job_profile': 'Principal SRE, 1847',
         'business_need': 'Team expanding scope to cover global reliability',
@@ -151,7 +133,6 @@ PROMO_CANDIDATES = {
         'role_scope': 'Expand from query optimization to full data architecture',
         'readiness': 'Strong IC track record, ready for staff scope',
     },
-    # Large org candidates (additional high performers)
     'Artie Ficial': {
         'job_profile': 'Principal Software Developer, 2134',
         'business_need': 'Architecture leadership for distributed systems initiative',
@@ -177,7 +158,6 @@ PROMO_CANDIDATES = {
 # Performance Rating Data
 # ============================================================================
 
-# Sample ratings and justifications for small team
 SMALL_TEAM_RATINGS = {
     'Paige Duty': (130, 'Exceptional technical leadership and on-call reliability'),
     'Lee Latency': (120, 'Outstanding performance optimization work'),
@@ -193,7 +173,6 @@ SMALL_TEAM_RATINGS = {
     'Barbie Que': (110, 'Strong message queue management'),
 }
 
-# Sample ratings and justifications for large org
 LARGE_ORG_RATINGS = {
     # Della Gate's team
     'Paige Duty': (140, 'Exceptional technical vision and platform architecture'),
@@ -268,40 +247,30 @@ def load_tenets():
 
 
 def generate_random_tenets(all_tenets, strength_count=3, improvement_count=3):
-    """
-    Generate random tenets for an employee.
-
-    Returns:
-        tuple: (strengths_list, improvements_list) - Lists of tenet IDs
-    """
+    """Generate random tenets for an employee."""
     if not all_tenets:
         return ([], [])
 
-    # Randomly select strengths (3 unique tenets)
     strengths = random.sample(all_tenets, min(strength_count, len(all_tenets)))
-
-    # Randomly select improvements (3 unique tenets, different from strengths)
     remaining_tenets = [t for t in all_tenets if t not in strengths]
     improvements = random.sample(remaining_tenets, min(improvement_count, len(remaining_tenets)))
 
     return (strengths, improvements)
 
 
-def populate_ratings(size='small', include_tenets=False, include_talent=False):
+def populate_ratings(large=False, include_tenets=False, include_talent=False):
     """Populate performance ratings, justifications, and optionally tenets/talent for sample data."""
 
-    # Check if database exists
     if not os.path.exists('ratings.db'):
         print("⚠ Database not found. Please import sample data first:")
-        filename = 'sample-data-small.xlsx' if size == 'small' else 'sample-data-large.xlsx'
-        print(f"  python3 convert_xlsx.py {filename}")
+        filename = 'sample-data-large.xlsx' if large else 'sample-data-small.xlsx'
+        print(f"  1. python3 app.py")
+        print(f"  2. Import {filename} via the web UI")
         return
 
-    # Select appropriate rating dataset
-    ratings_data = SMALL_TEAM_RATINGS if size == 'small' else LARGE_ORG_RATINGS
-    dataset_name = "small team" if size == 'small' else "large organization"
+    ratings_data = LARGE_ORG_RATINGS if large else SMALL_TEAM_RATINGS
+    dataset_name = "large organization" if large else "small team"
 
-    # Load tenets if requested
     all_tenets = load_tenets() if include_tenets else None
 
     db = get_db()
@@ -311,7 +280,6 @@ def populate_ratings(size='small', include_tenets=False, include_talent=False):
         talent_count = 0
         promo_count = 0
 
-        # Track talent distribution for reporting
         talent_stats = {
             'overall': {},
             'future_talent': 0,
@@ -321,20 +289,17 @@ def populate_ratings(size='small', include_tenets=False, include_talent=False):
         for employee_name, (rating, justification) in ratings_data.items():
             emp = db.query(Employee).filter(Employee.associate == employee_name).first()
             if emp:
-                # Populate performance rating and justification
                 emp.performance_rating_percent = rating
                 emp.justification = justification
                 emp.last_updated = datetime.now()
                 updated_count += 1
 
-                # Optionally populate tenets
                 if include_tenets and all_tenets:
                     strengths, improvements = generate_random_tenets(all_tenets)
                     emp.tenets_strengths = json.dumps(strengths)
                     emp.tenets_improvements = json.dumps(improvements)
                     tenets_count += 1
 
-                # Optionally populate talent calibration data
                 if include_talent:
                     talent_data = generate_talent_data(rating)
 
@@ -346,7 +311,6 @@ def populate_ratings(size='small', include_tenets=False, include_talent=False):
                     emp.talent_identified_future = talent_data['talent_identified_future']
                     emp.talent_movement_readiness = talent_data['talent_movement_readiness']
 
-                    # Historical "last cycle" data
                     emp.talent_last_overall_perf = talent_data['talent_last_overall_perf']
                     emp.talent_last_identified_future = talent_data['talent_last_identified_future']
                     emp.talent_last_movement_readiness = talent_data['talent_last_movement_readiness']
@@ -354,7 +318,6 @@ def populate_ratings(size='small', include_tenets=False, include_talent=False):
                     emp.talent_last_updated = datetime.now()
                     talent_count += 1
 
-                    # Track stats
                     overall = talent_data['talent_overall_perf']
                     talent_stats['overall'][overall] = talent_stats['overall'].get(overall, 0) + 1
                     if talent_data['talent_identified_future']:
@@ -362,22 +325,25 @@ def populate_ratings(size='small', include_tenets=False, include_talent=False):
                     mvmt = talent_data['talent_movement_readiness']
                     talent_stats['movement'][mvmt] = talent_stats['movement'].get(mvmt, 0) + 1
 
-                    # Add promotion data for specific candidates
                     if employee_name in PROMO_CANDIDATES:
                         promo = PROMO_CANDIDATES[employee_name]
                         emp.talent_promo_job_profile = promo['job_profile']
+                        emp.talent_promo_job_profile_original = emp.talent_promo_job_profile
                         emp.talent_promo_business_need = promo['business_need']
+                        emp.talent_promo_business_need_original = emp.talent_promo_business_need
                         emp.talent_promo_role_scope = promo['role_scope']
+                        emp.talent_promo_role_scope_original = emp.talent_promo_role_scope
                         emp.talent_promo_readiness = promo['readiness']
-                        # Override movement to "Ready for Promotion"
+                        emp.talent_promo_readiness_original = emp.talent_promo_readiness
                         emp.talent_movement_readiness = 'Ready Now to be promoted in current role'
                         promo_count += 1
 
-                    # Optionally add talent tenets (reuse bonus tenets if enabled)
                     if include_tenets and all_tenets:
                         t_strengths, t_improvements = generate_random_tenets(all_tenets, 2, 2)
                         emp.talent_tenets_strengths = json.dumps(t_strengths)
+                        emp.talent_tenets_strengths_original = emp.talent_tenets_strengths
                         emp.talent_tenets_improvements = json.dumps(t_improvements)
+                        emp.talent_tenets_improvements_original = emp.talent_tenets_improvements
 
         db.commit()
         print(f"✓ Populated {updated_count} performance ratings for {dataset_name}")
@@ -418,49 +384,30 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description='Populate performance ratings, justifications, tenets, and talent calibration for sample data.',
+        description='Populate performance ratings and talent data in the database.',
         epilog='''
 Examples:
-  python3 scripts/populate_sample_ratings.py small
-  python3 scripts/populate_sample_ratings.py large
-  python3 scripts/populate_sample_ratings.py small --with-tenets
-  python3 scripts/populate_sample_ratings.py large --with-tenets
-  python3 scripts/populate_sample_ratings.py small --with-talent
-  python3 scripts/populate_sample_ratings.py large --with-talent --with-tenets
+  %(prog)s                              # Small team (12 employees)
+  %(prog)s --large                      # Large org (55 employees)
+  %(prog)s --with-tenets                # Include tenets evaluation
+  %(prog)s --with-talent                # Include talent calibration
+  %(prog)s --large --with-talent --with-tenets  # All data
 
 This script adds manager-entered data (ratings, justifications, tenets, talent
-calibration) to employees after Workday data has been imported. Run this after
-importing sample-data-small.xlsx or sample-data-large.xlsx.
-
-Talent calibration data (--with-talent) includes:
-  - Performance What/How ratings (aligned with performance rating)
-  - Derived Overall Performance (Spec §4.1)
-  - Growth/Change Agility and derived Future Talent (Spec §4.2)
-  - Movement Readiness
-  - Historical "last cycle" data for year-over-year comparison
-  - Promotion data for select high performers
+calibration) to employees after Workday data has been imported.
         ''',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument(
-        'size',
-        choices=['small', 'large'],
-        help='Dataset size: "small" for 12-employee team, "large" for 55-employee org'
-    )
-    parser.add_argument(
-        '--with-tenets',
-        action='store_true',
-        help='Also populate random tenets evaluation (requires tenets.json or samples/tenets-sample.json)'
-    )
-    parser.add_argument(
-        '--with-talent',
-        action='store_true',
-        help='Also populate talent calibration data (Performance What/How, agility, movement, etc.)'
-    )
+    parser.add_argument('--large', action='store_true',
+                        help='Use large org dataset (55 employees) instead of small team (12)')
+    parser.add_argument('--with-tenets', action='store_true',
+                        help='Also populate random tenets evaluation')
+    parser.add_argument('--with-talent', action='store_true',
+                        help='Also populate talent calibration data')
 
     args = parser.parse_args()
-    populate_ratings(args.size, args.with_tenets, args.with_talent)
+    populate_ratings(args.large, args.with_tenets, args.with_talent)
 
 
 if __name__ == '__main__':
