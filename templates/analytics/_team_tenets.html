@@ -20,6 +20,41 @@
     </div>
 
     <div id="tenetsChartContainer"></div>
+
+    {# Job Level Tenets Analysis - shows tenets breakdown by Manager / Senior IC / Others #}
+    {% if job_level_tenets_summary and job_level_tenets_summary|length > 1 %}
+    <div style="margin-top: 30px;">
+        <h3 style="margin-bottom: 15px; color: #2c3e50;">Tenets by Job Level</h3>
+        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
+            Compare tenet patterns across job levels: <strong>Manager</strong> (has direct reports),
+            <strong>Senior IC</strong> (Senior, Principal, Staff, Lead in title), and <strong>Others</strong>.
+        </p>
+        {% for level in ['Manager', 'Senior IC', 'Others'] %}
+        {% if level in job_level_tenets_summary %}
+        {% set level_data = job_level_tenets_summary[level] %}
+        <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+            <h4 style="margin-bottom: 4px; color: #34495e;">
+                {{ level }}
+                <span style="font-weight: normal; color: #666; font-size: 14px;">
+                    ({{ level_data.employees_with_tenets }} employee{{ 's' if level_data.employees_with_tenets != 1 else '' }})
+                </span>
+            </h4>
+            <div style="font-size: 12px; color: #888; margin-bottom: 10px; font-style: italic;">
+                {% if level == 'Manager' %}
+                    Has direct reports (management level or supervisory org)
+                {% elif level == 'Senior IC' %}
+                    Title contains: Senior, Principal, Staff, or Lead
+                {% else %}
+                    All other individual contributors
+                {% endif %}
+            </div>
+            <div id="jobLevelTenetsChart-{{ level|replace(' ', '-') }}"></div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
     </div>
 </div>
 {% endif %}
