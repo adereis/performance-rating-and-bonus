@@ -667,3 +667,160 @@ class TestPoolVerification:
         assert settings_dict['pool_source'] == 'calculated_sum'
         assert 'pool_verified' in settings_dict
         assert settings_dict['pool_verified'] is False
+
+
+class TestBonusCalculation:
+    """Test bonus calculation logic, especially budget_override behavior."""
+
+    def test_budget_override_replaces_pool_not_adds(self):
+        """Critical test: budget_override should REPLACE the pool, not add to it."""
+        from app import calculate_bonus_for_employees
+
+        # Create test employees with known values
+        employees = [
+            {
+                'Associate ID': 'EMP001',
+                'Associate': 'Test Employee 1',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 5000,
+                'Current Base Pay Manager Currency': 100000,
+            },
+            {
+                'Associate ID': 'EMP002',
+                'Associate': 'Test Employee 2',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 5000,
+                'Current Base Pay Manager Currency': 100000,
+            },
+        ]
+
+        params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+
+        # Workday pool is $10,000 (sum of targets)
+        workday_pool = 10000
+
+        # Budget override is $8,000 - should REPLACE, not add
+        budget_override = 8000
+
+        result = calculate_bonus_for_employees(
+            employees, params,
+            budget_override=budget_override,
+            workday_pool=workday_pool
+        )
+
+        # The total allocated should be $8,000 (the override), NOT $18,000
+        assert result['total_allocated'] == budget_override, \
+            f"Expected total_allocated={budget_override}, got {result['total_allocated']}"
+
+        # Each employee should get $4,000 (half of $8,000), not $9,000 (half of $18,000)
+        for r in result['results']:
+            assert r['final_bonus'] == 4000, \
+                f"Expected final_bonus=4000, got {r['final_bonus']}"
+
+    def test_no_budget_override_uses_workday_pool(self):
+        """When no budget_override, should use workday_pool."""
+        from app import calculate_bonus_for_employees
+
+        employees = [
+            {
+                'Associate ID': 'EMP001',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 5000,
+                'Current Base Pay Manager Currency': 100000,
+            },
+        ]
+
+        params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+        workday_pool = 6000  # Different from target to verify it's used
+
+        result = calculate_bonus_for_employees(
+            employees, params,
+            budget_override=0,  # No override
+            workday_pool=workday_pool
+        )
+
+        # Should use workday_pool
+        assert result['total_allocated'] == workday_pool
+
+    def test_budget_override_zero_uses_workday_pool(self):
+        """When budget_override is 0, should use workday_pool."""
+        from app import calculate_bonus_for_employees
+
+        employees = [
+            {
+                'Associate ID': 'EMP001',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 5000,
+                'Current Base Pay Manager Currency': 100000,
+            },
+        ]
+
+        params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+        workday_pool = 7000
+
+        result = calculate_bonus_for_employees(
+            employees, params,
+            budget_override=0.0,
+            workday_pool=workday_pool
+        )
+
+        assert result['total_allocated'] == workday_pool
+
+    def test_no_workday_pool_uses_sum_of_targets(self):
+        """When no workday_pool, should fall back to sum of targets."""
+        from app import calculate_bonus_for_employees
+
+        employees = [
+            {
+                'Associate ID': 'EMP001',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 3000,
+                'Current Base Pay Manager Currency': 100000,
+            },
+            {
+                'Associate ID': 'EMP002',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 2000,
+                'Current Base Pay Manager Currency': 100000,
+            },
+        ]
+
+        params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+
+        result = calculate_bonus_for_employees(
+            employees, params,
+            budget_override=0,
+            workday_pool=None  # No Workday pool
+        )
+
+        # Should use sum of targets: 3000 + 2000 = 5000
+        assert result['total_allocated'] == 5000
+
+    def test_budget_override_with_partial_ratings(self):
+        """Budget override with partial ratings should scale proportionally."""
+        from app import calculate_bonus_for_employees
+
+        # Only one employee rated out of a team with total targets of $10,000
+        employees = [
+            {
+                'Associate ID': 'EMP001',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 5000,
+                'Current Base Pay Manager Currency': 100000,
+            },
+        ]
+
+        params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+
+        # Override is $8,000 for the full team
+        # But only 50% of targets are rated, so should get 50% of override
+        result = calculate_bonus_for_employees(
+            employees, params,
+            budget_override=8000,
+            workday_pool=10000,
+            all_targets_sum=10000  # Total team targets
+        )
+
+        # Should get 50% of $8,000 = $4,000
+        assert result['total_allocated'] == 4000, \
+            f"Expected 4000, got {result['total_allocated']}"
