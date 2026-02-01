@@ -365,6 +365,23 @@ def validate_workday_format(rows: List[tuple], header_idx: Optional[int], header
     # Old format: requires total_pool in metadata
     if metadata is not None:
         is_new_format = metadata.get('is_new_format', False)
+
+        # Require the correct Workday report type for bonus files
+        # The proper report has "Compensation Review Process - Bonus" in cell A1
+        # (may have company prefix like "RH Compensation Review Process - Bonus")
+        report_title = metadata.get('report_title', '')
+        if not report_title or 'Compensation Review Process' not in report_title:
+            return False, (
+                "Invalid Workday report type.\n\n"
+                "This file does not appear to be from the correct Workday report.\n\n"
+                "Please use the 'Compensation Review Process - Bonus' report which includes:\n"
+                "  • Report title in row 1: '... Compensation Review Process - Bonus'\n"
+                "  • Period information (e.g., 'Compensation Review: Bonus - CY25 Q4')\n"
+                "  • Supervisory organization context\n"
+                "  • Currency conversion columns matching the report currency\n\n"
+                "Other export formats may have incorrect currency conversions."
+            )
+
         if not is_new_format and not metadata.get('total_pool'):
             return False, (
                 "Missing bonus pool metadata.\n\n"

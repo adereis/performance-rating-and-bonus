@@ -36,8 +36,8 @@ def create_test_xlsx(employees_data, include_headers=True, manager_currency='USD
     wb = Workbook()
     ws = wb.active
 
-    # Row 1: Report title with period
-    ws.append([f'Associate Awards:: Compensation Review: Bonus - {period_name}'])
+    # Row 1: Report title (required for validation - must contain "Compensation Review Process")
+    ws.append([f'Compensation Review Process - Bonus - {period_name}'])
 
     # Row 2: Subtitle
     ws.append(['My Current Organizations Budget and Spend'])
@@ -46,7 +46,7 @@ def create_test_xlsx(employees_data, include_headers=True, manager_currency='USD
     ws.append(['Name', 'Total Spend Text Value', 'of', 'Total Pool Text Value',
                '% Pool Spent', 'Data Viz Color [Singular]'])
 
-    # Row 4: Budget data
+    # Row 4: Budget data (currency extracted from column 7)
     ws.append(['Bonus', '0.00', 'of', str(total_pool), 0.0, 'style1', manager_currency, 0.0])
 
     # Rows 5-8: Section headers (as in real Workday export)
@@ -941,8 +941,9 @@ class TestValidation:
         try:
             result = analyze_xlsx(temp_path)
             assert result['success'] is False
-            assert 'Missing bonus pool metadata' in result['error']
-            assert 'old export format' in result['error']
+            # Files without the proper report title are rejected first
+            assert 'Invalid Workday report type' in result['error']
+            assert 'Compensation Review Process' in result['error']
         finally:
             os.remove(temp_path)
 
