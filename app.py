@@ -2876,7 +2876,7 @@ def export_page():
         """Check if a Tool Additions field needs to be synced to Workday.
 
         More aggressive: returns True if content exists but wasn't in original import.
-        Used for tool-generated fields (tenets, mentor, mentees, ai_related_activities).
+        Used for tool-generated fields (tenets, mentor, mentees).
         """
         current = emp.get(field_name) or ''
         original = emp.get(f'{field_name}_original')
@@ -2951,8 +2951,6 @@ def export_page():
             # Normalize to semicolon-separated for consistency
             normalized_mentees = '; '.join(m.strip() for m in employee['mentees'].replace(';', ',').split(',') if m.strip())
             tool_additions_parts.append(f"[Mentees: {normalized_mentees}]")
-        if employee.get('ai_related_activities'):
-            tool_additions_parts.append(f"[YESAI: {employee['ai_related_activities']}]")
         # Justification at the end with section header (allows multi-line)
         if employee.get('justification'):
             tool_additions_parts.append('')  # Blank line separator
@@ -2975,7 +2973,6 @@ def export_page():
         justification_modified = is_field_modified(employee, 'justification')
         mentor_modified = needs_sync_to_workday(employee, 'mentor')
         mentees_modified = needs_sync_to_workday(employee, 'mentees')
-        ai_modified = needs_sync_to_workday(employee, 'ai_related_activities')
         tenets_strengths_modified = needs_sync_to_workday(employee, 'tenets_strengths')
         tenets_improvements_modified = needs_sync_to_workday(employee, 'tenets_improvements')
 
@@ -2985,7 +2982,6 @@ def export_page():
             justification_modified or
             mentor_modified or
             mentees_modified or
-            ai_modified or
             tenets_strengths_modified or
             tenets_improvements_modified
         )
@@ -3013,14 +3009,12 @@ def export_page():
             'justification_modified': justification_modified,
             'mentor_modified': mentor_modified,
             'mentees_modified': mentees_modified,
-            'ai_modified': ai_modified,
             'tenets_strengths_modified': tenets_strengths_modified,
             'tenets_improvements_modified': tenets_improvements_modified,
             'needs_sync': needs_sync,
             # Current field values for display
             'mentor': employee.get('mentor') or '',
             'mentees': employee.get('mentees') or '',
-            'ai_related_activities': employee.get('ai_related_activities') or '',
             'tenets_strengths': strengths_text,
             'tenets_improvements': improvements_text,
         })
@@ -4041,7 +4035,6 @@ def import_current():
                     employee.justification_original = notes_data.get('justification') or None
                     employee.mentor_original = notes_data.get('mentors') or None
                     employee.mentees_original = notes_data.get('mentees') or None
-                    employee.ai_related_activities_original = notes_data.get('ai_related_activities') or None
                     # Convert tenet names to JSON IDs for storage
                     employee.tenets_strengths_original = convert_tenet_names_to_ids(
                         notes_data.get('tenets_strengths'), tenets_config
@@ -4057,7 +4050,6 @@ def import_current():
                             employee.justification = notes_data.get('justification') or ''
                             employee.mentor = notes_data.get('mentors') or ''
                             employee.mentees = notes_data.get('mentees') or ''
-                            employee.ai_related_activities = notes_data.get('ai_related_activities') or ''
                             employee.tenets_strengths = employee.tenets_strengths_original
                             employee.tenets_improvements = employee.tenets_improvements_original
                         else:
@@ -4873,7 +4865,6 @@ def get_all_history_snapshots():
                 'tenets_improvements': snapshot.tenets_improvements or '',
                 'mentors': snapshot.mentors or '',
                 'mentees': snapshot.mentees or '',
-                'ai_related_activities': snapshot.ai_related_activities or '',
                 'snapshot_talent_overall_perf': snapshot.snapshot_talent_overall_perf or '',
                 'snapshot_talent_perf_what': snapshot.snapshot_talent_perf_what or '',
                 'snapshot_talent_perf_how': snapshot.snapshot_talent_perf_how or '',
@@ -5025,7 +5016,6 @@ def export_snapshot_xlsx():
         'Improvement Tenets',
         'Mentor',
         'Mentees',
-        'AI-Related Activities',
         'Last Updated',
     ]
 
@@ -5062,8 +5052,7 @@ def export_snapshot_xlsx():
         ws_bonus.cell(row=row_idx, column=9, value=improvements_text)
         ws_bonus.cell(row=row_idx, column=10, value=emp.get('mentor', ''))
         ws_bonus.cell(row=row_idx, column=11, value=emp.get('mentees', ''))
-        ws_bonus.cell(row=row_idx, column=12, value=emp.get('ai_related_activities', ''))
-        ws_bonus.cell(row=row_idx, column=13, value=emp.get('last_updated', ''))
+        ws_bonus.cell(row=row_idx, column=12, value=emp.get('last_updated', ''))
 
     # Sheet 5: talent_cycle
     ws_talent = wb.create_sheet("talent_cycle")
@@ -5160,7 +5149,6 @@ def export_snapshot_xlsx():
         'Improvement Tenets',
         'Mentors',
         'Mentees',
-        'AI Activities',
         'Talent: Overall Performance',
         'Talent: What',
         'Talent: How',
@@ -5191,13 +5179,12 @@ def export_snapshot_xlsx():
         ws_history.cell(row=row_idx, column=14, value=snap.get('tenets_improvements', ''))
         ws_history.cell(row=row_idx, column=15, value=snap.get('mentors', ''))
         ws_history.cell(row=row_idx, column=16, value=snap.get('mentees', ''))
-        ws_history.cell(row=row_idx, column=17, value=snap.get('ai_related_activities', ''))
-        ws_history.cell(row=row_idx, column=18, value=snap.get('snapshot_talent_overall_perf', ''))
-        ws_history.cell(row=row_idx, column=19, value=snap.get('snapshot_talent_perf_what', ''))
-        ws_history.cell(row=row_idx, column=20, value=snap.get('snapshot_talent_perf_how', ''))
-        ws_history.cell(row=row_idx, column=21, value=snap.get('snapshot_talent_growth_agility', ''))
-        ws_history.cell(row=row_idx, column=22, value=snap.get('snapshot_talent_change_agility', ''))
-        ws_history.cell(row=row_idx, column=23, value=snap.get('snapshot_talent_movement_readiness', ''))
+        ws_history.cell(row=row_idx, column=17, value=snap.get('snapshot_talent_overall_perf', ''))
+        ws_history.cell(row=row_idx, column=18, value=snap.get('snapshot_talent_perf_what', ''))
+        ws_history.cell(row=row_idx, column=19, value=snap.get('snapshot_talent_perf_how', ''))
+        ws_history.cell(row=row_idx, column=20, value=snap.get('snapshot_talent_growth_agility', ''))
+        ws_history.cell(row=row_idx, column=21, value=snap.get('snapshot_talent_change_agility', ''))
+        ws_history.cell(row=row_idx, column=22, value=snap.get('snapshot_talent_movement_readiness', ''))
 
     # Auto-adjust column widths for all sheets
     for sheet in wb.worksheets:
@@ -5346,7 +5333,6 @@ def export_snapshot_csv():
             'Improvement Tenets',
             'Mentor',
             'Mentees',
-            'AI-Related Activities',
             'Last Updated',
         ])
 
@@ -5378,7 +5364,6 @@ def export_snapshot_csv():
                 improvements_text,
                 emp.get('mentor', ''),
                 emp.get('mentees', ''),
-                emp.get('ai_related_activities', ''),
                 emp.get('last_updated', ''),
             ])
         zip_file.writestr('bonus_cycle.csv', bonus_output.getvalue())
@@ -5477,7 +5462,6 @@ def export_snapshot_csv():
             'Improvement Tenets',
             'Mentors',
             'Mentees',
-            'AI Activities',
             'Talent: Overall Performance',
             'Talent: What',
             'Talent: How',
@@ -5504,7 +5488,6 @@ def export_snapshot_csv():
                 snap.get('tenets_improvements', ''),
                 snap.get('mentors', ''),
                 snap.get('mentees', ''),
-                snap.get('ai_related_activities', ''),
                 snap.get('snapshot_talent_overall_perf', ''),
                 snap.get('snapshot_talent_perf_what', ''),
                 snap.get('snapshot_talent_perf_how', ''),

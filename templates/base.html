@@ -2290,13 +2290,6 @@
                                             </div>
                                         ` : ''}
                                     </div>
-                                    <div class="employee-modal-field full-width">
-                                        <label>AI Activities</label>
-                                        <input type="text"
-                                               id="modal_ai_related_activities"
-                                               value="${employee.ai_related_activities || ''}"
-                                               placeholder="AI-related work, projects, or initiatives...">
-                                    </div>
                                 </div>
                             </div>
                             ${bonusTenetsHTML}
@@ -2465,14 +2458,12 @@
                 const justificationInput = document.getElementById('modal_justification');
                 const mentorInput = document.getElementById('modal_mentor');
                 const menteesInput = document.getElementById('modal_mentees');
-                const aiActivitiesInput = document.getElementById('modal_ai_related_activities');
 
                 const hasBonusTextChanges =
                     normalize(ratingInput?.value) !== normalize(originalEmployeeData.performance_rating_percent) ||
                     normalize(justificationInput?.value) !== normalize(originalEmployeeData.justification) ||
                     normalize(mentorInput?.value) !== normalize(originalEmployeeData.mentor) ||
-                    normalize(menteesInput?.value) !== normalize(originalEmployeeData.mentees) ||
-                    normalize(aiActivitiesInput?.value) !== normalize(originalEmployeeData.ai_related_activities);
+                    normalize(menteesInput?.value) !== normalize(originalEmployeeData.mentees);
 
                 // Compare talent calibration fields
                 const talentPerfWhat = document.getElementById('modal_talent_perf_what');
@@ -2537,13 +2528,11 @@
             const justificationInput = document.getElementById('modal_justification');
             const mentorInput = document.getElementById('modal_mentor');
             const menteesInput = document.getElementById('modal_mentees');
-            const aiActivitiesInput = document.getElementById('modal_ai_related_activities');
 
             if (ratingInput) ratingInput.addEventListener('input', checkForChanges);
             if (justificationInput) justificationInput.addEventListener('input', checkForChanges);
             if (mentorInput) mentorInput.addEventListener('input', checkForChanges);
             if (menteesInput) menteesInput.addEventListener('input', checkForChanges);
-            if (aiActivitiesInput) aiActivitiesInput.addEventListener('input', checkForChanges);
 
             // Track talent calibration fields
             const talentPerfWhat = document.getElementById('modal_talent_perf_what');
@@ -3080,7 +3069,6 @@
                 justification: document.getElementById('modal_justification')?.value || '',
                 mentor: document.getElementById('modal_mentor')?.value || '',
                 mentees: document.getElementById('modal_mentees')?.value || '',
-                ai_related_activities: document.getElementById('modal_ai_related_activities')?.value || '',
                 tenets_strengths: tenetsStrengths,
                 tenets_improvements: tenetsImprovements
             };
@@ -3190,7 +3178,6 @@
                 justification: document.getElementById('modal_justification')?.value || '',
                 mentor: document.getElementById('modal_mentor')?.value || '',
                 mentees: document.getElementById('modal_mentees')?.value || '',
-                ai_related_activities: document.getElementById('modal_ai_related_activities')?.value || '',
                 tenets_strengths: tenetsStrengths,
                 tenets_improvements: tenetsImprovements
             };

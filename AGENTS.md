@@ -76,7 +76,7 @@ Instructions for AI agents and human developers working on this codebase.
 Manager name parsed from: `"Supervisory Organization (Manager Name)"` → extracts "Manager Name"
 
 **Preserved on re-import** (manager-entered):
-- Bonus cycle: `performance_rating`, `justification`, `mentors`, `mentees`, `ai_related_activities`, tenets
+- Bonus cycle: `performance_rating`, `justification`, `mentors`, `mentees`, tenets
 - Talent cycle: `talent_perf_what`, `talent_perf_how`, `talent_growth_agility`, `talent_change_agility`, `talent_movement_readiness`, `talent_proposed_actions`, `talent_mentor`, `talent_mentees`, `talent_tenets_*`
 
 **Overwritten on re-import** (from Workday): salary, bonus targets, org structure, management_level

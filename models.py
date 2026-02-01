@@ -179,8 +179,6 @@ class Employee(Base):
     mentor_original = Column(String)  # Original from Workday (for modification detection)
     mentees = Column(String)
     mentees_original = Column(String)  # Original from Workday (for modification detection)
-    ai_related_activities = Column(String)  # Free-form text for AI activities
-    ai_related_activities_original = Column(String)  # Original from Workday (for modification detection)
     tenets_strengths = Column(String)  # JSON array of 3 tenet IDs for strengths
     tenets_strengths_original = Column(String)  # Original from Workday (for modification detection)
     tenets_improvements = Column(String)  # JSON array of 3 tenet IDs for improvements
@@ -283,8 +281,6 @@ class Employee(Base):
             'mentor_original': self.mentor_original,
             'mentees': self.mentees,
             'mentees_original': self.mentees_original,
-            'ai_related_activities': self.ai_related_activities,
-            'ai_related_activities_original': self.ai_related_activities_original,
             'tenets_strengths': self.tenets_strengths,
             'tenets_strengths_original': self.tenets_strengths_original,
             'tenets_improvements': self.tenets_improvements,
@@ -583,20 +579,16 @@ def _migrate_add_new_columns(engine):
         ('rating_snapshots', 'snapshot_talent_promo_job_profile', 'TEXT'),
         ('rating_snapshots', 'snapshot_talent_tenets_strengths', 'TEXT'),
         ('rating_snapshots', 'snapshot_talent_tenets_improvements', 'TEXT'),
-        # AI Activities (Bonus cycle)
-        ('employees', 'ai_related_activities', 'TEXT'),
-        ('rating_snapshots', 'ai_related_activities', 'TEXT'),
         # Talent Mentor/Mentees (separate from bonus cycle)
         ('employees', 'talent_mentor', 'TEXT'),
         ('employees', 'talent_mentees', 'TEXT'),
         ('rating_snapshots', 'snapshot_talent_mentor', 'TEXT'),
         ('rating_snapshots', 'snapshot_talent_mentees', 'TEXT'),
-        # Original tracking for Bonus Cycle fields (rating, justification, mentor, mentees, AI, tenets)
+        # Original tracking for Bonus Cycle fields (rating, justification, mentor, mentees, tenets)
         ('employees', 'performance_rating_percent_original', 'REAL'),
         ('employees', 'justification_original', 'TEXT'),
         ('employees', 'mentor_original', 'TEXT'),
         ('employees', 'mentees_original', 'TEXT'),
-        ('employees', 'ai_related_activities_original', 'TEXT'),
         ('employees', 'tenets_strengths_original', 'TEXT'),
         ('employees', 'tenets_improvements_original', 'TEXT'),
         # Original tracking for Talent Calibration fields
