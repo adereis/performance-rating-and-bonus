@@ -2663,20 +2663,23 @@ def calculate_bonus_for_employees(employees, params, budget_override=0.0, workda
             except (ValueError, TypeError):
                 pass
 
-    # Determine the base pool:
-    # - If workday_pool is set (authoritative), use it or a proportional share
-    # - Otherwise fall back to sum of targets
-    if workday_pool is not None and workday_pool > 0:
-        if all_targets_sum and all_targets_sum > 0 and sum_of_targets < all_targets_sum:
-            # Partial rating: use proportional share of Workday pool
-            proportion = sum_of_targets / all_targets_sum
-            base_pool = workday_pool * proportion
-        else:
-            # All employees rated (or no all_targets_sum provided): use full Workday pool
-            base_pool = workday_pool
+    # Determine base pool from Workday (or sum of targets if no Workday pool)
+    workday_base = workday_pool if (workday_pool is not None and workday_pool > 0) else sum_of_targets
+
+    # budget_override: if set (>0), replaces workday_base entirely
+    effective_pool = budget_override if budget_override > 0 else workday_base
+
+    # Calculate proportion for filtered employees
+    if all_targets_sum and all_targets_sum > 0 and sum_of_targets < all_targets_sum:
+        proportion = sum_of_targets / all_targets_sum
     else:
-        # No Workday pool: fall back to sum of targets
-        base_pool = sum_of_targets
+        proportion = 1.0
+
+    # base_pool = proportional share of Workday pool (for "This calc" display)
+    base_pool = workday_base * proportion
+
+    # adjusted_pool = what's used for calculation (effective pool, scaled)
+    adjusted_pool = effective_pool * proportion
 
     # Calculate bonuses
     bonus_results = []
@@ -2713,9 +2716,6 @@ def calculate_bonus_for_employees(employees, params, budget_override=0.0, workda
             'perf_multiplier': perf_multiplier,
             'raw_share': raw_share
         })
-
-    # Apply budget override to create adjusted pool
-    adjusted_pool = base_pool + budget_override
 
     # Normalization: Calculate value per share using adjusted pool
     value_per_share = adjusted_pool / total_raw_shares if total_raw_shares > 0 else 0
@@ -3965,6 +3965,7 @@ def import_current():
             workday_pool = analysis['metadata'].get('total_pool')
 
         # Parse the file using appropriate parser based on type
+        parsed_metadata = {}  # Initialize for talent files (which don't return metadata)
         if spreadsheet_type == 'talent':
             from xlsx_utils import parse_talent_xlsx_employees
             success, employees, error = parse_talent_xlsx_employees(temp_path)
@@ -4015,9 +4016,11 @@ def import_current():
                     db.add(settings)
                 if workday_pool is not None:
                     settings.workday_pool = workday_pool
-                    # Pool came from Workday metadata, so it's verified
-                    settings.pool_source = 'workday_metadata'
-                    settings.pool_verified = True
+                # Track pool source for verification warning
+                pool_source = parsed_metadata.get('pool_source', 'calculated_sum')
+                settings.pool_source = pool_source
+                # Auto-verify if pool came from Workday metadata; require verification if calculated
+                settings.pool_verified = (pool_source == 'workday_metadata')
                 if manager_currency is not None:
                     settings.manager_currency = manager_currency
                 settings.last_updated = datetime.now()
@@ -4200,6 +4203,15 @@ def import_current():
             if derivation_mismatches:
                 result['derivation_mismatches'] = derivation_mismatches
                 result['derivation_mismatch_count'] = len(derivation_mismatches)
+            # Include pool verification info for post-import modal (bonus imports only)
+            pool_source = parsed_metadata.get('pool_source', 'calculated_sum')
+            if spreadsheet_type != 'talent' and pool_source == 'calculated_sum' and workday_pool:
+                result['pool_verification'] = {
+                    'amount': workday_pool,
+                    'source': pool_source,
+                    'needs_verification': True,
+                    'currency': manager_currency or 'USD'
+                }
             return jsonify(result)
 
         except Exception as e:

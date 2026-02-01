@@ -556,3 +556,114 @@ class TestSnapshotExport:
         # Employees sheet should only have headers
         ws_employees = wb['employees']
         assert ws_employees.max_row == 1  # Only header row
+
+
+class TestPoolVerification:
+    """Test pool verification API endpoint and pool source tracking."""
+
+    def test_verify_pool_success(self, client, db_session):
+        """Test successfully verifying a pool."""
+        from models import BonusSettings
+
+        # Create bonus settings with unverified calculated pool
+        settings = BonusSettings(
+            workday_pool=10000.0,
+            pool_source='calculated_sum',
+            pool_verified=False
+        )
+        db_session.add(settings)
+        db_session.commit()
+
+        response = client.post('/api/bonus-settings/verify-pool',
+                              content_type='application/json')
+
+        assert response.status_code == 200
+        result = json.loads(response.data)
+        assert result['success'] is True
+        assert result['message'] == 'Pool verified'
+
+        # Verify database was updated
+        db_session.refresh(settings)
+        assert settings.pool_verified is True
+
+    def test_verify_pool_no_settings(self, client, db_session):
+        """Test verify pool when no settings exist."""
+        response = client.post('/api/bonus-settings/verify-pool',
+                              content_type='application/json')
+
+        assert response.status_code == 404
+        result = json.loads(response.data)
+        assert 'error' in result
+        assert 'No bonus settings found' in result['error']
+
+    def test_verify_pool_already_verified(self, client, db_session):
+        """Test verifying an already verified pool (idempotent)."""
+        from models import BonusSettings
+
+        settings = BonusSettings(
+            workday_pool=10000.0,
+            pool_source='workday_metadata',
+            pool_verified=True
+        )
+        db_session.add(settings)
+        db_session.commit()
+
+        response = client.post('/api/bonus-settings/verify-pool',
+                              content_type='application/json')
+
+        assert response.status_code == 200
+        result = json.loads(response.data)
+        assert result['success'] is True
+
+    def test_pool_source_tracking_calculated(self, client, db_session):
+        """Test that pool_source is 'calculated_sum' when pool is calculated."""
+        from models import BonusSettings
+
+        settings = BonusSettings(
+            workday_pool=5000.0,
+            pool_source='calculated_sum',
+            pool_verified=False
+        )
+        db_session.add(settings)
+        db_session.commit()
+
+        # Verify source is correctly stored
+        assert settings.pool_source == 'calculated_sum'
+        assert settings.pool_verified is False
+
+    def test_pool_source_tracking_workday_metadata(self, client, db_session):
+        """Test that pool_source is 'workday_metadata' when from file metadata."""
+        from models import BonusSettings
+
+        settings = BonusSettings(
+            workday_pool=8000.0,
+            pool_source='workday_metadata',
+            pool_verified=True  # Auto-verified for metadata pools
+        )
+        db_session.add(settings)
+        db_session.commit()
+
+        # Verify source and auto-verification
+        assert settings.pool_source == 'workday_metadata'
+        assert settings.pool_verified is True
+
+    def test_bonus_settings_to_dict_includes_pool_fields(self, db_session):
+        """Test that BonusSettings.to_dict() includes pool verification fields."""
+        from models import BonusSettings
+
+        settings = BonusSettings(
+            workday_pool=12000.0,
+            budget_override=0.0,
+            manager_currency='USD',
+            pool_source='calculated_sum',
+            pool_verified=False
+        )
+        db_session.add(settings)
+        db_session.commit()
+
+        settings_dict = settings.to_dict()
+
+        assert 'pool_source' in settings_dict
+        assert settings_dict['pool_source'] == 'calculated_sum'
+        assert 'pool_verified' in settings_dict
+        assert settings_dict['pool_verified'] is False

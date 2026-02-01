@@ -474,6 +474,11 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
         # Extract metadata from header rows (needed for validation of bonus files)
         metadata = extract_workday_metadata(rows, header_idx) if header_idx is not None else {}
 
+        # Extract manager currency from column headers (e.g., "Bonus Target (USD)")
+        # This is more reliable than inferring from employee data
+        if headers and not metadata.get('currency'):
+            metadata['currency'] = extract_manager_currency_from_headers(headers)
+
         # Validate the file format
         # For talent files, skip metadata validation (they don't have bonus pool)
         validation_metadata = None if spreadsheet_type == 'talent' else metadata
@@ -656,6 +661,46 @@ def find_column_indices(headers: List[str]) -> Dict[str, Optional[int]]:
     return indices
 
 
+def extract_manager_currency_from_headers(headers: List[str]) -> Optional[str]:
+    """
+    Extract the manager's currency code from column headers.
+
+    Workday exports include converted columns like "Bonus Target (USD)" or
+    "Base Pay All Countries (AUD)" where the 3-letter code in parentheses
+    indicates the manager's reporting currency.
+
+    Priority order:
+    1. Bonus Target (XXX) - most reliable indicator
+    2. Base Pay All Countries (XXX) - fallback
+
+    Args:
+        headers: List of header strings
+
+    Returns:
+        Currency code (e.g., 'USD', 'AUD') or None if not found
+    """
+    # Look for currency code in parentheses, excluding "(Local)"
+    # Priority: Bonus Target columns first, then Base Pay
+    priority_patterns = [
+        r'bonus target \(([a-z]{3})\)',
+        r'base pay all countries \(([a-z]{3})\)',
+        r'proposed bonus amount \(([a-z]{3})\)',
+    ]
+
+    for pattern in priority_patterns:
+        for header in headers:
+            if header:
+                header_lower = header.lower().strip()
+                # Skip "(Local)" columns
+                if '(local)' in header_lower:
+                    continue
+                match = re.search(pattern, header_lower)
+                if match:
+                    return match.group(1).upper()
+
+    return None
+
+
 def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], str, Dict[str, Any]]:
     """
     Parse all employee data from a Workday XLSX export.
@@ -767,6 +812,9 @@ def parse_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, Any]], st
                 for emp in employees
             )
             metadata['total_pool'] = total_pool
+            metadata['pool_source'] = 'calculated_sum'  # Pool was estimated, not from Workday metadata
+        else:
+            metadata['pool_source'] = 'workday_metadata'  # Pool came from file metadata
 
         return True, employees, '', metadata
 
