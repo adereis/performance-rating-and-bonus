@@ -665,11 +665,12 @@ class TestCalibrateAPIValidation:
         """API accepts enum values with different casing and normalizes them."""
         from models import Employee
 
-        # Create test employee
+        # Create test employee with talent data marker (required for calibration)
         emp = Employee(
             associate_id='CASE001',
             associate='Case Test Employee',
             supervisory_organization='Engineering',
+            talent_perf_what_original='Meets Expectations',
         )
         db_session.add(emp)
         db_session.commit()
@@ -698,11 +699,12 @@ class TestCalibrateAPIValidation:
         """API rejects values that don't match any valid option."""
         from models import Employee
 
-        # Create test employee
+        # Create test employee with talent data marker (required for calibration)
         emp = Employee(
             associate_id='INVALID001',
             associate='Invalid Value Test',
             supervisory_organization='Engineering',
+            talent_perf_what_original='Meets Expectations',
         )
         db_session.add(emp)
         db_session.commit()

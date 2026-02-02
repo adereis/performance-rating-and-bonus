@@ -306,6 +306,38 @@ class TestAPIEndpoints:
         assert 'error' in result
         assert 'bonus data' in result['error'].lower()
 
+    def test_calibrate_blocked_without_talent_data(self, client, db_session):
+        """Test that calibration is blocked when no talent data has been imported."""
+        # Create employee with bonus data but no talent data (simulating bonus-only import)
+        employee = Employee(
+            associate_id='EMP_BONUS',
+            associate='Bonus Only Employee',
+            supervisory_organization='Engineering',
+            current_job_profile='Software Engineer',
+            current_base_pay_manager_currency=100000.0,
+            currency='USD',
+            bonus_target_local_currency=15000.0,
+            # No talent_perf_what_original, talent_perf_how_original,
+            # talent_last_overall_perf, or talent_last_identified_future
+        )
+        db_session.add(employee)
+        db_session.commit()
+
+        data = {
+            'associate_id': 'EMP_BONUS',
+            'talent_perf_what': 'Meets Expectations',
+            'talent_perf_how': 'Meets Expectations'
+        }
+
+        response = client.post('/api/calibrate',
+                              data=json.dumps(data),
+                              content_type='application/json')
+
+        assert response.status_code == 400
+        result = json.loads(response.data)
+        assert 'error' in result
+        assert 'talent data' in result['error'].lower()
+
 
 class TestDashboardStatistics:
     """Test dashboard statistics calculations."""

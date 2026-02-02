@@ -1096,6 +1096,15 @@ def calibrate_page():
     # Count calibrated employees (What + How + Actions + Tenets)
     calibrated_count = sum(1 for e in team_data if e['_is_calibrated'])
 
+    # Check if talent data has been imported (employees have Workday talent fields)
+    # We check for _original fields (set during talent import) or historical fields
+    employees_with_talent_data = [
+        emp for emp in team_data
+        if emp.get('talent_perf_what_original') or emp.get('talent_perf_how_original')
+        or emp.get('talent_last_overall_perf') or emp.get('talent_last_identified_future')
+    ]
+    has_talent_data = len(employees_with_talent_data) > 0
+
     # Detect multi-team scenario and group by supervisory organization
     unique_orgs = set()
     for emp in team_data:
@@ -1132,6 +1141,7 @@ def calibrate_page():
         is_multi_team=is_multi_team,
         filter_info=filter_info,
         calibrated_count=calibrated_count,
+        has_talent_data=has_talent_data,
         perf_what_values=TALENT_PERF_WHAT_VALUES,
         perf_how_values=TALENT_PERF_HOW_VALUES,
         agility_values=TALENT_AGILITY_VALUES,
@@ -1148,6 +1158,16 @@ def calibrate_employee():
     - talent_identified_future from talent_growth_agility + talent_change_agility
     """
     from models import derive_overall_performance, derive_future_talent
+
+    # Check if talent data has been imported before allowing calibration
+    all_employees = get_all_employees()
+    employees_with_talent_data = [
+        emp for emp in all_employees
+        if emp.get('talent_perf_what_original') or emp.get('talent_perf_how_original')
+        or emp.get('talent_last_overall_perf') or emp.get('talent_last_identified_future')
+    ]
+    if not employees_with_talent_data:
+        return jsonify({'error': 'Cannot save calibration until talent data is imported'}), 400
 
     data = request.get_json()
     associate_id = data.get('associate_id')

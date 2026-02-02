@@ -63,6 +63,9 @@ def sample_employee_data():
         'management_level': 'IC 3',
         'last_perf_review_name': None,
         'last_perf_review_rating': None,
+        # Talent data markers (required for calibration functionality)
+        'talent_perf_what_original': 'Meets Expectations',
+        'talent_perf_how_original': 'Meets Expectations',
     }
 
 
@@ -82,6 +85,7 @@ def sample_employees():
             'justification': 'Excellent performance',
             'mentor': 'Bob Smith',
             'mentees': 'Charlie Brown',
+            'talent_perf_what_original': 'Meets Expectations',  # Required for calibration
         },
         {
             'associate_id': 'EMP002',
