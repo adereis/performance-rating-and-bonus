@@ -510,6 +510,165 @@
     .no-data-message .btn:hover {
         background: #5a6fd6;
     }
+
+    /* Team sidebar styles */
+    .analytics-layout {
+        display: flex;
+        gap: 20px;
+    }
+
+    .team-sidebar {
+        width: 220px;
+        flex-shrink: 0;
+        position: sticky;
+        top: 20px;
+        align-self: flex-start;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+    }
+
+    .team-sidebar-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .team-sidebar-header {
+        padding: 12px 16px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e0e0e0;
+        font-weight: 600;
+        font-size: 13px;
+        color: #2c3e50;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .team-select-all {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: #667eea;
+    }
+
+    .team-select-all:hover {
+        background: #e9ecef;
+    }
+
+    .team-sidebar-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .team-sidebar-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 16px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.15s;
+        font-size: 13px;
+    }
+
+    .team-sidebar-item:last-child {
+        border-bottom: none;
+    }
+
+    .team-sidebar-item:hover {
+        background: #f8f9fa;
+    }
+
+    .team-sidebar-item.active {
+        background: #667eea;
+        color: white;
+    }
+
+    .team-sidebar-item.active .team-count {
+        background: rgba(255,255,255,0.2);
+        color: white;
+    }
+
+    .team-sidebar-checkbox {
+        margin-right: 10px;
+        accent-color: #667eea;
+        cursor: pointer;
+    }
+
+    .team-sidebar-item.active .team-sidebar-checkbox {
+        accent-color: white;
+    }
+
+    .team-name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .team-count {
+        background: #e9ecef;
+        color: #666;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-left: 8px;
+    }
+
+    .analytics-main {
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* Hide sidebar on single-team orgs */
+    .analytics-layout.single-team .team-sidebar {
+        display: none;
+    }
+
+    .analytics-layout.single-team .analytics-main {
+        width: 100%;
+    }
+
+    /* Responsive: collapse sidebar on small screens */
+    @media (max-width: 900px) {
+        .analytics-layout {
+            flex-direction: column;
+        }
+
+        .team-sidebar {
+            width: 100%;
+            position: static;
+            max-height: none;
+        }
+
+        .team-sidebar-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px;
+        }
+
+        .team-sidebar-item {
+            padding: 6px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 20px;
+            flex: 0 0 auto;
+        }
+
+        .team-sidebar-item:hover {
+            border-color: #667eea;
+        }
+
+        .team-sidebar-item.active {
+            border-color: #667eea;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -525,16 +684,50 @@
 </div>
 {% else %}
 
-{# Card partials - each handles its own conditional rendering #}
-{% include 'analytics/_team_overview.html' %}
-{% include 'analytics/_team_tenets.html' %}
-{% include 'analytics/_calibration_guide.html' %}
-{% include 'analytics/_tenure_mobility.html' %}
-{% include 'analytics/_mentorship.html' %}
-{% include 'analytics/_inconsistencies.html' %}
-{% include 'analytics/_performance_distribution.html' %}
-{% include 'analytics/_period_comparison.html' %}
-{% include 'analytics/_rating_overview.html' %}
+{# Determine if we have multiple teams for sidebar display #}
+{% set has_multiple_teams = filter_info.available_teams|length > 1 %}
+
+<div class="analytics-layout {% if not has_multiple_teams %}single-team{% endif %}">
+    {# Team filter sidebar - only shown when multiple teams exist #}
+    {% if has_multiple_teams %}
+    <aside class="team-sidebar">
+        <div class="team-sidebar-card">
+            <div class="team-sidebar-header">
+                Filter by Team
+                <button class="team-select-all" onclick="toggleAllTeams()" title="Select/deselect all">
+                    {% if not filter_info.params.include_orgs %}☑{% else %}☐{% endif %}
+                </button>
+            </div>
+            <ul class="team-sidebar-list" id="teamSidebarList">
+                {% for team_item in filter_info.available_teams %}
+                <li class="team-sidebar-item {% if not filter_info.params.include_orgs or team_item.org in filter_info.params.include_orgs %}active{% endif %}"
+                    data-org="{{ team_item.org }}">
+                    <input type="checkbox" class="team-sidebar-checkbox"
+                           {% if not filter_info.params.include_orgs or team_item.org in filter_info.params.include_orgs %}checked{% endif %}
+                           onchange="updateTeamFilter()">
+                    <span class="team-name" title="{{ team_item.org }}">{{ team_item.manager_name }}</span>
+                    <span class="team-count">{{ team_item.count }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </aside>
+    {% endif %}
+
+    {# Main analytics content #}
+    <div class="analytics-main">
+        {# Card partials - each handles its own conditional rendering #}
+        {% include 'analytics/_team_overview.html' %}
+        {% include 'analytics/_team_tenets.html' %}
+        {% include 'analytics/_calibration_guide.html' %}
+        {% include 'analytics/_tenure_mobility.html' %}
+        {% include 'analytics/_mentorship.html' %}
+        {% include 'analytics/_inconsistencies.html' %}
+        {% include 'analytics/_performance_distribution.html' %}
+        {% include 'analytics/_period_comparison.html' %}
+        {% include 'analytics/_rating_overview.html' %}
+    </div>
+</div>
 
 {% endif %}
 {% endblock %}
@@ -1601,6 +1794,83 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Team sidebar filter selection
+// Team sidebar filter - checkbox-based multi-select
+function updateTeamFilter() {
+    const checkboxes = document.querySelectorAll('.team-sidebar-checkbox');
+    const allOrgs = [];
+    const selectedOrgs = [];
+
+    checkboxes.forEach(cb => {
+        const org = cb.closest('.team-sidebar-item').dataset.org;
+        allOrgs.push(org);
+        if (cb.checked) {
+            selectedOrgs.push(org);
+        }
+    });
+
+    // Update visual state of items
+    checkboxes.forEach(cb => {
+        const item = cb.closest('.team-sidebar-item');
+        item.classList.toggle('active', cb.checked);
+    });
+
+    // Update toggle button icon
+    const toggleBtn = document.querySelector('.team-select-all');
+    if (toggleBtn) {
+        const allChecked = selectedOrgs.length === allOrgs.length;
+        const noneChecked = selectedOrgs.length === 0;
+        toggleBtn.textContent = allChecked ? '☑' : (noneChecked ? '☐' : '◧');
+    }
+
+    // Don't navigate if none selected - let user pick first
+    if (selectedOrgs.length === 0) {
+        return;
+    }
+
+    const url = new URL(window.location.href);
+
+    // Clear existing include_orgs params
+    url.searchParams.delete('include_orgs');
+
+    // If all are selected, don't add params (show all = default)
+    // If some are selected, add only those
+    if (selectedOrgs.length < allOrgs.length) {
+        selectedOrgs.forEach(org => {
+            url.searchParams.append('include_orgs', org);
+        });
+    }
+
+    // Navigate to filtered URL
+    window.location.href = url.toString();
+}
+
+function toggleAllTeams() {
+    const checkboxes = document.querySelectorAll('.team-sidebar-checkbox');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+
+    // Toggle: if all checked → uncheck all; if any unchecked → check all
+    checkboxes.forEach(cb => {
+        cb.checked = !allChecked;
+    });
+
+    // Update visual state without navigating (for uncheck-all case)
+    // Navigation happens via updateTeamFilter when user checks something
+    if (allChecked) {
+        // Just unchecked all - update visuals, don't navigate
+        checkboxes.forEach(cb => {
+            cb.closest('.team-sidebar-item').classList.remove('active');
+        });
+        const toggleBtn = document.querySelector('.team-select-all');
+        if (toggleBtn) toggleBtn.textContent = '☐';
+    } else {
+        // Checked all - navigate to clear filter
+        const url = new URL(window.location.href);
+        url.searchParams.delete('include_orgs');
+        window.location.href = url.toString();
+    }
 }
 </script>
 {% endblock %}

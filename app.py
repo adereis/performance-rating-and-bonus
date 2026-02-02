@@ -578,12 +578,20 @@ def get_filter_params():
 
     Returns dict with:
     {
+        'include_orgs': [str],          # Supervisory orgs to scope to (inclusion filter)
         'exclude_managers': bool,
         'exclude_titles': [str],
         'exclude_ids': [str]
     }
+
+    Filter order: include_orgs applies first (scoping), then exclusions refine within.
     """
+    # Support multiple orgs via repeated params (?include_orgs=A&include_orgs=B)
+    include_orgs = request.args.getlist('include_orgs')
+    # Clean up empty values
+    include_orgs = [o.strip() for o in include_orgs if o.strip()]
     return {
+        'include_orgs': include_orgs,
         'exclude_managers': request.args.get('exclude_managers', '').lower() == 'true',
         'exclude_titles': [t.strip() for t in request.args.get('exclude_titles', '').split(',') if t.strip()],
         'exclude_ids': [i.strip() for i in request.args.get('exclude_ids', '').split(',') if i.strip()]
@@ -643,30 +651,64 @@ def apply_employee_filters(employees, filter_params):
 
         filter_info includes:
         {
-            'active': bool,                     # Any filters active?
+            'active': bool,                     # Any exclusion filters active?
             'total_count': int,                 # Original count
             'filtered_count': int,              # After filtering
-            'hidden_count': int,                # How many hidden
+            'hidden_count': int,                # How many hidden by exclusions
             'params': filter_params,            # For UI state
             'available_titles': [str],          # All unique job titles
             'available_employees': [dict],      # All employees [{id, name}]
             'manager_ids': [str],               # IDs of managers
             'employee_titles': {id: title},     # ID -> job title mapping
+            'available_teams': [dict],          # Teams for sidebar [{org, manager_name, count}]
         }
     """
     filtered = employees.copy()
 
-    # Apply manager exclusion
+    # Build team data BEFORE any filtering (for sidebar display)
+    # Teams are based on Supervisory Organization
+    teams_by_org = {}
+    for emp in employees:
+        org = emp.get('Supervisory Organization', '')
+        if org:
+            if org not in teams_by_org:
+                teams_by_org[org] = []
+            teams_by_org[org].append(emp)
+
+    # Extract manager name from org string: "Org Name (Manager Name)" -> "Manager Name"
+    def extract_manager_name(org_string):
+        if '(' in org_string and org_string.endswith(')'):
+            return org_string[org_string.rfind('(') + 1:-1]
+        return org_string
+
+    available_teams = sorted([
+        {
+            'org': org,
+            'manager_name': extract_manager_name(org),
+            'count': len(team_employees)
+        }
+        for org, team_employees in teams_by_org.items()
+    ], key=lambda x: x['manager_name'])
+
+    # Apply org inclusion filter FIRST (scoping)
+    # This sets the scope before exclusion filters are applied
+    # Supports multiple orgs (checkboxes) - empty list means "all teams"
+    if filter_params.get('include_orgs'):
+        include_orgs = filter_params['include_orgs']
+        filtered = [emp for emp in filtered
+                   if emp.get('Supervisory Organization') in include_orgs]
+
+    # Apply manager exclusion (within scope)
     if filter_params.get('exclude_managers'):
         filtered = [emp for emp in filtered if not has_direct_reports(emp, employees)]
 
-    # Apply title exclusion
+    # Apply title exclusion (within scope)
     if filter_params.get('exclude_titles'):
         exclude_titles = filter_params['exclude_titles']
         filtered = [emp for emp in filtered
                    if emp.get('Current Job Profile') not in exclude_titles]
 
-    # Apply ID exclusion
+    # Apply ID exclusion (within scope)
     if filter_params.get('exclude_ids'):
         exclude_ids = filter_params['exclude_ids']
         filtered = [emp for emp in filtered
@@ -701,6 +743,14 @@ def apply_employee_filters(employees, filter_params):
         if emp.get('Associate ID')
     }
 
+    # Calculate hidden count (by exclusion filters only, not org scoping)
+    # Org scoping is conceptually different - it's "viewing" a team, not "hiding" employees
+    if filter_params.get('include_orgs'):
+        scope_count = sum(len(teams_by_org.get(org, [])) for org in filter_params['include_orgs'])
+    else:
+        scope_count = len(employees)
+    hidden_by_exclusions = scope_count - len(filtered)
+
     # Build filter info
     filter_info = {
         'active': any([
@@ -710,12 +760,13 @@ def apply_employee_filters(employees, filter_params):
         ]),
         'total_count': len(employees),
         'filtered_count': len(filtered),
-        'hidden_count': len(employees) - len(filtered),
+        'hidden_count': hidden_by_exclusions,
         'params': filter_params,
         'available_titles': available_titles,
         'available_employees': available_employees,
         'manager_ids': manager_ids,
         'employee_titles': employee_titles,
+        'available_teams': available_teams,
     }
 
     return filtered, filter_info
