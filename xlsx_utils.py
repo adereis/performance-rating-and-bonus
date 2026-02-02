@@ -459,7 +459,9 @@ def analyze_xlsx(file_path: str) -> Dict[str, Any]:
             - metadata: dict with period_name, total_pool, currency, report_title
     """
     try:
-        wb = openpyxl.load_workbook(file_path, read_only=True)
+        # Note: read_only=False required because some Workday exports have incorrect
+        # <dimension> metadata (e.g., "A1:A1" when actual data is "A1:AI100")
+        wb = openpyxl.load_workbook(file_path, read_only=False)
         sheet = wb.active
 
         rows = list(sheet.iter_rows(values_only=True))
@@ -976,7 +978,9 @@ def parse_talent_xlsx_employees(file_path: str) -> Tuple[bool, List[Dict[str, An
         employees_list contains dicts with talent calibration fields
     """
     try:
-        wb = openpyxl.load_workbook(file_path, read_only=True)
+        # Note: read_only=False required because some Workday exports have incorrect
+        # <dimension> metadata (e.g., "A1:A1" when actual data is "A1:AI100")
+        wb = openpyxl.load_workbook(file_path, read_only=False)
         sheet = wb.active
 
         rows = list(sheet.iter_rows(values_only=True))

@@ -820,3 +820,137 @@ class TestTenetsRoundTrip:
         assert employee.talent_tenets_improvements is not None
         improvements = json.loads(employee.talent_tenets_improvements)
         assert 'ship_to_learn' in improvements
+
+
+class TestWorkdayDimensionMetadataBug:
+    """Tests for Workday exports with incorrect <dimension> XML metadata.
+
+    Some Workday exports (observed Feb 2026) have a bug where the <dimension>
+    element in the worksheet XML is set to "A1:A1" instead of the actual data
+    range. This causes openpyxl's read_only mode to read only 1 row.
+
+    The fix is to use read_only=False, which ignores the dimension metadata
+    and scans actual cells.
+    """
+
+    def test_analyze_handles_incorrect_dimension(self, tmp_path):
+        """analyze_xlsx works even when dimension metadata is wrong."""
+        from xlsx_utils import analyze_xlsx
+        import zipfile
+        from openpyxl import Workbook
+
+        # Create a valid talent workbook first
+        wb = Workbook()
+        ws = wb.active
+
+        # Title row
+        ws['A1'] = 'Launch Talent Calibration'
+
+        # Header row at row 6 (matching real Workday format)
+        headers = ['Associate ID', 'Worker', 'Performance: What', 'Performance: How',
+                   'Movement Readiness', 'Future Talent: Growth Agility']
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=6, column=col, value=header)
+
+        # Add some employee data
+        for i, row_num in enumerate([7, 8, 9], 1):
+            ws.cell(row=row_num, column=1, value=f'EMP00{i}')
+            ws.cell(row=row_num, column=2, value=f'Employee {i}')
+            ws.cell(row=row_num, column=3, value='Meets Expectations')
+            ws.cell(row=row_num, column=4, value='Meets Expectations')
+            ws.cell(row=row_num, column=5, value='Continue growing in current role')
+            ws.cell(row=row_num, column=6, value='Sometimes')
+
+        # Save the workbook
+        normal_path = tmp_path / 'normal_dimension.xlsx'
+        wb.save(normal_path)
+
+        # Now create a version with broken dimension metadata
+        broken_path = tmp_path / 'broken_dimension.xlsx'
+        wb.save(broken_path)
+
+        # Patch the dimension in the broken file's XML
+        with zipfile.ZipFile(broken_path, 'r') as zin:
+            with zipfile.ZipFile(tmp_path / 'temp.xlsx', 'w') as zout:
+                for item in zin.infolist():
+                    data = zin.read(item.filename)
+                    if item.filename == 'xl/worksheets/sheet1.xml':
+                        # Replace correct dimension with broken "A1:A1"
+                        data = data.replace(
+                            b'dimension ref="A1:F9"',
+                            b'dimension ref="A1:A1"'
+                        )
+                    zout.writestr(item, data)
+
+        # Move temp file to broken path
+        import shutil
+        shutil.move(tmp_path / 'temp.xlsx', broken_path)
+
+        # Test 1: Normal file should work
+        result_normal = analyze_xlsx(str(normal_path))
+        assert result_normal['success'] is True
+        assert result_normal['spreadsheet_type'] == 'talent'
+        assert result_normal['employee_count'] == 3
+
+        # Test 2: Broken dimension file should ALSO work (this is the fix)
+        result_broken = analyze_xlsx(str(broken_path))
+        assert result_broken['success'] is True, f"Failed: {result_broken.get('error')}"
+        assert result_broken['spreadsheet_type'] == 'talent'
+        assert result_broken['employee_count'] == 3  # Should find all 3 employees
+
+    def test_parse_talent_handles_incorrect_dimension(self, tmp_path):
+        """parse_talent_xlsx_employees works even when dimension metadata is wrong."""
+        from xlsx_utils import parse_talent_xlsx_employees
+        import zipfile
+        from openpyxl import Workbook
+
+        # Create a valid talent workbook
+        wb = Workbook()
+        ws = wb.active
+
+        # Header row at row 1 for simplicity
+        headers = ['Associate ID', 'Worker', 'Performance: What', 'Performance: How',
+                   'Movement Readiness', 'Future Talent: Growth Agility']
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+
+        # Add 5 employees
+        for i in range(5):
+            row_num = i + 2
+            ws.cell(row=row_num, column=1, value=f'TALENT{i:03d}')
+            ws.cell(row=row_num, column=2, value=f'Talent Employee {i}')
+            ws.cell(row=row_num, column=3, value='Surpasses Expectations')
+            ws.cell(row=row_num, column=4, value='Meets Expectations')
+            ws.cell(row=row_num, column=5, value='Ready Now')
+            ws.cell(row=row_num, column=6, value='Always/Most of the Time')
+
+        # Save and create broken version
+        test_path = tmp_path / 'talent_broken_dim.xlsx'
+        wb.save(test_path)
+
+        # Patch dimension to A1:A1 (simulating Workday bug)
+        with zipfile.ZipFile(test_path, 'r') as zin:
+            with zipfile.ZipFile(tmp_path / 'temp.xlsx', 'w') as zout:
+                for item in zin.infolist():
+                    data = zin.read(item.filename)
+                    if item.filename == 'xl/worksheets/sheet1.xml':
+                        # Replace any dimension with broken A1:A1
+                        import re
+                        data = re.sub(
+                            rb'dimension ref="[^"]*"',
+                            b'dimension ref="A1:A1"',
+                            data
+                        )
+                    zout.writestr(item, data)
+
+        import shutil
+        shutil.move(tmp_path / 'temp.xlsx', test_path)
+
+        # Parse should succeed and find all 5 employees
+        success, employees, error = parse_talent_xlsx_employees(str(test_path))
+
+        assert success is True, f"Parse failed: {error}"
+        assert len(employees) == 5
+        assert employees[0]['associate_id'] == 'TALENT000'
+        assert employees[4]['associate_id'] == 'TALENT004'
+        assert employees[0]['talent_perf_what'] == 'Surpasses Expectations'
