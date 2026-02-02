@@ -204,15 +204,15 @@
         </div>
         {% endif %}
 
-        {% if inconsistencies.new_in_role_mentoring %}
+        {% if inconsistencies.new_hire_mentoring %}
         <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #f9f5fc; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #7d3c98;">📅 New in Role but Mentoring ({{ inconsistencies.new_in_role_mentoring | length }})</h4>
+            <h4 style="margin: 0 0 10px 0; color: #7d3c98;">📅 New Hire but Mentoring ({{ inconsistencies.new_hire_mentoring | length }})</h4>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
-                Less than 1 year in current role but listed as mentoring others — verify this is intentional
+                Less than 1 year at the company but listed as mentoring others — verify this is intentional
             </p>
             <ul style="margin: 0; padding-left: 20px;">
-                {% for emp in inconsistencies.new_in_role_mentoring %}
-                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Time in role: {{ emp.time_in_job_profile }} — Mentees: {{ emp.mentees }}</li>
+                {% for emp in inconsistencies.new_hire_mentoring %}
+                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Tenure: {{ emp.length_of_service }} — Mentees: {{ emp.mentees }}</li>
                 {% endfor %}
             </ul>
         </div>

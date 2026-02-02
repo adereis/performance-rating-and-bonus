@@ -2237,7 +2237,7 @@ def analytics():
         'new_hire_low_rating': [],      # < 6 months total tenure but rated Low/Evolving
         'promotion_ready_short_tenure': [],  # Ready Now but < 2 years in role
         'long_tenure_continue_growing': [],  # 5+ years in role but "Continue growing"
-        'new_in_role_mentoring': []     # < 1 year in role but mentoring others
+        'new_hire_mentoring': []     # < 1 year total tenure but mentoring others
     }
 
     for emp in team_data:
@@ -2315,12 +2315,12 @@ def analytics():
             if 'Continue growing' in movement:
                 inconsistencies['long_tenure_continue_growing'].append(tenure_emp_info)
 
-        # New in role (< 1 year) but mentoring others
-        if tijp_months is not None and tijp_months < 12:
+        # New hire (< 1 year total tenure) but mentoring others
+        if los_months is not None and los_months < 12:
             mentees = (emp.get('mentees') or emp.get('talent_mentees') or '').strip()
             if mentees:
                 tenure_emp_info['mentees'] = mentees
-                inconsistencies['new_in_role_mentoring'].append(tenure_emp_info)
+                inconsistencies['new_hire_mentoring'].append(tenure_emp_info)
 
         # Mentoring mismatch between cycles
         # Only check if employee is both rated AND calibrated (otherwise empty fields are expected)
