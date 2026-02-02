@@ -614,6 +614,50 @@
         color: #1565c0;
     }
 
+    /* Workday report reference styling */
+    .workday-reports-info {
+        background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+        border: 1px solid #ffca28;
+        border-radius: 8px;
+        padding: 15px 18px;
+        margin-bottom: 25px;
+        font-size: 14px;
+    }
+
+    .workday-reports-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .workday-reports-label {
+        font-weight: 600;
+        color: #f57c00;
+    }
+
+    .workday-reports-info code {
+        background: white;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #5d4037;
+        border: 1px solid #ffe082;
+    }
+
+    .workday-reports-divider {
+        color: #ffb300;
+        font-weight: 300;
+    }
+
+    .workday-export-hint {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #ffe082;
+        font-size: 13px;
+        color: #795548;
+    }
+
     /* Pool Verification Modal Styles */
     .modal-overlay {
         display: none;
@@ -1179,6 +1223,18 @@ function resetDemoForm() {
             system will auto-detect the type and guide you through the import.
         </p>
 
+        <div class="workday-reports-info">
+            <div class="workday-reports-row">
+                <span class="workday-reports-label">Workday Reports:</span>
+                <code>Compensation Review: Bonus</code>
+                <span class="workday-reports-divider">|</span>
+                <code>Talent Calibration</code>
+            </div>
+            <div class="workday-export-hint">
+                Export using the Excel download button from the report view.
+            </div>
+        </div>
+
         <!-- Step 1: File Upload -->
         <div id="uploadSection">
             <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
@@ -1324,28 +1380,39 @@ function resetDemoForm() {
                     Supported File Formats
                 </summary>
                 <div class="import-help-content">
-                    <h5>Bonus Data Files</h5>
+                    <h5>Bonus Data Files (Required Columns)</h5>
                     <ul>
-                        <li><code>Associate</code> — Employee full name</li>
-                        <li><code>Associate ID</code> — Unique employee identifier</li>
-                        <li><code>Supervisory Organization</code> — Team/org name (manager name in parentheses)</li>
-                        <li><code>Current Job Profile</code> — Job title</li>
-                        <li><code>Currency</code> or currency in header like <code>(AUD)</code></li>
-                        <li><code>Annual Bonus Target Percent</code> — Target bonus as % of salary</li>
-                        <li><code>Bonus Target - Local Currency</code> — Target bonus amount</li>
+                        <li><code>Associate</code> + <code>Associate ID</code> — Employee name and unique identifier</li>
+                        <li><code>Direct Manager</code> or <code>Supervisory Organization</code> — Team/manager info</li>
+                        <li><code>Job Title</code> or <code>Current Job Profile</code> — Role name</li>
+                        <li><code>Annual Bonus Target %</code> — Target bonus as % of salary</li>
+                        <li><code>Bonus Target (Local)</code> or <code>Bonus Target - Local Currency</code> — Target amount</li>
+                    </ul>
+
+                    <h5>Bonus Data Files (Optional Columns)</h5>
+                    <ul>
+                        <li><code>Base Pay All Countries (Local)</code> — Base salary</li>
+                        <li><code>Management Level</code> — For detecting managers</li>
+                        <li><code>Country</code>, <code>Hire Date</code>, <code>Grade</code></li>
+                        <li><code>Proposed % of Target Bonus</code> — Prior allocation (historical imports)</li>
+                        <li><code>Notes</code> — Justification text (historical imports)</li>
                     </ul>
 
                     <h5>Talent Calibration Files</h5>
                     <ul>
+                        <li><code>Worker</code> + <code>Associate ID</code> — Employee name and identifier</li>
                         <li><code>Performance: What</code> / <code>Performance: How</code> — Assessment ratings</li>
-                        <li><code>Future Talent: Growth Agility</code> / <code>Change Agility</code></li>
+                        <li><code>Overall Performance Rating</code> — Derived overall (High Impact, Successful, etc.)</li>
+                        <li><code>Future Talent: Growth Agility</code> / <code>Future Talent: Change Agility</code></li>
+                        <li><code>Identified as Future Talent?</code> — Future talent flag</li>
                         <li><code>Movement Readiness</code> — Readiness for role change</li>
-                        <li><code>Management Level</code> — Used for manager detection</li>
+                        <li><code>Proposed Talent Actions</code> — Development plans</li>
+                        <li><code>Management Level</code> — For manager detection</li>
                     </ul>
 
                     <div class="help-note">
-                        Files are auto-detected based on their columns. Both file types must include
-                        <code>Associate ID</code> for employee matching.
+                        Files are auto-detected based on their columns. Both old (pre-2025) and new (2025+)
+                        Workday export formats are supported. Employee matching uses <code>Associate ID</code>.
                     </div>
                 </div>
             </details>
