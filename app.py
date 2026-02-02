@@ -2331,32 +2331,34 @@ def analytics():
                 inconsistencies['new_in_role_mentoring'].append(tenure_emp_info)
 
         # Mentoring mismatch between cycles
-        bonus_mentor = (emp.get('mentor') or '').strip()
-        bonus_mentees = (emp.get('mentees') or '').strip()
-        talent_mentor = (emp.get('talent_mentor') or '').strip()
-        talent_mentees = (emp.get('talent_mentees') or '').strip()
+        # Only check if employee is both rated AND calibrated (otherwise empty fields are expected)
+        if rating and talent_perf:
+            bonus_mentor = (emp.get('mentor') or '').strip()
+            bonus_mentees = (emp.get('mentees') or '').strip()
+            talent_mentor = (emp.get('talent_mentor') or '').strip()
+            talent_mentees = (emp.get('talent_mentees') or '').strip()
 
-        # Check if there's any mentoring data and if it differs between cycles
-        has_any_mentoring = any([bonus_mentor, bonus_mentees, talent_mentor, talent_mentees])
-        if has_any_mentoring:
-            mentor_differs = (bool(bonus_mentor) != bool(talent_mentor)) or \
-                           (bonus_mentor and talent_mentor and bonus_mentor.lower() != talent_mentor.lower())
-            mentees_differs = (bool(bonus_mentees) != bool(talent_mentees)) or \
-                            (bonus_mentees and talent_mentees and bonus_mentees.lower() != talent_mentees.lower())
+            # Check if there's any mentoring data and if it differs between cycles
+            has_any_mentoring = any([bonus_mentor, bonus_mentees, talent_mentor, talent_mentees])
+            if has_any_mentoring:
+                mentor_differs = (bool(bonus_mentor) != bool(talent_mentor)) or \
+                               (bonus_mentor and talent_mentor and bonus_mentor.lower() != talent_mentor.lower())
+                mentees_differs = (bool(bonus_mentees) != bool(talent_mentees)) or \
+                                (bonus_mentees and talent_mentees and bonus_mentees.lower() != talent_mentees.lower())
 
-            if mentor_differs or mentees_differs:
-                mentoring_info = {
-                    'name': emp.get('Associate', 'Unknown'),
-                    'id': emp.get('Associate ID', ''),
-                    'job': emp.get('Current Job Profile', ''),
-                    'bonus_mentor': bonus_mentor or '-',
-                    'bonus_mentees': bonus_mentees or '-',
-                    'talent_mentor': talent_mentor or '-',
-                    'talent_mentees': talent_mentees or '-',
-                    'mentor_differs': mentor_differs,
-                    'mentees_differs': mentees_differs
-                }
-                inconsistencies['mentoring_mismatch'].append(mentoring_info)
+                if mentor_differs or mentees_differs:
+                    mentoring_info = {
+                        'name': emp.get('Associate', 'Unknown'),
+                        'id': emp.get('Associate ID', ''),
+                        'job': emp.get('Current Job Profile', ''),
+                        'bonus_mentor': bonus_mentor or '-',
+                        'bonus_mentees': bonus_mentees or '-',
+                        'talent_mentor': talent_mentor or '-',
+                        'talent_mentees': talent_mentees or '-',
+                        'mentor_differs': mentor_differs,
+                        'mentees_differs': mentees_differs
+                    }
+                    inconsistencies['mentoring_mismatch'].append(mentoring_info)
 
         # Tenet mismatch between cycles (compare same categories: strengths→strengths, improvements→improvements)
         bonus_strengths = set()
