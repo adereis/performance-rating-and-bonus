@@ -1554,43 +1554,6 @@ function renderComparison(data) {
         });
     }
 
-    // Quadrant Chart (Doughnut)
-    const quadrantData = {{ tenure_analytics.quadrant_counts | tojson }};
-    const quadrantCtx = document.getElementById('quadrantChart');
-    if (quadrantCtx) {
-        new Chart(quadrantCtx.getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: ['💬 Career Check-in', '⭐ High Performers', '✓ Solid Contributors', '⚠️ Development Focus', '📈 Still Ramping'],
-                datasets: [{
-                    data: [
-                        quadrantData.promotion_candidate || 0,
-                        quadrantData.rising_star || 0,
-                        quadrantData.solid_contributor || 0,
-                        quadrantData.needs_attention || 0,
-                        quadrantData.developing || 0
-                    ],
-                    backgroundColor: ['#28a745', '#007bff', '#17a2b8', '#ffc107', '#6c757d'],
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 12,
-                            usePointStyle: true,
-                            font: { size: 11 }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
     // Tenure table sorting
     document.querySelectorAll('.tenure-sortable-table th.sortable').forEach(th => {
         th.addEventListener('click', function() {

@@ -2434,71 +2434,20 @@ def analytics():
         if tijp_months is not None:
             tijp_values.append(tijp_months)
 
-        # Performance × Tenure quadrant data
-        # Include employees with either a performance rating or talent overall perf
+        # Collect tenure data for employees with performance info
         rating = emp.get('performance_rating_percent')
         talent_perf = emp.get('talent_overall_perf')
 
-        if tijp_months is not None and (rating or talent_perf):
-            # Determine quadrant based on time in role and performance
-            tijp_years = tijp_months / 12
-
-            # Map talent overall perf to a numeric score for quadrant analysis
-            perf_score = None
-            if rating:
-                try:
-                    perf_score = float(rating)
-                except (ValueError, TypeError):
-                    pass
-
-            # Determine performance level for display
-            if talent_perf:
-                perf_level = talent_perf
-            elif perf_score is not None:
-                if perf_score >= 120:
-                    perf_level = 'High Impact'
-                elif perf_score >= 90:
-                    perf_level = 'Successful'
-                elif perf_score >= 70:
-                    perf_level = 'Evolving'
-                else:
-                    perf_level = 'Low'
-            else:
-                perf_level = None
-
-            if perf_level:
-                # Determine quadrant
-                # Only High Impact Performers are career check-in candidates
-                # Successful = meeting expectations (solid, but not exceptional)
-                is_high_impact = perf_level in ['High Impact Performer', 'High Impact']
-                is_successful = perf_level in ['Successful Performer', 'Successful']
-                is_long_tenure_for_checkin = tijp_years >= 2  # 2+ years for career check-in
-                is_past_ramping = tijp_months >= 6  # 6+ months = no longer ramping
-
-                if is_high_impact and is_long_tenure_for_checkin:
-                    quadrant = 'promotion_candidate'  # Career Check-in
-                elif is_high_impact:
-                    quadrant = 'rising_star'  # High Performers
-                elif is_successful:
-                    quadrant = 'solid_contributor'
-                elif is_past_ramping:
-                    quadrant = 'needs_attention'  # Development Focus (6+ months)
-                else:
-                    quadrant = 'developing'  # Still Ramping (< 6 months)
-
-                performance_tenure_data.append({
-                    'name': emp.get('Associate', 'Unknown'),
-                    'id': emp.get('Associate ID', ''),
-                    'job': emp.get('Current Job Profile', ''),
-                    'time_in_role': emp.get('time_in_job_profile', 'N/A'),
-                    'time_in_role_months': tijp_months,
-                    'time_in_role_years': round(tijp_years, 1),
-                    'performance_rating': rating,
-                    'talent_perf': talent_perf,
-                    'perf_level': perf_level,
-                    'quadrant': quadrant,
-                    'movement_readiness': emp.get('talent_movement_readiness')
-                })
+        if tijp_months is not None:
+            performance_tenure_data.append({
+                'name': emp.get('Associate', 'Unknown'),
+                'id': emp.get('Associate ID', ''),
+                'job': emp.get('Current Job Profile', ''),
+                'time_in_role': emp.get('time_in_job_profile', 'N/A'),
+                'time_in_role_months': tijp_months,
+                'performance_rating': rating,
+                'talent_perf': talent_perf
+            })
 
     # Calculate averages
     avg_los_months = round(sum(los_values) / len(los_values), 1) if los_values else None
@@ -2517,30 +2466,7 @@ def analytics():
         else:
             return f"{remaining_months} months"
 
-    # Promotion readiness candidates (high perf + long tenure + ready for movement)
-    promotion_candidates = [
-        emp for emp in performance_tenure_data
-        if emp['quadrant'] == 'promotion_candidate'
-        and emp.get('movement_readiness') in [
-            'Ready Now to be promoted in current role',
-            'Ready for lateral move'
-        ]
-    ]
-    # Sort by time in role descending
-    promotion_candidates.sort(key=lambda x: x['time_in_role_months'], reverse=True)
-
-    # Count by quadrant for chart
-    quadrant_counts = {
-        'promotion_candidate': 0,
-        'rising_star': 0,
-        'solid_contributor': 0,
-        'needs_attention': 0,
-        'developing': 0
-    }
-    for emp in performance_tenure_data:
-        quadrant_counts[emp['quadrant']] += 1
-
-    # Employees with long tenure (3+ years in role) for attention
+    # Employees with long tenure (3+ years in role)
     long_tenure_employees = [
         emp for emp in performance_tenure_data
         if emp['time_in_role_months'] >= 36
@@ -2591,9 +2517,6 @@ def analytics():
         'avg_tijp_months': avg_tijp_months,
         'employees_with_tenure_data': len(tijp_values),
         'total_employees': len(team_data),
-        'quadrant_counts': quadrant_counts,
-        'performance_tenure_data': performance_tenure_data,
-        'promotion_candidates': promotion_candidates,
         'long_tenure_employees': long_tenure_employees[:10],  # Top 10
         'pct_long_tenure': round(len([v for v in tijp_values if v >= 36]) / len(tijp_values) * 100, 1) if tijp_values else 0,
         'tenure_by_role': tenure_by_role_summary

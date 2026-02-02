@@ -8,15 +8,12 @@
     </div>
     <div class="card-body">
 
-    <!-- Disclaimer -->
+    <!-- Note -->
     <div class="calibration-disclaimer" style="margin-bottom: 20px;">
-        <h4>ℹ️ Tenure context for career conversations</h4>
+        <h4>ℹ️ About this data</h4>
         <p>
-            This section surfaces tenure patterns to inform career discussions — <strong>not promotion decisions</strong>.
-            High performance in the current role is not a criterion for promotion. Promotion should be based on
-            <strong>demonstrated capability at the next level</strong> and <strong>business need</strong>.
-            Long tenure in a role may indicate excellent role fit, not stagnation. Use this data to identify
-            who might benefit from a career conversation, not who "deserves" advancement.
+            Tenure data is imported from Workday. This section provides factual tenure distributions
+            and breakdowns — interpretation is left to the manager.
         </p>
     </div>
 
@@ -53,93 +50,11 @@
         </div>
     </div>
 
-    <!-- Performance × Tenure Matrix -->
-    <h3 style="margin-bottom: 15px;">Performance × Tenure Matrix</h3>
-    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
-        Combines time in current role with performance level to surface career conversation opportunities.
-        These categories help prioritize 1:1 discussions — they are not recommendations or rankings.
-    </p>
-
-    <div class="charts-grid" style="margin-bottom: 20px;">
-        <div class="chart-container">
-            <h3>Quadrant Distribution</h3>
-            <canvas id="quadrantChart"></canvas>
-        </div>
-        <div class="chart-container" style="display: flex; flex-direction: column; justify-content: center;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div style="background: #d4edda; padding: 12px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 24px; font-weight: 700; color: #155724;">{{ tenure_analytics.quadrant_counts.promotion_candidate }}</div>
-                    <div style="font-size: 11px; color: #155724; font-weight: 600;">💬 Career Check-in</div>
-                    <div style="font-size: 10px; color: #666; margin-top: 3px;">High Impact + 2+ yrs in role</div>
-                </div>
-                <div style="background: #cce5ff; padding: 12px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 24px; font-weight: 700; color: #004085;">{{ tenure_analytics.quadrant_counts.rising_star }}</div>
-                    <div style="font-size: 11px; color: #004085; font-weight: 600;">⭐ High Performers</div>
-                    <div style="font-size: 10px; color: #666; margin-top: 3px;">High Impact + &lt;2 yrs in role</div>
-                </div>
-                <div style="background: #d1ecf1; padding: 12px; border-radius: 8px; text-align: center; grid-column: span 2;">
-                    <div style="font-size: 24px; font-weight: 700; color: #0c5460;">{{ tenure_analytics.quadrant_counts.solid_contributor }}</div>
-                    <div style="font-size: 11px; color: #0c5460; font-weight: 600;">✓ Solid Contributors</div>
-                    <div style="font-size: 10px; color: #666; margin-top: 3px;">Successful Performers — meeting expectations</div>
-                </div>
-                <div style="background: #fff3cd; padding: 12px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 24px; font-weight: 700; color: #856404;">{{ tenure_analytics.quadrant_counts.needs_attention }}</div>
-                    <div style="font-size: 11px; color: #856404; font-weight: 600;">⚠️ Development Focus</div>
-                    <div style="font-size: 10px; color: #666; margin-top: 3px;">Evolving/Low + 6+ months in role</div>
-                </div>
-                <div style="background: #e2e3e5; padding: 12px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 24px; font-weight: 700; color: #383d41;">{{ tenure_analytics.quadrant_counts.developing }}</div>
-                    <div style="font-size: 11px; color: #383d41; font-weight: 600;">📈 Still Ramping</div>
-                    <div style="font-size: 10px; color: #666; margin-top: 3px;">Evolving/Low + &lt;6 months in role</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Career Check-in Table -->
-    {% if tenure_analytics.promotion_candidates %}
-    <h3 style="margin-bottom: 15px;">Career Conversation Candidates</h3>
-    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
-        High Impact performers with 2+ years in role who indicated readiness for change.
-        Consider discussing: next-level stretch assignments, lateral opportunities, or whether current role remains the best fit.
-    </p>
-    <div style="overflow-x: auto;">
-        <table class="calibration-table tenure-sortable-table" id="careerCheckTable">
-            <thead>
-                <tr>
-                    <th class="sortable" data-sort="name" data-table="careerCheckTable">Name</th>
-                    <th class="sortable" data-sort="job" data-table="careerCheckTable">Job Profile</th>
-                    <th class="sortable" data-sort="tenure" data-table="careerCheckTable">Time in Role</th>
-                    <th>Performance</th>
-                    <th>Movement Readiness</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for emp in tenure_analytics.promotion_candidates %}
-                <tr data-name="{{ emp.name }}" data-job="{{ emp.job }}" data-tenure="{{ emp.time_in_role_months }}">
-                    <td><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong></td>
-                    <td>{{ emp.job }}</td>
-                    <td>{{ emp.time_in_role }}</td>
-                    <td>
-                        {% if emp.talent_perf %}
-                            <span class="status-badge good">{{ emp.talent_perf }}</span>
-                        {% elif emp.performance_rating %}
-                            {{ emp.performance_rating }}%
-                        {% endif %}
-                    </td>
-                    <td>{{ emp.movement_readiness or 'Not set' }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
-
     <!-- Long Tenure Employees -->
     {% if tenure_analytics.long_tenure_employees %}
     <h3 style="margin-top: 25px; margin-bottom: 15px;">Longest Time in Current Role</h3>
     <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
-        Employees with 3+ years in their current role. Long tenure may indicate excellent role fit, specialized expertise, or an opportunity for a career conversation.
+        Employees with 3+ years in their current role, sorted by tenure.
     </p>
     <div style="overflow-x: auto;">
         <table class="calibration-table tenure-sortable-table" id="longTenureTable">
@@ -149,7 +64,6 @@
                     <th class="sortable" data-sort="job" data-table="longTenureTable">Job Profile</th>
                     <th class="sortable" data-sort="tenure" data-table="longTenureTable">Time in Role</th>
                     <th>Performance</th>
-                    <th>Category</th>
                 </tr>
             </thead>
             <tbody>
@@ -165,19 +79,6 @@
                             {{ emp.performance_rating }}%
                         {% endif %}
                     </td>
-                    <td>
-                        {% if emp.quadrant == 'promotion_candidate' %}
-                            <span class="status-badge good">Career Check-in</span>
-                        {% elif emp.quadrant == 'rising_star' %}
-                            <span class="status-badge" style="background: #cce5ff; color: #004085;">High Performer</span>
-                        {% elif emp.quadrant == 'solid_contributor' %}
-                            <span class="status-badge" style="background: #d1ecf1; color: #0c5460;">Solid Contributor</span>
-                        {% elif emp.quadrant == 'needs_attention' %}
-                            <span class="status-badge warning">Development Focus</span>
-                        {% else %}
-                            <span class="status-badge" style="background: #e2e3e5; color: #383d41;">Still Ramping</span>
-                        {% endif %}
-                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -189,7 +90,7 @@
     {% if tenure_analytics.tenure_by_role %}
     <h3 style="margin-top: 25px; margin-bottom: 15px;">Tenure by Job Profile</h3>
     <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
-        Average tenure metrics grouped by role. Longer average time-in-role may indicate specialized expertise, excellent role fit, or fewer internal mobility opportunities.
+        Average tenure metrics grouped by job profile.
     </p>
     <div style="overflow-x: auto;">
         <table class="calibration-table tenure-sortable-table" id="tenureByRoleTable">
