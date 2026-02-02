@@ -204,20 +204,6 @@
         </div>
         {% endif %}
 
-        {% if inconsistencies.high_impact_long_no_movement %}
-        <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #f9f5fc; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #7d3c98;">📅 High Impact + Long Tenure, No Movement ({{ inconsistencies.high_impact_long_no_movement | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
-                Currently rated High Impact Performer with 3+ years in role, but not marked for promotion or lateral move — consider a career conversation
-            </p>
-            <ul style="margin: 0; padding-left: 20px;">
-                {% for emp in inconsistencies.high_impact_long_no_movement %}
-                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Time in role: {{ emp.time_in_job_profile }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
-
         {% if inconsistencies.new_in_role_mentoring %}
         <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #f9f5fc; padding: 15px; border-radius: 0 8px 8px 0;">
             <h4 style="margin: 0 0 10px 0; color: #7d3c98;">📅 New in Role but Mentoring ({{ inconsistencies.new_in_role_mentoring | length }})</h4>

@@ -2237,7 +2237,6 @@ def analytics():
         'new_hire_low_rating': [],      # < 6 months total tenure but rated Low/Evolving
         'promotion_ready_short_tenure': [],  # Ready Now but < 2 years in role
         'long_tenure_continue_growing': [],  # 5+ years in role but "Continue growing"
-        'high_impact_long_no_movement': [],  # Currently High Impact + 3+ years in role, no movement set
         'new_in_role_mentoring': []     # < 1 year in role but mentoring others
     }
 
@@ -2315,13 +2314,6 @@ def analytics():
         if tijp_months is not None and tijp_months >= 60:
             if 'Continue growing' in movement:
                 inconsistencies['long_tenure_continue_growing'].append(tenure_emp_info)
-
-        # High Impact 3+ years in role but not marked for any movement
-        if tijp_months is not None and tijp_months >= 36:
-            if talent_perf == 'High Impact Performer':
-                # Check if no movement readiness set or explicitly "Continue growing"
-                if not movement or 'Continue growing' in movement:
-                    inconsistencies['high_impact_long_no_movement'].append(tenure_emp_info)
 
         # New in role (< 1 year) but mentoring others
         if tijp_months is not None and tijp_months < 12:
