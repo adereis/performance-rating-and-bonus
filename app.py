@@ -2236,7 +2236,6 @@ def analytics():
         # Tenure-based inconsistencies
         'new_hire_low_rating': [],      # < 6 months total tenure but rated Low/Evolving
         'promotion_ready_short_tenure': [],  # Ready Now but < 2 years in role
-        'long_tenure_continue_growing': [],  # 5+ years in role but "Continue growing"
         'new_hire_mentoring': []     # < 1 year total tenure but mentoring others
     }
 
@@ -2309,11 +2308,6 @@ def analytics():
         # Ready Now but < 2 years in role
         if 'Ready Now' in movement and tijp_months is not None and tijp_months < 24:
             inconsistencies['promotion_ready_short_tenure'].append(tenure_emp_info)
-
-        # Long tenure (5+ years in role) but "Continue growing"
-        if tijp_months is not None and tijp_months >= 60:
-            if 'Continue growing' in movement:
-                inconsistencies['long_tenure_continue_growing'].append(tenure_emp_info)
 
         # New hire (< 1 year total tenure) but mentoring others
         if los_months is not None and los_months < 12:

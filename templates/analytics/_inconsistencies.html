@@ -190,20 +190,6 @@
         </div>
         {% endif %}
 
-        {% if inconsistencies.long_tenure_continue_growing %}
-        <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #f9f5fc; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #7d3c98;">📅 Long Tenure, Still "Continue Growing" ({{ inconsistencies.long_tenure_continue_growing | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
-                5+ years in current role with Movement Readiness set to "Continue growing" — may benefit from a career conversation
-            </p>
-            <ul style="margin: 0; padding-left: 20px;">
-                {% for emp in inconsistencies.long_tenure_continue_growing %}
-                <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Time in role: {{ emp.time_in_job_profile }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
-
         {% if inconsistencies.new_hire_mentoring %}
         <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #f9f5fc; padding: 15px; border-radius: 0 8px 8px 0;">
             <h4 style="margin: 0 0 10px 0; color: #7d3c98;">📅 New Hire but Mentoring ({{ inconsistencies.new_hire_mentoring | length }})</h4>
