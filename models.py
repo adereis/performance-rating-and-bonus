@@ -756,6 +756,10 @@ def _validate_schema(engine):
 
 def init_db():
     """Initialize the database, creating all tables."""
+    # Skip production db init during testing - tests use isolated temp databases
+    if os.getenv('TESTING') == 'true':
+        return
+
     if DEMO_MODE:
         # In demo mode, databases are created per-session in demo_mode.py
         from demo_mode import _log
@@ -780,6 +784,16 @@ def init_db():
 
 def get_db():
     """Get a database session."""
+    # Guard against test code accidentally using production database.
+    # During tests, conftest.py sets TESTING=true and patches this function.
+    # If we reach here with TESTING=true, the patch didn't happen (e.g., python -c).
+    if os.getenv('TESTING') == 'true':
+        raise RuntimeError(
+            "get_db() called during testing without proper fixture setup. "
+            "Tests must use the 'db_session' or 'client' fixtures from conftest.py. "
+            "If running outside pytest, unset the TESTING environment variable."
+        )
+
     if DEMO_MODE:
         # Import here to avoid circular imports
         from demo_mode import get_demo_db

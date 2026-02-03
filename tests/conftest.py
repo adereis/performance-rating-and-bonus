@@ -1,8 +1,14 @@
 """
 Pytest configuration and fixtures for testing.
 """
-import pytest
 import os
+
+# CRITICAL: Set testing flag BEFORE importing app/models to prevent
+# production database access. This protects against accidental writes
+# if test code is imported outside of pytest (e.g., python -c "...").
+os.environ['TESTING'] = 'true'
+
+import pytest
 import tempfile
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
