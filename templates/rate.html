@@ -1241,15 +1241,31 @@ function initGuidelinesPanel() {
     }
 }
 
-// Auto-save functionality using global AutoSave manager
+// Auto-save functionality with local debounce that properly updates UI
+const autoSaveTimers = {};
+
 function autoSave(associateId, card) {
-    // Use global AutoSave manager - handles debounce and keepalive on unload
+    const key = `rating_${associateId}`;
+
+    // Clear existing timer
+    if (autoSaveTimers[key]) {
+        clearTimeout(autoSaveTimers[key]);
+    }
+
+    // Register with global AutoSave for keepalive on page unload
     window.AutoSave.debounce(
-        `rating_${associateId}`,
+        key,
         '/api/rate',
         () => collectRatingData(associateId, card),
         2000
     );
+
+    // Also set local timer that calls saveRating (which updates sidebar)
+    autoSaveTimers[key] = setTimeout(() => {
+        window.AutoSave.cancel(key);  // Cancel the generic one
+        saveRating(associateId, card, false);  // Call the proper save with UI updates
+        delete autoSaveTimers[key];
+    }, 2000);
 }
 
 // Collect rating data from a card for saving
@@ -1602,14 +1618,28 @@ function saveCompactRating(associateId, input, useKeepalive = false) {
 }
 
 function autoSaveCompact(associateId, input) {
+    const key = `compact_${associateId}`;
     const ratingValue = input.value.trim();
-    // Use global AutoSave manager - handles debounce and keepalive on unload
+
+    // Clear existing timer
+    if (autoSaveTimers[key]) {
+        clearTimeout(autoSaveTimers[key]);
+    }
+
+    // Register with global AutoSave for keepalive on page unload
     window.AutoSave.debounce(
-        `compact_${associateId}`,
+        key,
         '/api/rate',
         () => ({ associate_id: associateId, rating_percent: ratingValue }),
         2000
     );
+
+    // Also set local timer that calls saveCompactRating (which updates sidebar)
+    autoSaveTimers[key] = setTimeout(() => {
+        window.AutoSave.cancel(key);
+        saveCompactRating(associateId, input, false);
+        delete autoSaveTimers[key];
+    }, 2000);
 }
 
 // Compact table sorting
@@ -1966,7 +1996,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Save immediately on blur (when leaving a field) - no debounce
             // Uses keepalive so the save survives page navigation
             input.addEventListener('blur', () => {
-                window.AutoSave.cancel(`rating_${associateId}`);
+                const key = `rating_${associateId}`;
+                window.AutoSave.cancel(key);
+                if (autoSaveTimers[key]) {
+                    clearTimeout(autoSaveTimers[key]);
+                    delete autoSaveTimers[key];
+                }
                 saveRating(associateId, card, true);  // keepalive=true
             });
 
@@ -2008,7 +2043,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Save immediately on blur with keepalive (survives navigation)
         input.addEventListener('blur', () => {
-            window.AutoSave.cancel(`compact_${associateId}`);
+            const key = `compact_${associateId}`;
+            window.AutoSave.cancel(key);
+            if (autoSaveTimers[key]) {
+                clearTimeout(autoSaveTimers[key]);
+                delete autoSaveTimers[key];
+            }
             saveCompactRating(associateId, input, true);  // keepalive=true
         });
     });
