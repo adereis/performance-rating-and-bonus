@@ -376,6 +376,12 @@
         display: none !important;
     }
 
+    /* Hide bonus column when filter is active */
+    .export-table.bonus-column-hidden th:nth-child(2),
+    .export-table.bonus-column-hidden td:nth-child(2) {
+        display: none;
+    }
+
     /* Completion status bar */
     .completion-status-bar {
         display: flex;
@@ -722,6 +728,23 @@
             {% else %}
             <span class="completion-badge empty">Not started</span>
             {% endif %}
+        </div>
+    </div>
+
+    <!-- Sync status bar for bonus -->
+    <div class="sync-status-bar">
+        <div class="sync-status-info">
+            <span class="count">{{ bonus_pending_sync_count }}</span> of {{ rated_count }} employees need sync to Workday
+        </div>
+        <div style="display: flex; gap: 20px;">
+            <div class="sync-toggle">
+                <input type="checkbox" id="hideBonusChanges">
+                <label for="hideBonusChanges">Hide bonus changes</label>
+            </div>
+            <div class="sync-toggle">
+                <input type="checkbox" id="showBonusPendingOnly" {% if bonus_pending_sync_count > 0 %}checked{% endif %}>
+                <label for="showBonusPendingOnly">Show pending only</label>
+            </div>
         </div>
     </div>
 
@@ -1106,6 +1129,60 @@
 
             // Apply initial filter state
             applyPendingFilter();
+        }
+
+        // Pending sync filter (bonus export)
+        const bonusPendingFilter = document.getElementById('showBonusPendingOnly');
+        const hideBonusChangesFilter = document.getElementById('hideBonusChanges');
+
+        // Combined filter function for bonus export
+        function applyBonusFilters() {
+            const showPendingOnly = bonusPendingFilter ? bonusPendingFilter.checked : false;
+            const hideBonusChanges = hideBonusChangesFilter ? hideBonusChangesFilter.checked : false;
+            const rows = document.querySelectorAll('#bonusExportTableBody tr[data-needs-sync]');
+            const bonusTable = document.querySelector('#bonusExportTableBody')?.closest('table');
+
+            // Toggle bonus column visibility
+            if (bonusTable) {
+                if (hideBonusChanges) {
+                    bonusTable.classList.add('bonus-column-hidden');
+                } else {
+                    bonusTable.classList.remove('bonus-column-hidden');
+                }
+            }
+
+            rows.forEach(row => {
+                const needsSync = row.getAttribute('data-needs-sync') === 'true';
+
+                // Row visibility based on pending filter
+                if (showPendingOnly && !needsSync) {
+                    row.classList.add('row-hidden');
+                } else {
+                    row.classList.remove('row-hidden');
+                }
+            });
+        }
+
+        if (bonusPendingFilter) {
+            bonusPendingFilter.addEventListener('change', applyBonusFilters);
+        }
+
+        if (hideBonusChangesFilter) {
+            // Restore saved preference (default: unchecked/show bonus changes)
+            const savedHideBonusChanges = localStorage.getItem('exportHideBonusChanges');
+            if (savedHideBonusChanges === 'true') {
+                hideBonusChangesFilter.checked = true;
+            }
+
+            hideBonusChangesFilter.addEventListener('change', function() {
+                localStorage.setItem('exportHideBonusChanges', this.checked);
+                applyBonusFilters();
+            });
+        }
+
+        // Apply initial filter state for bonus export
+        if (bonusPendingFilter || hideBonusChangesFilter) {
+            applyBonusFilters();
         }
 
         // Initialize guidelines panel
