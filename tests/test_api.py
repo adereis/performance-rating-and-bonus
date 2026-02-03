@@ -26,6 +26,70 @@ class TestAPIEndpoints:
         response = client.get('/analytics')
         assert response.status_code == 200
 
+
+class TestPageSmokeTests:
+    """Smoke tests for all pages with realistic data.
+
+    These tests render pages with employees that have all fields populated
+    (tenets, ratings, calibration data) to catch template errors like
+    missing filters or undefined variables.
+    """
+
+    def test_dashboard_with_tenets(self, app, populated_db_with_tenets):
+        """Dashboard renders with employees that have tenets."""
+        client = app.test_client()
+        response = client.get('/')
+        assert response.status_code == 200
+        assert b'Performance Rating' in response.data
+
+    def test_rate_page_with_tenets(self, app, populated_db_with_tenets):
+        """Rate page renders with employees that have tenets data."""
+        client = app.test_client()
+        response = client.get('/rate')
+        assert response.status_code == 200
+        assert b'Bonus Rating' in response.data
+        assert b'Paige Duty' in response.data
+
+    def test_calibrate_page_with_tenets(self, app, populated_db_with_tenets):
+        """Calibrate page renders with employees that have talent data."""
+        client = app.test_client()
+        response = client.get('/calibrate')
+        assert response.status_code == 200
+
+    def test_analytics_with_tenets(self, app, populated_db_with_tenets):
+        """Analytics page renders with employees that have tenets."""
+        client = app.test_client()
+        response = client.get('/analytics')
+        assert response.status_code == 200
+
+    def test_bonus_calculation_with_tenets(self, app, populated_db_with_tenets):
+        """Bonus calculation page renders with rated employees."""
+        client = app.test_client()
+        response = client.get('/bonus-calculation')
+        assert response.status_code == 200
+
+    def test_export_page_with_tenets(self, app, populated_db_with_tenets):
+        """Export page renders with employees that have tenets."""
+        client = app.test_client()
+        response = client.get('/export')
+        assert response.status_code == 200
+
+    def test_import_page(self, app, populated_db_with_tenets):
+        """Import page renders (form page, minimal data dependency)."""
+        client = app.test_client()
+        response = client.get('/import')
+        assert response.status_code == 200
+
+    def test_history_page(self, app, populated_db_with_tenets):
+        """History page renders (may be empty without archived periods)."""
+        client = app.test_client()
+        response = client.get('/history')
+        assert response.status_code == 200
+
+
+class TestRatingAPI:
+    """Test rating API endpoints."""
+
     def test_rate_employee_success(self, client, populated_db):
         """Test successfully rating an employee."""
         data = {

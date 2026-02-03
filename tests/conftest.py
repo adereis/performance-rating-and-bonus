@@ -177,6 +177,62 @@ def populated_db(db_session, sample_employees):
 
 
 @pytest.fixture(scope='function')
+def populated_db_with_tenets(db_session):
+    """Database with employees that have tenets data populated.
+
+    This fixture exercises template code paths that require tenets,
+    catching issues like missing template filters.
+
+    Uses fictitious pun names from generate-sample-xlsx.py.
+    """
+    import json
+    employees = [
+        Employee(
+            associate_id='EMP001',
+            associate='Paige Duty',
+            supervisory_organization='Engineering (Della Gate)',
+            current_job_profile='Senior Software Developer',
+            current_base_pay_manager_currency=150000.0,
+            currency='USD',
+            bonus_target_local_currency=22500.0,
+            performance_rating_percent=120.0,
+            justification='Excellent performance on key projects',
+            tenets_strengths=json.dumps(['tenet1', 'tenet2', 'tenet3']),
+            tenets_improvements=json.dumps(['tenet4', 'tenet5']),
+            talent_perf_what_original='Surpasses Expectations',
+            talent_perf_how_original='Meets Expectations',
+        ),
+        Employee(
+            associate_id='EMP002',
+            associate='Justin Time',
+            supervisory_organization='Engineering (Della Gate)',
+            current_job_profile='Software Developer',
+            current_base_pay_manager_currency=115000.0,
+            currency='USD',
+            bonus_target_local_currency=17250.0,
+            performance_rating_percent=100.0,
+            justification='Solid contributor, delivers on schedule',
+            tenets_strengths=json.dumps(['tenet1', 'tenet2', 'tenet3']),
+            tenets_improvements=json.dumps(['tenet3', 'tenet4']),
+        ),
+        Employee(
+            associate_id='EMP003',
+            associate='Devin Null',
+            supervisory_organization='Engineering (Della Gate)',
+            current_job_profile='Software Developer',
+            current_base_pay_manager_currency=112000.0,
+            currency='USD',
+            bonus_target_local_currency=16800.0,
+            # No rating yet - tests incomplete state
+        ),
+    ]
+    for emp in employees:
+        db_session.add(emp)
+    db_session.commit()
+    return db_session
+
+
+@pytest.fixture(scope='function')
 def sample_tenets(app, monkeypatch):
     """
     Configure app to use sample tenets for testing.
