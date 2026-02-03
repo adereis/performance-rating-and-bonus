@@ -931,6 +931,62 @@ function autoSaveCalibration(associateId, card) {
     );
 }
 
+// Placeholder detection for mentor/mentee fields
+const PLACEHOLDER_PATTERNS = new Set([
+    'none', 'n/a', 'na', 'tbd', 'tbc', 'tba', '-', '?', 'null', 'nil', 'unknown',
+    'not applicable', 'not assigned', 'pending', 'to be determined', 'to be confirmed',
+]);
+
+function isPlaceholderValue(value) {
+    if (!value) return false;
+    return PLACEHOLDER_PATTERNS.has(value.trim().toLowerCase());
+}
+
+function showPlaceholderWarning(input) {
+    let warning = input.parentElement.querySelector('.placeholder-warning');
+    if (!warning) {
+        warning = document.createElement('div');
+        warning.className = 'placeholder-warning';
+        warning.style.cssText = 'font-size: 11px; color: #e67e22; margin-top: 4px;';
+        input.parentElement.appendChild(warning);
+    }
+    warning.textContent = '⚠ Placeholder values like "TBD" or "None" will be cleared on save';
+    warning.style.display = 'block';
+}
+
+function hidePlaceholderWarning(input) {
+    const warning = input.parentElement.querySelector('.placeholder-warning');
+    if (warning) {
+        warning.style.display = 'none';
+    }
+}
+
+function handleNormalizedFields(normalizedFields, card) {
+    if (!normalizedFields || normalizedFields.length === 0) return;
+
+    const fieldMapping = {
+        'talent_mentor': 'talent_mentor',
+        'talent_mentees': 'talent_mentees',
+    };
+
+    normalizedFields.forEach(field => {
+        const inputField = fieldMapping[field] || field;
+        const input = card.querySelector(`[data-field="${inputField}"]`);
+        if (input) {
+            input.value = '';
+            hidePlaceholderWarning(input);
+        }
+    });
+
+    const indicator = card.querySelector('.saved-indicator');
+    if (indicator && normalizedFields.length > 0) {
+        const fieldNames = normalizedFields.map(f => f.replace('talent_', '').replace('_', ' ')).join(', ');
+        indicator.textContent = `✓ Saved (cleared placeholder in ${fieldNames})`;
+        indicator.classList.add('show');
+        setTimeout(() => indicator.classList.remove('show'), 4000);
+    }
+}
+
 // Check if an employee card is fully calibrated (What + How + Actions + Tenets)
 // Tenets require exactly 3 strengths AND 2-3 improvements
 function isCardCalibrated(card, data) {
@@ -987,11 +1043,16 @@ function saveCalibration(associateId, card, useKeepalive = false) {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            const indicator = card.querySelector('.saved-indicator');
-            const now = new Date();
-            indicator.textContent = `Auto-saved (${now.toLocaleTimeString()})`;
-            indicator.classList.add('show');
-            setTimeout(() => indicator.classList.remove('show'), 3000);
+            // Handle normalized placeholder fields first
+            if (result.normalized_fields && result.normalized_fields.length > 0) {
+                handleNormalizedFields(result.normalized_fields, card);
+            } else {
+                const indicator = card.querySelector('.saved-indicator');
+                const now = new Date();
+                indicator.textContent = `Auto-saved (${now.toLocaleTimeString()})`;
+                indicator.classList.add('show');
+                setTimeout(() => indicator.classList.remove('show'), 3000);
+            }
 
             // Update derived fields display
             if (result.data.talent_overall_perf) {
@@ -1351,6 +1412,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Auto-save on input with debounce
             input.addEventListener('input', () => {
+                // Check for placeholder values in mentor/mentee fields
+                const field = input.getAttribute('data-field');
+                if (field === 'talent_mentor' || field === 'talent_mentees') {
+                    if (isPlaceholderValue(input.value)) {
+                        showPlaceholderWarning(input);
+                    } else {
+                        hidePlaceholderWarning(input);
+                    }
+                }
                 autoSaveCalibration(associateId, card);
             });
 

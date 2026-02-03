@@ -1370,12 +1370,17 @@ function saveRating(associateId, card, useKeepalive = false) {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            // Show save indicator
-            const indicator = card.querySelector('.saved-indicator');
-            const timestamp = new Date().toLocaleTimeString();
-            indicator.textContent = `✓ Auto-saved (${timestamp})`;
-            indicator.classList.add('show');
-            setTimeout(() => indicator.classList.remove('show'), 3000);
+            // Handle normalized placeholder fields first
+            if (result.normalized_fields && result.normalized_fields.length > 0) {
+                handleNormalizedFields(result.normalized_fields, card);
+            } else {
+                // Show standard save indicator
+                const indicator = card.querySelector('.saved-indicator');
+                const timestamp = new Date().toLocaleTimeString();
+                indicator.textContent = `✓ Auto-saved (${timestamp})`;
+                indicator.classList.add('show');
+                setTimeout(() => indicator.classList.remove('show'), 3000);
+            }
 
             // Sync rating value to compact view
             const compactInput = document.querySelector(`.compact-rating-input[data-associate-id="${associateId}"]`);
@@ -1860,6 +1865,67 @@ function setupTenetListeners(card) {
 
 // Note: The global AutoSave manager in base.html handles beforeunload with keepalive saves
 
+// Placeholder detection for mentor/mentee fields
+const PLACEHOLDER_PATTERNS = new Set([
+    'none', 'n/a', 'na', 'tbd', 'tbc', 'tba', '-', '?', 'null', 'nil', 'unknown',
+    'not applicable', 'not assigned', 'pending', 'to be determined', 'to be confirmed',
+]);
+
+function isPlaceholderValue(value) {
+    if (!value) return false;
+    return PLACEHOLDER_PATTERNS.has(value.trim().toLowerCase());
+}
+
+function showPlaceholderWarning(input) {
+    // Find or create warning element
+    let warning = input.parentElement.querySelector('.placeholder-warning');
+    if (!warning) {
+        warning = document.createElement('div');
+        warning.className = 'placeholder-warning';
+        warning.style.cssText = 'font-size: 11px; color: #e67e22; margin-top: 4px;';
+        input.parentElement.appendChild(warning);
+    }
+    warning.textContent = '⚠ Placeholder values like "TBD" or "None" will be cleared on save';
+    warning.style.display = 'block';
+}
+
+function hidePlaceholderWarning(input) {
+    const warning = input.parentElement.querySelector('.placeholder-warning');
+    if (warning) {
+        warning.style.display = 'none';
+    }
+}
+
+function handleNormalizedFields(normalizedFields, card) {
+    if (!normalizedFields || normalizedFields.length === 0) return;
+
+    // Map API field names to data-field attribute values
+    const fieldMapping = {
+        'mentor': 'mentor',
+        'mentees': 'mentees',
+        'talent_mentor': 'talent_mentor',
+        'talent_mentees': 'talent_mentees',
+    };
+
+    normalizedFields.forEach(field => {
+        const inputField = fieldMapping[field] || field;
+        const input = card.querySelector(`[data-field="${inputField}"]`);
+        if (input) {
+            input.value = '';  // Clear the input since server normalized it
+            hidePlaceholderWarning(input);
+        }
+    });
+
+    // Show a brief notification
+    const indicator = card.querySelector('.saved-indicator');
+    if (indicator && normalizedFields.length > 0) {
+        const fieldNames = normalizedFields.map(f => f.replace('talent_', '').replace('_', ' ')).join(', ');
+        indicator.textContent = `✓ Saved (cleared placeholder in ${fieldNames})`;
+        indicator.classList.add('show');
+        setTimeout(() => indicator.classList.remove('show'), 4000);
+    }
+}
+
 // Set up auto-save listeners on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize guidelines panel
@@ -1914,6 +1980,15 @@ document.addEventListener('DOMContentLoaded', function() {
             // Also auto-save on input for text fields (with debounce)
             else if (input.tagName === 'TEXTAREA' || input.type === 'text' || input.type === 'number') {
                 input.addEventListener('input', () => {
+                    // Check for placeholder values in mentor/mentee fields
+                    const field = input.getAttribute('data-field');
+                    if (field === 'mentor' || field === 'mentees') {
+                        if (isPlaceholderValue(input.value)) {
+                            showPlaceholderWarning(input);
+                        } else {
+                            hidePlaceholderWarning(input);
+                        }
+                    }
                     autoSave(associateId, card);
                 });
             }

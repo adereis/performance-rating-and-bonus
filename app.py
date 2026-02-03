@@ -72,6 +72,29 @@ CURRENCY_FORMATS = {
 # Legacy lookup for simple symbol access
 CURRENCY_SYMBOLS = {code: fmt['symbol'] for code, fmt in CURRENCY_FORMATS.items()}
 
+# Placeholder values that should be normalized to empty for mentor/mentee fields
+# These are common entries managers use when they haven't filled in actual names
+MENTOR_FIELD_PLACEHOLDERS = frozenset({
+    'none', 'n/a', 'na', 'tbd', 'tbc', 'tba', '-', '?', 'null', 'nil', 'unknown',
+    'not applicable', 'not assigned', 'pending', 'to be determined', 'to be confirmed',
+})
+
+
+def normalize_mentor_field(value):
+    """Normalize mentor/mentee field values, converting placeholders to empty string.
+
+    Returns a tuple of (normalized_value, was_placeholder) so the API can inform
+    the client when a value was treated as a placeholder.
+    """
+    if not value:
+        return ('', False)
+    cleaned = value.strip()
+    if not cleaned:
+        return ('', False)
+    if cleaned.lower() in MENTOR_FIELD_PLACEHOLDERS:
+        return ('', True)
+    return (cleaned, False)
+
 
 def _has_tenets(tenets_strengths, tenets_improvements):
     """Check if employee has at least one tenet selected (strengths or improvements).
@@ -1019,14 +1042,23 @@ def rate_employee():
             return jsonify({'error': 'Employee not found'}), 404
 
         # Only update fields that were explicitly provided in the request
+        # Track fields that were normalized from placeholder values
+        normalized_fields = []
+
         if 'rating_percent' in data:
             employee.performance_rating_percent = rating_percent
         if 'justification' in data:
             employee.justification = data.get('justification', '')
         if 'mentor' in data:
-            employee.mentor = data.get('mentor', '')
+            mentor_value, was_placeholder = normalize_mentor_field(data.get('mentor', ''))
+            employee.mentor = mentor_value
+            if was_placeholder:
+                normalized_fields.append('mentor')
         if 'mentees' in data:
-            employee.mentees = data.get('mentees', '')
+            mentees_value, was_placeholder = normalize_mentor_field(data.get('mentees', ''))
+            employee.mentees = mentees_value
+            if was_placeholder:
+                normalized_fields.append('mentees')
         if tenets_strengths is not None:
             employee.tenets_strengths = json.dumps(tenets_strengths) if tenets_strengths else None
         if tenets_improvements is not None:
@@ -1036,7 +1068,10 @@ def rate_employee():
 
         db.commit()
 
-        return jsonify({'success': True, 'message': 'Rating saved successfully'})
+        response = {'success': True, 'message': 'Rating saved successfully'}
+        if normalized_fields:
+            response['normalized_fields'] = normalized_fields
+        return jsonify(response)
     except Exception as e:
         db.rollback()
         return jsonify({'error': str(e)}), 500
@@ -1296,20 +1331,30 @@ def calibrate_employee():
                     setattr(employee, field, None)
 
         # Update free-form text fields
+        # Track fields that were normalized from placeholder values
+        normalized_fields = []
+
         text_fields = [
             'talent_proposed_actions',
             'talent_promo_job_profile',
             'talent_promo_business_need',
             'talent_promo_role_scope',
             'talent_promo_readiness',
-            'talent_mentor',
-            'talent_mentees',
         ]
+        # Mentor/mentee fields need placeholder normalization
+        mentor_text_fields = ['talent_mentor', 'talent_mentees']
 
         for field in text_fields:
             if field in data:
                 value = data.get(field)
                 setattr(employee, field, value if value else None)
+
+        for field in mentor_text_fields:
+            if field in data:
+                value, was_placeholder = normalize_mentor_field(data.get(field, ''))
+                setattr(employee, field, value if value else None)
+                if was_placeholder:
+                    normalized_fields.append(field)
 
         # Validate talent tenets before updating
         talent_tenets_strengths = data.get('talent_tenets_strengths', []) if 'talent_tenets_strengths' in data else None
@@ -1367,14 +1412,17 @@ def calibrate_employee():
 
         db.commit()
 
-        return jsonify({
+        response = {
             'success': True,
             'data': {
                 'talent_overall_perf': employee.talent_overall_perf,
                 'talent_identified_future': employee.talent_identified_future,
                 'talent_last_updated': employee.talent_last_updated.strftime('%Y-%m-%d %H:%M:%S')
             }
-        })
+        }
+        if normalized_fields:
+            response['normalized_fields'] = normalized_fields
+        return jsonify(response)
 
     except Exception as e:
         db.rollback()

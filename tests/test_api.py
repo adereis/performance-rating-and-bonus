@@ -402,6 +402,64 @@ class TestRatingAPI:
         assert 'error' in result
         assert 'talent data' in result['error'].lower()
 
+    def test_rate_normalizes_placeholder_mentor(self, client, populated_db, db_session):
+        """Test that placeholder values in mentor field are normalized to empty string."""
+        placeholders = ['None', 'TBD', 'N/A', 'tba', 'pending']
+
+        for placeholder in placeholders:
+            data = {
+                'associate_id': 'EMP004',
+                'mentor': placeholder
+            }
+            response = client.post('/api/rate',
+                                  data=json.dumps(data),
+                                  content_type='application/json')
+
+            assert response.status_code == 200
+            result = json.loads(response.data)
+            assert result['success'] is True
+            assert 'normalized_fields' in result
+            assert 'mentor' in result['normalized_fields']
+
+            # Verify database was updated with empty string
+            employee = db_session.query(Employee).filter_by(associate_id='EMP004').first()
+            assert employee.mentor == ''
+
+    def test_rate_preserves_valid_mentor(self, client, populated_db, db_session):
+        """Test that valid mentor names are preserved unchanged."""
+        data = {
+            'associate_id': 'EMP004',
+            'mentor': 'John Smith'
+        }
+        response = client.post('/api/rate',
+                              data=json.dumps(data),
+                              content_type='application/json')
+
+        assert response.status_code == 200
+        result = json.loads(response.data)
+        assert result['success'] is True
+        assert 'normalized_fields' not in result
+
+        # Verify database has the mentor name
+        employee = db_session.query(Employee).filter_by(associate_id='EMP004').first()
+        assert employee.mentor == 'John Smith'
+
+    def test_rate_normalizes_placeholder_mentees(self, client, populated_db, db_session):
+        """Test that placeholder values in mentees field are normalized."""
+        data = {
+            'associate_id': 'EMP004',
+            'mentees': 'TBC'
+        }
+        response = client.post('/api/rate',
+                              data=json.dumps(data),
+                              content_type='application/json')
+
+        assert response.status_code == 200
+        result = json.loads(response.data)
+        assert result['success'] is True
+        assert 'normalized_fields' in result
+        assert 'mentees' in result['normalized_fields']
+
 
 class TestDashboardStatistics:
     """Test dashboard statistics calculations."""

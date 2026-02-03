@@ -649,6 +649,53 @@ class DatabaseSchemaError(Exception):
     pass
 
 
+def _migrate_normalize_mentor_placeholders(engine):
+    """
+    Normalize placeholder values in mentor/mentee fields to empty strings.
+
+    Cleans up entries like 'None', 'TBD', 'N/A', etc. that managers may have
+    entered as placeholders. This is a one-time cleanup for existing data.
+    """
+    from sqlalchemy import text, inspect
+
+    inspector = inspect(engine)
+
+    # Skip if employees table doesn't exist
+    if 'employees' not in inspector.get_table_names():
+        return
+
+    # Placeholder values to normalize (lowercase for case-insensitive matching)
+    placeholders = (
+        'none', 'n/a', 'na', 'tbd', 'tbc', 'tba', '-', '?', 'null', 'nil', 'unknown',
+        'not applicable', 'not assigned', 'pending', 'to be determined', 'to be confirmed',
+    )
+
+    # Fields to clean
+    mentor_fields = ['mentor', 'mentees', 'talent_mentor', 'talent_mentees']
+
+    with engine.connect() as conn:
+        # Check which columns exist
+        columns = [col['name'] for col in inspector.get_columns('employees')]
+
+        for field in mentor_fields:
+            if field not in columns:
+                continue
+
+            # Build placeholders for the IN clause
+            placeholders_sql = ', '.join(f"'{p}'" for p in placeholders)
+
+            # Update placeholder values to empty string
+            sql = f"""
+                UPDATE employees
+                SET {field} = ''
+                WHERE LOWER(TRIM({field})) IN ({placeholders_sql})
+            """
+            result = conn.execute(text(sql))
+            if result.rowcount > 0:
+                print(f"Normalized {result.rowcount} placeholder values in {field}")
+            conn.commit()
+
+
 def _validate_schema(engine):
     """
     Validate that the database schema matches the expected model schema.
@@ -726,6 +773,9 @@ def init_db():
 
     # Validate schema matches models (catches issues migration didn't handle)
     _validate_schema(engine)
+
+    # Data migrations (run after schema is validated)
+    _migrate_normalize_mentor_placeholders(engine)
 
 
 def get_db():
