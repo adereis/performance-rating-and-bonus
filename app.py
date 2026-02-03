@@ -1638,21 +1638,24 @@ def calculate_calibration_for_employees(employees, team_name=None):
         # Determine if within range
         within_range = suggested_min <= percentage <= suggested_max
 
-        # Calculate delta from range limits (0 if within range, otherwise distance from nearest limit)
+        # Calculate delta from range limits (for status determination)
         if percentage < suggested_min:
-            delta = percentage - suggested_min  # Negative value (below range)
+            delta_from_range = percentage - suggested_min  # Negative
         elif percentage > suggested_max:
-            delta = percentage - suggested_max  # Positive value (above range)
+            delta_from_range = percentage - suggested_max  # Positive
         else:
-            delta = 0  # Within range
+            delta_from_range = 0  # Within range
 
         # Determine status: green (within), yellow (slightly off), orange (significantly off)
         if within_range:
             status = 'good'
-        elif abs(delta) <= 10:
+        elif abs(delta_from_range) <= 10:
             status = 'warning'
         else:
             status = 'alert'
+
+        # Delta for display (distance from midpoint, consistent with talent calibration)
+        delta = percentage - suggested_mid
 
         calibration_data.append({
             'bucket': bucket_key,
