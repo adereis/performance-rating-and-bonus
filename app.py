@@ -197,6 +197,21 @@ def format_currency_filter(value, show_sign=False):
         return f"{formatted_num}{space}{fmt['symbol']}"
 
 
+@app.template_filter('fromjson')
+def fromjson_filter(value):
+    """Parse a JSON string into a Python object.
+
+    Usage in templates: {{ json_string | fromjson }}
+    Returns empty list if value is falsy or invalid JSON.
+    """
+    if not value:
+        return []
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
 @app.before_request
 def log_demo_request():
     """Log requests in demo mode for debugging."""
@@ -865,14 +880,27 @@ def rate_page():
 
     # Pre-compute rating status for each employee
     for emp in team_data:
-        has_tenets = bool(
-            (emp.get('tenets_strengths') and emp.get('tenets_strengths') != '[]') or
-            (emp.get('tenets_improvements') and emp.get('tenets_improvements') != '[]')
-        )
+        # Parse tenets and check counts: 3 strengths required, 2-3 improvements required
+        strengths_count = 0
+        improvements_count = 0
+        try:
+            strengths_raw = emp.get('tenets_strengths')
+            if strengths_raw and strengths_raw != '[]':
+                strengths_count = len(json.loads(strengths_raw))
+        except (json.JSONDecodeError, TypeError):
+            pass
+        try:
+            improvements_raw = emp.get('tenets_improvements')
+            if improvements_raw and improvements_raw != '[]':
+                improvements_count = len(json.loads(improvements_raw))
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+        has_valid_tenets = (strengths_count >= 3) and (improvements_count >= 2)
         emp['_is_rated'] = bool(
             emp.get('performance_rating_percent') and
             emp.get('justification') and
-            has_tenets
+            has_valid_tenets
         )
 
     # Count rated employees

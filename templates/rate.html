@@ -1006,8 +1006,10 @@
                 </thead>
                 <tbody id="compact-table-body">
                     {% for employee in team %}
-                    {% set has_tenets = (employee.tenets_strengths and employee.tenets_strengths != '[]') or (employee.tenets_improvements and employee.tenets_improvements != '[]') %}
-                    {% set is_rated = employee.performance_rating_percent and employee.justification and has_tenets %}
+                    {% set strengths_count = (employee.tenets_strengths | default('[]') | fromjson | length) if employee.tenets_strengths else 0 %}
+                    {% set improvements_count = (employee.tenets_improvements | default('[]') | fromjson | length) if employee.tenets_improvements else 0 %}
+                    {% set has_valid_tenets = (strengths_count >= 3) and (improvements_count >= 2) %}
+                    {% set is_rated = employee.performance_rating_percent and employee.justification and has_valid_tenets %}
                     {% set is_incomplete = employee.performance_rating_percent and not is_rated %}
                     <tr class="{% if is_rated %}has-rating{% endif %}"
                         data-associate-id="{{ employee['Associate ID'] }}"
@@ -1084,8 +1086,10 @@
                 </div>
                 <div class="team-group-content">
                 {% for employee in team_group.members %}
-                {% set has_tenets = (employee.tenets_strengths and employee.tenets_strengths != '[]') or (employee.tenets_improvements and employee.tenets_improvements != '[]') %}
-                {% set is_rated = employee.performance_rating_percent and employee.justification and has_tenets %}
+                {% set strengths_count = (employee.tenets_strengths | default('[]') | fromjson | length) if employee.tenets_strengths else 0 %}
+                {% set improvements_count = (employee.tenets_improvements | default('[]') | fromjson | length) if employee.tenets_improvements else 0 %}
+                {% set has_valid_tenets = (strengths_count >= 3) and (improvements_count >= 2) %}
+                {% set is_rated = employee.performance_rating_percent and employee.justification and has_valid_tenets %}
                 {% set is_incomplete = employee.performance_rating_percent and not is_rated %}
                 {% include "rate_card.html" %}
                 {% endfor %}
@@ -1096,8 +1100,10 @@
             <!-- Single team view: flat list -->
             <div class="rating-form-inner">
             {% for employee in team %}
-            {% set has_tenets = (employee.tenets_strengths and employee.tenets_strengths != '[]') or (employee.tenets_improvements and employee.tenets_improvements != '[]') %}
-            {% set is_rated = employee.performance_rating_percent and employee.justification and has_tenets %}
+            {% set strengths_count = (employee.tenets_strengths | default('[]') | fromjson | length) if employee.tenets_strengths else 0 %}
+            {% set improvements_count = (employee.tenets_improvements | default('[]') | fromjson | length) if employee.tenets_improvements else 0 %}
+            {% set has_valid_tenets = (strengths_count >= 3) and (improvements_count >= 2) %}
+            {% set is_rated = employee.performance_rating_percent and employee.justification and has_valid_tenets %}
             {% set is_incomplete = employee.performance_rating_percent and not is_rated %}
             {% include "rate_card.html" %}
             {% endfor %}
@@ -1342,6 +1348,9 @@ function updateEmployeeStatus(associateId, ratingPercent, justification, hasTene
         row.setAttribute('data-is-incomplete', isIncomplete ? 'true' : 'false');
         row.setAttribute('data-rating', ratingPercent || '0');
     }
+
+    // Update sidebar status dot
+    updateSidebarStatus(associateId, isRated);
 }
 
 function saveRating(associateId, card, useKeepalive = false) {
@@ -1375,8 +1384,11 @@ function saveRating(associateId, card, useKeepalive = false) {
             }
 
             // Update status on BOTH views
-            const hasTenets = (data.tenets_strengths?.length > 0) || (data.tenets_improvements?.length > 0);
-            updateEmployeeStatus(associateId, data.rating_percent, data.justification, hasTenets);
+            // Requires 3 strengths and 2+ improvements for completion
+            const strengthsCount = data.tenets_strengths?.length || 0;
+            const improvementsCount = data.tenets_improvements?.length || 0;
+            const hasValidTenets = (strengthsCount >= 3) && (improvementsCount >= 2);
+            updateEmployeeStatus(associateId, data.rating_percent, data.justification, hasValidTenets);
         } else {
             // Only show errors for non-tenet validation issues
             const errorMessage = result.error || 'Save failed';
@@ -1552,17 +1564,18 @@ function saveCompactRating(associateId, input, useKeepalive = false) {
             // Get current justification and tenets from detailed view to determine full status
             // (compact view only has rating, so we read the rest from detailed view's DOM)
             let justification = '';
-            let hasTenets = false;
+            let hasValidTenets = false;
             if (card) {
                 const justificationInput = card.querySelector('[data-field="justification"]');
                 justification = justificationInput?.value || '';
                 const strengthsChecked = card.querySelectorAll('input[data-tenet-type="strengths"]:checked').length;
                 const improvementsChecked = card.querySelectorAll('input[data-tenet-type="improvements"]:checked').length;
-                hasTenets = strengthsChecked > 0 || improvementsChecked > 0;
+                // Requires 3 strengths and 2+ improvements for completion
+                hasValidTenets = (strengthsChecked >= 3) && (improvementsChecked >= 2);
             }
 
             // Update status on BOTH views
-            updateEmployeeStatus(associateId, ratingValue, justification, hasTenets);
+            updateEmployeeStatus(associateId, ratingValue, justification, hasValidTenets);
         } else {
             const errorSpan = input.nextElementSibling;
             input.classList.add('invalid');
