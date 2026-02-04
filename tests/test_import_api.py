@@ -358,6 +358,202 @@ class TestImportCurrent:
         assert new_emp.associate == 'New Person'
 
 
+class TestImportChangelog:
+    """Tests for the import changelog feature that tracks what changed during import."""
+
+    def test_changelog_tracks_new_employees(self, client, db_session):
+        """Test that new employees are tracked in the changelog."""
+        employees = [
+            {
+                'associate_id': 'NEW001',
+                'associate': 'Alice Smith',
+                'supervisory_organization': 'Engineering',
+                'current_job_profile': 'Software Engineer',
+            }
+        ]
+
+        xlsx_file = create_test_xlsx(employees)
+        response = client.post('/api/import/current',
+                               data={'file': (xlsx_file, 'test.xlsx')},
+                               content_type='multipart/form-data')
+
+        result = response.get_json()
+        assert result['success'] is True
+        assert 'changes' in result
+
+        changes = result['changes']
+        assert len(changes['new']) == 1
+        assert changes['new'][0]['associate_id'] == 'NEW001'
+        assert changes['new'][0]['associate'] == 'Alice Smith'
+        assert changes['new'][0]['org'] == 'Engineering'
+        assert len(changes['updated']) == 0
+        assert len(changes['preserved']) == 0
+
+    def test_changelog_tracks_field_updates(self, client, db_session):
+        """Test that field changes are tracked when updating existing employees."""
+        # Create existing employee
+        existing = Employee(
+            associate_id='EMP001',
+            associate='Bob Jones',
+            supervisory_organization='Old Org',
+            current_job_profile='Old Job',
+            mentor='',
+            mentor_original=''
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        # Import with updated mentor (use bracketed format for notes parser)
+        employees = [
+            {
+                'associate_id': 'EMP001',
+                'associate': 'Bob Jones',
+                'supervisory_organization': 'Old Org',
+                'current_job_profile': 'Old Job',
+                'notes': '[Mentor: Jane Doe]'
+            }
+        ]
+
+        xlsx_file = create_test_xlsx(employees)
+        response = client.post('/api/import/current',
+                               data={'file': (xlsx_file, 'test.xlsx')},
+                               content_type='multipart/form-data')
+
+        result = response.get_json()
+        assert result['success'] is True
+        assert 'changes' in result
+
+        changes = result['changes']
+        assert len(changes['new']) == 0
+        assert len(changes['updated']) == 1
+        assert changes['updated'][0]['associate_id'] == 'EMP001'
+        # Should have tracked the mentor update
+        mentor_change = next((c for c in changes['updated'][0]['changes'] if c['field'] == 'mentor'), None)
+        assert mentor_change is not None
+        assert mentor_change['field_display'] == 'Mentor'
+
+    def test_changelog_tracks_preserved_conflicts(self, client, db_session):
+        """Test that preserved local modifications are tracked as conflicts."""
+        # Create existing employee with local modification
+        existing = Employee(
+            associate_id='EMP001',
+            associate='Carol White',
+            supervisory_organization='Engineering',
+            justification='My local justification',  # Modified locally
+            justification_original='Original from Workday'  # Different from current
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        # Import with different justification from Workday (use proper notes format)
+        employees = [
+            {
+                'associate_id': 'EMP001',
+                'associate': 'Carol White',
+                'supervisory_organization': 'Engineering',
+                'current_job_profile': 'Engineer',
+                'notes': 'Justification:\nNew Workday justification'
+            }
+        ]
+
+        xlsx_file = create_test_xlsx(employees)
+        response = client.post('/api/import/current',
+                               data={'file': (xlsx_file, 'test.xlsx')},
+                               content_type='multipart/form-data')
+
+        result = response.get_json()
+        assert result['success'] is True
+        assert 'changes' in result
+
+        changes = result['changes']
+        assert len(changes['preserved']) == 1
+        assert changes['preserved'][0]['associate_id'] == 'EMP001'
+        # Should have tracked the justification conflict
+        conflict = next((c for c in changes['preserved'][0]['conflicts'] if c['field'] == 'justification'), None)
+        assert conflict is not None
+        assert conflict['field_display'] == 'Justification'
+        assert 'My local' in (conflict['local'] or '')
+        assert 'New Workday' in (conflict['workday'] or '')
+
+    def test_changelog_no_conflict_when_local_matches_workday(self, client, db_session):
+        """Test that no conflict is shown when local value matches Workday value."""
+        # Create employee with local modification that happens to match new Workday value
+        existing = Employee(
+            associate_id='EMP001',
+            associate='Dave Brown',
+            supervisory_organization='Engineering',
+            justification='Same value',  # Modified locally
+            justification_original='Old original'  # Was different before
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        # Import with same justification from Workday (use proper notes format)
+        employees = [
+            {
+                'associate_id': 'EMP001',
+                'associate': 'Dave Brown',
+                'supervisory_organization': 'Engineering',
+                'current_job_profile': 'Engineer',
+                'notes': 'Justification:\nSame value'
+            }
+        ]
+
+        xlsx_file = create_test_xlsx(employees)
+        response = client.post('/api/import/current',
+                               data={'file': (xlsx_file, 'test.xlsx')},
+                               content_type='multipart/form-data')
+
+        result = response.get_json()
+        assert result['success'] is True
+
+        # Should NOT have a justification conflict since local == workday
+        if 'changes' in result and result['changes']['preserved']:
+            for emp in result['changes']['preserved']:
+                if emp['associate_id'] == 'EMP001':
+                    conflicts = [c for c in emp['conflicts'] if c['field'] == 'justification']
+                    assert len(conflicts) == 0, "Should not show conflict when local matches Workday"
+
+    def test_changelog_mentor_placeholder_normalization(self, client, db_session):
+        """Test that mentor placeholders like 'None' are treated as empty."""
+        # Create employee with normalized empty mentor
+        existing = Employee(
+            associate_id='EMP001',
+            associate='Eve Green',
+            supervisory_organization='Engineering',
+            mentor='',  # Normalized to empty
+            mentor_original=''
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        # Import with 'None' from Workday (a placeholder, use bracketed format)
+        employees = [
+            {
+                'associate_id': 'EMP001',
+                'associate': 'Eve Green',
+                'supervisory_organization': 'Engineering',
+                'current_job_profile': 'Engineer',
+                'notes': '[Mentor: None]'
+            }
+        ]
+
+        xlsx_file = create_test_xlsx(employees)
+        response = client.post('/api/import/current',
+                               data={'file': (xlsx_file, 'test.xlsx')},
+                               content_type='multipart/form-data')
+
+        result = response.get_json()
+        assert result['success'] is True
+
+        # Should NOT show update for mentor since '' == 'None' after normalization
+        if 'changes' in result and result['changes']['updated']:
+            for emp in result['changes']['updated']:
+                if emp['associate_id'] == 'EMP001':
+                    mentor_changes = [c for c in emp['changes'] if c['field'] == 'mentor']
+                    assert len(mentor_changes) == 0, "Should not show change when both normalize to empty"
+
+
 class TestImportHistorical:
     """Tests for the /api/import/historical endpoint."""
 

@@ -658,6 +658,79 @@
         color: #795548;
     }
 
+    /* Import Change Log */
+    .import-changelog {
+        margin-top: 1.5rem;
+        text-align: left;
+    }
+    .import-changelog details {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        overflow: hidden;
+    }
+    .import-changelog summary {
+        padding: 12px 16px;
+        cursor: pointer;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        list-style: none;
+    }
+    .import-changelog summary::-webkit-details-marker { display: none; }
+    .import-changelog summary::before {
+        content: '▶';
+        font-size: 10px;
+        transition: transform 0.2s;
+    }
+    .import-changelog details[open] summary::before { transform: rotate(90deg); }
+    .import-changelog summary:hover { background: #f8f9fa; }
+    .import-changelog .badge {
+        min-width: 24px; height: 24px;
+        padding: 0 8px; border-radius: 12px;
+        font-size: 12px; font-weight: 600; color: white;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .changelog-new summary { border-left: 4px solid #27ae60; }
+    .changelog-new .badge { background: #27ae60; }
+    .changelog-updated summary { border-left: 4px solid #3498db; }
+    .changelog-updated .badge { background: #3498db; }
+    .changelog-preserved summary { border-left: 4px solid #e67e22; }
+    .changelog-preserved .badge { background: #e67e22; }
+
+    .changelog-content {
+        padding: 12px 16px;
+        border-top: 1px solid #eee;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .changelog-employee {
+        margin-bottom: 12px; padding-bottom: 12px;
+        border-bottom: 1px solid #f5f5f5;
+    }
+    .changelog-employee:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .changelog-emp-name { font-weight: 600; color: #2c3e50; }
+    .changelog-emp-meta { font-size: 12px; color: #888; margin-bottom: 6px; }
+    .changelog-field {
+        font-size: 13px; margin: 4px 0;
+        display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline;
+    }
+    .changelog-field-name { font-weight: 500; color: #555; min-width: 140px; }
+    .changelog-field-old { color: #999; text-decoration: line-through; }
+    .changelog-field-new { color: #27ae60; font-weight: 500; }
+    .changelog-arrow { color: #ccc; margin: 0 4px; }
+
+    /* Conflict styling */
+    .changelog-conflict {
+        background: #fef9e7; border: 1px solid #f7dc6f;
+        border-radius: 6px; padding: 8px 12px; margin: 6px 0;
+    }
+    .changelog-conflict-row { font-size: 13px; margin: 2px 0; }
+    .changelog-kept { color: #27ae60; font-weight: 600; }
+    .changelog-ignored { color: #999; }
+    .changelog-label { font-size: 11px; text-transform: uppercase; margin-right: 6px; }
     /* Pool Verification Modal Styles */
     .modal-overlay {
         display: none;
@@ -1458,6 +1531,21 @@ function resetDemoForm() {
                     </p>
                 </details>
             </div>
+            <!-- Import Change Log -->
+            <div id="importChangelog" class="import-changelog" style="display: none;">
+                <details id="changelogNew" class="changelog-new" style="display: none;">
+                    <summary><span class="badge" id="changelogNewCount">0</span> New Employees Added</summary>
+                    <div class="changelog-content" id="changelogNewContent"></div>
+                </details>
+                <details id="changelogUpdated" class="changelog-updated" style="display: none;">
+                    <summary><span class="badge" id="changelogUpdatedCount">0</span> Employees Updated</summary>
+                    <div class="changelog-content" id="changelogUpdatedContent"></div>
+                </details>
+                <details id="changelogPreserved" class="changelog-preserved" style="display: none;">
+                    <summary><span class="badge" id="changelogPreservedCount">0</span> Local Changes Preserved</summary>
+                    <div class="changelog-content" id="changelogPreservedContent"></div>
+                </details>
+            </div>
             <div class="actions">
                 <button class="btn btn-secondary" onclick="resetImport()">Import Another</button>
                 <a href="{{ url_for('index') }}" class="btn btn-primary">Go to Dashboard</a>
@@ -1866,6 +1954,11 @@ function resetDemoForm() {
                     openPoolVerificationModal(data.pool_verification);
                 }, 500);
             }
+
+            // Render change log
+            if (data.changes) {
+                renderChangelog(data.changes);
+            }
         } else {
             results.classList.add('error');
             results.querySelector('svg').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />';
@@ -1879,6 +1972,76 @@ function resetDemoForm() {
             errorDiv.appendChild(valueDiv);
             document.getElementById('resultUpdated').parentElement.style.display = 'none';
         }
+    }
+
+    function renderChangelog(changes) {
+        const container = document.getElementById('importChangelog');
+        if (!changes) { container.style.display = 'none'; return; }
+
+        const hasContent = changes.new?.length || changes.updated?.length || changes.preserved?.length;
+        container.style.display = hasContent ? 'block' : 'none';
+        if (!hasContent) return;
+
+        // Helper to escape HTML
+        const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
+
+        // New employees section
+        const newSec = document.getElementById('changelogNew');
+        if (changes.new?.length) {
+            newSec.style.display = 'block';
+            document.getElementById('changelogNewCount').textContent = changes.new.length;
+            document.getElementById('changelogNewContent').innerHTML = changes.new.map(e => `
+                <div class="changelog-employee">
+                    <div class="changelog-emp-name">${esc(e.associate)}</div>
+                    <div class="changelog-emp-meta">${esc(e.job_profile)} · ${esc(e.org)}</div>
+                </div>
+            `).join('');
+        } else { newSec.style.display = 'none'; }
+
+        // Updated employees section
+        const updSec = document.getElementById('changelogUpdated');
+        if (changes.updated?.length) {
+            updSec.style.display = 'block';
+            document.getElementById('changelogUpdatedCount').textContent = changes.updated.length;
+            document.getElementById('changelogUpdatedContent').innerHTML = changes.updated.map(e => `
+                <div class="changelog-employee">
+                    <div class="changelog-emp-name">${esc(e.associate)}</div>
+                    ${e.changes.map(c => `
+                        <div class="changelog-field">
+                            <span class="changelog-field-name">${esc(c.field_display)}</span>
+                            <span class="changelog-field-old">${esc(c.old) || '(empty)'}</span>
+                            <span class="changelog-arrow">→</span>
+                            <span class="changelog-field-new">${esc(c.new) || '(empty)'}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        } else { updSec.style.display = 'none'; }
+
+        // Preserved (conflicts) section
+        const presSec = document.getElementById('changelogPreserved');
+        if (changes.preserved?.length) {
+            presSec.style.display = 'block';
+            document.getElementById('changelogPreservedCount').textContent = changes.preserved.length;
+            document.getElementById('changelogPreservedContent').innerHTML = changes.preserved.map(e => `
+                <div class="changelog-employee">
+                    <div class="changelog-emp-name">${esc(e.associate)}</div>
+                    ${e.conflicts.map(c => `
+                        <div class="changelog-conflict">
+                            <div class="changelog-field-name">${esc(c.field_display)}</div>
+                            <div class="changelog-conflict-row">
+                                <span class="changelog-label changelog-kept">Kept:</span>
+                                <span>${esc(c.local) || '(empty)'}</span>
+                            </div>
+                            <div class="changelog-conflict-row">
+                                <span class="changelog-label changelog-ignored">Workday:</span>
+                                <span class="changelog-ignored">${esc(c.workday) || '(empty)'}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        } else { presSec.style.display = 'none'; }
     }
 
     function resetImport() {
@@ -1922,6 +2085,9 @@ function resetDemoForm() {
         document.getElementById('resultFullItem').style.display = 'none';
         document.getElementById('derivationWarning').style.display = 'none';
         document.getElementById('resultUpdated').parentElement.style.display = 'block';
+
+        // Reset changelog
+        document.getElementById('importChangelog').style.display = 'none';
 
         document.getElementById('importBtn').disabled = true;
     }
@@ -1982,18 +2148,35 @@ function resetDemoForm() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ budget_override: amount })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || `Server error: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
             .then(result => {
                 if (result.success) {
                     // Also mark as verified
                     return fetch('/api/bonus-settings/verify-pool', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' }
+                    }).then(resp => {
+                        if (!resp.ok) {
+                            return resp.json().then(data => {
+                                throw new Error(data.error || `Verify failed: ${resp.status}`);
+                            });
+                        }
+                        return resp.json();
                     });
                 }
                 throw new Error(result.error || 'Failed to save');
             })
-            .then(() => {
+            .then(result => {
+                if (!result || !result.success) {
+                    throw new Error(result?.error || 'Failed to verify pool');
+                }
                 document.getElementById('poolVerifyResultMessage').textContent =
                     'Pool corrected to ' + new Intl.NumberFormat('en-US', {
                         style: 'currency',
@@ -2013,7 +2196,14 @@ function resetDemoForm() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || `Server error: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
             .then(result => {
                 if (result.success) {
                     document.getElementById('poolVerifyResultMessage').textContent =
@@ -2021,11 +2211,12 @@ function resetDemoForm() {
                     document.getElementById('poolVerifyForm').style.display = 'none';
                     document.getElementById('poolVerifySuccess').style.display = 'block';
                 } else {
-                    resetButton();
+                    throw new Error(result.error || 'Unknown error');
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('Error verifying pool:', error);
+                alert('Error verifying pool: ' + error.message);
                 resetButton();
             });
         }

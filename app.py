@@ -179,6 +179,41 @@ def is_employee_calibrated(emp):
     return bool(what) and bool(how) and bool(actions) and _has_tenets(tenets_s, tenets_i)
 
 
+# Field display names for import change log
+# Maps database field names to user-friendly labels
+BONUS_FIELD_DISPLAY_NAMES = {
+    'performance_rating_percent': 'Performance Rating',
+    'justification': 'Justification',
+    'mentor': 'Mentor',
+    'mentees': 'Mentees',
+    'ai_related_activities': 'AI Activities',
+    'tenets_strengths': 'Tenet Strengths',
+    'tenets_improvements': 'Tenet Improvements',
+    'current_base_pay_manager_currency': 'Base Salary',
+    'bonus_target_manager_currency': 'Bonus Target',
+    'supervisory_organization': 'Team',
+    'current_job_profile': 'Job Profile',
+    'grade': 'Grade',
+    'management_level': 'Management Level',
+}
+
+TALENT_FIELD_DISPLAY_NAMES = {
+    'talent_perf_what': 'Performance: What',
+    'talent_perf_how': 'Performance: How',
+    'talent_growth_agility': 'Growth Agility',
+    'talent_change_agility': 'Change Agility',
+    'talent_movement_readiness': 'Movement Readiness',
+    'talent_proposed_actions': 'Proposed Actions',
+    'talent_mentor': 'Mentor',
+    'talent_mentees': 'Mentees',
+    'talent_tenets_strengths': 'Tenet Strengths',
+    'talent_tenets_improvements': 'Tenet Improvements',
+    'management_level': 'Management Level',
+    'supervisory_organization': 'Team',
+    'current_job_profile': 'Job Profile',
+}
+
+
 # Initialize database on startup
 init_db()
 
@@ -4220,6 +4255,34 @@ def import_current():
 
             imported = 0
             updated = 0
+            tenet_warnings = []  # Collect unrecognized tenet names for warnings
+
+            # Track changes for import change log
+            import_changes = {
+                'new': [],       # {associate_id, associate, org, job_profile}
+                'updated': [],   # {associate_id, associate, changes: [{field, old, new}]}
+                'preserved': []  # {associate_id, associate, conflicts: [{field, local, workday}]}
+            }
+
+            def format_change_value(value, field_name):
+                """Format a value for display in change log."""
+                if value is None:
+                    return None
+                if isinstance(value, (int, float)):
+                    if 'percent' in field_name or 'rating' in field_name:
+                        return f'{value}%'
+                    if 'currency' in field_name or 'pay' in field_name or 'target' in field_name:
+                        return f'{value:,.0f}'
+                if isinstance(value, str):
+                    if value.startswith('[') and value.endswith(']'):
+                        try:
+                            items = json.loads(value)
+                            return f'{len(items)} items' if items else None
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    if len(value) > 60:
+                        return value[:57] + '...'
+                return str(value) if value else None
 
             for emp_data in employees:
                 associate_id = emp_data['associate_id']
@@ -4230,9 +4293,19 @@ def import_current():
                 if existing:
                     employee = existing
                     updated += 1
+                    # Track changes for this existing employee
+                    emp_updates = []
+                    emp_preserved = []
                 else:
                     employee = Employee(associate_id=associate_id)
                     imported += 1
+                    # Track new employee
+                    import_changes['new'].append({
+                        'associate_id': associate_id,
+                        'associate': emp_data['associate'],
+                        'org': emp_data.get('supervisory_organization', ''),
+                        'job_profile': emp_data.get('current_job_profile', '')
+                    })
 
                 # Update common fields
                 employee.associate = emp_data['associate']
@@ -4349,34 +4422,75 @@ def import_current():
                                 # If not valid JSON, fall back to string comparison
                                 return (current or '') == (original or '')
 
+                        # Helper to compare mentor/mentee fields (normalizes placeholders like "None", "TBD" to empty)
+                        def mentor_fields_equal(val1, val2):
+                            norm1, _ = normalize_mentor_field(val1)
+                            norm2, _ = normalize_mentor_field(val2)
+                            return norm1 == norm2
+
                         # Performance What
                         new_perf_what = emp_data.get('talent_perf_what')
+                        old_perf_what = employee.talent_perf_what
                         if text_unmodified(employee.talent_perf_what, employee.talent_perf_what_original):
                             employee.talent_perf_what = new_perf_what
+                            if (old_perf_what or '') != (new_perf_what or ''):
+                                emp_updates.append({'field': 'talent_perf_what', 'old': format_change_value(old_perf_what, 'talent_perf_what'), 'new': format_change_value(new_perf_what, 'talent_perf_what')})
+                        else:
+                            # Only show conflict if local differs from workday
+                            if (employee.talent_perf_what or '') != (new_perf_what or ''):
+                                emp_preserved.append({'field': 'talent_perf_what', 'local': format_change_value(employee.talent_perf_what, 'talent_perf_what'), 'workday': format_change_value(new_perf_what, 'talent_perf_what')})
                         employee.talent_perf_what_original = new_perf_what
 
                         # Performance How
                         new_perf_how = emp_data.get('talent_perf_how')
+                        old_perf_how = employee.talent_perf_how
                         if text_unmodified(employee.talent_perf_how, employee.talent_perf_how_original):
                             employee.talent_perf_how = new_perf_how
+                            if (old_perf_how or '') != (new_perf_how or ''):
+                                emp_updates.append({'field': 'talent_perf_how', 'old': format_change_value(old_perf_how, 'talent_perf_how'), 'new': format_change_value(new_perf_how, 'talent_perf_how')})
+                        else:
+                            # Only show conflict if local differs from workday
+                            if (employee.talent_perf_how or '') != (new_perf_how or ''):
+                                emp_preserved.append({'field': 'talent_perf_how', 'local': format_change_value(employee.talent_perf_how, 'talent_perf_how'), 'workday': format_change_value(new_perf_how, 'talent_perf_how')})
                         employee.talent_perf_how_original = new_perf_how
 
                         # Growth Agility
                         new_growth = emp_data.get('talent_growth_agility')
+                        old_growth = employee.talent_growth_agility
                         if text_unmodified(employee.talent_growth_agility, employee.talent_growth_agility_original):
                             employee.talent_growth_agility = new_growth
+                            if (old_growth or '') != (new_growth or ''):
+                                emp_updates.append({'field': 'talent_growth_agility', 'old': format_change_value(old_growth, 'talent_growth_agility'), 'new': format_change_value(new_growth, 'talent_growth_agility')})
+                        else:
+                            # Only show conflict if local differs from workday
+                            if (employee.talent_growth_agility or '') != (new_growth or ''):
+                                emp_preserved.append({'field': 'talent_growth_agility', 'local': format_change_value(employee.talent_growth_agility, 'talent_growth_agility'), 'workday': format_change_value(new_growth, 'talent_growth_agility')})
                         employee.talent_growth_agility_original = new_growth
 
                         # Change Agility
                         new_change = emp_data.get('talent_change_agility')
+                        old_change = employee.talent_change_agility
                         if text_unmodified(employee.talent_change_agility, employee.talent_change_agility_original):
                             employee.talent_change_agility = new_change
+                            if (old_change or '') != (new_change or ''):
+                                emp_updates.append({'field': 'talent_change_agility', 'old': format_change_value(old_change, 'talent_change_agility'), 'new': format_change_value(new_change, 'talent_change_agility')})
+                        else:
+                            # Only show conflict if local differs from workday
+                            if (employee.talent_change_agility or '') != (new_change or ''):
+                                emp_preserved.append({'field': 'talent_change_agility', 'local': format_change_value(employee.talent_change_agility, 'talent_change_agility'), 'workday': format_change_value(new_change, 'talent_change_agility')})
                         employee.talent_change_agility_original = new_change
 
                         # Movement Readiness (uses normalize function)
                         new_movement = normalize_movement_readiness(emp_data.get('talent_movement_readiness'))
+                        old_movement = employee.talent_movement_readiness
                         if text_unmodified(employee.talent_movement_readiness, employee.talent_movement_readiness_original):
                             employee.talent_movement_readiness = new_movement
+                            if (old_movement or '') != (new_movement or ''):
+                                emp_updates.append({'field': 'talent_movement_readiness', 'old': format_change_value(old_movement, 'talent_movement_readiness'), 'new': format_change_value(new_movement, 'talent_movement_readiness')})
+                        else:
+                            # Only show conflict if local differs from workday
+                            if (employee.talent_movement_readiness or '') != (new_movement or ''):
+                                emp_preserved.append({'field': 'talent_movement_readiness', 'local': format_change_value(employee.talent_movement_readiness, 'talent_movement_readiness'), 'workday': format_change_value(new_movement, 'talent_movement_readiness')})
                         employee.talent_movement_readiness_original = new_movement
 
                         # Tool additions fields - parse from Workday's proposed_actions
@@ -4399,28 +4513,63 @@ def import_current():
                             new_mentees = None
 
                         # Proposed Actions
+                        old_actions = employee.talent_proposed_actions
                         if text_unmodified(employee.talent_proposed_actions, employee.talent_proposed_actions_original):
                             employee.talent_proposed_actions = new_actions
+                            if (old_actions or '') != (new_actions or ''):
+                                emp_updates.append({'field': 'talent_proposed_actions', 'old': format_change_value(old_actions, 'talent_proposed_actions'), 'new': format_change_value(new_actions, 'talent_proposed_actions')})
+                        else:
+                            # Only show conflict if local differs from workday
+                            if (employee.talent_proposed_actions or '') != (new_actions or ''):
+                                emp_preserved.append({'field': 'talent_proposed_actions', 'local': format_change_value(employee.talent_proposed_actions, 'talent_proposed_actions'), 'workday': format_change_value(new_actions, 'talent_proposed_actions')})
                         employee.talent_proposed_actions_original = new_actions
 
                         # Talent Tenets Strengths (JSON string)
+                        old_strengths = employee.talent_tenets_strengths
                         if json_string_unmodified(employee.talent_tenets_strengths, employee.talent_tenets_strengths_original):
                             employee.talent_tenets_strengths = new_strengths
+                            if (old_strengths or '') != (new_strengths or ''):
+                                emp_updates.append({'field': 'talent_tenets_strengths', 'old': format_change_value(old_strengths, 'talent_tenets_strengths'), 'new': format_change_value(new_strengths, 'talent_tenets_strengths')})
+                        else:
+                            # Only show conflict if local differs from workday
+                            if not json_string_unmodified(employee.talent_tenets_strengths, new_strengths):
+                                emp_preserved.append({'field': 'talent_tenets_strengths', 'local': format_change_value(employee.talent_tenets_strengths, 'talent_tenets_strengths'), 'workday': format_change_value(new_strengths, 'talent_tenets_strengths')})
                         employee.talent_tenets_strengths_original = new_strengths
 
                         # Talent Tenets Improvements (JSON string)
+                        old_improvements = employee.talent_tenets_improvements
                         if json_string_unmodified(employee.talent_tenets_improvements, employee.talent_tenets_improvements_original):
                             employee.talent_tenets_improvements = new_improvements
+                            if (old_improvements or '') != (new_improvements or ''):
+                                emp_updates.append({'field': 'talent_tenets_improvements', 'old': format_change_value(old_improvements, 'talent_tenets_improvements'), 'new': format_change_value(new_improvements, 'talent_tenets_improvements')})
+                        else:
+                            # Only show conflict if local differs from workday
+                            if not json_string_unmodified(employee.talent_tenets_improvements, new_improvements):
+                                emp_preserved.append({'field': 'talent_tenets_improvements', 'local': format_change_value(employee.talent_tenets_improvements, 'talent_tenets_improvements'), 'workday': format_change_value(new_improvements, 'talent_tenets_improvements')})
                         employee.talent_tenets_improvements_original = new_improvements
 
-                        # Talent Mentor
+                        # Talent Mentor (use mentor_fields_equal to handle placeholders like "None", "TBD")
+                        old_mentor_t = employee.talent_mentor
                         if text_unmodified(employee.talent_mentor, employee.talent_mentor_original):
                             employee.talent_mentor = new_mentor
+                            if not mentor_fields_equal(old_mentor_t, new_mentor):
+                                emp_updates.append({'field': 'talent_mentor', 'old': format_change_value(old_mentor_t, 'talent_mentor'), 'new': format_change_value(new_mentor, 'talent_mentor')})
+                        else:
+                            # Only show conflict if local differs from workday (considering placeholders)
+                            if not mentor_fields_equal(employee.talent_mentor, new_mentor):
+                                emp_preserved.append({'field': 'talent_mentor', 'local': format_change_value(employee.talent_mentor, 'talent_mentor'), 'workday': format_change_value(new_mentor, 'talent_mentor')})
                         employee.talent_mentor_original = new_mentor
 
-                        # Talent Mentees
+                        # Talent Mentees (use mentor_fields_equal to handle placeholders like "None", "TBD")
+                        old_mentees_t = employee.talent_mentees
                         if text_unmodified(employee.talent_mentees, employee.talent_mentees_original):
                             employee.talent_mentees = new_mentees
+                            if not mentor_fields_equal(old_mentees_t, new_mentees):
+                                emp_updates.append({'field': 'talent_mentees', 'old': format_change_value(old_mentees_t, 'talent_mentees'), 'new': format_change_value(new_mentees, 'talent_mentees')})
+                        else:
+                            # Only show conflict if local differs from workday (considering placeholders)
+                            if not mentor_fields_equal(employee.talent_mentees, new_mentees):
+                                emp_preserved.append({'field': 'talent_mentees', 'local': format_change_value(employee.talent_mentees, 'talent_mentees'), 'workday': format_change_value(new_mentees, 'talent_mentees')})
                         employee.talent_mentees_original = new_mentees
                 elif spreadsheet_type != 'talent':
                     # Update bonus-specific fields
@@ -4459,82 +4608,118 @@ def import_current():
                     notes_data = parse_notes_field(emp_data.get('notes', ''))
                     tenets_config, _ = load_tenets_config()
 
-                    # Set _original fields from Workday data for modification tracking
-                    # These reflect what Workday has, so we can detect local changes
-                    employee.performance_rating_percent_original = notes_data.get('performance_rating')
-                    employee.justification_original = notes_data.get('justification') or None
-                    employee.mentor_original = notes_data.get('mentors') or None
-                    employee.mentees_original = notes_data.get('mentees') or None
-                    # Convert tenet names to JSON IDs for storage
+                    # Convert tenet names to JSON IDs for storage (needed for both new and existing)
                     imported_strengths = convert_tenet_names_to_ids(
                         notes_data.get('tenets_strengths'), tenets_config
                     )
                     imported_improvements = convert_tenet_names_to_ids(
                         notes_data.get('tenets_improvements'), tenets_config
                     )
-                    employee.tenets_strengths_original = imported_strengths
-                    employee.tenets_improvements_original = imported_improvements
+
+                    # Track per-employee changes for change log
+                    emp_updates = []    # Fields updated from Workday
+                    emp_preserved = []  # Fields preserved locally (conflicts)
 
                     # For existing employees: update fields based on local modification status
                     # - If unmodified locally (current == _original): update from Workday
                     # - If modified locally (current != _original): preserve local, update _original to show conflict
                     if existing:
                         new_rating = notes_data.get('performance_rating')
+                        old_rating = employee.performance_rating_percent
                         # Performance rating: unmodified means current == original
                         if employee.performance_rating_percent == employee.performance_rating_percent_original:
                             # Unmodified locally - update from Workday
                             if new_rating is not None:
                                 employee.performance_rating_percent = new_rating
+                            if old_rating != new_rating:
+                                emp_updates.append({'field': 'performance_rating_percent', 'old': format_change_value(old_rating, 'performance_rating_percent'), 'new': format_change_value(new_rating, 'performance_rating_percent')})
                             employee.performance_rating_percent_original = new_rating
                         else:
-                            # Modified locally - preserve current, update original to track Workday value
+                            # Modified locally - only show conflict if local differs from workday
+                            if employee.performance_rating_percent != new_rating:
+                                emp_preserved.append({'field': 'performance_rating_percent', 'local': format_change_value(employee.performance_rating_percent, 'performance_rating_percent'), 'workday': format_change_value(new_rating, 'performance_rating_percent')})
                             employee.performance_rating_percent_original = new_rating
 
                         # Helper to check if text field is unmodified (handles None vs empty string)
                         def text_unmodified(current, original):
                             return (current or '') == (original or '')
 
+                        # Helper to compare mentor/mentee fields (normalizes placeholders like "None", "TBD" to empty)
+                        def mentor_fields_equal(val1, val2):
+                            norm1, _ = normalize_mentor_field(val1)
+                            norm2, _ = normalize_mentor_field(val2)
+                            return norm1 == norm2
+
                         # Justification
                         new_justification = notes_data.get('justification') or ''
+                        old_justification = employee.justification
                         if text_unmodified(employee.justification, employee.justification_original):
                             employee.justification = new_justification
                             employee.justification_original = new_justification
+                            if (old_justification or '') != (new_justification or ''):
+                                emp_updates.append({'field': 'justification', 'old': format_change_value(old_justification, 'justification'), 'new': format_change_value(new_justification, 'justification')})
                         else:
+                            # Only show conflict if local differs from workday
+                            if (employee.justification or '') != (new_justification or ''):
+                                emp_preserved.append({'field': 'justification', 'local': format_change_value(employee.justification, 'justification'), 'workday': format_change_value(new_justification, 'justification')})
                             employee.justification_original = new_justification
 
-                        # Mentor
+                        # Mentor (use mentor_fields_equal to handle placeholders like "None", "TBD")
                         new_mentor = notes_data.get('mentors') or ''
+                        old_mentor_b = employee.mentor
                         if text_unmodified(employee.mentor, employee.mentor_original):
                             employee.mentor = new_mentor
                             employee.mentor_original = new_mentor
+                            if not mentor_fields_equal(old_mentor_b, new_mentor):
+                                emp_updates.append({'field': 'mentor', 'old': format_change_value(old_mentor_b, 'mentor'), 'new': format_change_value(new_mentor, 'mentor')})
                         else:
+                            # Only show conflict if local differs from workday (considering placeholders)
+                            if not mentor_fields_equal(employee.mentor, new_mentor):
+                                emp_preserved.append({'field': 'mentor', 'local': format_change_value(employee.mentor, 'mentor'), 'workday': format_change_value(new_mentor, 'mentor')})
                             employee.mentor_original = new_mentor
 
-                        # Mentees
+                        # Mentees (use mentor_fields_equal to handle placeholders like "None", "TBD")
                         new_mentees = notes_data.get('mentees') or ''
+                        old_mentees_b = employee.mentees
                         if text_unmodified(employee.mentees, employee.mentees_original):
                             employee.mentees = new_mentees
                             employee.mentees_original = new_mentees
+                            if not mentor_fields_equal(old_mentees_b, new_mentees):
+                                emp_updates.append({'field': 'mentees', 'old': format_change_value(old_mentees_b, 'mentees'), 'new': format_change_value(new_mentees, 'mentees')})
                         else:
+                            # Only show conflict if local differs from workday (considering placeholders)
+                            if not mentor_fields_equal(employee.mentees, new_mentees):
+                                emp_preserved.append({'field': 'mentees', 'local': format_change_value(employee.mentees, 'mentees'), 'workday': format_change_value(new_mentees, 'mentees')})
                             employee.mentees_original = new_mentees
 
                         # Tenets (JSON arrays) - compare as JSON strings for equality
                         def tenets_unmodified(current, original):
-                            import json
                             curr_str = json.dumps(current, sort_keys=True) if current else '[]'
                             orig_str = json.dumps(original, sort_keys=True) if original else '[]'
                             return curr_str == orig_str
 
+                        old_strengths_b = employee.tenets_strengths
                         if tenets_unmodified(employee.tenets_strengths, employee.tenets_strengths_original):
                             employee.tenets_strengths = imported_strengths
                             employee.tenets_strengths_original = imported_strengths
+                            if not tenets_unmodified(old_strengths_b, imported_strengths):
+                                emp_updates.append({'field': 'tenets_strengths', 'old': format_change_value(json.dumps(old_strengths_b) if old_strengths_b else None, 'tenets_strengths'), 'new': format_change_value(json.dumps(imported_strengths) if imported_strengths else None, 'tenets_strengths')})
                         else:
+                            # Only show conflict if local differs from workday
+                            if not tenets_unmodified(employee.tenets_strengths, imported_strengths):
+                                emp_preserved.append({'field': 'tenets_strengths', 'local': format_change_value(json.dumps(employee.tenets_strengths) if employee.tenets_strengths else None, 'tenets_strengths'), 'workday': format_change_value(json.dumps(imported_strengths) if imported_strengths else None, 'tenets_strengths')})
                             employee.tenets_strengths_original = imported_strengths
 
+                        old_improvements_b = employee.tenets_improvements
                         if tenets_unmodified(employee.tenets_improvements, employee.tenets_improvements_original):
                             employee.tenets_improvements = imported_improvements
                             employee.tenets_improvements_original = imported_improvements
+                            if not tenets_unmodified(old_improvements_b, imported_improvements):
+                                emp_updates.append({'field': 'tenets_improvements', 'old': format_change_value(json.dumps(old_improvements_b) if old_improvements_b else None, 'tenets_improvements'), 'new': format_change_value(json.dumps(imported_improvements) if imported_improvements else None, 'tenets_improvements')})
                         else:
+                            # Only show conflict if local differs from workday
+                            if not tenets_unmodified(employee.tenets_improvements, imported_improvements):
+                                emp_preserved.append({'field': 'tenets_improvements', 'local': format_change_value(json.dumps(employee.tenets_improvements) if employee.tenets_improvements else None, 'tenets_improvements'), 'workday': format_change_value(json.dumps(imported_improvements) if imported_improvements else None, 'tenets_improvements')})
                             employee.tenets_improvements_original = imported_improvements
 
                         # Bonus override (special case) - only update if currently not set locally
@@ -4546,8 +4731,30 @@ def import_current():
                         if employee.special_case_notes is None and new_notes:
                             employee.special_case_notes = new_notes
 
+                        # Aggregate per-employee changes for existing employees
+                        if emp_updates:
+                            import_changes['updated'].append({
+                                'associate_id': associate_id,
+                                'associate': emp_data['associate'],
+                                'changes': emp_updates
+                            })
+                        if emp_preserved:
+                            import_changes['preserved'].append({
+                                'associate_id': associate_id,
+                                'associate': emp_data['associate'],
+                                'conflicts': emp_preserved
+                            })
+
                     # Initialize manager input fields for new employees only
                     if not existing:
+                        # Set _original fields from Workday data for modification tracking
+                        employee.performance_rating_percent_original = notes_data.get('performance_rating')
+                        employee.justification_original = notes_data.get('justification') or None
+                        employee.mentor_original = notes_data.get('mentors') or None
+                        employee.mentees_original = notes_data.get('mentees') or None
+                        employee.tenets_strengths_original = imported_strengths
+                        employee.tenets_improvements_original = imported_improvements
+
                         if notes_data.get('performance_rating') is not None:
                             employee.performance_rating_percent = notes_data.get('performance_rating')
                             employee.justification = notes_data.get('justification') or ''
@@ -4593,6 +4800,18 @@ def import_current():
                     'needs_verification': True,
                     'currency': manager_currency or 'USD'
                 }
+
+            # Add change log with field display names
+            if import_changes['new'] or import_changes['updated'] or import_changes['preserved']:
+                display_names = TALENT_FIELD_DISPLAY_NAMES if spreadsheet_type == 'talent' else BONUS_FIELD_DISPLAY_NAMES
+                for item in import_changes['updated']:
+                    for change in item['changes']:
+                        change['field_display'] = display_names.get(change['field'], change['field'])
+                for item in import_changes['preserved']:
+                    for conflict in item['conflicts']:
+                        conflict['field_display'] = display_names.get(conflict['field'], conflict['field'])
+                result['changes'] = import_changes
+
             return jsonify(result)
 
         except Exception as e:
