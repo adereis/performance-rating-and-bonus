@@ -1067,3 +1067,210 @@ class TestFilterUIElements:
         assert response.status_code == 200
         # Button should show "Filters (2)" when 2 are hidden
         assert b'Filters (2)' in response.data
+
+
+class TestBonusPoolProportionalScaling:
+    """Test that bonus pool scales proportionally when filters exclude employees.
+
+    Regression tests for bug where filtering out managers didn't scale the
+    budget override proportionally because all_targets_sum was calculated
+    from team_data (filtered) instead of all_employees.
+    """
+
+    @pytest.fixture
+    def team_with_managers(self, db_session):
+        """Create a team with managers and ICs with known bonus targets.
+
+        Team composition:
+        - 2 Managers: $10,000 each in bonus targets ($20,000 total)
+        - 4 ICs: $5,000 each in bonus targets ($20,000 total)
+        - Total team: $40,000 in bonus targets
+        - Managers = 50% of targets, ICs = 50% of targets
+        """
+        employees = [
+            # Managers (50% of bonus pool)
+            Employee(
+                associate_id='MGR001',
+                associate='Manager One',
+                supervisory_organization='Team Alpha (Manager One)',
+                current_job_profile='Engineering Manager',
+                management_level='Manager',
+                current_base_pay_manager_currency=150000.0,
+                currency='USD',
+                bonus_target_manager_currency=10000.0,
+                performance_rating_percent=100.0,
+            ),
+            Employee(
+                associate_id='MGR002',
+                associate='Manager Two',
+                supervisory_organization='Team Beta (Manager Two)',
+                current_job_profile='Senior Manager',
+                management_level='Senior Manager',
+                current_base_pay_manager_currency=180000.0,
+                currency='USD',
+                bonus_target_manager_currency=10000.0,
+                performance_rating_percent=100.0,
+            ),
+            # Individual Contributors (50% of bonus pool)
+            Employee(
+                associate_id='IC001',
+                associate='Developer One',
+                supervisory_organization='Team Alpha (Manager One)',
+                current_job_profile='Software Engineer',
+                management_level='Individual Contributor (Prof Level 3)',
+                current_base_pay_manager_currency=100000.0,
+                currency='USD',
+                bonus_target_manager_currency=5000.0,
+                performance_rating_percent=100.0,
+            ),
+            Employee(
+                associate_id='IC002',
+                associate='Developer Two',
+                supervisory_organization='Team Alpha (Manager One)',
+                current_job_profile='Software Engineer',
+                management_level='Individual Contributor (Prof Level 3)',
+                current_base_pay_manager_currency=100000.0,
+                currency='USD',
+                bonus_target_manager_currency=5000.0,
+                performance_rating_percent=100.0,
+            ),
+            Employee(
+                associate_id='IC003',
+                associate='Developer Three',
+                supervisory_organization='Team Beta (Manager Two)',
+                current_job_profile='Senior Software Engineer',
+                management_level='Individual Contributor (Prof Level 4)',
+                current_base_pay_manager_currency=120000.0,
+                currency='USD',
+                bonus_target_manager_currency=5000.0,
+                performance_rating_percent=100.0,
+            ),
+            Employee(
+                associate_id='IC004',
+                associate='Developer Four',
+                supervisory_organization='Team Beta (Manager Two)',
+                current_job_profile='Senior Software Engineer',
+                management_level='Individual Contributor (Prof Level 4)',
+                current_base_pay_manager_currency=120000.0,
+                currency='USD',
+                bonus_target_manager_currency=5000.0,
+                performance_rating_percent=100.0,
+            ),
+        ]
+        for emp in employees:
+            db_session.add(emp)
+        db_session.commit()
+        return db_session
+
+    def test_budget_override_scales_when_managers_filtered(self, client, team_with_managers):
+        """Budget override should scale proportionally when managers are excluded.
+
+        With $40,000 total targets and a $40,000 budget override:
+        - Full team: $40,000 allocated
+        - Managers excluded (50% of targets): should allocate $20,000, not $40,000
+        """
+        from app import get_bonus_settings, calculate_bonus_for_employees
+        from models import BonusSettings, get_db
+
+        # Set budget override to $40,000
+        db = get_db()
+        settings = db.query(BonusSettings).first()
+        if not settings:
+            settings = BonusSettings()
+            db.add(settings)
+        settings.budget_override = 40000.0
+        settings.workday_pool = 40000.0
+        db.commit()
+
+        # Get bonus calculation page WITHOUT filter
+        response_full = client.get('/bonus-calculation')
+        assert response_full.status_code == 200
+
+        # Get bonus calculation page WITH exclude_managers filter
+        response_filtered = client.get('/bonus-calculation?exclude_managers=true')
+        assert response_filtered.status_code == 200
+        assert b'Filters Active' in response_filtered.data
+
+        # Parse the "Total Allocated" from both responses
+        # The template shows: <h4 class="text-center">$XX,XXX</h4> for total_allocated
+        import re
+
+        def extract_total_allocated(response_data):
+            """Extract total allocated amount from the bonus calculation page."""
+            html = response_data.decode('utf-8')
+            # Look for the Total Allocated card: <h4>Total Allocated</h4> followed by
+            # <div class="value">$XX,XXX</div>
+            match = re.search(
+                r'<h4>Total Allocated</h4>\s*<div[^>]*class="value"[^>]*>\s*\$?([\d,]+)',
+                html, re.DOTALL | re.IGNORECASE
+            )
+            if match:
+                return float(match.group(1).replace(',', ''))
+            return None
+
+        full_allocated = extract_total_allocated(response_full.data)
+        filtered_allocated = extract_total_allocated(response_filtered.data)
+
+        assert full_allocated is not None, "Could not extract total allocated from full response"
+        assert filtered_allocated is not None, "Could not extract total allocated from filtered response"
+
+        # Full team should get ~$40,000 (the budget override)
+        assert abs(full_allocated - 40000) < 100, f"Full team should get ~$40,000, got ${full_allocated}"
+
+        # Filtered team (ICs only = 50% of targets) should get ~$20,000
+        # This is the key assertion that would have failed before the bug fix
+        assert abs(filtered_allocated - 20000) < 100, (
+            f"Filtered team (50% of targets) should get ~$20,000, got ${filtered_allocated}. "
+            "Budget override is not scaling proportionally when employees are filtered out."
+        )
+
+    def test_proportional_scaling_uses_all_employees_not_filtered(self, client, team_with_managers):
+        """Verify all_targets_sum is calculated from all employees, not filtered team.
+
+        Direct test of the calculate_bonus_for_employees function to ensure
+        the proportion is calculated correctly.
+        """
+        from app import calculate_bonus_for_employees, get_all_employees, apply_employee_filters
+
+        all_employees = get_all_employees()
+        assert len(all_employees) == 6, "Should have 6 employees total"
+
+        # Calculate total targets for all employees
+        all_targets = sum(
+            emp.get('Bonus Target Manager Currency') or 0
+            for emp in all_employees
+        )
+        assert all_targets == 40000, f"Total targets should be $40,000, got ${all_targets}"
+
+        # Apply filter to exclude managers
+        filter_params = {'exclude_managers': True}
+        filtered_team, _ = apply_employee_filters(all_employees, filter_params)
+        assert len(filtered_team) == 4, "Should have 4 ICs after filtering"
+
+        # Calculate targets for filtered employees
+        filtered_targets = sum(
+            emp.get('Bonus Target Manager Currency') or 0
+            for emp in filtered_team
+        )
+        assert filtered_targets == 20000, f"Filtered targets should be $20,000, got ${filtered_targets}"
+
+        # Now calculate bonuses with the CORRECT all_targets_sum (from all employees)
+        params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+        result = calculate_bonus_for_employees(
+            filtered_team,
+            params,
+            budget_override=40000.0,
+            workday_pool=40000.0,
+            all_targets_sum=all_targets  # Key: use ALL employees' targets
+        )
+
+        # The adjusted pool should be 50% of budget override
+        expected_pool = 40000 * (filtered_targets / all_targets)  # 40000 * 0.5 = 20000
+        assert abs(result['total_pool'] - expected_pool) < 1, (
+            f"Adjusted pool should be ${expected_pool}, got ${result['total_pool']}"
+        )
+
+        # Total allocated should match the adjusted pool (all at 100% rating)
+        assert abs(result['total_allocated'] - expected_pool) < 1, (
+            f"Total allocated should be ${expected_pool}, got ${result['total_allocated']}"
+        )

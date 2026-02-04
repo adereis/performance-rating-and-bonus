@@ -2854,8 +2854,9 @@ def bonus_calculation():
     rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
 
     # Calculate sum of ALL employee bonus targets (for proportional pool calculation)
+    # Must use all_employees (not team_data) so filtered-out employees are included
     all_targets_sum = 0
-    for emp in team_data:
+    for emp in all_employees:
         bonus_target = emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
         if bonus_target:
             try:
@@ -3041,8 +3042,9 @@ def export_page():
     workday_pool = settings.workday_pool if settings else None
 
     # Calculate sum of ALL employee bonus targets (for proportional pool calculation)
+    # Must use all_employees (not team_data) so filtered-out employees are included
     all_targets_sum = 0
-    for emp in team_data:
+    for emp in all_employees:
         bonus_target = emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
         if bonus_target:
             try:
