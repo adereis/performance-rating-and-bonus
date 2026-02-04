@@ -96,6 +96,23 @@ def normalize_mentor_field(value):
     return (cleaned, False)
 
 
+def _parse_mentee_set(value):
+    """Parse a mentee string into a normalized set of names for comparison.
+
+    Handles both comma and semicolon delimiters. Returns a frozenset of
+    lowercase stripped names, allowing delimiter-agnostic comparison.
+    """
+    if not value:
+        return frozenset()
+    # Treat semicolons as commas to handle both delimiters uniformly
+    names = frozenset(
+        name.strip().lower()
+        for name in value.replace(';', ',').split(',')
+        if name.strip()
+    )
+    return names
+
+
 def _has_tenets(tenets_strengths, tenets_improvements):
     """Check if employee has at least one tenet selected (strengths or improvements).
 
@@ -2471,27 +2488,25 @@ def analytics():
             talent_mentor = (emp.get('talent_mentor') or '').strip()
             talent_mentees = (emp.get('talent_mentees') or '').strip()
 
-            # Check if there's any mentoring data and if it differs between cycles
-            has_any_mentoring = any([bonus_mentor, bonus_mentees, talent_mentor, talent_mentees])
-            if has_any_mentoring:
-                mentor_differs = (bool(bonus_mentor) != bool(talent_mentor)) or \
-                               (bonus_mentor and talent_mentor and bonus_mentor.lower() != talent_mentor.lower())
-                mentees_differs = (bool(bonus_mentees) != bool(talent_mentees)) or \
-                                (bonus_mentees and talent_mentees and bonus_mentees.lower() != talent_mentees.lower())
+            # Check if mentoring data CONFLICTS between cycles (both have values but differ)
+            # Don't flag changes from/to empty - that's just progressive data entry, not a mismatch
+            mentor_differs = bonus_mentor and talent_mentor and bonus_mentor.lower() != talent_mentor.lower()
+            # Compare mentee sets (delimiter-agnostic) to avoid false positives from ";" vs ","
+            mentees_differs = bonus_mentees and talent_mentees and _parse_mentee_set(bonus_mentees) != _parse_mentee_set(talent_mentees)
 
-                if mentor_differs or mentees_differs:
-                    mentoring_info = {
-                        'name': emp.get('Associate', 'Unknown'),
-                        'id': emp.get('Associate ID', ''),
-                        'job': emp.get('Current Job Profile', ''),
-                        'bonus_mentor': bonus_mentor or '-',
-                        'bonus_mentees': bonus_mentees or '-',
-                        'talent_mentor': talent_mentor or '-',
-                        'talent_mentees': talent_mentees or '-',
-                        'mentor_differs': mentor_differs,
-                        'mentees_differs': mentees_differs
-                    }
-                    inconsistencies['mentoring_mismatch'].append(mentoring_info)
+            if mentor_differs or mentees_differs:
+                mentoring_info = {
+                    'name': emp.get('Associate', 'Unknown'),
+                    'id': emp.get('Associate ID', ''),
+                    'job': emp.get('Current Job Profile', ''),
+                    'bonus_mentor': bonus_mentor or '-',
+                    'bonus_mentees': bonus_mentees or '-',
+                    'talent_mentor': talent_mentor or '-',
+                    'talent_mentees': talent_mentees or '-',
+                    'mentor_differs': mentor_differs,
+                    'mentees_differs': mentees_differs
+                }
+                inconsistencies['mentoring_mismatch'].append(mentoring_info)
 
         # Tenet mismatch between cycles (compare same categories: strengths→strengths, improvements→improvements)
         bonus_strengths = set()

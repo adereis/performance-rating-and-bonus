@@ -115,14 +115,18 @@
                 <li style="margin-bottom: 8px;">
                     <strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}):
                     {% if emp.mentor_differs %}
-                    <span style="display: block; font-size: 12px; color: #666; margin-left: 10px;">
-                        Mentor: <span style="color: #3498db;">Bonus: {% if emp.bonus_mentor == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.bonus_mentor }}{% endif %}</span> → <span style="color: #9b59b6;">Talent: {% if emp.talent_mentor == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.talent_mentor }}{% endif %}</span>
-                    </span>
+                    <div style="font-size: 12px; color: #666; margin-left: 10px; margin-top: 4px;">
+                        <strong>Mentor:</strong><br>
+                        <span style="margin-left: 10px; color: #3498db;">Bonus: {% if emp.bonus_mentor == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.bonus_mentor }}{% endif %}</span><br>
+                        <span style="margin-left: 10px; color: #9b59b6;">Talent: {% if emp.talent_mentor == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.talent_mentor }}{% endif %}</span>
+                    </div>
                     {% endif %}
                     {% if emp.mentees_differs %}
-                    <span style="display: block; font-size: 12px; color: #666; margin-left: 10px;">
-                        Mentees: <span style="color: #3498db;">Bonus: {% if emp.bonus_mentees == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.bonus_mentees }}{% endif %}</span> → <span style="color: #9b59b6;">Talent: {% if emp.talent_mentees == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.talent_mentees }}{% endif %}</span>
-                    </span>
+                    <div style="font-size: 12px; color: #666; margin-left: 10px; margin-top: 4px;">
+                        <strong>Mentees:</strong><br>
+                        <span style="margin-left: 10px; color: #3498db;">Bonus: {% if emp.bonus_mentees == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.bonus_mentees }}{% endif %}</span><br>
+                        <span style="margin-left: 10px; color: #9b59b6;">Talent: {% if emp.talent_mentees == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.talent_mentees }}{% endif %}</span>
+                    </div>
                     {% endif %}
                 </li>
                 {% endfor %}
@@ -142,18 +146,18 @@
                 <li style="margin-bottom: 12px;">
                     <strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}):
                     {% if emp.strengths_differ %}
-                    <span style="display: block; font-size: 12px; color: #666; margin-left: 10px; margin-top: 4px;">
-                        <strong style="color: #27ae60;">Strengths:</strong>
-                        <span style="color: #3498db;">Bonus: {% if emp.bonus_strengths %}{{ emp.bonus_strengths | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span>
-                        → <span style="color: #16a085;">Talent: {% if emp.talent_strengths %}{{ emp.talent_strengths | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span>
-                    </span>
+                    <div style="font-size: 12px; color: #666; margin-left: 10px; margin-top: 4px;">
+                        <strong style="color: #27ae60;">Strengths:</strong><br>
+                        <span style="margin-left: 10px; color: #3498db;">Bonus: {% if emp.bonus_strengths %}{{ emp.bonus_strengths | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span><br>
+                        <span style="margin-left: 10px; color: #16a085;">Talent: {% if emp.talent_strengths %}{{ emp.talent_strengths | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span>
+                    </div>
                     {% endif %}
                     {% if emp.improvements_differ %}
-                    <span style="display: block; font-size: 12px; color: #666; margin-left: 10px; margin-top: 4px;">
-                        <strong style="color: #e67e22;">Improvements:</strong>
-                        <span style="color: #3498db;">Bonus: {% if emp.bonus_improvements %}{{ emp.bonus_improvements | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span>
-                        → <span style="color: #16a085;">Talent: {% if emp.talent_improvements %}{{ emp.talent_improvements | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span>
-                    </span>
+                    <div style="font-size: 12px; color: #666; margin-left: 10px; margin-top: 4px;">
+                        <strong style="color: #e67e22;">Improvements:</strong><br>
+                        <span style="margin-left: 10px; color: #3498db;">Bonus: {% if emp.bonus_improvements %}{{ emp.bonus_improvements | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span><br>
+                        <span style="margin-left: 10px; color: #16a085;">Talent: {% if emp.talent_improvements %}{{ emp.talent_improvements | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span>
+                    </div>
                     {% endif %}
                 </li>
                 {% endfor %}
