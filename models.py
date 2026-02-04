@@ -185,6 +185,10 @@ class Employee(Base):
     tenets_improvements_original = Column(String)  # Original from Workday (for modification detection)
     last_updated = Column(DateTime)
 
+    # Special case handling (pro-rata leave, etc.)
+    bonus_override_percent = Column(Float)  # If set, use this % of target instead of curve calculation
+    special_case_notes = Column(Text)  # Explanation (e.g., "Paternity leave Apr-Sep")
+
     # ═══════════════════════════════════════════════════════════════
     # EXTENDED IDENTITY (from talent report, nullable)
     # ═══════════════════════════════════════════════════════════════
@@ -294,6 +298,9 @@ class Employee(Base):
             'tenets_improvements': self.tenets_improvements,
             'tenets_improvements_original': self.tenets_improvements_original,
             'last_updated': self.last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.last_updated else '',
+            # Special case handling
+            'bonus_override_percent': self.bonus_override_percent,
+            'special_case_notes': self.special_case_notes,
             # Extended identity (from talent report)
             'management_level': self.management_level,
             'job_category': self.job_category,
@@ -626,6 +633,9 @@ def _migrate_add_new_columns(engine):
         # Historical performance reference (from bonus import)
         ('employees', 'last_perf_review_name', 'TEXT'),
         ('employees', 'last_perf_review_rating', 'TEXT'),
+        # Special case handling (pro-rata leave, etc.)
+        ('employees', 'bonus_override_percent', 'REAL'),
+        ('employees', 'special_case_notes', 'TEXT'),
     ]
 
     with engine.connect() as conn:

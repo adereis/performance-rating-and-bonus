@@ -461,6 +461,94 @@ class TestRatingAPI:
         assert 'mentees' in result['normalized_fields']
 
 
+class TestBonusOverrideAPI:
+    """Test bonus override (special case) API functionality."""
+
+    def test_rate_with_bonus_override(self, client, populated_db, db_session):
+        """Test saving bonus override percentage via API."""
+        data = {
+            'associate_id': 'EMP001',
+            'bonus_override_percent': 50.0,
+            'special_case_notes': 'Paternity leave Apr-Sep'
+        }
+        response = client.post('/api/rate',
+                              data=json.dumps(data),
+                              content_type='application/json')
+
+        assert response.status_code == 200
+        result = json.loads(response.data)
+        assert result['success'] is True
+
+        # Verify database
+        employee = db_session.query(Employee).filter_by(associate_id='EMP001').first()
+        assert employee.bonus_override_percent == 50.0
+        assert employee.special_case_notes == 'Paternity leave Apr-Sep'
+
+    def test_rate_clear_bonus_override(self, client, populated_db, db_session):
+        """Test clearing bonus override by sending empty value."""
+        # First set an override
+        employee = db_session.query(Employee).filter_by(associate_id='EMP001').first()
+        employee.bonus_override_percent = 75.0
+        employee.special_case_notes = 'Leave'
+        db_session.commit()
+
+        # Now clear it
+        data = {
+            'associate_id': 'EMP001',
+            'bonus_override_percent': '',
+            'special_case_notes': ''
+        }
+        response = client.post('/api/rate',
+                              data=json.dumps(data),
+                              content_type='application/json')
+
+        assert response.status_code == 200
+
+        db_session.refresh(employee)
+        assert employee.bonus_override_percent is None
+        assert employee.special_case_notes is None
+
+    def test_rate_bonus_override_validation(self, client, populated_db):
+        """Test that bonus override is validated (0-200 range)."""
+        data = {
+            'associate_id': 'EMP001',
+            'bonus_override_percent': 250.0  # Invalid - over 200
+        }
+        response = client.post('/api/rate',
+                              data=json.dumps(data),
+                              content_type='application/json')
+
+        assert response.status_code == 400
+        result = json.loads(response.data)
+        assert 'error' in result
+        assert 'between 0 and 200' in result['error']
+
+    def test_rate_bonus_override_negative_validation(self, client, populated_db):
+        """Test that negative bonus override is rejected."""
+        data = {
+            'associate_id': 'EMP001',
+            'bonus_override_percent': -10.0
+        }
+        response = client.post('/api/rate',
+                              data=json.dumps(data),
+                              content_type='application/json')
+
+        assert response.status_code == 400
+
+    def test_employee_to_dict_includes_override(self, populated_db, db_session):
+        """Test that employee to_dict includes override fields."""
+        employee = db_session.query(Employee).filter_by(associate_id='EMP001').first()
+        employee.bonus_override_percent = 50.0
+        employee.special_case_notes = 'Test notes'
+        db_session.commit()
+
+        emp_dict = employee.to_dict()
+        assert 'bonus_override_percent' in emp_dict
+        assert emp_dict['bonus_override_percent'] == 50.0
+        assert 'special_case_notes' in emp_dict
+        assert emp_dict['special_case_notes'] == 'Test notes'
+
+
 class TestDashboardStatistics:
     """Test dashboard statistics calculations."""
 
@@ -978,3 +1066,186 @@ class TestBonusCalculation:
         # Should get 50% of $8,000 = $4,000
         assert result['total_allocated'] == 4000, \
             f"Expected 4000, got {result['total_allocated']}"
+
+    def test_bonus_override_employee_gets_fixed_percentage(self):
+        """Test that override employees get exactly their override percentage."""
+        from app import calculate_bonus_for_employees
+
+        employees = [
+            {
+                'Associate ID': 'EMP001',
+                'Associate': 'Normal Employee',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 10000,
+                'Current Base Pay Manager Currency': 100000,
+                'bonus_override_percent': None,  # Normal employee
+            },
+            {
+                'Associate ID': 'EMP002',
+                'Associate': 'Leave Employee',
+                'performance_rating_percent': None,  # No rating needed
+                'Bonus Target Manager Currency': 10000,
+                'Current Base Pay Manager Currency': 100000,
+                'bonus_override_percent': 50.0,  # 50% pro-rata
+                'special_case_notes': 'Paternity leave',
+            },
+        ]
+
+        params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+
+        result = calculate_bonus_for_employees(
+            employees, params,
+            budget_override=0,
+            workday_pool=20000  # Full pool
+        )
+
+        # Find override employee result
+        override_result = result['results_by_id']['EMP002']
+        normal_result = result['results_by_id']['EMP001']
+
+        # Override employee gets exactly 50% of their $10,000 target = $5,000
+        assert override_result['final_bonus'] == 5000, \
+            f"Expected 5000, got {override_result['final_bonus']}"
+        assert override_result['bonus_percent_of_target'] == 50
+        assert override_result['is_override'] is True
+
+        # Normal employee is NOT an override
+        assert normal_result['is_override'] is False
+
+    def test_bonus_override_option_b_pool_redistribution(self):
+        """Test Option B: override bonus comes from pool, remainder redistributed."""
+        from app import calculate_bonus_for_employees
+
+        # Pool is $40,000 (sum of 4 x $10,000 targets)
+        # One employee has 50% override = $5,000 (uses $5k of their $10k budget)
+        # Remaining $35,000 goes to other 3 employees
+        employees = [
+            {
+                'Associate ID': 'EMP001',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 10000,
+                'Current Base Pay Manager Currency': 100000,
+            },
+            {
+                'Associate ID': 'EMP002',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 10000,
+                'Current Base Pay Manager Currency': 100000,
+            },
+            {
+                'Associate ID': 'EMP003',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 10000,
+                'Current Base Pay Manager Currency': 100000,
+            },
+            {
+                'Associate ID': 'LEAVE001',
+                'performance_rating_percent': None,
+                'Bonus Target Manager Currency': 10000,
+                'Current Base Pay Manager Currency': 100000,
+                'bonus_override_percent': 50.0,
+            },
+        ]
+
+        params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+
+        result = calculate_bonus_for_employees(
+            employees, params,
+            budget_override=0,
+            workday_pool=40000
+        )
+
+        # Total allocated should be exactly $40,000
+        assert abs(result['total_allocated'] - 40000) < 1, \
+            f"Expected ~40000, got {result['total_allocated']}"
+
+        # Override employee gets $5,000
+        override_bonus = result['results_by_id']['LEAVE001']['final_bonus']
+        assert override_bonus == 5000
+
+        # Remaining $35,000 split among 3 employees with 100% rating
+        # Each should get ~$11,666.67 (more than their $10,000 target!)
+        for emp_id in ['EMP001', 'EMP002', 'EMP003']:
+            bonus = result['results_by_id'][emp_id]['final_bonus']
+            # They should each get ~$11,667 (35000 / 3)
+            assert abs(bonus - 11666.67) < 1, \
+                f"Expected ~11666.67 for {emp_id}, got {bonus}"
+
+    def test_bonus_override_metadata_in_result(self):
+        """Test that override metadata is included in calculation result."""
+        from app import calculate_bonus_for_employees
+
+        employees = [
+            {
+                'Associate ID': 'EMP001',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 10000,
+                'Current Base Pay Manager Currency': 100000,
+            },
+            {
+                'Associate ID': 'LEAVE001',
+                'performance_rating_percent': None,
+                'Bonus Target Manager Currency': 10000,
+                'Current Base Pay Manager Currency': 100000,
+                'bonus_override_percent': 50.0,
+                'special_case_notes': 'Medical leave',
+            },
+        ]
+
+        params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+
+        result = calculate_bonus_for_employees(
+            employees, params,
+            workday_pool=20000
+        )
+
+        # Check metadata fields
+        assert result['override_count'] == 1
+        assert result['override_total'] == 5000
+        assert result['remaining_pool'] == 15000  # 20000 - 5000
+
+    def test_bonus_calculation_page_with_override_employee(self, app, db_session):
+        """Test that /bonus-calculation page renders when an employee has bonus override."""
+        from models import Employee, BonusSettings
+
+        # Create a normal employee
+        normal_emp = Employee(
+            associate_id='NORMAL001',
+            associate='Normal Employee',
+            performance_rating_percent=100.0,
+            bonus_target_local_currency=10000.0,
+            current_base_pay_all_countries=100000.0,
+            supervisory_organization='Test Team'
+        )
+
+        # Create an override employee (pro-rata leave)
+        override_emp = Employee(
+            associate_id='OVERRIDE001',
+            associate='Leave Employee',
+            performance_rating_percent=None,  # No rating - using override
+            bonus_target_local_currency=10000.0,
+            current_base_pay_all_countries=100000.0,
+            supervisory_organization='Test Team',
+            bonus_override_percent=50.0,
+            special_case_notes='Paternity leave Q3-Q4'
+        )
+
+        db_session.add(normal_emp)
+        db_session.add(override_emp)
+
+        # Create bonus settings
+        settings = BonusSettings(id=1)
+        db_session.add(settings)
+        db_session.commit()
+
+        client = app.test_client()
+        response = client.get('/bonus-calculation')
+
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+        # Check that both employees appear
+        assert b'Normal Employee' in response.data
+        assert b'Leave Employee' in response.data
+        # Check that override badge appears
+        assert b'Override' in response.data
+        # Check that override notes appear in title attribute
+        assert b'Paternity leave' in response.data

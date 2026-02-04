@@ -37,6 +37,9 @@ Instructions for AI agents and human developers working on this codebase.
 - **2-second auto-save debounce**: Never break this pattern (rate.html)
 - **API responses**: `{"success": bool, "data/error": ...}`
 - **Frontend**: Vanilla JS, Chart.js, Bootstrap CSS, `data-employee-id` attributes
+- **Employee data entry exists in TWO places** (keep them in sync!):
+  1. `templates/rate_card.html` - Detailed employee card in /rate page
+  2. `templates/base.html` - Employee detail modal (click any employee name). Contains `renderEmployeeModal()`, `saveEmployeeModal()`, and `autoSaveAndCloseModal()` functions
 
 ---
 
@@ -57,6 +60,7 @@ Instructions for AI agents and human developers working on this codebase.
 - **Split curve**: Upside exponent 1.35 (≥100%), downside exponent 1.9 (<100%)
 - **Budget override**: Proportional scaling of entire pool (`BonusSettings.budget_override`)
 - **Multi-team**: Auto-detected when `len(unique_orgs) > 1`, shows org-level vs team-level
+- **Special case overrides**: Set `bonus_override_percent` to bypass curve calculation (e.g., pro-rata leave, retention). Uses Option B pool handling: override bonuses come from the same pool, unused portion redistributed to other employees. Employees with override are excluded from analytics distributions. Export marker: `[Override: 50%, Paternity leave Apr-Sep]` (reason optional)
 
 ### Currency Handling
 - All calculations use **manager's currency** (auto-detected from XLSX headers like "(AUD)")
@@ -84,7 +88,7 @@ Instructions for AI agents and human developers working on this codebase.
 Manager name parsed from: `"Supervisory Organization (Manager Name)"` or `"Direct Manager"` column → extracts manager name.
 
 **Preserved on re-import** (manager-entered):
-- Bonus cycle: `performance_rating`, `justification`, `mentors`, `mentees`, tenets
+- Bonus cycle: `performance_rating`, `justification`, `mentors`, `mentees`, tenets, `bonus_override_percent`, `special_case_notes`
 - Talent cycle: `talent_perf_what`, `talent_perf_how`, `talent_growth_agility`, `talent_change_agility`, `talent_movement_readiness`, `talent_proposed_actions`, `talent_mentor`, `talent_mentees`, `talent_tenets_*`
 
 **Overwritten on re-import** (from Workday): salary, bonus targets, org structure, management_level, country, tenure fields

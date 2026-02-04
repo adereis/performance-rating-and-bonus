@@ -214,3 +214,123 @@ class TestFormatNotesField:
         assert parsed['mentees'] == original['mentees']
         assert parsed['tenets_strengths'] == original['tenets_strengths']
         assert parsed['tenets_improvements'] == original['tenets_improvements']
+
+
+class TestBonusOverrideParseFormat:
+    """Tests for bonus override (special case) parsing and formatting."""
+
+    def test_parse_override_markers(self):
+        """Test parsing [Override: X%, reason] combined format."""
+        notes = """[Performance Rating: 100%]
+[Override: 50%, Paternity leave Apr-Sep]
+
+Justification:
+Pro-rata bonus due to leave."""
+
+        result = parse_notes_field(notes)
+
+        assert result['performance_rating'] == 100.0
+        assert result['bonus_override_percent'] == 50.0
+        assert result['special_case_notes'] == "Paternity leave Apr-Sep"
+        assert "Pro-rata" in result['justification']
+
+    def test_parse_override_only(self):
+        """Test parsing notes with only override marker."""
+        notes = "[Override: 75%]"
+
+        result = parse_notes_field(notes)
+
+        assert result['bonus_override_percent'] == 75.0
+        assert result['special_case_notes'] is None
+        assert result['performance_rating'] is None
+
+    def test_parse_override_with_reason(self):
+        """Test parsing override with reason in combined format."""
+        notes = "[Override: 50%, Medical leave Q2]"
+
+        result = parse_notes_field(notes)
+
+        assert result['bonus_override_percent'] == 50.0
+        assert result['special_case_notes'] == "Medical leave Q2"
+
+    def test_parse_override_decimal(self):
+        """Test parsing override with decimal value."""
+        notes = "[Override: 33.5%]"
+
+        result = parse_notes_field(notes)
+
+        assert result['bonus_override_percent'] == 33.5
+
+    def test_parse_override_case_insensitive(self):
+        """Test that override marker is case-insensitive."""
+        notes = "[OVERRIDE: 50%, Maternity leave]"
+
+        result = parse_notes_field(notes)
+
+        assert result['bonus_override_percent'] == 50.0
+        assert result['special_case_notes'] == "Maternity leave"
+
+    def test_format_with_override(self):
+        """Test formatting notes with override fields."""
+        result = format_notes_field(
+            performance_rating=100.0,
+            bonus_override_percent=50.0,
+            special_case_notes="Paternity leave Apr-Sep",
+            justification="Pro-rata bonus"
+        )
+
+        assert "Performance Rating: 100.0%" in result
+        assert "[Override: 50.0%, Paternity leave Apr-Sep]" in result
+        assert "Justification:" in result
+        assert "Pro-rata bonus" in result
+
+    def test_format_override_only(self):
+        """Test formatting with only override, no rating."""
+        result = format_notes_field(
+            bonus_override_percent=25.0,
+            special_case_notes="Extended leave"
+        )
+
+        assert "[Override: 25.0%, Extended leave]" in result
+        assert "Performance Rating:" not in result
+
+    def test_format_no_override(self):
+        """Test that no override marker when fields are None."""
+        result = format_notes_field(
+            performance_rating=100.0,
+            bonus_override_percent=None,
+            special_case_notes=None
+        )
+
+        assert "[Override:" not in result
+        assert "Performance Rating: 100.0%" in result
+
+    def test_override_roundtrip(self):
+        """Test that formatting then parsing returns original override values."""
+        formatted = format_notes_field(
+            performance_rating=110.0,
+            bonus_override_percent=50.0,
+            special_case_notes="FMLA leave Q3",
+            justification="Half-year bonus"
+        )
+
+        parsed = parse_notes_field(formatted)
+
+        assert parsed['performance_rating'] == 110.0
+        assert parsed['bonus_override_percent'] == 50.0
+        assert parsed['special_case_notes'] == "FMLA leave Q3"
+        assert parsed['justification'] == "Half-year bonus"
+
+    def test_parse_empty_returns_none_for_override(self):
+        """Test parsing empty notes returns None for override fields."""
+        result = parse_notes_field("")
+
+        assert result['bonus_override_percent'] is None
+        assert result['special_case_notes'] is None
+
+    def test_parse_none_returns_none_for_override(self):
+        """Test parsing None returns None for override fields."""
+        result = parse_notes_field(None)
+
+        assert result['bonus_override_percent'] is None
+        assert result['special_case_notes'] is None

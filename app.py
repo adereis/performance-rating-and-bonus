@@ -861,6 +861,13 @@ def index():
     alignment_stats = {'aligned': 0, 'review': 0, 'incomplete': 0}
 
     for emp in team_data:
+        # Special case employees (bonus override) get special alignment status
+        if emp.get('bonus_override_percent') is not None:
+            emp['alignment'] = 'special_case'
+            emp['alignment_detail'] = 'bonus_override'
+            # Don't count in alignment stats - they're excluded from normal distribution
+            continue
+
         bonus_pct = emp.get('performance_rating_percent')
         talent_overall = emp.get('talent_overall_perf')
         alignment = get_cross_cycle_alignment(bonus_pct, talent_overall)
@@ -1080,6 +1087,23 @@ def rate_employee():
             employee.tenets_strengths = json.dumps(tenets_strengths) if tenets_strengths else None
         if tenets_improvements is not None:
             employee.tenets_improvements = json.dumps(tenets_improvements) if tenets_improvements else None
+
+        # Special case handling (bonus override for pro-rata leave, etc.)
+        if 'bonus_override_percent' in data:
+            override_value = data.get('bonus_override_percent')
+            if override_value is not None and override_value != '':
+                try:
+                    override_pct = float(override_value)
+                    if override_pct < 0 or override_pct > 200:
+                        return jsonify({'error': 'Bonus override must be between 0 and 200'}), 400
+                    employee.bonus_override_percent = override_pct
+                except ValueError:
+                    return jsonify({'error': 'Invalid bonus override value'}), 400
+            else:
+                # Clear override if empty/null
+                employee.bonus_override_percent = None
+        if 'special_case_notes' in data:
+            employee.special_case_notes = data.get('special_case_notes', '') or None
 
         employee.last_updated = datetime.now()
 
@@ -1807,7 +1831,17 @@ def analytics():
     department_ratings = defaultdict(list)
     job_ratings = defaultdict(list)
 
+    # Track special case employees for reporting
+    special_case_count = 0
+
     for emp in team_data:
+        # Skip special case employees (bonus override) from rating analytics
+        # These employees have pro-rata bonuses (leave, etc.) and shouldn't
+        # be counted in performance distribution charts
+        if emp.get('bonus_override_percent') is not None:
+            special_case_count += 1
+            continue
+
         rating = emp.get('performance_rating_percent')
         if rating:
             try:
@@ -1855,8 +1889,11 @@ def analytics():
     sorted_team = sorted(team_data, key=get_rating, reverse=True)
 
     # Calculate calibration distribution
-    # Only count rated employees for calibration
-    rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
+    # Only count rated employees for calibration (exclude special cases with bonus override)
+    rated_employees = [
+        emp for emp in team_data
+        if emp.get('performance_rating_percent') and emp.get('bonus_override_percent') is None
+    ]
     total_rated = len(rated_employees)
 
     # Count fully calibrated employees (talent cycle: What + How + Actions + Tenets)
@@ -2407,6 +2444,11 @@ def analytics():
     }
 
     for emp in team_data:
+        # Skip special case employees (bonus override) from inconsistency detection
+        # These employees have pro-rata bonuses and shouldn't be flagged for rating mismatches
+        if emp.get('bonus_override_percent') is not None:
+            continue
+
         rating = emp.get('performance_rating_percent')
         talent_perf = emp.get('talent_overall_perf')
         is_future = emp.get('talent_identified_future', False)
@@ -2721,6 +2763,11 @@ def calculate_bonus_for_employees(employees, params, budget_override=0.0, workda
     Calculate bonuses for a given set of employees.
     Returns dict with results, normalization factor, and metadata.
 
+    Handles special case employees (pro-rata leave, etc.) using Option B pool handling:
+    - Override employees get a fixed % of their bonus target
+    - Their bonus comes from the same pool (unused portion redistributed to others)
+    - Normal employees compete for the remaining pool
+
     Args:
         employees: List of employee dicts (typically only rated employees)
         params: Dict with upside_exponent and downside_exponent
@@ -2729,7 +2776,16 @@ def calculate_bonus_for_employees(employees, params, budget_override=0.0, workda
         all_targets_sum: Sum of ALL employee bonus targets (for proportional calculation
                          when only a subset of employees are rated).
     """
-    # Calculate sum of bonus targets for the employees being calculated
+    # Separate employees into override and normal groups
+    override_employees = []
+    normal_employees = []
+    for emp in employees:
+        if emp.get('bonus_override_percent') is not None:
+            override_employees.append(emp)
+        else:
+            normal_employees.append(emp)
+
+    # Calculate sum of bonus targets for ALL employees being calculated
     sum_of_targets = 0
     for emp in employees:
         bonus_target = emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
@@ -2757,12 +2813,49 @@ def calculate_bonus_for_employees(employees, params, budget_override=0.0, workda
     # adjusted_pool = what's used for calculation (effective pool, scaled)
     adjusted_pool = effective_pool * proportion
 
-    # Calculate bonuses
+    # --- Step 1: Calculate override employee bonuses (fixed % of target) ---
+    override_results = []
+    override_total = 0
+    override_count = 0
+
+    for emp in override_employees:
+        try:
+            override_pct = float(emp.get('bonus_override_percent', 0))
+            bonus_target = float((emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')) or 0)
+            base_pay = float((emp.get('Current Base Pay Manager Currency') or emp.get('Current Base Pay All Countries')) or 0)
+        except (ValueError, TypeError):
+            continue
+
+        if bonus_target <= 0:
+            continue
+
+        # Fixed bonus based on override percentage
+        final_bonus = bonus_target * (override_pct / 100)
+        override_total += final_bonus
+        override_count += 1
+
+        override_results.append({
+            'employee': emp,
+            'rating': None,  # Not applicable for override employees
+            'bonus_target': bonus_target,
+            'base_pay': base_pay,
+            'perf_multiplier': None,  # Not applicable
+            'raw_share': None,  # Not applicable
+            'final_bonus': final_bonus,
+            'bonus_percent_of_target': round(override_pct),
+            'is_override': True,
+            'special_case_notes': emp.get('special_case_notes')
+        })
+
+    # --- Step 2: Calculate remaining pool for normal employees ---
+    remaining_pool = adjusted_pool - override_total
+
+    # --- Step 3: Calculate normal employee bonuses using curve ---
     bonus_results = []
     total_raw_shares = 0
     employees_without_bonus_target = 0
 
-    for emp in employees:
+    for emp in normal_employees:
         try:
             rating = float(emp.get('performance_rating_percent', 100))
             bonus_target = float((emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')) or 0)
@@ -2790,25 +2883,30 @@ def calculate_bonus_for_employees(employees, params, budget_override=0.0, workda
             'bonus_target': bonus_target,
             'base_pay': base_pay,
             'perf_multiplier': perf_multiplier,
-            'raw_share': raw_share
+            'raw_share': raw_share,
+            'is_override': False
         })
 
-    # Normalization: Calculate value per share using adjusted pool
-    value_per_share = adjusted_pool / total_raw_shares if total_raw_shares > 0 else 0
+    # Normalization: Calculate value per share using remaining pool
+    value_per_share = remaining_pool / total_raw_shares if total_raw_shares > 0 else 0
 
-    # Calculate final bonuses
-    total_allocated = 0
+    # Calculate final bonuses for normal employees
+    normal_total_allocated = 0
     for result in bonus_results:
         result['final_bonus'] = result['raw_share'] * value_per_share
         # Round to integer - decimals are unnecessary and error-prone
         result['bonus_percent_of_target'] = round(result['final_bonus'] / result['bonus_target'] * 100) if result['bonus_target'] > 0 else 0
-        total_allocated += result['final_bonus']
+        normal_total_allocated += result['final_bonus']
+
+    # --- Step 4: Combine results ---
+    all_results = override_results + bonus_results
+    total_allocated = override_total + normal_total_allocated
 
     # Create lookup by Associate ID for easy access
-    results_by_id = {r['employee']['Associate ID']: r for r in bonus_results}
+    results_by_id = {r['employee']['Associate ID']: r for r in all_results}
 
     return {
-        'results': bonus_results,
+        'results': all_results,
         'results_by_id': results_by_id,
         'workday_pool': workday_pool,        # From Workday metadata (may be None)
         'sum_of_targets': sum_of_targets,    # Calculated from employee targets
@@ -2817,7 +2915,11 @@ def calculate_bonus_for_employees(employees, params, budget_override=0.0, workda
         'total_pool': adjusted_pool,         # Final pool for calculation
         'total_allocated': total_allocated,
         'value_per_share': value_per_share,
-        'employees_without_bonus_target': employees_without_bonus_target
+        'employees_without_bonus_target': employees_without_bonus_target,
+        # New fields for special case tracking
+        'override_count': override_count,
+        'override_total': override_total,
+        'remaining_pool': remaining_pool,
     }
 
 
@@ -2850,8 +2952,11 @@ def bonus_calculation():
     # Apply filters
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
-    # Filter to only rated employees
-    rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
+    # Filter to only rated employees (or employees with bonus override)
+    rated_employees = [
+        emp for emp in team_data
+        if emp.get('performance_rating_percent') or emp.get('bonus_override_percent') is not None
+    ]
 
     # Calculate sum of ALL employee bonus targets (for proportional pool calculation)
     # Must use all_employees (not team_data) so filtered-out employees are included
@@ -2910,8 +3015,12 @@ def bonus_calculation():
         for org_name, team_employees in teams_by_org.items():
             team_calc = calculate_bonus_for_employees(team_employees, params)
 
-            # Calculate average rating for this team
-            team_ratings = [float(e.get('performance_rating_percent', 100)) for e in team_employees]
+            # Calculate average rating for this team (exclude override employees)
+            team_ratings = [
+                float(e.get('performance_rating_percent'))
+                for e in team_employees
+                if e.get('performance_rating_percent') is not None and e.get('bonus_override_percent') is None
+            ]
             avg_rating = sum(team_ratings) / len(team_ratings) if team_ratings else 0
 
             # Calculate budget impact (org-level allocation - team-level allocation)
@@ -3141,6 +3250,12 @@ def export_page():
         tool_additions_parts = []
         if employee.get('performance_rating_percent') is not None:
             tool_additions_parts.append(f"[Performance Rating: {int(employee['performance_rating_percent'])}%]")
+        # Special case override (pro-rata leave, etc.)
+        if employee.get('bonus_override_percent') is not None:
+            if employee.get('special_case_notes'):
+                tool_additions_parts.append(f"[Override: {employee['bonus_override_percent']}%, {employee['special_case_notes']}]")
+            else:
+                tool_additions_parts.append(f"[Override: {employee['bonus_override_percent']}%]")
         if strengths_text:
             tool_additions_parts.append(f"[Strengths: {strengths_text}]")
         if improvements_text:
@@ -4422,6 +4537,15 @@ def import_current():
                         else:
                             employee.tenets_improvements_original = imported_improvements
 
+                        # Bonus override (special case) - only update if currently not set locally
+                        # This preserves local changes but imports if we don't have a local value
+                        new_override = notes_data.get('bonus_override_percent')
+                        new_notes = notes_data.get('special_case_notes')
+                        if employee.bonus_override_percent is None and new_override is not None:
+                            employee.bonus_override_percent = new_override
+                        if employee.special_case_notes is None and new_notes:
+                            employee.special_case_notes = new_notes
+
                     # Initialize manager input fields for new employees only
                     if not existing:
                         if notes_data.get('performance_rating') is not None:
@@ -4438,6 +4562,9 @@ def import_current():
                             employee.justification = ''
                             employee.mentor = ''
                             employee.mentees = ''
+                        # Bonus override (special case) for new employees
+                        employee.bonus_override_percent = notes_data.get('bonus_override_percent')
+                        employee.special_case_notes = notes_data.get('special_case_notes')
                         employee.last_updated = None
                         db.add(employee)
                 elif not existing:

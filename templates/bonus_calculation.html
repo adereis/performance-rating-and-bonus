@@ -474,14 +474,23 @@
                 {% for result in team %}
                 <tr data-name="{{ result.employee.Associate }}"
                     data-job="{{ result.employee['Current Job Profile'] }}"
-                    data-rating="{{ result.rating }}"
+                    data-rating="{{ result.rating if result.rating is not none else '' }}"
                     data-target="{{ result.bonus_target }}"
-                    data-perf-mult="{{ result.perf_multiplier }}"
+                    data-perf-mult="{{ result.perf_multiplier if result.perf_multiplier is not none else '' }}"
                     data-final="{{ result.final_bonus }}"
-                    data-percent="{{ result.bonus_percent_of_target }}">
-                    <td><strong><span class="employee-name" data-employee-id="{{ result.employee['Associate ID'] }}">{{ result.employee.Associate }}</span></strong></td>
+                    data-percent="{{ result.bonus_percent_of_target }}"
+                    {% if result.is_override %}class="override-row" title="{{ result.special_case_notes or 'Bonus override active' }}"{% endif %}>
+                    <td>
+                        <strong><span class="employee-name" data-employee-id="{{ result.employee['Associate ID'] }}">{{ result.employee.Associate }}</span></strong>
+                        {% if result.is_override %}
+                        <span class="override-badge" title="{{ result.special_case_notes or 'Special case override' }}">Override</span>
+                        {% endif %}
+                    </td>
                     <td>{{ result.employee['Current Job Profile'] }}</td>
                     <td class="right">
+                        {% if result.is_override %}
+                        <span class="rating-text rating-text-override" title="Bonus override - not based on rating">—</span>
+                        {% else %}
                         <span class="rating-text
                             {% if result.rating >= rating_thresholds.high %}rating-text-high
                             {% elif result.rating >= rating_thresholds.mid %}rating-text-mid
@@ -489,12 +498,20 @@
                             {% else %}rating-text-below{% endif %}">
                             {{ result.rating }}%
                         </span>
+                        {% endif %}
                     </td>
                     <td class="right">{{ result.bonus_target|format_currency }}</td>
-                    <td class="right">{{ "%.3f"|format(result.perf_multiplier) }}</td>
+                    <td class="right">
+                        {% if result.is_override %}
+                        <span title="Fixed override - no multiplier">—</span>
+                        {% else %}
+                        {{ "%.3f"|format(result.perf_multiplier) }}
+                        {% endif %}
+                    </td>
                     <td class="right"><strong>{{ result.final_bonus|format_currency }}</strong></td>
                     <td class="right">
-                        <strong {% if result.bonus_percent_of_target > 100 %}style="color: #27ae60;"
+                        <strong {% if result.is_override %}style="color: #f39c12;" title="Override percentage"
+                                {% elif result.bonus_percent_of_target > 100 %}style="color: #27ae60;"
                                 {% elif result.bonus_percent_of_target < 100 %}style="color: #dc3545;"
                                 {% endif %}>
                             {{ "%.0f"|format(result.bonus_percent_of_target) }}%
@@ -722,8 +739,14 @@
     }
 
     // Group team members by rating to handle duplicates
+    // Skip override employees (they don't have a rating on the curve)
     const teamPointsMap = new Map();
     teamResults.forEach(result => {
+        // Skip override employees - they have a fixed bonus, not on the curve
+        if (result.is_override || result.rating === null || result.rating === '') {
+            return;
+        }
+
         const rating = result.rating;
         const payout = calcPerfMultiplier(rating) * VALUE_PER_SHARE * 100;
         const key = rating.toString();
@@ -932,6 +955,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (column !== 'name' && column !== 'job') {
                 aVal = parseFloat(aVal);
                 bVal = parseFloat(bVal);
+                // Handle NaN (override employees with no rating/multiplier)
+                // Put NaN values at the end
+                if (isNaN(aVal) && isNaN(bVal)) return 0;
+                if (isNaN(aVal)) return 1;  // a goes after b
+                if (isNaN(bVal)) return -1; // b goes after a
             }
 
             if (currentSort.direction === 'asc') {

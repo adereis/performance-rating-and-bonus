@@ -897,6 +897,119 @@
             display: none;
         }
     }
+
+    /* Special Case (Bonus Override) Styles */
+    .employee-card.special-case {
+        border-color: #f39c12;
+        background: #fffef5;
+    }
+
+    .special-case-badge {
+        display: inline-block;
+        background: #f39c12;
+        color: white;
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        margin-left: 10px;
+        font-weight: 600;
+        vertical-align: middle;
+    }
+
+    .special-case-section {
+        margin-top: 15px;
+        border: 1px dashed #ddd;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .special-case-section.expanded {
+        border-color: #f39c12;
+        background: #fffef5;
+    }
+
+    .special-case-toggle {
+        padding: 10px 15px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #f8f9fa;
+        transition: background 0.2s;
+    }
+
+    .special-case-toggle:hover {
+        background: #f0f0f0;
+    }
+
+    .special-case-section.expanded .special-case-toggle {
+        background: #fff3cd;
+    }
+
+    .toggle-icon {
+        font-size: 10px;
+        color: #666;
+    }
+
+    .toggle-label {
+        font-size: 13px;
+        color: #555;
+        font-weight: 500;
+    }
+
+    .active-indicator {
+        background: #f39c12;
+        color: white;
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 600;
+        margin-left: auto;
+    }
+
+    .special-case-content {
+        padding: 15px;
+    }
+
+    .special-case-content .rating-hint {
+        margin-top: -10px;
+        margin-bottom: 15px;
+    }
+
+    .special-case-info {
+        background: #fff3cd;
+        border: 1px solid #f39c12;
+        border-radius: 4px;
+        padding: 10px;
+        font-size: 12px;
+        color: #856404;
+        margin-bottom: 15px;
+    }
+
+    .special-case-clear {
+        margin-top: 10px;
+        text-align: right;
+    }
+
+    .clear-override-btn {
+        background: none;
+        border: 1px solid #dc3545;
+        color: #dc3545;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .clear-override-btn:hover {
+        background: #dc3545;
+        color: white;
+    }
+
+    .override-percent-input {
+        width: 120px;
+    }
 </style>
 {% endblock %}
 
@@ -1122,6 +1235,79 @@ function toggleTeamGroup(header) {
     header.classList.toggle('collapsed');
     const content = header.nextElementSibling;
     content.classList.toggle('collapsed');
+}
+
+// ============================================
+// Special Case (Bonus Override) Toggle
+// ============================================
+function toggleSpecialCase(toggleElement) {
+    const section = toggleElement.closest('.special-case-section');
+    const content = section.querySelector('.special-case-content');
+    const icon = section.querySelector('.toggle-icon');
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        section.classList.add('expanded');
+        icon.innerHTML = '&#9660;';  // Down arrow
+    } else {
+        content.style.display = 'none';
+        section.classList.remove('expanded');
+        icon.innerHTML = '&#9654;';  // Right arrow
+    }
+}
+
+function clearSpecialCase(button) {
+    const section = button.closest('.special-case-section');
+    const card = button.closest('.employee-card');
+    const associateId = card.dataset.associateId;
+
+    // Clear the input fields
+    const overrideInput = section.querySelector('[data-field="bonus_override_percent"]');
+    const notesInput = section.querySelector('[data-field="special_case_notes"]');
+
+    overrideInput.value = '';
+    notesInput.value = '';
+
+    // Save to server
+    saveSpecialCaseFields(associateId, null, null);
+
+    // Update UI
+    card.classList.remove('special-case');
+    card.dataset.hasOverride = 'false';
+
+    // Remove badge from header
+    const badge = card.querySelector('.special-case-badge');
+    if (badge) badge.remove();
+
+    // Remove active indicator
+    const indicator = section.querySelector('.active-indicator');
+    if (indicator) indicator.remove();
+
+    // Collapse the section
+    const content = section.querySelector('.special-case-content');
+    const icon = section.querySelector('.toggle-icon');
+    content.style.display = 'none';
+    section.classList.remove('expanded');
+    icon.innerHTML = '&#9654;';
+}
+
+function saveSpecialCaseFields(associateId, overridePercent, notes) {
+    fetch('/api/rate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            associate_id: associateId,
+            bonus_override_percent: overridePercent,
+            special_case_notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            console.error('Failed to save special case:', data.error);
+        }
+    })
+    .catch(error => console.error('Error saving special case:', error));
 }
 
 // ============================================

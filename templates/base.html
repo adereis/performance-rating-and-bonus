@@ -184,6 +184,26 @@
         .rating-text-none {
             color: #999;     /* Gray - not rated */
         }
+        .rating-text-override {
+            color: #f39c12;  /* Orange/gold - special case override */
+            font-style: italic;
+        }
+
+        /* Override row styling in bonus calculation table */
+        .override-row {
+            background: #fffef5 !important;
+        }
+        .override-badge {
+            display: inline-block;
+            background: #f39c12;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            margin-left: 6px;
+            font-weight: 600;
+            vertical-align: middle;
+        }
 
         .btn {
             padding: 10px 20px;
@@ -1184,6 +1204,35 @@
             text-transform: uppercase;
             font-weight: 600;
             margin: 0 0 12px 0;
+        }
+
+        /* Special Case Modal Section */
+        .special-case-modal-section.has-override {
+            background: #fffef5;
+            border: 1px solid #f39c12;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 16px 0;
+        }
+
+        .special-case-modal-info {
+            font-size: 12px;
+            color: #856404;
+            background: #fff3cd;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }
+
+        .special-case-active-badge {
+            background: #f39c12;
+            color: white;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+            font-weight: 600;
+            text-transform: none;
         }
 
         /* History Talent Data Styling */
@@ -2360,6 +2409,35 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="talent-section-divider special-case-modal-section ${employee.bonus_override_percent != null ? 'has-override' : ''}">
+                                <h5>
+                                    Special Case Override
+                                    ${employee.bonus_override_percent != null ? '<span class="special-case-active-badge">Active</span>' : ''}
+                                </h5>
+                                <div class="special-case-modal-info">
+                                    Override the calculated bonus with a fixed percentage. Common uses: pro-rata leave, retention adjustments.
+                                    Bypasses the performance curve and excludes from analytics.
+                                </div>
+                                <div class="employee-modal-grid">
+                                    <div class="employee-modal-field">
+                                        <label>Bonus Override % (0-200)</label>
+                                        <input type="number"
+                                               id="modal_bonus_override_percent"
+                                               min="0"
+                                               max="200"
+                                               step="1"
+                                               value="${employee.bonus_override_percent != null ? employee.bonus_override_percent : ''}">
+                                        <span class="error" id="modal_override_error"></span>
+                                    </div>
+                                    <div class="employee-modal-field">
+                                        <label>Reason</label>
+                                        <input type="text"
+                                               id="modal_special_case_notes"
+                                               value="${employee.special_case_notes || ''}"
+                                               placeholder="e.g., Paternity leave Apr-Sep">
+                                    </div>
+                                </div>
+                            </div>
                             ${bonusTenetsHTML}
                         </div>
                     </div>
@@ -2527,11 +2605,17 @@
                 const mentorInput = document.getElementById('modal_mentor');
                 const menteesInput = document.getElementById('modal_mentees');
 
+                // Special case override fields
+                const overrideInput = document.getElementById('modal_bonus_override_percent');
+                const overrideNotesInput = document.getElementById('modal_special_case_notes');
+
                 const hasBonusTextChanges =
                     normalize(ratingInput?.value) !== normalize(originalEmployeeData.performance_rating_percent) ||
                     normalize(justificationInput?.value) !== normalize(originalEmployeeData.justification) ||
                     normalize(mentorInput?.value) !== normalize(originalEmployeeData.mentor) ||
-                    normalize(menteesInput?.value) !== normalize(originalEmployeeData.mentees);
+                    normalize(menteesInput?.value) !== normalize(originalEmployeeData.mentees) ||
+                    normalize(overrideInput?.value) !== normalize(originalEmployeeData.bonus_override_percent) ||
+                    normalize(overrideNotesInput?.value) !== normalize(originalEmployeeData.special_case_notes);
 
                 // Compare talent calibration fields
                 const talentPerfWhat = document.getElementById('modal_talent_perf_what');
@@ -2601,6 +2685,12 @@
             if (justificationInput) justificationInput.addEventListener('input', checkForChanges);
             if (mentorInput) mentorInput.addEventListener('input', checkForChanges);
             if (menteesInput) menteesInput.addEventListener('input', checkForChanges);
+
+            // Special case override fields
+            const overrideInput = document.getElementById('modal_bonus_override_percent');
+            const overrideNotesInput = document.getElementById('modal_special_case_notes');
+            if (overrideInput) overrideInput.addEventListener('input', checkForChanges);
+            if (overrideNotesInput) overrideNotesInput.addEventListener('input', checkForChanges);
 
             // Track talent calibration fields
             const talentPerfWhat = document.getElementById('modal_talent_perf_what');
@@ -3138,7 +3228,9 @@
                 mentor: document.getElementById('modal_mentor')?.value || '',
                 mentees: document.getElementById('modal_mentees')?.value || '',
                 tenets_strengths: tenetsStrengths,
-                tenets_improvements: tenetsImprovements
+                tenets_improvements: tenetsImprovements,
+                bonus_override_percent: document.getElementById('modal_bonus_override_percent')?.value || '',
+                special_case_notes: document.getElementById('modal_special_case_notes')?.value || ''
             };
 
             // Talent calibration data
@@ -3247,7 +3339,9 @@
                 mentor: document.getElementById('modal_mentor')?.value || '',
                 mentees: document.getElementById('modal_mentees')?.value || '',
                 tenets_strengths: tenetsStrengths,
-                tenets_improvements: tenetsImprovements
+                tenets_improvements: tenetsImprovements,
+                bonus_override_percent: document.getElementById('modal_bonus_override_percent')?.value || '',
+                special_case_notes: document.getElementById('modal_special_case_notes')?.value || ''
             };
 
             // Talent calibration data
@@ -3260,7 +3354,11 @@
                 talent_movement_readiness: document.getElementById('modal_talent_movement_readiness')?.value || '',
                 talent_mentor: document.getElementById('modal_talent_mentor')?.value || '',
                 talent_mentees: document.getElementById('modal_talent_mentees')?.value || '',
-                talent_proposed_actions: document.getElementById('modal_talent_proposed_actions')?.value || ''
+                talent_proposed_actions: document.getElementById('modal_talent_proposed_actions')?.value || '',
+                talent_promo_job_profile: document.getElementById('modal_talent_promo_job_profile')?.value || '',
+                talent_promo_readiness: document.getElementById('modal_talent_promo_readiness')?.value || '',
+                talent_promo_business_need: document.getElementById('modal_talent_promo_business_need')?.value || '',
+                talent_promo_role_scope: document.getElementById('modal_talent_promo_role_scope')?.value || ''
             };
 
             // Close modal immediately for snappy feel
