@@ -32,7 +32,8 @@ def test_db():
 
     yield TestSessionLocal, db_path
 
-    # Cleanup
+    # Cleanup: dispose engine first to close all connections
+    engine.dispose()
     os.close(db_fd)
     os.unlink(db_path)
 
