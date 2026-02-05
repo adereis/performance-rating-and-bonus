@@ -4190,12 +4190,124 @@ def import_current():
                         else:
                             employee.talent_proposed_actions = raw_proposed_actions if raw_proposed_actions else None
 
-                        # Promotion (manager-entered)
-                        employee.talent_promo_job_profile = emp_data.get('talent_promo_job_profile')
-                        employee.talent_promo_business_need = emp_data.get('talent_promo_business_need')
-                        employee.talent_promo_role_scope = emp_data.get('talent_promo_role_scope')
-                        employee.talent_promo_readiness = emp_data.get('talent_promo_readiness')
-                else:
+                        # Promotion (manager-entered) - handle [MODIFIED] marker for our exports
+                        from xlsx_utils import parse_modified_text_field
+
+                        raw_job_profile = emp_data.get('talent_promo_job_profile') or ''
+                        employee.talent_promo_job_profile = raw_job_profile if raw_job_profile else None
+                        # Job profile doesn't have [MODIFIED] in text, store as original
+                        employee.talent_promo_job_profile_original = employee.talent_promo_job_profile
+
+                        raw_business_need = emp_data.get('talent_promo_business_need') or ''
+                        parsed_bn = parse_modified_text_field(raw_business_need)
+                        employee.talent_promo_business_need = parsed_bn['content'] if parsed_bn['content'] else None
+                        if not parsed_bn['is_modified']:
+                            employee.talent_promo_business_need_original = employee.talent_promo_business_need
+
+                        raw_role_scope = emp_data.get('talent_promo_role_scope') or ''
+                        parsed_rs = parse_modified_text_field(raw_role_scope)
+                        employee.talent_promo_role_scope = parsed_rs['content'] if parsed_rs['content'] else None
+                        if not parsed_rs['is_modified']:
+                            employee.talent_promo_role_scope_original = employee.talent_promo_role_scope
+
+                        raw_readiness = emp_data.get('talent_promo_readiness') or ''
+                        parsed_pr = parse_modified_text_field(raw_readiness)
+                        employee.talent_promo_readiness = parsed_pr['content'] if parsed_pr['content'] else None
+                        if not parsed_pr['is_modified']:
+                            employee.talent_promo_readiness_original = employee.talent_promo_readiness
+                    else:
+                        # EXISTING employee in talent import: update fields based on local modification status
+                        # - If unmodified locally (current == _original): update from Workday
+                        # - If modified locally (current != _original): preserve local, update _original to show conflict
+
+                        # Helper to check if text field is unmodified (handles None vs empty string)
+                        def text_unmodified(current, original):
+                            return (current or '') == (original or '')
+
+                        # Helper to check if JSON string field is unmodified
+                        def json_string_unmodified(current, original):
+                            try:
+                                curr_parsed = json.loads(current) if current else []
+                                orig_parsed = json.loads(original) if original else []
+                                return sorted(curr_parsed) == sorted(orig_parsed)
+                            except (json.JSONDecodeError, TypeError):
+                                # If not valid JSON, fall back to string comparison
+                                return (current or '') == (original or '')
+
+                        # Performance What
+                        new_perf_what = emp_data.get('talent_perf_what')
+                        if text_unmodified(employee.talent_perf_what, employee.talent_perf_what_original):
+                            employee.talent_perf_what = new_perf_what
+                        employee.talent_perf_what_original = new_perf_what
+
+                        # Performance How
+                        new_perf_how = emp_data.get('talent_perf_how')
+                        if text_unmodified(employee.talent_perf_how, employee.talent_perf_how_original):
+                            employee.talent_perf_how = new_perf_how
+                        employee.talent_perf_how_original = new_perf_how
+
+                        # Growth Agility
+                        new_growth = emp_data.get('talent_growth_agility')
+                        if text_unmodified(employee.talent_growth_agility, employee.talent_growth_agility_original):
+                            employee.talent_growth_agility = new_growth
+                        employee.talent_growth_agility_original = new_growth
+
+                        # Change Agility
+                        new_change = emp_data.get('talent_change_agility')
+                        if text_unmodified(employee.talent_change_agility, employee.talent_change_agility_original):
+                            employee.talent_change_agility = new_change
+                        employee.talent_change_agility_original = new_change
+
+                        # Movement Readiness (uses normalize function)
+                        new_movement = normalize_movement_readiness(emp_data.get('talent_movement_readiness'))
+                        if text_unmodified(employee.talent_movement_readiness, employee.talent_movement_readiness_original):
+                            employee.talent_movement_readiness = new_movement
+                        employee.talent_movement_readiness_original = new_movement
+
+                        # Tool additions fields - parse from Workday's proposed_actions
+                        raw_proposed_actions = emp_data.get('talent_proposed_actions') or ''
+                        tenets_config, _ = load_tenets_config()
+                        if tenets_config and raw_proposed_actions:
+                            from xlsx_utils import parse_proposed_actions_metadata
+                            metadata = parse_proposed_actions_metadata(raw_proposed_actions, tenets_config)
+                            new_actions = metadata['clean_actions'] if metadata['clean_actions'] else None
+                            new_strengths = json.dumps(metadata['strength_ids']) if metadata['strength_ids'] else None
+                            new_improvements = json.dumps(metadata['improvement_ids']) if metadata['improvement_ids'] else None
+                            new_mentor = metadata['mentor'] if metadata['mentor'] else None
+                            new_mentees = metadata['mentees'] if metadata['mentees'] else None
+                        else:
+                            # No tenets config or empty proposed_actions
+                            new_actions = raw_proposed_actions if raw_proposed_actions else None
+                            new_strengths = None
+                            new_improvements = None
+                            new_mentor = None
+                            new_mentees = None
+
+                        # Proposed Actions
+                        if text_unmodified(employee.talent_proposed_actions, employee.talent_proposed_actions_original):
+                            employee.talent_proposed_actions = new_actions
+                        employee.talent_proposed_actions_original = new_actions
+
+                        # Talent Tenets Strengths (JSON string)
+                        if json_string_unmodified(employee.talent_tenets_strengths, employee.talent_tenets_strengths_original):
+                            employee.talent_tenets_strengths = new_strengths
+                        employee.talent_tenets_strengths_original = new_strengths
+
+                        # Talent Tenets Improvements (JSON string)
+                        if json_string_unmodified(employee.talent_tenets_improvements, employee.talent_tenets_improvements_original):
+                            employee.talent_tenets_improvements = new_improvements
+                        employee.talent_tenets_improvements_original = new_improvements
+
+                        # Talent Mentor
+                        if text_unmodified(employee.talent_mentor, employee.talent_mentor_original):
+                            employee.talent_mentor = new_mentor
+                        employee.talent_mentor_original = new_mentor
+
+                        # Talent Mentees
+                        if text_unmodified(employee.talent_mentees, employee.talent_mentees_original):
+                            employee.talent_mentees = new_mentees
+                        employee.talent_mentees_original = new_mentees
+                elif spreadsheet_type != 'talent':
                     # Update bonus-specific fields
                     employee.photo = emp_data.get('photo', '')
                     employee.errors = emp_data.get('errors', '')
@@ -4239,12 +4351,76 @@ def import_current():
                     employee.mentor_original = notes_data.get('mentors') or None
                     employee.mentees_original = notes_data.get('mentees') or None
                     # Convert tenet names to JSON IDs for storage
-                    employee.tenets_strengths_original = convert_tenet_names_to_ids(
+                    imported_strengths = convert_tenet_names_to_ids(
                         notes_data.get('tenets_strengths'), tenets_config
                     )
-                    employee.tenets_improvements_original = convert_tenet_names_to_ids(
+                    imported_improvements = convert_tenet_names_to_ids(
                         notes_data.get('tenets_improvements'), tenets_config
                     )
+                    employee.tenets_strengths_original = imported_strengths
+                    employee.tenets_improvements_original = imported_improvements
+
+                    # For existing employees: update fields based on local modification status
+                    # - If unmodified locally (current == _original): update from Workday
+                    # - If modified locally (current != _original): preserve local, update _original to show conflict
+                    if existing:
+                        new_rating = notes_data.get('performance_rating')
+                        # Performance rating: unmodified means current == original
+                        if employee.performance_rating_percent == employee.performance_rating_percent_original:
+                            # Unmodified locally - update from Workday
+                            if new_rating is not None:
+                                employee.performance_rating_percent = new_rating
+                            employee.performance_rating_percent_original = new_rating
+                        else:
+                            # Modified locally - preserve current, update original to track Workday value
+                            employee.performance_rating_percent_original = new_rating
+
+                        # Helper to check if text field is unmodified (handles None vs empty string)
+                        def text_unmodified(current, original):
+                            return (current or '') == (original or '')
+
+                        # Justification
+                        new_justification = notes_data.get('justification') or ''
+                        if text_unmodified(employee.justification, employee.justification_original):
+                            employee.justification = new_justification
+                            employee.justification_original = new_justification
+                        else:
+                            employee.justification_original = new_justification
+
+                        # Mentor
+                        new_mentor = notes_data.get('mentors') or ''
+                        if text_unmodified(employee.mentor, employee.mentor_original):
+                            employee.mentor = new_mentor
+                            employee.mentor_original = new_mentor
+                        else:
+                            employee.mentor_original = new_mentor
+
+                        # Mentees
+                        new_mentees = notes_data.get('mentees') or ''
+                        if text_unmodified(employee.mentees, employee.mentees_original):
+                            employee.mentees = new_mentees
+                            employee.mentees_original = new_mentees
+                        else:
+                            employee.mentees_original = new_mentees
+
+                        # Tenets (JSON arrays) - compare as JSON strings for equality
+                        def tenets_unmodified(current, original):
+                            import json
+                            curr_str = json.dumps(current, sort_keys=True) if current else '[]'
+                            orig_str = json.dumps(original, sort_keys=True) if original else '[]'
+                            return curr_str == orig_str
+
+                        if tenets_unmodified(employee.tenets_strengths, employee.tenets_strengths_original):
+                            employee.tenets_strengths = imported_strengths
+                            employee.tenets_strengths_original = imported_strengths
+                        else:
+                            employee.tenets_strengths_original = imported_strengths
+
+                        if tenets_unmodified(employee.tenets_improvements, employee.tenets_improvements_original):
+                            employee.tenets_improvements = imported_improvements
+                            employee.tenets_improvements_original = imported_improvements
+                        else:
+                            employee.tenets_improvements_original = imported_improvements
 
                     # Initialize manager input fields for new employees only
                     if not existing:
@@ -4253,8 +4429,8 @@ def import_current():
                             employee.justification = notes_data.get('justification') or ''
                             employee.mentor = notes_data.get('mentors') or ''
                             employee.mentees = notes_data.get('mentees') or ''
-                            employee.tenets_strengths = employee.tenets_strengths_original
-                            employee.tenets_improvements = employee.tenets_improvements_original
+                            employee.tenets_strengths = imported_strengths
+                            employee.tenets_improvements = imported_improvements
                         else:
                             employee.performance_rating_percent = None
                             employee.tenets_strengths = None
