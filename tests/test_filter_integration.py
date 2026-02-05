@@ -1274,3 +1274,214 @@ class TestBonusPoolProportionalScaling:
         assert abs(result['total_allocated'] - expected_pool) < 1, (
             f"Total allocated should be ${expected_pool}, got ${result['total_allocated']}"
         )
+
+
+class TestFilterWithOverrideAndBudgetScaling:
+    """Test interaction between global filters, bonus overrides, and budget scaling.
+
+    Regression tests ensuring that:
+    1. Budget override scales proportionally when employees are filtered
+    2. Override employees (pro-rata leave) get their fixed % correctly
+    3. Remaining pool is correctly reduced by override amounts
+    4. All three features work together without double-counting or miscalculation
+    """
+
+    @pytest.fixture
+    def team_with_override_employee(self, db_session):
+        """Create a team with a mix of normal and override employees.
+
+        Team composition (all ICs to avoid manager filter complexity):
+        - 3 Normal employees: $10,000 each in bonus targets ($30,000 total)
+        - 1 Override employee: $10,000 target, 50% override (pro-rata leave)
+        - Total team: $40,000 in bonus targets
+        """
+        employees = [
+            # Normal employees
+            Employee(
+                associate_id='NORM001',
+                associate='Normal One',
+                supervisory_organization='Team Alpha (Manager)',
+                current_job_profile='Software Engineer',
+                management_level='Individual Contributor (Prof Level 3)',
+                current_base_pay_manager_currency=100000.0,
+                currency='USD',
+                bonus_target_manager_currency=10000.0,
+                performance_rating_percent=100.0,
+            ),
+            Employee(
+                associate_id='NORM002',
+                associate='Normal Two',
+                supervisory_organization='Team Alpha (Manager)',
+                current_job_profile='Software Engineer',
+                management_level='Individual Contributor (Prof Level 3)',
+                current_base_pay_manager_currency=100000.0,
+                currency='USD',
+                bonus_target_manager_currency=10000.0,
+                performance_rating_percent=110.0,  # Slightly above average
+            ),
+            Employee(
+                associate_id='NORM003',
+                associate='Normal Three',
+                supervisory_organization='Team Alpha (Manager)',
+                current_job_profile='Senior Software Engineer',
+                management_level='Individual Contributor (Prof Level 4)',
+                current_base_pay_manager_currency=120000.0,
+                currency='USD',
+                bonus_target_manager_currency=10000.0,
+                performance_rating_percent=90.0,  # Slightly below average
+            ),
+            # Override employee (pro-rata leave)
+            Employee(
+                associate_id='LEAVE001',
+                associate='Leave Employee',
+                supervisory_organization='Team Alpha (Manager)',
+                current_job_profile='Software Engineer',
+                management_level='Individual Contributor (Prof Level 3)',
+                current_base_pay_manager_currency=100000.0,
+                currency='USD',
+                bonus_target_manager_currency=10000.0,
+                performance_rating_percent=None,  # No rating needed for override
+                bonus_override_percent=50.0,  # 50% pro-rata
+                special_case_notes='Paternity leave Apr-Sep',
+            ),
+        ]
+
+        for emp in employees:
+            db_session.add(emp)
+        db_session.commit()
+        return employees
+
+    def test_budget_scaling_with_override_employee(self, client, team_with_override_employee):
+        """Budget override should scale, then override bonus deducted from scaled pool.
+
+        With $40,000 total targets and a $40,000 budget override:
+        - Full pool = $40,000
+        - Override employee gets $5,000 (50% of $10,000 target)
+        - Remaining pool for normal employees = $35,000
+        - Normal employees compete for $35,000 based on their ratings
+        """
+        from app import calculate_bonus_for_employees, get_all_employees
+        from models import BonusSettings, get_db
+
+        # Set budget override
+        db = get_db()
+        settings = db.query(BonusSettings).first()
+        if not settings:
+            settings = BonusSettings()
+            db.add(settings)
+        settings.budget_override = 40000.0
+        settings.workday_pool = 40000.0
+        db.commit()
+
+        all_employees = get_all_employees()
+        assert len(all_employees) == 4, "Should have 4 employees total"
+
+        # Verify override employee is present
+        override_emp = next((e for e in all_employees if e['Associate ID'] == 'LEAVE001'), None)
+        assert override_emp is not None, "Override employee should exist"
+        assert override_emp.get('bonus_override_percent') == 50.0
+
+        # Calculate bonuses
+        params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+        all_targets = sum(
+            emp.get('Bonus Target Manager Currency') or 0
+            for emp in all_employees
+        )
+        assert all_targets == 40000, f"Total targets should be $40,000, got ${all_targets}"
+
+        result = calculate_bonus_for_employees(
+            all_employees,
+            params,
+            budget_override=40000.0,
+            workday_pool=40000.0,
+            all_targets_sum=all_targets
+        )
+
+        # Override employee should get exactly $5,000 (50% of $10,000)
+        override_result = next(
+            (r for r in result['results'] if r['employee']['Associate ID'] == 'LEAVE001'),
+            None
+        )
+        assert override_result is not None, "Override employee should have a result"
+        assert override_result['is_override'] is True
+        assert abs(override_result['final_bonus'] - 5000) < 1, (
+            f"Override employee should get $5,000, got ${override_result['final_bonus']}"
+        )
+
+        # Total allocated should equal budget override ($40,000)
+        assert abs(result['total_allocated'] - 40000) < 100, (
+            f"Total allocated should be ~$40,000, got ${result['total_allocated']}"
+        )
+
+    def test_filter_plus_override_plus_budget_scaling(self, client, team_with_override_employee):
+        """Three-way interaction: filter excludes some, override uses fixed %, budget scales.
+
+        Scenario: Exclude NORM003 (Senior Engineer) via employee ID filter
+        - Filtered targets: $30,000 (3 remaining employees)
+        - Budget $40,000 scales to $30,000 (75% of full pool)
+        - Override employee still gets $5,000 (from scaled pool)
+        - Remaining pool for NORM001, NORM002: $25,000
+        """
+        from app import calculate_bonus_for_employees, get_all_employees, apply_employee_filters
+        from models import BonusSettings, get_db
+
+        db = get_db()
+        settings = db.query(BonusSettings).first()
+        if not settings:
+            settings = BonusSettings()
+            db.add(settings)
+        settings.budget_override = 40000.0
+        settings.workday_pool = 40000.0
+        db.commit()
+
+        all_employees = get_all_employees()
+        all_targets = sum(
+            emp.get('Bonus Target Manager Currency') or 0
+            for emp in all_employees
+        )
+
+        # Apply filter to exclude NORM003
+        filter_params = {'exclude_ids': ['NORM003']}
+        filtered_team, _ = apply_employee_filters(all_employees, filter_params)
+        assert len(filtered_team) == 3, "Should have 3 employees after filtering"
+
+        # Verify NORM003 is excluded
+        assert not any(e['Associate ID'] == 'NORM003' for e in filtered_team)
+
+        # Calculate filtered targets
+        filtered_targets = sum(
+            emp.get('Bonus Target Manager Currency') or 0
+            for emp in filtered_team
+        )
+        assert filtered_targets == 30000, f"Filtered targets should be $30,000, got ${filtered_targets}"
+
+        # Calculate bonuses with proportional scaling
+        params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+        result = calculate_bonus_for_employees(
+            filtered_team,
+            params,
+            budget_override=40000.0,
+            workday_pool=40000.0,
+            all_targets_sum=all_targets  # Use ALL employees' targets for proportion
+        )
+
+        # Scaled pool should be 75% of $40,000 = $30,000
+        expected_pool = 40000 * (filtered_targets / all_targets)  # 40000 * 0.75 = 30000
+        assert abs(result['total_pool'] - expected_pool) < 1, (
+            f"Scaled pool should be ${expected_pool}, got ${result['total_pool']}"
+        )
+
+        # Override employee should still get $5,000 (50% of their $10,000 target)
+        override_result = next(
+            (r for r in result['results'] if r['employee']['Associate ID'] == 'LEAVE001'),
+            None
+        )
+        assert override_result is not None
+        assert abs(override_result['final_bonus'] - 5000) < 1, (
+            f"Override employee should get $5,000 even when filtered, got ${override_result['final_bonus']}"
+        )
+
+        # Total allocated should be close to scaled pool ($30,000)
+        assert abs(result['total_allocated'] - 30000) < 100, (
+            f"Total allocated should be ~$30,000, got ${result['total_allocated']}"
+        )
