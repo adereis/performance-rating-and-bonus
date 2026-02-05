@@ -4254,7 +4254,6 @@ def import_current():
                 settings.last_updated = datetime.now()
 
             imported = 0
-            updated = 0
             tenet_warnings = []  # Collect unrecognized tenet names for warnings
 
             # Track changes for import change log
@@ -4292,13 +4291,19 @@ def import_current():
 
                 if existing:
                     employee = existing
-                    updated += 1
-                    # Track changes for this existing employee
+                    # Track changes for this existing employee (updated count computed at end)
                     emp_updates = []
                     emp_preserved = []
+                    # Track if Workday-sourced fields changed (for accurate update count)
+                    workday_fields_changed = (
+                        employee.associate != emp_data['associate'] or
+                        employee.supervisory_organization != emp_data['supervisory_organization'] or
+                        employee.current_job_profile != emp_data['current_job_profile']
+                    )
                 else:
                     employee = Employee(associate_id=associate_id)
                     imported += 1
+                    workday_fields_changed = False  # Not applicable for new employees
                     # Track new employee
                     import_changes['new'].append({
                         'associate_id': associate_id,
@@ -4732,11 +4737,12 @@ def import_current():
                             employee.special_case_notes = new_notes
 
                         # Aggregate per-employee changes for existing employees
-                        if emp_updates:
+                        # Count as updated if any field actually changed (manager-input OR Workday-sourced)
+                        if emp_updates or workday_fields_changed:
                             import_changes['updated'].append({
                                 'associate_id': associate_id,
                                 'associate': emp_data['associate'],
-                                'changes': emp_updates
+                                'changes': emp_updates  # Only detailed changes for manager-input fields
                             })
                         if emp_preserved:
                             import_changes['preserved'].append({
@@ -4784,7 +4790,7 @@ def import_current():
             result = {
                 'success': True,
                 'imported': imported,
-                'updated': updated
+                'updated': len(import_changes['updated'])  # Only count records with actual changes
             }
             if clear_existing:
                 result['cleared'] = cleared
@@ -4883,6 +4889,21 @@ def import_historical():
                 # Get bonus allocation from Workday column
                 bonus_allocation = emp_data.get('proposed_percent_of_target_bonus')
 
+                # Prepare new field values
+                new_values = {
+                    'performance_rating': notes_data.get('performance_rating'),
+                    'bonus_allocation': bonus_allocation,
+                    'justification': notes_data.get('justification'),
+                    'tenets_strengths': notes_data.get('tenets_strengths'),
+                    'tenets_improvements': notes_data.get('tenets_improvements'),
+                    'mentors': notes_data.get('mentors'),
+                    'mentees': notes_data.get('mentees'),
+                    'snapshot_name': emp_data['associate'],
+                    'snapshot_org': emp_data['supervisory_organization'],
+                    'snapshot_job_profile': emp_data['current_job_profile'],
+                    'snapshot_bonus_target_manager_currency': emp_data.get('bonus_target_manager_currency') or emp_data.get('bonus_target_local_currency'),
+                }
+
                 # Check if snapshot exists
                 existing = db.query(RatingSnapshot).filter(
                     RatingSnapshot.period_id == period_id,
@@ -4891,7 +4912,13 @@ def import_historical():
 
                 if existing:
                     snapshot = existing
-                    updated += 1
+                    # Check if any field actually changed
+                    has_changes = any(
+                        getattr(snapshot, field) != value
+                        for field, value in new_values.items()
+                    )
+                    if has_changes:
+                        updated += 1
                 else:
                     snapshot = RatingSnapshot(
                         period_id=period_id,
@@ -4900,20 +4927,8 @@ def import_historical():
                     imported += 1
 
                 # Update snapshot fields
-                snapshot.performance_rating = notes_data.get('performance_rating')
-                snapshot.bonus_allocation = bonus_allocation
-                snapshot.justification = notes_data.get('justification')
-                snapshot.tenets_strengths = notes_data.get('tenets_strengths')
-                snapshot.tenets_improvements = notes_data.get('tenets_improvements')
-                snapshot.mentors = notes_data.get('mentors')
-                snapshot.mentees = notes_data.get('mentees')
-
-                # Snapshot employee context
-                snapshot.snapshot_name = emp_data['associate']
-                snapshot.snapshot_org = emp_data['supervisory_organization']
-                snapshot.snapshot_job_profile = emp_data['current_job_profile']
-                # Use manager currency for international, fall back to local for domestic employees
-                snapshot.snapshot_bonus_target_manager_currency = emp_data.get('bonus_target_manager_currency') or emp_data.get('bonus_target_local_currency')
+                for field, value in new_values.items():
+                    setattr(snapshot, field, value)
 
                 snapshot.archived_at = datetime.now()
 

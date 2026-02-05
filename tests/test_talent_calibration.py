@@ -557,7 +557,9 @@ class TestTalentImportEndpoints:
             )
         assert response.status_code == 200
         data = response.get_json()
-        assert data['updated'] == 2  # Both employees updated, not imported
+        # Same file re-imported: no actual field changes, so updated == 0
+        # (manager fields are preserved, not overwritten from identical Workday data)
+        assert data['updated'] == 0
 
         # Refresh and verify manager fields were PRESERVED
         db_session.expire_all()
