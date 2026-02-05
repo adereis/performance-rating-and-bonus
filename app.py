@@ -3374,10 +3374,12 @@ def export_page():
         # Compare calculated bonus to Workday's proposed bonus
         workday_proposed_bonus = employee.get('Proposed Percent of Target Bonus')
         bonus_allocation_differs = False
+        bonus_delta = None  # Delta: calculated - workday (positive = tool gives more)
         if bonus_percent_of_target is not None:
             if workday_proposed_bonus is not None:
-                # Differs if more than 0.5% difference (handles rounding)
-                bonus_allocation_differs = abs(bonus_percent_of_target - workday_proposed_bonus) > 0.5
+                # Compare as integers - both should be whole numbers
+                bonus_allocation_differs = int(bonus_percent_of_target) != round(workday_proposed_bonus)
+                bonus_delta = int(bonus_percent_of_target) - round(workday_proposed_bonus)
             else:
                 # Workday has no value yet - needs sync if tool calculated something
                 bonus_allocation_differs = True
@@ -3418,6 +3420,7 @@ def export_page():
             # Bonus allocation comparison (calculated vs Workday)
             'bonus_allocation_differs': bonus_allocation_differs,
             'workday_proposed_bonus': round(workday_proposed_bonus, 1) if workday_proposed_bonus is not None else None,
+            'bonus_delta': bonus_delta,  # Calculated - Workday (positive = tool gives more)
             # Per-field modification tracking
             'rating_modified': rating_modified,
             'justification_modified': justification_modified,

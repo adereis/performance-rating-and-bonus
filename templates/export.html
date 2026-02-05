@@ -319,6 +319,17 @@
         margin-right: 2px;
     }
 
+    /* Bonus delta indicators */
+    .bonus-delta {
+        font-size: 11px;
+    }
+    .bonus-delta.delta-positive {
+        color: #155724;
+    }
+    .bonus-delta.delta-negative {
+        color: #721c24;
+    }
+
     /* Sync status bar */
     .sync-status-bar {
         display: flex;
@@ -376,9 +387,11 @@
         display: none !important;
     }
 
-    /* Hide bonus column when filter is active */
+    /* Hide bonus and delta columns when filter is active */
     .export-table.bonus-column-hidden th:nth-child(2),
-    .export-table.bonus-column-hidden td:nth-child(2) {
+    .export-table.bonus-column-hidden td:nth-child(2),
+    .export-table.bonus-column-hidden th:nth-child(3),
+    .export-table.bonus-column-hidden td:nth-child(3) {
         display: none;
     }
 
@@ -754,13 +767,17 @@
                 <tr>
                     <th class="sortable" data-sort="name">Employee Name</th>
                     <th class="right sortable" data-sort="bonus">Bonus %</th>
-                    <th>Single Description</th>
+                    <th class="right sortable" data-sort="delta">Δ (pp)</th>
+                    <th>Notes</th>
                 </tr>
             </thead>
             <tbody id="exportTableBody">
                 {% for item in export_data %}
                 <tr data-name="{{ item.employee.Associate }}"
-                    data-bonus="{{ item.bonus_percent }}">
+                    data-bonus="{{ item.bonus_percent }}"
+                    data-delta="{{ item.bonus_delta if item.bonus_delta is not none else 0 }}"
+                    data-needs-sync="{{ 'true' if item.needs_sync else 'false' }}"
+                    data-tool-sync="{{ 'true' if item.tool_additions_modified else 'false' }}">
                     <td>
                         <strong>
                             <span class="employee-name" data-employee-id="{{ item.employee['Associate ID'] }}">
@@ -775,6 +792,17 @@
                             {% else %}bonus-low{% endif %}">
                             {{ item.bonus_percent }}%
                         </span>
+                    </td>
+                    <td class="right">
+                        {% if item.bonus_delta is not none and item.bonus_delta != 0 %}
+                        <span class="bonus-delta {% if item.bonus_delta > 0 %}delta-positive{% elif item.bonus_delta < 0 %}delta-negative{% endif %}">
+                            {% if item.bonus_delta > 0 %}+{% endif %}{{ item.bonus_delta }}
+                        </span>
+                        {% elif item.bonus_delta == 0 %}
+                        <span style="color: #999;">0</span>
+                        {% else %}
+                        <span style="color: #ccc;">—</span>
+                        {% endif %}
                     </td>
                     <td class="description-cell">
                         <div class="description-text" id="desc_{{ loop.index }}">{{ item.description }}</div>
@@ -1013,53 +1041,61 @@
 
             header.addEventListener('click', function() {
                 const sortKey = this.getAttribute('data-sort');
-                sortExportTable(sortKey);
+                sortExportTable(sortKey, this);
             });
 
             header.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     const sortKey = this.getAttribute('data-sort');
-                    sortExportTable(sortKey);
+                    sortExportTable(sortKey, this);
                 }
             });
         });
 
-        function sortExportTable(column) {
-            const tbody = document.getElementById('exportTableBody');
+        function sortExportTable(column, header) {
+            // Find the table this header belongs to
+            const table = header.closest('table');
+            const tbody = table.querySelector('tbody');
             const rows = Array.from(tbody.querySelectorAll('tr'));
 
-            // Toggle direction if same column, otherwise default to ascending
-            if (currentSort.column === column) {
-                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSort.column = column;
-                currentSort.direction = (column === 'bonus') ? 'desc' : 'asc';
+            // Each table has its own sort state stored on the table element
+            if (!table._sortState) {
+                table._sortState = { column: 'name', direction: 'asc' };
             }
 
-            // Update header classes
-            document.querySelectorAll('th.sortable').forEach(th => {
+            // Toggle direction if same column, otherwise default to ascending (desc for numeric)
+            if (table._sortState.column === column) {
+                table._sortState.direction = table._sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                table._sortState.column = column;
+                // Default descending for numeric columns (bonus, delta), ascending for text
+                table._sortState.direction = (column === 'bonus' || column === 'delta') ? 'desc' : 'asc';
+            }
+
+            // Update header classes within this table only
+            table.querySelectorAll('th.sortable').forEach(th => {
                 th.classList.remove('asc', 'desc');
             });
-            document.querySelector(`th[data-sort="${column}"]`).classList.add(currentSort.direction);
+            header.classList.add(table._sortState.direction);
 
             // Sort rows
             rows.sort((a, b) => {
                 let aVal = a.getAttribute(`data-${column}`);
                 let bVal = b.getAttribute(`data-${column}`);
 
-                // For bonus, convert to numbers
-                if (column === 'bonus') {
-                    aVal = parseFloat(aVal);
-                    bVal = parseFloat(bVal);
+                // For numeric columns, convert to numbers
+                if (column === 'bonus' || column === 'delta') {
+                    aVal = parseFloat(aVal) || 0;
+                    bVal = parseFloat(bVal) || 0;
                 } else {
                     // For text, case-insensitive comparison
-                    aVal = aVal.toLowerCase();
-                    bVal = bVal.toLowerCase();
+                    aVal = (aVal || '').toLowerCase();
+                    bVal = (bVal || '').toLowerCase();
                 }
 
-                if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
-                if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
+                if (aVal < bVal) return table._sortState.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return table._sortState.direction === 'asc' ? 1 : -1;
                 return 0;
             });
 
