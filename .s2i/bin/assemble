@@ -12,6 +12,6 @@ echo "---> Running custom assemble script..."
 echo "---> Generating demo mode template databases..."
 
 # Generate the template databases (same as Dockerfile RUN step)
-python3 scripts/create_demo_templates.py
+python3 scripts/generate-demo-templates.py
 
 echo "---> Custom assemble complete!"

@@ -6,7 +6,7 @@ Reference for deploying the Performance Rating System across three Azure environ
 |-------------|-----|------|----------|
 | **VM** | perf-rating-demo.eastus.cloudapp.azure.com | ~$15/mo | Simple, full control |
 | **AKS** | perf-rating-aks.eastus.cloudapp.azure.com | ~$35/mo | Kubernetes learning |
-| **ARO** | demo-perf-rating.apps.uoaar8p0.eastus.aroapp.io | ~$450/mo | Enterprise OpenShift |
+| **ARO** | demo-perf-rating.apps.vbj6calm.eastus.aroapp.io | ~$450/mo | Enterprise OpenShift |
 
 ---
 

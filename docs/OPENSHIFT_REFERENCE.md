@@ -2,7 +2,7 @@
 
 OpenShift-specific concepts learned during ARO deployment. For cluster creation, see [AZURE_REFERENCE.md](AZURE_REFERENCE.md).
 
-**Live Demo**: https://demo-perf-rating.apps.uoaar8p0.eastus.aroapp.io/
+**Live Demo**: https://demo-perf-rating.apps.vbj6calm.eastus.aroapp.io/
 
 ---
 
@@ -120,10 +120,10 @@ https://<route-name>-<project-name>.apps.<cluster-domain>
          you control   you control      cluster assigns
 ```
 
-Example: `https://demo-perf-rating.apps.uoaar8p0.eastus.aroapp.io`
+Example: `https://demo-perf-rating.apps.vbj6calm.eastus.aroapp.io`
 - Route name: `demo`
 - Project name: `perf-rating`
-- Cluster domain: `uoaar8p0.eastus.aroapp.io`
+- Cluster domain: `vbj6calm.eastus.aroapp.io`
 
 ### Create Route
 
@@ -194,15 +194,15 @@ OpenShift's enhanced namespaces with built-in RBAC.
 ### Resource Hierarchy
 
 ```
-CLUSTER (uoaar8p0.eastus.aroapp.io)
+CLUSTER (vbj6calm.eastus.aroapp.io)
 │
-├── PROJECT: perf-rating              ◄── isolation boundary
+├── PROJECT: perf-rating         ◄── isolation boundary
 │   │
-│   ├── Deployment: perf-rating       ◄── manages pods
+│   ├── Deployment: perf-rating  ◄── manages pods
 │   │       │
 │   │       └── Pods (replicas)
 │   │
-│   ├── Service: perf-rating          ◄── internal networking
+│   ├── Service: perf-rating     ◄── internal networking
 │   │       internal: perf-rating.perf-rating.svc:8080
 │   │
 │   └── Route: demo                   ◄── external URL
