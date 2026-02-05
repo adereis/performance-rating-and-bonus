@@ -157,7 +157,7 @@ class TestImportAnalyze:
                 'associate': 'John Doe',
                 'supervisory_organization': 'Engineering',
                 'current_job_profile': 'Senior Engineer',
-                'notes': 'Performance Rating: 125%\nJustification: Great work',
+                'notes': '[Performance Rating: 125%]\n\nJustification:\nGreat work',
                 'proposed_percent_of_target_bonus': 118.5
             },
             {
@@ -196,7 +196,7 @@ class TestImportAnalyze:
             {
                 'associate_id': 'EMP001',
                 'associate': 'John Doe',
-                'notes': 'Performance Rating: 125%'
+                'notes': '[Performance Rating: 125%]'
             }
         ]
 
@@ -587,7 +587,7 @@ class TestImportHistorical:
                 'current_job_profile': 'Senior Engineer',
                 'bonus_target_manager_currency': 15000,
                 'proposed_percent_of_target_bonus': 118.5,
-                'notes': 'Performance Rating: 125%\nJustification: Excellent work\nMentor: Alice\nStrengths: Leadership'
+                'notes': '[Performance Rating: 125%]\n[Mentor: Alice]\n[Strengths: Leadership]\n\nJustification:\nExcellent work'
             },
             {
                 'associate_id': 'EMP002',
@@ -675,7 +675,7 @@ class TestImportHistorical:
                 'associate': 'New Name',
                 'supervisory_organization': 'New Org',
                 'proposed_percent_of_target_bonus': 125.0,
-                'notes': 'Performance Rating: 130%\nJustification: Updated review'
+                'notes': '[Performance Rating: 130%]\n\nJustification:\nUpdated review'
             }
         ]
 
@@ -781,7 +781,7 @@ class TestXlsxUtils:
                 'current_base_pay_manager_currency': 150000,
                 'bonus_target_manager_currency': 22500,
                 'proposed_percent_of_target_bonus': 118.5,
-                'notes': 'Performance Rating: 125%'
+                'notes': '[Performance Rating: 125%]'
             }
         ]
 
@@ -809,7 +809,7 @@ class TestXlsxUtils:
             assert emp['current_base_pay_manager_currency'] == 150000
             assert emp['bonus_target_manager_currency'] == 22500
             assert emp['proposed_percent_of_target_bonus'] == 118.5
-            assert 'Performance Rating: 125%' in emp['notes']
+            assert '[Performance Rating: 125%]' in emp['notes']
             # Check that currency was extracted from headers
             assert metadata.get('currency') == 'USD'
         finally:

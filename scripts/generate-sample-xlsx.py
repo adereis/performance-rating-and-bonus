@@ -630,7 +630,7 @@ def generate_historical_notes(rating, include_full_details=True):
         if choice == 'empty':
             return ''
         elif choice == 'rating_only':
-            return f"Performance Rating: {rating}%"
+            return f"[Performance Rating: {rating}%]"
         else:
             return format_notes_field(
                 performance_rating=rating,

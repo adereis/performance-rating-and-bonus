@@ -93,6 +93,15 @@ Manager name parsed from: `"Supervisory Organization (Manager Name)"` or `"Direc
 
 **Overwritten on re-import** (from Workday): salary, bonus targets, org structure, management_level, country, tenure fields
 
+**Notes Field Format** (canonical bracketed format for Workday round-tripping):
+- `[Performance Rating: X%]`
+- `[Override: X%, reason]` (special cases like pro-rata leave)
+- `[Strengths: ...]` / `[Improvements: ...]`
+- `[Mentor: ...]` / `[Mentees: ...]`
+- `Justification:` (section header, allows multi-line text)
+
+Parser: `notes_parser.py` — `parse_notes_field()` extracts, `format_notes_field()` serializes. Exports use this format in the Notes column; the separate Description column is human-readable (no brackets).
+
 ### Talent Calibration
 
 **Routes**: `/calibrate` (UI), `/api/calibrate` (POST), `/api/calibrate/status` (GET), `/export/talent` (GET)

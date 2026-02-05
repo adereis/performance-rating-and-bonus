@@ -11,12 +11,14 @@ class TestParseNotesField:
 
     def test_parse_complete_notes(self):
         """Test parsing a complete notes field with all fields."""
-        notes = """Performance Rating: 125.5%
-Justification: Great performance, delivered feature X, Y and Z. Role model to the team.
-Mentor: Alice Chen
-Mentees: Bob Jones, Carol White
-Strengths: Customer Obsession, Ownership, Bias for Action
-Areas for Improvement: Earn Trust, Dive Deep"""
+        notes = """[Performance Rating: 125.5%]
+[Strengths: Customer Obsession, Ownership, Bias for Action]
+[Improvements: Earn Trust, Dive Deep]
+[Mentor: Alice Chen]
+[Mentees: Bob Jones, Carol White]
+
+Justification:
+Great performance, delivered feature X, Y and Z. Role model to the team."""
 
         result = parse_notes_field(notes)
 
@@ -29,7 +31,7 @@ Areas for Improvement: Earn Trust, Dive Deep"""
 
     def test_parse_rating_only(self):
         """Test parsing notes with only performance rating."""
-        notes = "Performance Rating: 100%"
+        notes = "[Performance Rating: 100%]"
 
         result = parse_notes_field(notes)
 
@@ -42,11 +44,13 @@ Areas for Improvement: Earn Trust, Dive Deep"""
 
     def test_parse_multiline_justification(self):
         """Test parsing multi-line justification text."""
-        notes = """Performance Rating: 130%
-Justification: This employee demonstrated exceptional performance.
+        notes = """[Performance Rating: 130%]
+[Mentor: Senior Dev]
+
+Justification:
+This employee demonstrated exceptional performance.
 They led the API redesign project which reduced latency by 40%.
-Additionally, they mentored two junior engineers.
-Mentor: Senior Dev"""
+Additionally, they mentored two junior engineers."""
 
         result = parse_notes_field(notes)
 
@@ -76,10 +80,12 @@ Mentor: Senior Dev"""
 
     def test_parse_case_insensitive(self):
         """Test that field names are case-insensitive."""
-        notes = """PERFORMANCE RATING: 110%
-justification: good work
-MENTOR: Boss
-strengths: Leadership"""
+        notes = """[PERFORMANCE RATING: 110%]
+[MENTOR: Boss]
+[STRENGTHS: Leadership]
+
+Justification:
+good work"""
 
         result = parse_notes_field(notes)
 
@@ -90,7 +96,7 @@ strengths: Leadership"""
 
     def test_parse_rating_with_decimal(self):
         """Test parsing rating with decimal places."""
-        notes = "Performance Rating: 115.75%"
+        notes = "[Performance Rating: 115.75%]"
 
         result = parse_notes_field(notes)
 
@@ -98,8 +104,10 @@ strengths: Leadership"""
 
     def test_parse_without_rating(self):
         """Test parsing notes without performance rating."""
-        notes = """Justification: Solid performance this period.
-Strengths: Teamwork, Communication"""
+        notes = """[Strengths: Teamwork, Communication]
+
+Justification:
+Solid performance this period."""
 
         result = parse_notes_field(notes)
 
@@ -107,20 +115,9 @@ Strengths: Teamwork, Communication"""
         assert result['justification'] == "Solid performance this period."
         assert result['tenets_strengths'] == "Teamwork, Communication"
 
-    def test_parse_alternate_improvement_phrasings(self):
-        """Test parsing various phrasings for improvements."""
-        notes1 = "Improvements: Time Management"
-        notes2 = "Areas to Improve: Focus"
-
-        result1 = parse_notes_field(notes1)
-        result2 = parse_notes_field(notes2)
-
-        assert result1['tenets_improvements'] == "Time Management"
-        assert result2['tenets_improvements'] == "Focus"
-
     def test_parse_windows_line_endings(self):
         """Test parsing notes with Windows line endings."""
-        notes = "Performance Rating: 100%\r\nJustification: Test\r\nMentor: Alice"
+        notes = "[Performance Rating: 100%]\r\n[Mentor: Alice]\r\n\r\nJustification:\r\nTest"
 
         result = parse_notes_field(notes)
 
@@ -130,12 +127,14 @@ Strengths: Teamwork, Communication"""
 
     def test_parse_real_world_example(self):
         """Test parsing a real-world example from the export page."""
-        notes = """Performance Rating: 155.0%
-Justification: Great performance, delivered feature X, Y and Z. Role model to the team.
-Mentor: Rhoda Map
-Mentees: Mai Stone
-Strengths: We Serve Our Customers, We Champion Ownership, We Start with Trust
-Areas for Improvement: We Embrace Transparency, We Navigate Change with Resilience"""
+        notes = """[Performance Rating: 155.0%]
+[Strengths: We Serve Our Customers, We Champion Ownership, We Start with Trust]
+[Improvements: We Embrace Transparency, We Navigate Change with Resilience]
+[Mentor: Rhoda Map]
+[Mentees: Mai Stone]
+
+Justification:
+Great performance, delivered feature X, Y and Z. Role model to the team."""
 
         result = parse_notes_field(notes)
 
@@ -161,12 +160,14 @@ class TestFormatNotesField:
             tenets_improvements="Communication"
         )
 
-        assert "Performance Rating: 125.0%" in result
-        assert "Justification: Great work this quarter." in result
-        assert "Mentor: Alice" in result
-        assert "Mentees: Bob; Carol" in result  # Normalized to semicolons
-        assert "Strengths: Leadership, Teamwork" in result
-        assert "Areas for Improvement: Communication" in result
+        assert "[Performance Rating: 125.0%]" in result
+        assert "[Mentor: Alice]" in result
+        assert "[Mentees: Bob; Carol]" in result  # Normalized to semicolons
+        assert "[Strengths: Leadership, Teamwork]" in result
+        assert "[Improvements: Communication]" in result
+        # Justification uses section header format
+        assert "Justification:" in result
+        assert "Great work this quarter." in result
 
     def test_format_partial_notes(self):
         """Test formatting with only some fields."""
@@ -175,10 +176,11 @@ class TestFormatNotesField:
             justification="Met expectations."
         )
 
-        assert "Performance Rating: 100.0%" in result
-        assert "Justification: Met expectations." in result
-        assert "Mentor:" not in result
-        assert "Strengths:" not in result
+        assert "[Performance Rating: 100.0%]" in result
+        assert "Justification:" in result
+        assert "Met expectations." in result
+        assert "[Mentor:" not in result
+        assert "[Strengths:" not in result
 
     def test_format_empty_notes(self):
         """Test formatting with no fields returns empty string."""
@@ -279,7 +281,7 @@ Pro-rata bonus due to leave."""
             justification="Pro-rata bonus"
         )
 
-        assert "Performance Rating: 100.0%" in result
+        assert "[Performance Rating: 100.0%]" in result
         assert "[Override: 50.0%, Paternity leave Apr-Sep]" in result
         assert "Justification:" in result
         assert "Pro-rata bonus" in result
@@ -303,7 +305,7 @@ Pro-rata bonus due to leave."""
         )
 
         assert "[Override:" not in result
-        assert "Performance Rating: 100.0%" in result
+        assert "[Performance Rating: 100.0%]" in result
 
     def test_override_roundtrip(self):
         """Test that formatting then parsing returns original override values."""

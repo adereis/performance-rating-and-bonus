@@ -74,51 +74,41 @@ def parse_notes_field(notes_text: Optional[str]) -> dict:
     # Normalize line endings
     text = notes_text.replace('\r\n', '\n').replace('\r', '\n')
 
-    # Parse Performance Rating
-    rating_match = re.search(r'Performance\s+Rating:\s*([\d.]+)\s*%', text, re.IGNORECASE)
+    # Parse Performance Rating: [Performance Rating: X%]
+    rating_match = re.search(r'\[Performance\s+Rating:\s*([\d.]+)\s*%\]', text, re.IGNORECASE)
     if rating_match:
         try:
             result['performance_rating'] = float(rating_match.group(1))
         except ValueError:
             pass
 
-    # Parse Mentor (single person who mentored this employee)
-    # Supports both bracketed [Mentor: X] and non-bracketed Mentor: X formats
-    mentor_match = re.search(r'^\[Mentor:\s*([^\]]+)\]', text, re.MULTILINE | re.IGNORECASE)
-    if not mentor_match:
-        mentor_match = re.search(r'^Mentor:\s*(.+?)$', text, re.MULTILINE | re.IGNORECASE)
+    # Parse Mentor: [Mentor: X]
+    mentor_match = re.search(r'\[Mentor:\s*([^\]]+)\]', text, re.IGNORECASE)
     if mentor_match:
         mentor_value = mentor_match.group(1).strip()
         if mentor_value:
             result['mentors'] = mentor_value
 
-    # Parse Mentees (people this employee mentored)
-    mentees_match = re.search(r'^Mentees?:\s*(.+?)$', text, re.MULTILINE | re.IGNORECASE)
+    # Parse Mentees: [Mentees: X; Y]
+    mentees_match = re.search(r'\[Mentees?:\s*([^\]]+)\]', text, re.IGNORECASE)
     if mentees_match:
         mentees_value = mentees_match.group(1).strip()
         if mentees_value:
             result['mentees'] = mentees_value
 
-    # Parse Strengths
-    strengths_match = re.search(r'^Strengths?:\s*(.+?)$', text, re.MULTILINE | re.IGNORECASE)
+    # Parse Strengths: [Strengths: X; Y]
+    strengths_match = re.search(r'\[Strengths?:\s*([^\]]+)\]', text, re.IGNORECASE)
     if strengths_match:
         strengths_value = strengths_match.group(1).strip()
         if strengths_value:
             result['tenets_strengths'] = strengths_value
 
-    # Parse Areas for Improvement (various phrasings)
-    improvements_patterns = [
-        r'^Areas?\s+for\s+Improvement:\s*(.+?)$',
-        r'^Improvements?:\s*(.+?)$',
-        r'^Areas?\s+to\s+Improve:\s*(.+?)$',
-    ]
-    for pattern in improvements_patterns:
-        improvements_match = re.search(pattern, text, re.MULTILINE | re.IGNORECASE)
-        if improvements_match:
-            improvements_value = improvements_match.group(1).strip()
-            if improvements_value:
-                result['tenets_improvements'] = improvements_value
-            break
+    # Parse Improvements: [Improvements: X; Y]
+    improvements_match = re.search(r'\[Improvements?:\s*([^\]]+)\]', text, re.IGNORECASE)
+    if improvements_match:
+        improvements_value = improvements_match.group(1).strip()
+        if improvements_value:
+            result['tenets_improvements'] = improvements_value
 
     # [Override: 50%] or [Override: 50%, Paternity leave Apr-Sep]
     # Combined format: percentage required, reason optional after comma
@@ -182,11 +172,9 @@ def format_notes_field(
     """
     lines = []
 
+    # Bracketed fields (tool additions) - order matches app.py export
     if performance_rating is not None:
-        lines.append(f"Performance Rating: {performance_rating}%")
-
-    if justification:
-        lines.append(f"Justification: {justification}")
+        lines.append(f"[Performance Rating: {performance_rating}%]")
 
     # Special case override (pro-rata leave, retention, etc.)
     if bonus_override_percent is not None:
@@ -195,18 +183,24 @@ def format_notes_field(
         else:
             lines.append(f"[Override: {bonus_override_percent}%]")
 
+    if tenets_strengths:
+        lines.append(f"[Strengths: {tenets_strengths}]")
+
+    if tenets_improvements:
+        lines.append(f"[Improvements: {tenets_improvements}]")
+
     if mentor:
-        lines.append(f"Mentor: {mentor}")
+        lines.append(f"[Mentor: {mentor}]")
 
     if mentees:
         # Normalize to semicolon-separated for consistency with tenets
         normalized_mentees = '; '.join(m.strip() for m in mentees.replace(';', ',').split(',') if m.strip())
-        lines.append(f"Mentees: {normalized_mentees}")
+        lines.append(f"[Mentees: {normalized_mentees}]")
 
-    if tenets_strengths:
-        lines.append(f"Strengths: {tenets_strengths}")
-
-    if tenets_improvements:
-        lines.append(f"Areas for Improvement: {tenets_improvements}")
+    # Justification uses section header format (allows multi-line, any characters)
+    if justification:
+        lines.append('')  # Blank line before section
+        lines.append('Justification:')
+        lines.append(justification)
 
     return '\n'.join(lines)
