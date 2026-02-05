@@ -2475,7 +2475,10 @@ def analytics():
         # Tenure-based inconsistencies
         'new_hire_low_rating': [],      # < 6 months total tenure but rated Low/Evolving
         'promotion_ready_short_tenure': [],  # Ready Now but < 2 years in role
-        'new_hire_mentoring': []     # < 1 year total tenure but mentoring others
+        'new_hire_mentoring': [],     # < 1 year total tenure but mentoring others
+        # Prior cycle bonus changes (populated after bonus calculation)
+        'bonus_increase_from_prior': [],   # Calculated bonus >15pp higher than prior cycle
+        'bonus_decrease_from_prior': []    # Calculated bonus >15pp lower than prior cycle
     }
 
     for emp in team_data:
@@ -2763,6 +2766,67 @@ def analytics():
         'pct_long_tenure': round(len([v for v in tijp_values if v >= 36]) / len(tijp_values) * 100, 1) if tijp_values else 0,
         'tenure_by_role': tenure_by_role_summary
     }
+
+    # Prior cycle bonus change detection (±15pp threshold)
+    # Uses calculated bonus vs last_bonus_allocation_percent from Workday
+    if has_bonus_data and rated_employees:
+        params = {
+            'upside_exponent': 1.35,
+            'downside_exponent': 1.9
+        }
+        bonus_settings = get_bonus_settings()
+        budget_override = bonus_settings.budget_override if bonus_settings else 0.0
+        workday_pool = bonus_settings.workday_pool if bonus_settings else None
+
+        # Calculate all_targets_sum from ALL employees (not filtered team_data)
+        # This ensures the budget pool is scaled proportionally when filters are applied
+        all_targets_sum = 0
+        for emp in all_employees:
+            bonus_target = emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
+            if bonus_target:
+                try:
+                    all_targets_sum += float(bonus_target)
+                except (ValueError, TypeError):
+                    pass
+
+        bonus_calc = calculate_bonus_for_employees(rated_employees, params, budget_override, workday_pool, all_targets_sum)
+        results_by_id = bonus_calc.get('results_by_id', {})
+
+        BONUS_CHANGE_THRESHOLD = 15  # percentage points
+        for emp in rated_employees:
+            emp_id = emp.get('Associate ID')
+            prior_bonus = emp.get('Last Bonus Allocation Percent')
+
+            # Skip if no historical data or no calculated bonus
+            if prior_bonus is None or emp_id not in results_by_id:
+                continue
+
+            # Skip special case employees (bonus override)
+            if emp.get('bonus_override_percent') is not None:
+                continue
+
+            calc_result = results_by_id[emp_id]
+            current_bonus = calc_result.get('bonus_percent_of_target')
+            if current_bonus is None:
+                continue
+
+            delta = current_bonus - prior_bonus
+            if abs(delta) >= BONUS_CHANGE_THRESHOLD:
+                change_info = {
+                    'name': emp.get('Associate', 'Unknown'),
+                    'id': emp_id,
+                    'job': emp.get('Current Job Profile', ''),
+                    'prior_bonus': round(prior_bonus, 1),
+                    'current_bonus': round(current_bonus, 1),
+                    'delta': round(delta, 1)
+                }
+                if delta > 0:
+                    inconsistencies['bonus_increase_from_prior'].append(change_info)
+                else:
+                    inconsistencies['bonus_decrease_from_prior'].append(change_info)
+
+        # Recalculate total after adding YoY entries
+        total_inconsistencies = sum(len(v) for v in inconsistencies.values())
 
     return render_template('analytics.html',
                          team=sorted_team,
