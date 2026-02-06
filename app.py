@@ -14,6 +14,10 @@ from sqlalchemy import text
 from models import Employee, BonusSettings, Period, RatingSnapshot, init_db, get_db
 from xlsx_utils import analyze_xlsx, parse_xlsx_employees
 from notes_parser import parse_notes_field
+from services.db_helpers import (  # noqa: F401 - re-exported for tests
+    load_tenets_config, convert_tenet_names_to_ids,
+)
+from services.db_helpers import apply_employee_filters as _apply_employee_filters
 from services.import_handler import (  # noqa: F401 - available for import routes
     text_unmodified, json_string_unmodified, mentor_fields_equal,
     update_text_field, update_mentor_field, update_json_field,
@@ -352,183 +356,43 @@ def demo_reset():
 
 def get_all_employees():
     """Get all employees from database."""
-    db = get_db()
-    try:
-        employees = db.query(Employee).all()
-        return [emp.to_dict() for emp in employees]
-    finally:
-        db.close()
+    from services.db_helpers import get_all_employees as _get_all
+    return _get_all(get_db)
 
 
 def get_manager_currency():
-    """Detect the manager's currency.
-
-    Priority order:
-    1. BonusSettings.manager_currency - extracted from column headers during import
-       (e.g., 'USD' from 'Bonus Target (USD)')
-    2. Domestic employee detection - employees with NULL bonus_target_manager_currency
-    3. Majority currency fallback - most common currency among employees
-    4. Default to USD
-
-    Returns:
-        tuple: (currency_code, currency_symbol) e.g., ('AUD', 'A$')
-               Defaults to ('USD', '$') if no employees or unable to detect.
-
-    Note: Result is cached per-request in Flask's g object to avoid
-    repeated database queries (important for template filters).
-    """
+    """Detect the manager's currency (cached per-request)."""
     from flask import g, has_request_context
+    from services.db_helpers import get_manager_currency as _get_mc
 
-    # Return cached result if available (avoids repeated DB queries in templates)
-    if has_request_context() and hasattr(g, '_manager_currency'):
-        return g._manager_currency
+    def cache_get():
+        if has_request_context() and hasattr(g, '_manager_currency'):
+            return g._manager_currency
+        return None
 
-    db = get_db()
-    try:
-        # Priority 1: Check BonusSettings for currency extracted from column headers
-        settings = db.query(BonusSettings).first()
-        if settings and settings.manager_currency:
-            currency = settings.manager_currency
-            symbol = CURRENCY_SYMBOLS.get(currency, currency)
-            result = (currency, symbol)
-        else:
-            # Priority 2: Domestic employees have NULL in bonus_target_manager_currency
-            # because their local currency IS the manager's currency
-            domestic = db.query(Employee).filter(
-                Employee.bonus_target_manager_currency.is_(None),
-                Employee.currency.isnot(None)
-            ).first()
-
-            if domestic and domestic.currency:
-                currency = domestic.currency
-                symbol = CURRENCY_SYMBOLS.get(currency, currency)
-                result = (currency, symbol)
-            elif db.query(Employee).filter(Employee.currency.isnot(None)).first():
-                # Priority 3: If all employees have manager_currency set, use majority currency
-                from collections import Counter
-                all_employees = db.query(Employee).filter(
-                    Employee.currency.isnot(None)
-                ).all()
-                currencies = [e.currency for e in all_employees]
-                if currencies:
-                    most_common = Counter(currencies).most_common(1)[0][0]
-                    symbol = CURRENCY_SYMBOLS.get(most_common, most_common)
-                    result = (most_common, symbol)
-                else:
-                    result = ('USD', '$')
-            else:
-                # Priority 4: Default to USD
-                result = ('USD', '$')
-
-        # Cache result for this request
+    def cache_set(result):
         if has_request_context():
             g._manager_currency = result
 
-        return result
-    finally:
-        db.close()
+    return _get_mc(get_db, cache_get, cache_set)
 
 
 def get_employee_by_id(associate_id):
     """Get a single employee by ID."""
-    db = get_db()
-    try:
-        return db.query(Employee).filter(Employee.associate_id == associate_id).first()
-    finally:
-        db.close()
+    from services.db_helpers import get_employee_by_id as _get_emp
+    return _get_emp(associate_id, get_db)
 
 
 def get_bonus_settings():
     """Get bonus settings from database, creating default if needed."""
-    db = get_db()
-    try:
-        settings = db.query(BonusSettings).first()
-        if not settings:
-            # Create default settings
-            settings = BonusSettings(budget_override=0.0, last_updated=datetime.now())
-            db.add(settings)
-            db.commit()
-            db.refresh(settings)
-        return settings
-    finally:
-        db.close()
+    from services.db_helpers import get_bonus_settings as _get_bs
+    return _get_bs(get_db)
 
 
 def update_bonus_settings(budget_override):
     """Update bonus settings in database."""
-    db = get_db()
-    try:
-        settings = db.query(BonusSettings).first()
-        if not settings:
-            settings = BonusSettings()
-            db.add(settings)
-
-        settings.budget_override = budget_override
-        settings.last_updated = datetime.now()
-        db.commit()
-        return True
-    except Exception as e:
-        db.rollback()
-        raise e
-    finally:
-        db.close()
-
-
-def load_tenets_config():
-    """
-    Load tenets configuration from tenets.json.
-
-    Returns:
-        tuple: (tenets_config dict, tenets_map dict mapping id->name)
-               Returns (None, {}) if no config found
-    """
-    tenets_file = 'tenets.json'
-    if os.path.exists(tenets_file):
-        try:
-            with open(tenets_file, 'r') as f:
-                tenets_config = json.load(f)
-                tenets_map = {t['id']: t['name'] for t in tenets_config.get('tenets', [])}
-                return tenets_config, tenets_map
-        except Exception as e:
-            print(f"Error loading tenets from {tenets_file}: {e}")
-    return None, {}
-
-
-def convert_tenet_names_to_ids(names_str: str, tenets_config: dict) -> str:
-    """
-    Convert comma-separated tenet names to JSON array of tenet IDs.
-
-    Used when importing from Notes field which stores human-readable names
-    like "We Serve Our Customers, We Champion Ownership" but the database
-    expects JSON arrays of IDs like '["ownership-1", "ownership-2"]'.
-
-    Args:
-        names_str: Comma-separated tenet names (or semicolon-separated)
-        tenets_config: Tenets configuration dict with 'tenets' list
-
-    Returns:
-        JSON string of tenet IDs, or None if no valid tenets found
-    """
-    if not names_str or not tenets_config:
-        return None
-
-    # Build name-to-id mapping (case-insensitive)
-    name_to_id = {}
-    for t in tenets_config.get('tenets', []):
-        name_to_id[t['name'].lower().strip()] = t['id']
-
-    # Parse the names (handle both comma and semicolon separators)
-    separator = ';' if ';' in names_str else ','
-    names = [n.strip() for n in names_str.split(separator) if n.strip()]
-
-    # Convert to IDs
-    ids = []
-    for name in names:
-        tenet_id = name_to_id.get(name.lower())
-        if tenet_id:
-            ids.append(tenet_id)
-
-    return json.dumps(ids) if ids else None
+    from services.db_helpers import update_bonus_settings as _update_bs
+    return _update_bs(budget_override, get_db)
 
 
 def get_filter_params():
@@ -558,137 +422,8 @@ def get_filter_params():
 
 
 def apply_employee_filters(employees, filter_params):
-    """
-    Apply filters to employee list and return filter metadata.
-
-    Args:
-        employees: List of ALL employee dicts (unfiltered)
-        filter_params: Dict with filter criteria from get_filter_params()
-
-    Returns:
-        tuple: (filtered_employees, filter_info)
-
-        filter_info includes:
-        {
-            'active': bool,                     # Any exclusion filters active?
-            'total_count': int,                 # Original count
-            'filtered_count': int,              # After filtering
-            'hidden_count': int,                # How many hidden by exclusions
-            'params': filter_params,            # For UI state
-            'available_titles': [str],          # All unique job titles
-            'available_employees': [dict],      # All employees [{id, name}]
-            'manager_ids': [str],               # IDs of managers
-            'employee_titles': {id: title},     # ID -> job title mapping
-            'available_teams': [dict],          # Teams for sidebar [{org, manager_name, count}]
-        }
-    """
-    filtered = employees.copy()
-
-    # Build team data BEFORE any filtering (for sidebar display)
-    # Teams are based on Supervisory Organization
-    teams_by_org = {}
-    for emp in employees:
-        org = emp.get('Supervisory Organization', '')
-        if org:
-            if org not in teams_by_org:
-                teams_by_org[org] = []
-            teams_by_org[org].append(emp)
-
-    # Extract manager name from org string: "Org Name (Manager Name)" -> "Manager Name"
-    def extract_manager_name(org_string):
-        if '(' in org_string and org_string.endswith(')'):
-            return org_string[org_string.rfind('(') + 1:-1]
-        return org_string
-
-    available_teams = sorted([
-        {
-            'org': org,
-            'manager_name': extract_manager_name(org),
-            'count': len(team_employees)
-        }
-        for org, team_employees in teams_by_org.items()
-    ], key=lambda x: x['manager_name'])
-
-    # Apply org inclusion filter FIRST (scoping)
-    # This sets the scope before exclusion filters are applied
-    # Supports multiple orgs (checkboxes) - empty list means "all teams"
-    if filter_params.get('include_orgs'):
-        include_orgs = filter_params['include_orgs']
-        filtered = [emp for emp in filtered
-                   if emp.get('Supervisory Organization') in include_orgs]
-
-    # Apply manager exclusion (within scope)
-    if filter_params.get('exclude_managers'):
-        filtered = [emp for emp in filtered if not has_direct_reports(emp, employees)]
-
-    # Apply title exclusion (within scope)
-    if filter_params.get('exclude_titles'):
-        exclude_titles = filter_params['exclude_titles']
-        filtered = [emp for emp in filtered
-                   if emp.get('Current Job Profile') not in exclude_titles]
-
-    # Apply ID exclusion (within scope)
-    if filter_params.get('exclude_ids'):
-        exclude_ids = filter_params['exclude_ids']
-        filtered = [emp for emp in filtered
-                   if emp.get('Associate ID') not in exclude_ids]
-
-    # Build available options from ALL employees (unfiltered)
-    available_titles = sorted(set(
-        emp.get('Current Job Profile', '')
-        for emp in employees
-        if emp.get('Current Job Profile')
-    ))
-
-    # Build list of employees with ID, name pairs (sorted by name for UI)
-    available_employees = sorted(
-        [{'id': emp.get('Associate ID', ''), 'name': emp.get('Associate', '')}
-         for emp in employees
-         if emp.get('Associate ID') and emp.get('Associate')],
-        key=lambda x: x['name']
-    )
-
-    # Build manager list (IDs of employees with direct reports)
-    manager_ids = [
-        emp.get('Associate ID', '')
-        for emp in employees
-        if has_direct_reports(emp, employees)
-    ]
-
-    # Build employee ID -> job title mapping
-    employee_titles = {
-        emp.get('Associate ID', ''): emp.get('Current Job Profile', '')
-        for emp in employees
-        if emp.get('Associate ID')
-    }
-
-    # Calculate hidden count (by exclusion filters only, not org scoping)
-    # Org scoping is conceptually different - it's "viewing" a team, not "hiding" employees
-    if filter_params.get('include_orgs'):
-        scope_count = sum(len(teams_by_org.get(org, [])) for org in filter_params['include_orgs'])
-    else:
-        scope_count = len(employees)
-    hidden_by_exclusions = scope_count - len(filtered)
-
-    # Build filter info
-    filter_info = {
-        'active': any([
-            filter_params.get('exclude_managers'),
-            filter_params.get('exclude_titles'),
-            filter_params.get('exclude_ids')
-        ]),
-        'total_count': len(employees),
-        'filtered_count': len(filtered),
-        'hidden_count': hidden_by_exclusions,
-        'params': filter_params,
-        'available_titles': available_titles,
-        'available_employees': available_employees,
-        'manager_ids': manager_ids,
-        'employee_titles': employee_titles,
-        'available_teams': available_teams,
-    }
-
-    return filtered, filter_info
+    """Apply filters to employee list and return filter metadata."""
+    return _apply_employee_filters(employees, filter_params)
 
 
 @app.route('/')
@@ -3954,46 +3689,9 @@ def period_comparison(period_id):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def get_all_history_snapshots():
-    """Query all RatingSnapshot records joined with Period data.
-
-    Returns:
-        List of dicts with snapshot and period information
-    """
-    db = get_db()
-    try:
-        snapshots = db.query(RatingSnapshot, Period).join(
-            Period, RatingSnapshot.period_id == Period.id
-        ).order_by(Period.archived_at.desc(), RatingSnapshot.snapshot_name).all()
-
-        results = []
-        for snapshot, period in snapshots:
-            results.append({
-                'period_id': period.id,
-                'period_name': period.name,
-                'cycle_type': period.cycle_type or 'bonus',
-                'archived_at': period.archived_at.strftime('%Y-%m-%d') if period.archived_at else '',
-                'associate_id': snapshot.associate_id,
-                'snapshot_name': snapshot.snapshot_name or '',
-                'snapshot_org': snapshot.snapshot_org or '',
-                'snapshot_job_profile': snapshot.snapshot_job_profile or '',
-                'performance_rating': snapshot.performance_rating,
-                'bonus_allocation': snapshot.bonus_allocation,
-                'snapshot_bonus_target_manager_currency': snapshot.snapshot_bonus_target_manager_currency,
-                'justification': snapshot.justification or '',
-                'tenets_strengths': snapshot.tenets_strengths or '',
-                'tenets_improvements': snapshot.tenets_improvements or '',
-                'mentors': snapshot.mentors or '',
-                'mentees': snapshot.mentees or '',
-                'snapshot_talent_overall_perf': snapshot.snapshot_talent_overall_perf or '',
-                'snapshot_talent_perf_what': snapshot.snapshot_talent_perf_what or '',
-                'snapshot_talent_perf_how': snapshot.snapshot_talent_perf_how or '',
-                'snapshot_talent_growth_agility': snapshot.snapshot_talent_growth_agility or '',
-                'snapshot_talent_change_agility': snapshot.snapshot_talent_change_agility or '',
-                'snapshot_talent_movement_readiness': snapshot.snapshot_talent_movement_readiness or '',
-            })
-        return results
-    finally:
-        db.close()
+    """Query all RatingSnapshot records joined with Period data."""
+    from services.db_helpers import get_all_history_snapshots as _get_history
+    return _get_history(get_db)
 
 
 @app.route('/export/snapshot/xlsx')

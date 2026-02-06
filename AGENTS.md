@@ -8,10 +8,20 @@ Instructions for AI agents and human developers working on this codebase.
 
 | File | Purpose |
 |------|---------|
-| `app.py` | Flask routes, API endpoints, business logic |
+| `app.py` | Flask routes and API endpoints (thin wrappers delegating to services) |
 | `models.py` | SQLAlchemy models: Employee, Period, RatingSnapshot, BonusSettings |
+| `migrations.py` | Database migrations: column renames, additions, placeholder cleanup |
 | `xlsx_utils.py` | Workday XLSX parsing, column detection, spreadsheet type detection |
 | `demo_mode.py` | Session isolation for demo deployment |
+| `services/employee_utils.py` | Constants, status checks, formatting (pure functions, no Flask/DB) |
+| `services/analytics.py` | Analytics sub-computations: ratings, tenets, talent, tenure, inconsistencies |
+| `services/export.py` | Export data prep, XLSX helpers, snapshot builders, context markdown |
+| `services/bonus.py` | Bonus curve calculation, calibration distribution, mentorship stats |
+| `services/import_handler.py` | Import field comparison, update helpers, apply functions |
+| `services/db_helpers.py` | Database access, filtering, settings, tenets config |
+| `static/css/base.css` | Base stylesheet (extracted from base.html) |
+| `static/js/placeholder.js` | Shared placeholder detection (rate + calibrate) |
+| `static/js/employee-index.js` | Shared sidebar navigation (rate + calibrate) |
 | `tests/conftest.py` | Shared pytest fixtures (always use these) |
 
 **Never commit**: `ratings.db`, `real-*.xlsx`, `sample-data-*.xlsx`
