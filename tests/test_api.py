@@ -648,9 +648,9 @@ class TestSnapshotExport:
         # Load the workbook from response
         wb = load_workbook(io.BytesIO(response.data))
 
-        # Verify 6 sheets exist
-        expected_sheets = ['_context', '_tenets', 'employees', 'bonus_cycle', 'talent_cycle', 'history']
-        assert len(wb.sheetnames) == 6
+        # Verify 5 sheets exist
+        expected_sheets = ['_README', 'employees', 'bonus_cycle', 'talent_cycle', 'history']
+        assert len(wb.sheetnames) == 5
         for sheet_name in expected_sheets:
             assert sheet_name in wb.sheetnames, f"Sheet '{sheet_name}' not found"
 
@@ -689,10 +689,10 @@ class TestSnapshotExport:
         # Load the ZIP from response
         zip_buffer = io.BytesIO(response.data)
         with zipfile.ZipFile(zip_buffer, 'r') as zf:
-            # Verify 6 CSV files exist
-            expected_files = ['_context.csv', '_tenets.csv', 'employees.csv',
+            # Verify 5 files exist (README.md + 4 CSVs)
+            expected_files = ['README.md', 'employees.csv',
                             'bonus_cycle.csv', 'talent_cycle.csv', 'history.csv']
-            assert len(zf.namelist()) == 6
+            assert len(zf.namelist()) == 5
             for filename in expected_files:
                 assert filename in zf.namelist(), f"File '{filename}' not found in ZIP"
 
@@ -710,57 +710,49 @@ class TestSnapshotExport:
                 headers = next(reader)
                 assert 'Performance Rating (0-200%, 100=met expectations)' in headers
 
-    def test_export_snapshot_context_sheet(self, client, populated_db):
-        """Test that context sheet contains domain knowledge and analysis guidance."""
+    def test_export_snapshot_readme_sheet(self, client, populated_db):
+        """Test that _README sheet contains markdown domain knowledge."""
         from openpyxl import load_workbook
         import io
 
         response = client.get('/export/snapshot/xlsx')
         wb = load_workbook(io.BytesIO(response.data))
 
-        ws_context = wb['_context']
+        ws_readme = wb['_README']
 
-        # Collect all values from the context sheet
-        values = []
-        for row in ws_context.iter_rows(values_only=True):
-            values.extend([str(v) for v in row if v])
-
-        # Verify key domain knowledge is present
-        context_text = ' '.join(values)
-        assert 'Rating Philosophy' in context_text
-        assert 'Bonus Calculation' in context_text
-        assert 'Talent Calibration' in context_text
-        assert '0-200%' in context_text
-        assert '1.35' in context_text  # upside exponent
-        assert '1.9' in context_text   # downside exponent
+        # README content is in cell A1 as markdown
+        readme_text = ws_readme.cell(row=1, column=1).value
+        assert readme_text is not None
+        assert '# Organization Snapshot' in readme_text
+        assert 'Rating Scale' in readme_text
+        assert 'Bonus Calculation' in readme_text
+        assert 'Talent Calibration' in readme_text
+        assert '0-200%' in readme_text
+        assert '1.35' in readme_text  # upside exponent
+        assert '1.9' in readme_text   # downside exponent
 
         # Verify analytical guidance is present
-        assert 'Expected Distribution' in context_text
-        assert 'Red Flags' in context_text
-        assert 'Analysis Questions' in context_text
-        assert 'Management Levels' in context_text
-        assert 'Data Quality' in context_text
+        assert 'Expected Rating Distribution' in readme_text
+        assert 'Red Flags' in readme_text
+        assert 'Suggested Analysis Questions' in readme_text
+        assert 'Management Levels' in readme_text
+        assert 'Data Quality' in readme_text
 
-    def test_export_snapshot_tenets_sheet(self, client, populated_db, sample_tenets):
-        """Test that tenets sheet contains all tenet definitions."""
+        # Verify source attribution
+        assert 'performance-rating-and-bonus' in readme_text
+
+    def test_export_snapshot_readme_includes_tenets(self, client, populated_db, sample_tenets):
+        """Test that _README sheet includes tenet definitions from tenets.json."""
         from openpyxl import load_workbook
         import io
 
         response = client.get('/export/snapshot/xlsx')
         wb = load_workbook(io.BytesIO(response.data))
 
-        ws_tenets = wb['_tenets']
-
-        # Verify headers
-        headers = [cell.value for cell in ws_tenets[1]]
-        assert 'Tenet ID' in headers
-        assert 'Tenet Name' in headers
-        assert 'Description' in headers
-        assert 'Category' in headers
-
-        # Verify at least some tenets are present (row count > 1 means data exists)
-        row_count = ws_tenets.max_row
-        assert row_count > 1, "No tenets found in _tenets sheet"
+        ws_readme = wb['_README']
+        readme_text = ws_readme.cell(row=1, column=1).value
+        assert readme_text is not None
+        assert 'Tenets (Behavioral Competencies)' in readme_text
 
     def test_export_snapshot_employees_data(self, client, populated_db):
         """Test that employee data is correctly exported."""
@@ -793,7 +785,7 @@ class TestSnapshotExport:
         wb = load_workbook(io.BytesIO(response.data))
 
         # All sheets should still exist
-        assert len(wb.sheetnames) == 6
+        assert len(wb.sheetnames) == 5
 
         # Employees sheet should only have headers
         ws_employees = wb['employees']

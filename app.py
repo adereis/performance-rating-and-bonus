@@ -5431,185 +5431,303 @@ def parse_manager_name_from_org(supervisory_org):
     return match.group(1) if match else ''
 
 
-def build_context_sheet_data():
-    """Build domain knowledge rows for the _context sheet.
+def build_context_markdown(tenets_config, demo_mode=False):
+    """Build markdown README content for AI consumption.
 
-    Returns structured key-value format explaining the business domain.
-    """
-    return [
-        ['Section', 'Key', 'Value'],
-        #
-        # === RATING PHILOSOPHY ===
-        #
-        ['Rating Philosophy', 'Performance Rating scale', '0-200%'],
-        ['Rating Philosophy', '100%', 'Met expectations (baseline, not average)'],
-        ['Rating Philosophy', '90-110%', 'Solid performer range (most employees should be here)'],
-        ['Rating Philosophy', '110-130%', 'Exceeded expectations'],
-        ['Rating Philosophy', '130%+', 'Exceptional (rare, typically <10% of team)'],
-        ['Rating Philosophy', '60-90%', 'Needs improvement'],
-        ['Rating Philosophy', '<60%', 'Significant performance concerns'],
-        ['', '', ''],
-        #
-        # === EXPECTED DISTRIBUTIONS ===
-        #
-        ['Expected Distribution', 'Healthy team pattern', 'Bell curve centered around 100%, slight right skew'],
-        ['Expected Distribution', 'Typical breakdown', '~60-70% at 90-110%, ~15-25% at 110-130%, ~5-10% at 130%+, ~5-10% below 90%'],
-        ['Expected Distribution', 'Warning: All high ratings', 'If >50% are 120%+, ratings may lack differentiation (grade inflation)'],
-        ['Expected Distribution', 'Warning: All clustered', 'If everyone is 95-105%, manager may be avoiding differentiation'],
-        ['Expected Distribution', 'Warning: Bimodal', 'Two distinct clusters may indicate team culture issues or inconsistent standards'],
-        ['', '', ''],
-        #
-        # === BONUS CALCULATION ===
-        #
-        ['Bonus Calculation', 'Algorithm', 'Split curve with different exponents above/below 100%'],
-        ['Bonus Calculation', 'Upside exponent (default)', '1.35 - controls reward for ratings >= 100%'],
-        ['Bonus Calculation', 'Downside exponent (default)', '1.9 - controls penalty for ratings < 100%'],
-        ['Bonus Calculation', 'Pool normalization', 'sum(final_bonuses) == Workday pool + budget_override'],
-        ['Bonus Calculation', 'Formula (above 100%)', 'perf_multiplier = (rating/100)^1.35'],
-        ['Bonus Calculation', 'Formula (below 100%)', 'perf_multiplier = (rating/100)^1.9'],
-        ['Bonus Calculation', 'Final bonus', 'bonus_target * perf_multiplier * normalization_factor'],
-        ['', '', ''],
-        ['Bonus Examples', '140% rating', 'Multiplier = 1.40^1.35 = 1.58x target (exceptional)'],
-        ['Bonus Examples', '120% rating', 'Multiplier = 1.20^1.35 = 1.28x target'],
-        ['Bonus Examples', '100% rating', 'Multiplier = 1.00x target'],
-        ['Bonus Examples', '80% rating', 'Multiplier = 0.80^1.9 = 0.65x target'],
-        ['Bonus Examples', '60% rating', 'Multiplier = 0.60^1.9 = 0.39x target'],
-        ['', '', ''],
-        ['Normalization', 'Purpose', 'Ensures total bonuses exactly match available pool'],
-        ['Normalization', 'Balanced team (norm ~0.90)', 'High performers compress budget, 100% performers get ~90% of target'],
-        ['Normalization', 'All average team (norm = 1.0)', 'Everyone at 100% rating gets exactly their target bonus'],
-        ['Normalization', 'Low performing team (norm ~1.5)', 'Budget surplus means everyone gets more than raw calculation'],
-        ['', '', ''],
-        ['Budget Override', 'Definition', 'Optional adjustment to Workday pool (can be positive or negative)'],
-        ['Budget Override', 'Formula', 'Adjusted Pool = Workday Pool + Budget Override'],
-        ['', '', ''],
-        ['Partial Ratings', 'Definition', 'Calculation when not all employees have been rated'],
-        ['Partial Ratings', 'Pool allocation', 'Uses proportional share based on rated employees bonus targets'],
-        ['Partial Ratings', 'Example', 'If rated employees have 50% of total targets, they get 50% of Workday pool'],
-        ['', '', ''],
-        #
-        # === CURRENCY ===
-        #
-        ['Currency Handling', 'Domestic employees', 'Uses Bonus Target - Local Currency (same as manager currency)'],
-        ['Currency Handling', 'International employees', 'Uses converted Bonus Target Manager Currency column'],
-        ['Currency Handling', 'Fallback logic', 'bonus_target_manager_currency OR bonus_target_local_currency'],
-        ['', '', ''],
-        #
-        # === TALENT CALIBRATION ===
-        #
-        ['Talent Calibration', 'Assessment dimensions', 'What (results) and How (behaviors)'],
-        ['Talent Calibration', 'Dimension values', 'Surpasses / Meets / Meets Some / Does Not Meet Expectations'],
-        ['Talent Calibration', 'High Impact Performer', 'Both Surpasses, or one Surpasses + one Meets'],
-        ['Talent Calibration', 'Successful Performer', 'Both Meets, or Surpasses + Meets Some'],
-        ['Talent Calibration', 'Evolving Performer', 'One Meets + one Meets Some, or both Meets Some'],
-        ['Talent Calibration', 'Low Performer', 'Any "Does Not Meet"'],
-        ['Talent Calibration', 'Future Talent criteria', 'True if BOTH Growth Agility AND Change Agility contain "Always"'],
-        ['', '', ''],
-        #
-        # === CROSS-CYCLE ALIGNMENT ===
-        #
-        ['Cross-Cycle Alignment', 'Purpose', 'Bonus rating should align with talent calibration result'],
-        ['Cross-Cycle Alignment', 'High Impact Performer', 'Expected rating: 120-200%'],
-        ['Cross-Cycle Alignment', 'Successful Performer', 'Expected rating: 90-119%'],
-        ['Cross-Cycle Alignment', 'Evolving Performer', 'Expected rating: 70-89%'],
-        ['Cross-Cycle Alignment', 'Low Performer', 'Expected rating: 0-69%'],
-        ['Cross-Cycle Alignment', 'aligned', 'Rating matches talent calibration - no action needed'],
-        ['Cross-Cycle Alignment', 'review', 'Rating and calibration disagree - investigate the mismatch'],
-        ['Cross-Cycle Alignment', 'incomplete', 'Missing either bonus rating or talent calibration'],
-        ['', '', ''],
-        #
-        # === TENET ASSESSMENT ===
-        #
-        ['Tenet Assessment', 'Definition', 'Employees rated on behavioral competencies (tenets)'],
-        ['Tenet Assessment', 'Selection', '3 strengths and 2-3 improvement areas per employee'],
-        ['Tenet Assessment', 'Categories', 'Ownership, Trust, Results, Collaboration, Continuous Improvement'],
-        ['Tenet Assessment', 'Reference', 'Full tenet definitions in _tenets sheet'],
-        ['', '', ''],
-        #
-        # === MANAGEMENT LEVELS ===
-        #
-        ['Management Levels', 'IC (Individual Contributor)', 'No direct reports, technical/specialist track'],
-        ['Management Levels', 'IC levels', 'IC 1-2 (early career), IC 3-4 (mid-level), IC 5+ (senior/staff)'],
-        ['Management Levels', 'Manager', 'First-line manager with direct reports'],
-        ['Management Levels', 'Senior Manager', 'Manages managers or large teams'],
-        ['Management Levels', 'Director', 'Manages multiple teams or functions'],
-        ['Management Levels', 'VP/Executive', 'Senior leadership, organizational strategy'],
-        ['', '', ''],
-        #
-        # === TENURE ANALYSIS ===
-        #
-        ['Tenure Analysis', 'Length of Service', 'Total time at company (e.g., "2 years, 3 months")'],
-        ['Tenure Analysis', 'Time in Current Role', 'Time in current job profile (for role-specific evaluation)'],
-        ['Tenure Analysis', 'New hire consideration', '<1 year tenure: ratings may be incomplete picture'],
-        ['Tenure Analysis', 'Role transition', 'Recent role change (<6 months): expect learning curve'],
-        ['', '', ''],
-        #
-        # === RED FLAGS ===
-        #
-        ['Red Flags', 'High rating + Low Performer calibration', 'Possible over-rating, or calibration data outdated'],
-        ['Red Flags', 'Low rating + High Impact calibration', 'Possible under-rating, or calibration data outdated'],
-        ['Red Flags', 'Long tenure + consistent low ratings', 'May indicate development stagnation or role mismatch'],
-        ['Red Flags', 'New hire + very high rating', 'Verify not just "honeymoon effect" - ensure evidence-based'],
-        ['Red Flags', 'Manager with low-rated direct reports', 'May indicate leadership development need'],
-        ['Red Flags', 'Same improvement tenets across team', 'May indicate team-wide skill gap or manager bias'],
-        ['Red Flags', 'No justification for outlier ratings', 'Ratings <80% or >130% should have clear justification'],
-        ['', '', ''],
-        #
-        # === ANALYTICAL QUESTIONS ===
-        #
-        ['Analysis Questions', 'Distribution', 'What is the rating distribution? Does it match expected curve?'],
-        ['Analysis Questions', 'By level', 'Do ratings correlate with job level? (seniors should trend higher)'],
-        ['Analysis Questions', 'By tenure', 'Are new hires rated differently than tenured employees?'],
-        ['Analysis Questions', 'Alignment', 'How many employees have "review" cross-cycle alignment?'],
-        ['Analysis Questions', 'Outliers', 'Who are the top/bottom performers? Is justification adequate?'],
-        ['Analysis Questions', 'Trends', 'Compare to history: are ratings improving, declining, or stable?'],
-        ['Analysis Questions', 'Tenets', 'Which tenets appear most as strengths? As improvements?'],
-        ['Analysis Questions', 'Mentorship', 'Is mentorship well-distributed? Do high performers mentor?'],
-        ['Analysis Questions', 'Future Talent', 'What % identified as future talent? Is pipeline healthy?'],
-        ['Analysis Questions', 'Movement Readiness', 'Who is "Ready Now" for promotion? Any blockers?'],
-        ['', '', ''],
-        #
-        # === HISTORY INTERPRETATION ===
-        #
-        ['History Sheet', 'Purpose', 'Archived snapshots from previous rating/calibration cycles'],
-        ['History Sheet', 'Period ID', 'Unique identifier for the archived cycle'],
-        ['History Sheet', 'Cycle Type', 'bonus = performance rating cycle, talent = calibration cycle'],
-        ['History Sheet', 'Snapshot data', 'Employee data at time of archive (may differ from current)'],
-        ['History Sheet', 'Trend analysis', 'Compare current vs historical ratings for same employee'],
-        ['History Sheet', 'Mobility tracking', 'Track job profile changes, org moves between periods'],
-        ['', '', ''],
-        #
-        # === DATA QUALITY ===
-        #
-        ['Data Quality', 'Missing ratings', 'Employees in employees sheet but not in bonus_cycle may be unrated'],
-        ['Data Quality', 'Missing calibration', 'Employees without talent_cycle data have incomplete picture'],
-        ['Data Quality', 'Empty justifications', 'Non-100% ratings should have justification - empty is a gap'],
-        ['Data Quality', 'Incomplete tenets', 'Should have 3 strengths and 2-3 improvements per employee'],
-    ]
-
-
-def build_tenets_sheet_data(tenets_config):
-    """Build tenet definition rows for the _tenets sheet.
+    Generates human-readable prose explaining the domain knowledge, rating
+    philosophy, bonus calculation algorithm, and tenet definitions. Designed
+    to be consumed by AI tools (NotebookLM, Claude, etc.) alongside the
+    data sheets.
 
     Args:
         tenets_config: Dict from tenets.json
+        demo_mode: If True, adds demo mode warning at top
 
     Returns:
-        List of rows with headers and one row per tenet
+        Markdown string optimized for AI analysis
     """
-    rows = [['Tenet ID', 'Tenet Name', 'Description', 'Category']]
+    lines = []
+
+    # Demo mode warning
+    if demo_mode:
+        lines.append('> **\u26a0\ufe0f DEMO MODE - FICTITIOUS DATA ONLY**')
+        lines.append('> This export contains synthetic sample data for demonstration purposes.')
+        lines.append('> Do not use for actual HR decisions.')
+        lines.append('')
+        lines.append('---')
+        lines.append('')
+
+    # Header with attribution
+    lines.append('# Organization Snapshot')
+    lines.append('')
+    lines.append('> This data was exported from the Performance Rating Tool.')
+    lines.append('> Source: https://github.com/adereis/performance-rating-and-bonus')
+    lines.append('')
+    lines.append('---')
+    lines.append('')
+
+    # How to use
+    lines.append('## How to Use This Data')
+    lines.append('')
+    lines.append('**This is an auto-generated, read-only export.** The data in the accompanying')
+    lines.append('sheets was entered by managers through a web application and exported for analysis.')
+    lines.append('')
+    lines.append('**Your role:** Analyze and summarize this data. Do not suggest improvements to')
+    lines.append('how the data was entered\u2014the entry process is already complete.')
+    lines.append('')
+    lines.append('This README provides context to help you interpret the data sheets correctly.')
+    lines.append('')
+
+    # Rating Scale
+    lines.append('## Rating Scale (0-200%)')
+    lines.append('')
+    lines.append('| Rating | Meaning |')
+    lines.append('|--------|---------|')
+    lines.append('| 0-60% | Significant performance concerns |')
+    lines.append('| 60-90% | Needs improvement |')
+    lines.append('| **90-110%** | **Met expectations** (most employees) |')
+    lines.append('| 110-130% | Exceeded expectations |')
+    lines.append('| 130-200% | Exceptional performance |')
+    lines.append('')
+    lines.append('**100% is the baseline** - a solid performer who met all expectations.')
+    lines.append('')
+
+    # Expected Distributions
+    lines.append('### Expected Rating Distribution')
+    lines.append('')
+    lines.append('A healthy team shows a bell curve centered around 100% with slight right skew:')
+    lines.append('')
+    lines.append('- **~60-70%** of employees at 90-110% (met expectations)')
+    lines.append('- **~15-25%** at 110-130% (exceeded expectations)')
+    lines.append('- **~5-10%** at 130%+ (exceptional)')
+    lines.append('- **~5-10%** below 90% (needs improvement)')
+    lines.append('')
+    lines.append('**Warning signs:**')
+    lines.append('- If >50% are 120%+: Ratings may lack differentiation (grade inflation)')
+    lines.append('- If everyone is 95-105%: Manager may be avoiding differentiation')
+    lines.append('- If bimodal (two clusters): May indicate team culture issues or inconsistent standards')
+    lines.append('')
+
+    # Bonus Calculation
+    lines.append('## Bonus Calculation (Three-Step Process)')
+    lines.append('')
+    lines.append("### Step 1: Start with Each Person's Target")
+    lines.append('')
+    lines.append("Every employee has a bonus target from Workday (typically a percentage of salary).")
+    lines.append("This is their baseline - what they'd receive if everyone performed at 100%.")
+    lines.append('')
+
+    lines.append('### Step 2: Adjust for Performance')
+    lines.append('')
+    lines.append("Each person's share is modified based on their performance rating:")
+    lines.append('')
+    lines.append('- **Rating above 100%**: Exponential boost (e.g., 120% rating \u2192 128% of target)')
+    lines.append('- **Rating at 100%**: Close to target amount')
+    lines.append('- **Rating below 100%**: Exponential penalty (e.g., 80% rating \u2192 65% of target)')
+    lines.append('')
+    lines.append('**Formula:**')
+    lines.append('- If rating \u2265 100%: `performance_multiplier = (rating/100)^1.35`')
+    lines.append('- If rating < 100%: `performance_multiplier = (rating/100)^1.9`')
+    lines.append('')
+    lines.append('**Example calculations:**')
+    lines.append('')
+    lines.append('| Rating | Multiplier | Effect |')
+    lines.append('|--------|------------|--------|')
+    lines.append('| 140% | 1.40^1.35 = 1.58x | Exceptional boost |')
+    lines.append('| 120% | 1.20^1.35 = 1.28x | Strong reward |')
+    lines.append('| 100% | 1.00x | Baseline |')
+    lines.append('| 80% | 0.80^1.9 = 0.65x | Significant penalty |')
+    lines.append('| 60% | 0.60^1.9 = 0.39x | Severe penalty |')
+    lines.append('')
+
+    lines.append('### Step 3: Normalize to Budget')
+    lines.append('')
+    lines.append("After calculating everyone's \"raw shares\" based on performance, all bonuses")
+    lines.append('scale proportionally so the total exactly matches the bonus pool.')
+    lines.append('')
+    lines.append('**Final Bonus = Bonus Target \u00d7 Performance Multiplier \u00d7 Normalization Factor**')
+    lines.append('')
+
+    # Normalization Scenarios
+    lines.append('### Normalization Scenarios')
+    lines.append('')
+    lines.append('The normalization factor adjusts based on team composition:')
+    lines.append('')
+    lines.append('| Scenario | Norm Factor | Effect |')
+    lines.append('|----------|-------------|--------|')
+    lines.append('| **Balanced team** | ~0.90 | High performers compress budget; 100% performer gets ~90% of target |')
+    lines.append('| **All average team** | 1.0 | Everyone at 100% rating gets exactly their target |')
+    lines.append('| **Low performing team** | ~1.5 | Budget surplus redistributed; everyone gets more than raw calculation |')
+    lines.append('')
+
+    # Currency Handling
+    lines.append('### Currency Handling')
+    lines.append('')
+    lines.append("- **Domestic employees**: Uses \"Bonus Target - Local Currency\" (same as manager currency)")
+    lines.append('- **International employees**: Uses converted "Bonus Target Manager Currency" column')
+    lines.append("- All calculations use the manager's currency")
+    lines.append('')
+
+    # Talent Calibration
+    lines.append('## Talent Calibration')
+    lines.append('')
+    lines.append('### Overall Performance Derivation')
+    lines.append('')
+    lines.append('Overall Performance is derived from two dimensions: **What** (results) and **How** (behaviors).')
+    lines.append('')
+    lines.append('| What | How | Overall Performance |')
+    lines.append('|------|-----|---------------------|')
+    lines.append('| Surpasses | Surpasses | High Impact Performer |')
+    lines.append('| Surpasses | Meets | High Impact Performer |')
+    lines.append('| Meets | Surpasses | High Impact Performer |')
+    lines.append('| Meets | Meets | Successful Performer |')
+    lines.append('| Surpasses | Meets Some | Successful Performer |')
+    lines.append('| Meets Some | Surpasses | Successful Performer |')
+    lines.append('| Meets | Meets Some | Evolving Performer |')
+    lines.append('| Meets Some | Meets | Evolving Performer |')
+    lines.append('| Meets Some | Meets Some | Evolving Performer |')
+    lines.append('| Any | Does Not Meet | Low Performer |')
+    lines.append('| Does Not Meet | Any | Low Performer |')
+    lines.append('')
+
+    lines.append('### Future Talent Criteria')
+    lines.append('')
+    lines.append('An employee is identified as **Future Talent** if BOTH:')
+    lines.append('- **Growth Agility** contains "Always"')
+    lines.append('- **Change Agility** contains "Always"')
+    lines.append('')
+
+    lines.append('### Movement Readiness')
+    lines.append('')
+    lines.append('Indicates promotion readiness:')
+    lines.append('- **Ready Now**: Prepared for immediate promotion')
+    lines.append('- **Ready in 1-2 Years**: On track for future advancement')
+    lines.append('- **Not Ready**: Needs development in current role')
+    lines.append('')
+
+    # Cross-Cycle Alignment
+    lines.append('## Cross-Cycle Alignment')
+    lines.append('')
+    lines.append('Bonus ratings should align with talent calibration results:')
+    lines.append('')
+    lines.append('| Calibration Category | Expected Rating Range | Alignment |')
+    lines.append('|---------------------|----------------------|-----------|')
+    lines.append('| High Impact Performer | 120-200% | aligned |')
+    lines.append('| Successful Performer | 90-119% | aligned |')
+    lines.append('| Evolving Performer | 70-89% | aligned |')
+    lines.append('| Low Performer | 0-69% | aligned |')
+    lines.append('')
+    lines.append('**Alignment values:**')
+    lines.append('- **aligned**: Rating matches talent calibration - no action needed')
+    lines.append('- **review**: Rating and calibration disagree - investigate the mismatch')
+    lines.append('- **incomplete**: Missing either bonus rating or talent calibration')
+    lines.append('')
+
+    # Management Levels
+    lines.append('## Management Levels')
+    lines.append('')
+    lines.append('| Level | Description |')
+    lines.append('|-------|-------------|')
+    lines.append('| IC (Individual Contributor) | No direct reports, technical/specialist track |')
+    lines.append('| IC 1-2 | Early career |')
+    lines.append('| IC 3-4 | Mid-level |')
+    lines.append('| IC 5+ | Senior/staff |')
+    lines.append('| Manager | First-line manager with direct reports |')
+    lines.append('| Senior Manager | Manages managers or large teams |')
+    lines.append('| Director | Manages multiple teams or functions |')
+    lines.append('| VP/Executive | Senior leadership, organizational strategy |')
+    lines.append('')
+
+    # Tenets
+    lines.append('## Tenets (Behavioral Competencies)')
+    lines.append('')
+    lines.append('Employees are assessed on behavioral tenets:')
+    lines.append('- **3 strengths** per employee')
+    lines.append('- **2-3 improvement areas** per employee')
+    lines.append('')
 
     if tenets_config and 'tenets' in tenets_config:
+        # Group by category
+        categories = {}
         for tenet in tenets_config['tenets']:
             if tenet.get('active', True):
-                rows.append([
-                    tenet.get('id', ''),
-                    tenet.get('name', ''),
-                    tenet.get('description', ''),
-                    tenet.get('category', '')
-                ])
+                cat = tenet.get('category', 'Other')
+                if cat not in categories:
+                    categories[cat] = []
+                categories[cat].append(tenet)
 
-    return rows
+        for category, tenets in categories.items():
+            lines.append(f'### {category}')
+            lines.append('')
+            for tenet in tenets:
+                lines.append(f'**{tenet.get("name", "")}**')
+                lines.append(f'{tenet.get("description", "")}')
+                lines.append('')
+
+    # Data Sheets
+    lines.append('## Data Sheets')
+    lines.append('')
+    lines.append('| Sheet | Description |')
+    lines.append('|-------|-------------|')
+    lines.append('| employees | Core identity, compensation, manager info |')
+    lines.append('| bonus_cycle | Performance ratings, justifications, calculated bonuses |')
+    lines.append('| talent_cycle | Calibration data, agility, movement readiness, promotions |')
+    lines.append('| history | Historical rating snapshots from previous cycles |')
+    lines.append('')
+
+    # Suggested Analysis Questions
+    lines.append('## Suggested Analysis Questions')
+    lines.append('')
+    lines.append('- **Distribution**: What is the rating distribution? Does it match the expected curve?')
+    lines.append('- **By level**: Do ratings correlate with job level? (seniors should trend higher)')
+    lines.append('- **By tenure**: Are new hires rated differently than tenured employees?')
+    lines.append('- **Alignment**: How many employees have "review" cross-cycle alignment?')
+    lines.append('- **Outliers**: Who are the top/bottom performers? Is justification adequate?')
+    lines.append('- **Trends**: Compare to history: are ratings improving, declining, or stable?')
+    lines.append('- **Tenets**: Which tenets appear most as strengths? As improvements?')
+    lines.append('- **Mentorship**: Is mentorship well-distributed? Do high performers mentor?')
+    lines.append('- **Future Talent**: What % identified as future talent? Is pipeline healthy?')
+    lines.append('- **Movement Readiness**: Who is "Ready Now" for promotion? Any blockers?')
+    lines.append('')
+
+    # Red Flags
+    lines.append('## Red Flags to Investigate')
+    lines.append('')
+    lines.append('| Pattern | Concern |')
+    lines.append('|---------|---------|')
+    lines.append('| High rating + Low Performer calibration | Possible over-rating, or calibration data outdated |')
+    lines.append('| Low rating + High Impact calibration | Possible under-rating, or calibration data outdated |')
+    lines.append('| Long tenure + consistent low ratings | May indicate development stagnation or role mismatch |')
+    lines.append('| New hire + very high rating | Verify not just "honeymoon effect" - ensure evidence-based |')
+    lines.append('| Manager with low-rated direct reports | May indicate leadership development need |')
+    lines.append('| Same improvement tenets across team | May indicate team-wide skill gap or manager bias |')
+    lines.append('| No justification for outlier ratings | Ratings <80% or >130% should have clear justification |')
+    lines.append('')
+
+    # Data Quality
+    lines.append('## Data Quality Notes')
+    lines.append('')
+    lines.append('- **Missing ratings**: Employees in employees sheet but not in bonus_cycle may be unrated')
+    lines.append('- **Missing calibration**: Employees without talent_cycle data have incomplete picture')
+    lines.append('- **Empty justifications**: Non-100% ratings should have justification - empty is a gap')
+    lines.append('- **Incomplete tenets**: Should have 3 strengths and 2-3 improvements per employee')
+    lines.append('')
+
+    # History Interpretation
+    lines.append('## History Sheet Interpretation')
+    lines.append('')
+    lines.append('The history sheet contains archived snapshots from previous rating/calibration cycles:')
+    lines.append('')
+    lines.append('- **Period ID**: Unique identifier for the archived cycle')
+    lines.append('- **Cycle Type**: "bonus" = performance rating cycle, "talent" = calibration cycle')
+    lines.append('- **Snapshot data**: Employee data at time of archive (may differ from current)')
+    lines.append('')
+    lines.append('Use history for:')
+    lines.append('- Trend analysis: Compare current vs historical ratings for same employee')
+    lines.append('- Mobility tracking: Track job profile changes, org moves between periods')
+    lines.append('')
+
+    return '\n'.join(lines)
 
 
 def get_rating_category(rating_percent):
@@ -5697,9 +5815,8 @@ def get_all_history_snapshots():
 def export_snapshot_xlsx():
     """Export full multi-tab Excel snapshot with complete organizational data.
 
-    Creates a workbook with 6 sheets:
-    - _context: Domain knowledge (rating philosophy, algorithms, etc.)
-    - _tenets: Full tenet definitions
+    Creates a workbook with 5 sheets:
+    - _README: Domain knowledge, rating philosophy, tenets (markdown for AI)
     - employees: Core identity, compensation, manager info
     - bonus_cycle: Performance ratings, justifications, calculated bonuses
     - talent_cycle: Calibration data, agility, movement, promotions
@@ -5730,45 +5847,24 @@ def export_snapshot_xlsx():
     # Create workbook
     wb = Workbook()
 
-    # Sheet 1: _context
-    ws_context = wb.active
-    ws_context.title = "_context"
+    # Sheet 1: _README (markdown content for AI consumption)
+    ws_readme = wb.active
+    ws_readme.title = "_README"
 
-    # Add demo mode warning if applicable
-    demo_row_offset = 0
-    if DEMO_MODE:
-        demo_warning_fill = PatternFill(start_color='FF6B6B', end_color='FF6B6B', fill_type='solid')
-        demo_warning_font = Font(bold=True, color='FFFFFF', size=14)
-        ws_context.merge_cells('A1:C1')
-        demo_cell = ws_context.cell(row=1, column=1, value='*** DEMO MODE - FICTITIOUS DATA ONLY ***')
-        demo_cell.fill = demo_warning_fill
-        demo_cell.font = demo_warning_font
-        demo_cell.alignment = Alignment(horizontal='center', vertical='center')
-        demo_row_offset = 2
+    # Build markdown content
+    readme_content = build_context_markdown(tenets_config, demo_mode=DEMO_MODE)
 
-    context_data = build_context_sheet_data()
+    # Write markdown to cell A1 with text wrapping
+    cell = ws_readme.cell(row=1, column=1, value=readme_content)
+    cell.alignment = Alignment(wrap_text=True, vertical='top')
+
+    # Set column width wide enough to read comfortably
+    ws_readme.column_dimensions['A'].width = 100
+
     header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
     header_font = Font(bold=True, color='FFFFFF')
 
-    for row_idx, row in enumerate(context_data, 1 + demo_row_offset):
-        for col_idx, value in enumerate(row, 1):
-            cell = ws_context.cell(row=row_idx, column=col_idx, value=value)
-            if row_idx == 1 + demo_row_offset:  # Header row
-                cell.fill = header_fill
-                cell.font = header_font
-
-    # Sheet 2: _tenets
-    ws_tenets = wb.create_sheet("_tenets")
-    tenets_data = build_tenets_sheet_data(tenets_config)
-
-    for row_idx, row in enumerate(tenets_data, 1):
-        for col_idx, value in enumerate(row, 1):
-            cell = ws_tenets.cell(row=row_idx, column=col_idx, value=value)
-            if row_idx == 1:
-                cell.fill = header_fill
-                cell.font = header_font
-
-    # Sheet 3: employees
+    # Sheet 2: employees
     ws_employees = wb.create_sheet("employees")
     emp_headers = [
         'Employee ID (unique identifier)',
@@ -6032,11 +6128,10 @@ def export_snapshot_xlsx():
 
 @app.route('/export/snapshot/csv')
 def export_snapshot_csv():
-    """Export full ZIP with multiple CSV files containing complete organizational data.
+    """Export full ZIP with CSV files and README containing complete organizational data.
 
-    Creates a ZIP archive with 6 CSV files:
-    - _context.csv: Domain knowledge
-    - _tenets.csv: Tenet definitions
+    Creates a ZIP archive with 5 files:
+    - README.md: Domain knowledge, rating philosophy, tenets (for AI consumption)
     - employees.csv: Core identity and compensation
     - bonus_cycle.csv: Performance ratings and bonuses
     - talent_cycle.csv: Calibration and development data
@@ -6068,24 +6163,11 @@ def export_snapshot_csv():
 
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
 
-        # CSV 1: _context.csv
-        context_output = io.StringIO()
-        context_writer = csv.writer(context_output)
-        if DEMO_MODE:
-            context_writer.writerow(['*** DEMO MODE - FICTITIOUS DATA ONLY ***'])
-            context_writer.writerow([])
-        for row in build_context_sheet_data():
-            context_writer.writerow(row)
-        zip_file.writestr('_context.csv', context_output.getvalue())
+        # README.md: Human-readable context for AI consumption
+        readme_content = build_context_markdown(tenets_config, demo_mode=DEMO_MODE)
+        zip_file.writestr('README.md', readme_content)
 
-        # CSV 2: _tenets.csv
-        tenets_output = io.StringIO()
-        tenets_writer = csv.writer(tenets_output)
-        for row in build_tenets_sheet_data(tenets_config):
-            tenets_writer.writerow(row)
-        zip_file.writestr('_tenets.csv', tenets_output.getvalue())
-
-        # CSV 3: employees.csv
+        # CSV 1: employees.csv
         emp_output = io.StringIO()
         emp_writer = csv.writer(emp_output)
         emp_writer.writerow([
