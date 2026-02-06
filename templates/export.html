@@ -1175,8 +1175,8 @@
         function applyBonusFilters() {
             const showPendingOnly = bonusPendingFilter ? bonusPendingFilter.checked : false;
             const hideBonusChanges = hideBonusChangesFilter ? hideBonusChangesFilter.checked : false;
-            const rows = document.querySelectorAll('#bonusExportTableBody tr[data-needs-sync]');
-            const bonusTable = document.querySelector('#bonusExportTableBody')?.closest('table');
+            const rows = document.querySelectorAll('#exportTableBody tr[data-needs-sync]');
+            const bonusTable = document.querySelector('#exportTableBody')?.closest('table');
 
             // Toggle bonus column visibility
             if (bonusTable) {
