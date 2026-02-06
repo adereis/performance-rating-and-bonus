@@ -186,7 +186,6 @@ BONUS_FIELD_DISPLAY_NAMES = {
     'justification': 'Justification',
     'mentor': 'Mentor',
     'mentees': 'Mentees',
-    'ai_related_activities': 'AI Activities',
     'tenets_strengths': 'Tenet Strengths',
     'tenets_improvements': 'Tenet Improvements',
     'current_base_pay_manager_currency': 'Base Salary',
