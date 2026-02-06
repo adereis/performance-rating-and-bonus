@@ -14,6 +14,10 @@ from sqlalchemy import text
 from models import Employee, BonusSettings, Period, RatingSnapshot, init_db, get_db
 from xlsx_utils import analyze_xlsx, parse_xlsx_employees
 from notes_parser import parse_notes_field
+from services.import_handler import (  # noqa: F401 - available for import routes
+    text_unmodified, json_string_unmodified, mentor_fields_equal,
+    update_text_field, update_mentor_field, update_json_field,
+)
 from services.bonus import (  # noqa: F401 - re-exported for tests
     calculate_bonus_for_employees, calculate_calibration_for_employees,
     calculate_mentorship_stats,
