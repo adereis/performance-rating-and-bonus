@@ -2825,7 +2825,7 @@ def analytics():
                 else:
                     inconsistencies['bonus_decrease_from_prior'].append(change_info)
 
-        # Recalculate total after adding YoY entries
+        # Recalculate total after adding prior cycle entries
         total_inconsistencies = sum(len(v) for v in inconsistencies.values())
 
     return render_template('analytics.html',

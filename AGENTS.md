@@ -136,19 +136,42 @@ Built into `/analytics` page. Parses Workday tenure strings (e.g., "2 years, 3 m
 - 5+ years in role but "Continue growing"
 - High Impact + 3+ years but no movement set
 
+### Prior Cycle Bonus Detection
+
+**Location**: Analytics page, inconsistencies card
+
+Compares calculated bonus allocation against `last_bonus_allocation_percent` from Workday. Flags employees where the delta exceeds ±15 percentage points. Uses `calculate_bonus_for_employees()` with standard curve parameters.
+
+- **`bonus_decrease_from_prior`**: Calculated bonus >15pp lower than prior cycle
+- **`bonus_increase_from_prior`**: Calculated bonus >15pp higher than prior cycle
+- Special case employees (bonus override) are excluded from comparison
+
+### Expandable Analytics Lists
+
+**Pattern**: Lists with >5 items show first 5, then a clickable "... and X more" toggle.
+
+**CSS classes**: `.expandable-item` (hidden by default), `.expanded` (shown), `.expand-toggle` (clickable link)
+
+**Usage in templates**: Add `class="{% if loop.index > 5 %}expandable-item expandable-{name}{% endif %}"` to `<li>` elements, with a toggle link using `data-target="expandable-{name}"`. JS handler in `analytics.html` toggles the `.expanded` class.
+
+**Applied to**: Tenet mismatch, prior cycle bonus decrease/increase lists.
+
 ### Organization Snapshot Export
 
 **Routes**: `/export/snapshot/xlsx`, `/export/snapshot/csv`
 
 **Purpose**: Self-documenting export for AI/analyst consumption (e.g., NotebookLM, Claude).
 
-**Sheets** (XLSX) / **Files** (CSV ZIP):
-- `_context`: Domain knowledge (rating philosophy, algorithms, terminology)
-- `_tenets`: Full tenet definitions with categories
+**XLSX sheets**:
+- `_README`: Markdown document with domain knowledge, rating philosophy, algorithms, tenet definitions (single cell, AI-optimized)
 - `employees`: Core identity, compensation, manager info
 - `bonus_cycle`: Performance ratings, justifications, calculated bonuses
 - `talent_cycle`: Calibration data, agility, movement, promotions
 - `history`: Historical rating snapshots by period
+
+**CSV ZIP files**: Same structure but `README.md` file instead of `_README` sheet
+
+**Implementation**: `build_context_markdown(tenets_config, demo_mode)` in app.py generates the markdown content. Tenet definitions are grouped by category inline (not a separate sheet).
 
 ---
 
