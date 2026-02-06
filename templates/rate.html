@@ -1227,6 +1227,8 @@
     {% endif %}
 </div>
 
+<script src="{{ url_for('static', filename='js/placeholder.js') }}"></script>
+<script src="{{ url_for('static', filename='js/employee-index.js') }}"></script>
 <script>
 // ============================================
 // Team Group Toggle (for multi-team view)
@@ -1310,74 +1312,7 @@ function saveSpecialCaseFields(associateId, overridePercent, notes) {
     .catch(error => console.error('Error saving special case:', error));
 }
 
-// ============================================
-// Employee Index Navigation
-// ============================================
-function scrollToEmployee(associateId) {
-    const card = document.querySelector(`.employee-card[data-associate-id="${associateId}"]`);
-    if (!card) return;
-
-    // Ensure parent team group is expanded (for multi-team view)
-    const teamContent = card.closest('.team-group-content');
-    if (teamContent && teamContent.classList.contains('collapsed')) {
-        const teamHeader = teamContent.previousElementSibling;
-        if (teamHeader) {
-            teamHeader.classList.remove('collapsed');
-            teamContent.classList.remove('collapsed');
-        }
-    }
-
-    // Scroll to card
-    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    // Highlight in index
-    document.querySelectorAll('.index-item').forEach(item => item.classList.remove('active'));
-    const indexItem = document.querySelector(`.index-item[data-employee-id="${associateId}"]`);
-    if (indexItem) {
-        indexItem.classList.add('active');
-        // Remove highlight after a delay
-        setTimeout(() => indexItem.classList.remove('active'), 2000);
-    }
-}
-
-function filterIndex(searchTerm) {
-    const term = searchTerm.toLowerCase().trim();
-    const items = document.querySelectorAll('.index-item');
-    const teamHeaders = document.querySelectorAll('.index-team-header');
-
-    // Track which teams have visible items
-    const visibleTeams = new Set();
-
-    items.forEach(item => {
-        const name = item.querySelector('.name')?.textContent?.toLowerCase() || '';
-        const matches = term === '' || name.includes(term);
-        item.style.display = matches ? 'flex' : 'none';
-
-        // Track visible teams
-        if (matches) {
-            const prevHeader = findPreviousTeamHeader(item);
-            if (prevHeader) {
-                visibleTeams.add(prevHeader);
-            }
-        }
-    });
-
-    // Show/hide team headers based on visible items
-    teamHeaders.forEach(header => {
-        header.style.display = (term === '' || visibleTeams.has(header)) ? 'block' : 'none';
-    });
-}
-
-function findPreviousTeamHeader(item) {
-    let prev = item.previousElementSibling;
-    while (prev) {
-        if (prev.classList.contains('index-team-header')) {
-            return prev;
-        }
-        prev = prev.previousElementSibling;
-    }
-    return null;
-}
+// Employee index navigation loaded from static/js/employee-index.js
 
 // Update sidebar status dot when employee rating status changes
 function updateSidebarStatus(associateId, isRated) {
@@ -2081,36 +2016,7 @@ function setupTenetListeners(card) {
 
 // Note: The global AutoSave manager in base.html handles beforeunload with keepalive saves
 
-// Placeholder detection for mentor/mentee fields
-const PLACEHOLDER_PATTERNS = new Set([
-    'none', 'n/a', 'na', 'tbd', 'tbc', 'tba', '-', '?', 'null', 'nil', 'unknown',
-    'not applicable', 'not assigned', 'pending', 'to be determined', 'to be confirmed',
-]);
-
-function isPlaceholderValue(value) {
-    if (!value) return false;
-    return PLACEHOLDER_PATTERNS.has(value.trim().toLowerCase());
-}
-
-function showPlaceholderWarning(input) {
-    // Find or create warning element
-    let warning = input.parentElement.querySelector('.placeholder-warning');
-    if (!warning) {
-        warning = document.createElement('div');
-        warning.className = 'placeholder-warning';
-        warning.style.cssText = 'font-size: 11px; color: #e67e22; margin-top: 4px;';
-        input.parentElement.appendChild(warning);
-    }
-    warning.textContent = '⚠ Placeholder values like "TBD" or "None" will be cleared on save';
-    warning.style.display = 'block';
-}
-
-function hidePlaceholderWarning(input) {
-    const warning = input.parentElement.querySelector('.placeholder-warning');
-    if (warning) {
-        warning.style.display = 'none';
-    }
-}
+// Placeholder detection loaded from static/js/placeholder.js
 
 function handleNormalizedFields(normalizedFields, card) {
     if (!normalizedFields || normalizedFields.length === 0) return;
