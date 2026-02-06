@@ -669,6 +669,23 @@
             border-color: #667eea;
         }
     }
+
+    /* Expandable list items */
+    .expandable-item {
+        display: none;
+    }
+
+    .expandable-item.expanded {
+        display: list-item;
+    }
+
+    .expand-toggle {
+        cursor: pointer;
+    }
+
+    .expand-toggle:hover {
+        text-decoration: underline !important;
+    }
 </style>
 {% endblock %}
 
@@ -1872,5 +1889,28 @@ function toggleAllTeams() {
         window.location.href = url.toString();
     }
 }
+
+// Expandable list toggle for "and X more" links
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.expand-toggle').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetClass = this.dataset.target;
+            const items = document.querySelectorAll('.' + targetClass);
+            const isExpanded = items.length > 0 && items[0].classList.contains('expanded');
+
+            items.forEach(item => {
+                item.classList.toggle('expanded', !isExpanded);
+            });
+
+            // Update link text
+            if (isExpanded) {
+                this.textContent = '... and ' + items.length + ' more';
+            } else {
+                this.textContent = '(show less)';
+            }
+        });
+    });
+});
 </script>
 {% endblock %}
