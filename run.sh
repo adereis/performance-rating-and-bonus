@@ -6,6 +6,35 @@
 
 set -e
 
+# Parse arguments
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --port|-p)
+            export FLASK_PORT="$2"
+            shift 2
+            ;;
+        --port=*)
+            export FLASK_PORT="${1#*=}"
+            shift
+            ;;
+        -p*)
+            export FLASK_PORT="${1#-p}"
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [--port PORT]"
+            echo ""
+            echo "Options:"
+            echo "  -p, --port PORT  TCP port to listen on (default: 5000)"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1 (try --help)"
+            exit 1
+            ;;
+    esac
+done
+
 # Colors for output (if terminal supports it)
 if [ -t 1 ]; then
     RED='\033[0;31m'
@@ -83,7 +112,7 @@ fi
 
 # Determine the URL
 HOST="127.0.0.1"
-PORT="5000"
+PORT="${FLASK_PORT:-5000}"
 URL="http://${HOST}:${PORT}"
 
 # Function to open browser (works on macOS and Linux)
@@ -118,4 +147,5 @@ echo ""
 open_browser &
 
 # Run the application
+export FLASK_PORT="$PORT"
 $PYTHON app.py
