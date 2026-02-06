@@ -1069,6 +1069,13 @@ if (budgetInput) {
         );
     });
 
+    budgetInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this.blur();
+        }
+    });
+
     budgetInput.addEventListener('blur', function() {
         // Format with commas on blur
         const value = getOverrideValue();
