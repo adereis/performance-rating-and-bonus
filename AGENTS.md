@@ -23,6 +23,7 @@ Instructions for AI agents and human developers working on this codebase.
 | `static/js/placeholder.js` | Shared placeholder detection (rate + calibrate) |
 | `static/js/employee-index.js` | Shared sidebar navigation (rate + calibrate) |
 | `tests/conftest.py` | Shared pytest fixtures (always use these) |
+| `tests/test_export_sync.py` | Export sync detection regression tests (19 tests) |
 
 **Never commit**: `ratings.db`, `real-*.xlsx`, `sample-data-*.xlsx`
 
@@ -182,6 +183,46 @@ Compares calculated bonus allocation against `last_bonus_allocation_percent` fro
 **CSV ZIP files**: Same structure but `README.md` file instead of `_README` sheet
 
 **Implementation**: `build_context_markdown(tenets_config, demo_mode)` in app.py generates the markdown content. Tenet definitions are grouped by category inline (not a separate sheet).
+
+### Export Sync Detection (Bonus Export Page)
+
+Determines which employees have pending changes for Workday on the `/export` page. **Two-tier architecture**:
+
+**Tier 1 — Tool Additions Modified** (`tool_additions_modified`):
+Any of 6 tracked fields differ from their `_original` value imported from Workday:
+- `performance_rating_percent` vs `performance_rating_percent_original`
+- `justification` vs `justification_original`
+- `mentor` vs `mentor_original`
+- `mentees` vs `mentees_original`
+- `tenets_strengths` vs `tenets_strengths_original`
+- `tenets_improvements` vs `tenets_improvements_original`
+
+Two comparison functions in `export_page()` (app.py):
+- `is_field_modified()`: Conservative — returns False if `_original` is None (used for justification)
+- `needs_sync_to_workday()`: Aggressive — returns True if content exists but `_original` is None (used for tool-generated fields like tenets, mentor)
+
+**Tier 2 — Bonus Allocation Differs** (`bonus_allocation_differs`):
+Compares `int(calculated_bonus_percent) != round(proposed_percent_of_target_bonus)`. True when Workday has no value (new sync needed).
+
+**Combined**: `needs_sync = tool_additions_modified OR bonus_allocation_differs`
+
+**Template rendering rules** (critical — do NOT regress):
+1. **Tool Additions box**: Render ONLY when `tool_additions_modified` is true. Do not gate on `tool_additions_text` (non-empty) — that shows the box for every employee with any content.
+2. **Description content** (`.description-content`): Hidden by JS when "Show pending only" is active and `tool_additions_modified` is false (avoids showing unchanged notes for bonus-only diffs).
+3. **Bonus sync badge**: Shown next to Bonus % when `bonus_allocation_differs` is true.
+4. **Per-field sync badges**: Inside the Tool Additions box, each modified field gets a `field-sync-badge`.
+
+**"Show pending only" + "Hide bonus changes" interaction** (JS in `applyBonusFilters()`):
+- When "Hide bonus changes" is checked, `effectiveNeedsSync = toolSyncModified` (ignores bonus diffs for row visibility).
+- The status bar count updates dynamically to reflect the effective pending count.
+- This means: all three checkboxes checked + fresh import = **empty list** (expected).
+
+**Data attributes on `<tr>` rows** (required for JS filtering):
+- `data-needs-sync` — server-computed combined flag
+- `data-tool-sync` — tool additions modified
+- `data-bonus-differs` — bonus allocation differs
+
+**Regression tests**: `tests/test_export_sync.py` (19 tests) — covers fresh import invariants, per-field modification detection, bonus comparison, template rendering gates, and description content visibility.
 
 ---
 

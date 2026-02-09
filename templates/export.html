@@ -777,7 +777,8 @@
                     data-bonus="{{ item.bonus_percent }}"
                     data-delta="{{ item.bonus_delta if item.bonus_delta is not none else 0 }}"
                     data-needs-sync="{{ 'true' if item.needs_sync else 'false' }}"
-                    data-tool-sync="{{ 'true' if item.tool_additions_modified else 'false' }}">
+                    data-tool-sync="{{ 'true' if item.tool_additions_modified else 'false' }}"
+                    data-bonus-differs="{{ 'true' if item.bonus_allocation_differs else 'false' }}">
                     <td>
                         <strong>
                             <span class="employee-name" data-employee-id="{{ item.employee['Associate ID'] }}">
@@ -792,6 +793,9 @@
                             {% else %}bonus-low{% endif %}">
                             {{ item.bonus_percent }}%
                         </span>
+                        {% if item.bonus_allocation_differs %}
+                        <span class="field-sync-badge" title="Bonus allocation differs from Workday ({{ item.workday_proposed_bonus }}% → {{ item.bonus_percent }}%)"><span class="sync-icon">⟳</span></span>
+                        {% endif %}
                     </td>
                     <td class="right">
                         {% if item.bonus_delta is not none and item.bonus_delta != 0 %}
@@ -805,10 +809,48 @@
                         {% endif %}
                     </td>
                     <td class="description-cell">
-                        <div class="description-text" id="desc_{{ loop.index }}">{{ item.description }}</div>
-                        <button class="copy-btn" onclick="copyDescription('desc_{{ loop.index }}', this)">
-                            Copy Description
-                        </button>
+                        <div class="description-content">
+                            <div class="description-text" id="desc_{{ loop.index }}">{{ item.description }}</div>
+                            <button class="copy-btn" onclick="copyDescription('desc_{{ loop.index }}', this)">
+                                Copy Description
+                            </button>
+                        </div>
+                        {% if item.tool_additions_modified %}
+                        <div class="tool-additions">
+                            <div class="section-header">
+                                Tool Additions
+                                {% if item.tool_additions_modified %}
+                                <span class="sync-badge">NEEDS SYNC</span>
+                                {% endif %}
+                            </div>
+                            {% if item.tool_additions_modified %}
+                            <div style="margin-bottom: 6px;">
+                                {% if item.rating_modified %}
+                                <span class="field-sync-badge" title="Performance Rating needs sync to Workday"><span class="sync-icon">⟳</span>Rating</span>
+                                {% endif %}
+                                {% if item.justification_modified %}
+                                <span class="field-sync-badge" title="Justification needs sync to Workday"><span class="sync-icon">⟳</span>Justification</span>
+                                {% endif %}
+                                {% if item.mentor_modified %}
+                                <span class="field-sync-badge" title="Mentor needs sync to Workday"><span class="sync-icon">⟳</span>Mentor</span>
+                                {% endif %}
+                                {% if item.mentees_modified %}
+                                <span class="field-sync-badge" title="Mentees needs sync to Workday"><span class="sync-icon">⟳</span>Mentees</span>
+                                {% endif %}
+                                {% if item.tenets_strengths_modified %}
+                                <span class="field-sync-badge" title="Strengths need sync to Workday"><span class="sync-icon">⟳</span>Strengths</span>
+                                {% endif %}
+                                {% if item.tenets_improvements_modified %}
+                                <span class="field-sync-badge" title="Improvements need sync to Workday"><span class="sync-icon">⟳</span>Improvements</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            <div class="description-text" id="tool_{{ loop.index }}">{{ item.tool_additions_text }}</div>
+                            <button class="copy-btn-small" style="margin-top: 8px;" onclick="copyDescription('tool_{{ loop.index }}', this)">
+                                Copy Tool Additions
+                            </button>
+                        </div>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -1187,16 +1229,54 @@
                 }
             }
 
+            let visiblePendingCount = 0;
+
             rows.forEach(row => {
-                const needsSync = row.getAttribute('data-needs-sync') === 'true';
+                const toolSyncModified = row.getAttribute('data-tool-sync') === 'true';
+                const bonusDiffers = row.getAttribute('data-bonus-differs') === 'true';
+                const descriptionContent = row.querySelector('.description-content');
+                const toolAdditionsSection = row.querySelector('.tool-additions');
+
+                // Effective "needs sync" depends on what's visible:
+                // When bonus changes are hidden, only tool additions count as pending
+                const effectiveNeedsSync = hideBonusChanges ? toolSyncModified : (toolSyncModified || bonusDiffers);
+
+                if (effectiveNeedsSync) {
+                    visiblePendingCount++;
+                }
 
                 // Row visibility based on pending filter
-                if (showPendingOnly && !needsSync) {
+                if (showPendingOnly && !effectiveNeedsSync) {
                     row.classList.add('row-hidden');
                 } else {
                     row.classList.remove('row-hidden');
                 }
+
+                // Description content: hide when pending filter is on and no tool changes
+                // (unchanged notes are noise — only show when fields were actually modified)
+                if (descriptionContent) {
+                    if (showPendingOnly && !toolSyncModified) {
+                        descriptionContent.classList.add('section-hidden');
+                    } else {
+                        descriptionContent.classList.remove('section-hidden');
+                    }
+                }
+
+                // Tool additions section: hide when pending filter is on and no tool changes
+                if (toolAdditionsSection) {
+                    if (showPendingOnly && !toolSyncModified) {
+                        toolAdditionsSection.classList.add('section-hidden');
+                    } else {
+                        toolAdditionsSection.classList.remove('section-hidden');
+                    }
+                }
             });
+
+            // Update the status bar count to reflect effective pending
+            const countSpan = document.querySelector('.sync-status-bar .sync-status-info .count');
+            if (countSpan) {
+                countSpan.textContent = visiblePendingCount;
+            }
         }
 
         if (bonusPendingFilter) {
