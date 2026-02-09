@@ -659,6 +659,62 @@ class TestTalentImportEndpoints:
         assert 'derivation_mismatch_count' not in data
         assert 'derivation_mismatches' not in data
 
+    def test_talent_import_after_bonus_reports_updated_count(self, client, db_session, talent_xlsx_file):
+        """Talent import on existing bonus employees reports correct updated count.
+
+        Regression test: when employees already exist from a bonus import,
+        a subsequent talent import must report the number of employees whose
+        talent fields were updated (not 0).
+        """
+        from models import Employee
+
+        # Pre-populate employees matching the talent fixture (simulates prior bonus import)
+        emp1 = Employee(
+            associate_id='T001',
+            associate='Test Employee One',
+            supervisory_organization='Engineering (Manager One)',
+            current_job_profile='Senior Engineer',
+        )
+        emp2 = Employee(
+            associate_id='T002',
+            associate='Test Employee Two',
+            supervisory_organization='Engineering (Manager One)',
+            current_job_profile='Engineer',
+        )
+        db_session.add_all([emp1, emp2])
+        db_session.commit()
+
+        # Verify employees exist but have no talent data
+        assert emp1.talent_perf_what is None
+        assert emp2.talent_perf_what is None
+
+        # Import talent file — employees already exist, should report as updated
+        with open(talent_xlsx_file, 'rb') as f:
+            response = client.post(
+                '/api/import/current',
+                data={'file': (f, 'talent-report.xlsx')},
+                content_type='multipart/form-data'
+            )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['imported'] == 0, "Should not add new employees"
+        assert data['updated'] == 2, "Should report 2 employees updated with talent data"
+
+        # Verify talent data was actually saved
+        db_session.expire_all()
+        emp1 = db_session.query(Employee).filter_by(associate_id='T001').first()
+        assert emp1.talent_perf_what == 'Surpasses Expectations'
+        assert emp1.talent_perf_how == 'Meets Expectations'
+        # Derived fields should be computed during import
+        assert emp1.talent_overall_perf == 'Successful Performer'
+
+        emp2 = db_session.query(Employee).filter_by(associate_id='T002').first()
+        assert emp2.talent_perf_what == 'Meets Expectations'
+        assert emp2.talent_movement_readiness is not None
+        assert emp2.talent_overall_perf == 'Successful Performer'
+
 
 class TestCalibrateAPIValidation:
     """Tests for /api/calibrate endpoint validation."""

@@ -2549,7 +2549,7 @@ def import_current():
         # Validate Overall Performance derivation for talent imports
         derivation_mismatches = []
         if spreadsheet_type == 'talent':
-            from models import derive_overall_performance
+            from models import derive_overall_performance, derive_future_talent
             for emp_data in employees:
                 imported_what = emp_data.get('talent_perf_what')
                 imported_how = emp_data.get('talent_perf_how')
@@ -2676,27 +2676,39 @@ def import_current():
                     # Calibration status (from Workday)
                     employee.talent_calibration_status = emp_data.get('talent_calibration_status')
 
-                    # Set _original fields from Workday data for modification tracking
-                    # These reflect what Workday has, so we can detect local changes
-                    employee.talent_perf_what_original = emp_data.get('talent_perf_what')
-                    employee.talent_perf_how_original = emp_data.get('talent_perf_how')
-                    employee.talent_growth_agility_original = emp_data.get('talent_growth_agility')
-                    employee.talent_change_agility_original = emp_data.get('talent_change_agility')
-                    employee.talent_movement_readiness_original = emp_data.get('talent_movement_readiness')
-                    employee.talent_proposed_actions_original = emp_data.get('talent_proposed_actions')
-
                     # Manager-input fields: ONLY set for new employees (per Spec §5.3)
                     # These are preserved on re-import to prevent data loss
                     if not existing:
+                        # Set _original fields from Workday data for modification tracking
+                        # These reflect what Workday has, so we can detect local changes
+                        # NOTE: For existing employees, _original fields are set individually
+                        # AFTER comparison in the else branch below. Setting them here would
+                        # break text_unmodified() checks (current vs new instead of current vs old).
+                        employee.talent_perf_what_original = emp_data.get('talent_perf_what')
+                        employee.talent_perf_how_original = emp_data.get('talent_perf_how')
+                        employee.talent_growth_agility_original = emp_data.get('talent_growth_agility')
+                        employee.talent_change_agility_original = emp_data.get('talent_change_agility')
+                        employee.talent_movement_readiness_original = emp_data.get('talent_movement_readiness')
+                        employee.talent_proposed_actions_original = emp_data.get('talent_proposed_actions')
+
                         # Performance Assessment (manager-entered)
                         employee.talent_perf_what = emp_data.get('talent_perf_what')
                         employee.talent_perf_how = emp_data.get('talent_perf_how')
-                        employee.talent_overall_perf = emp_data.get('talent_overall_perf')
+                        # Use file value if present, otherwise derive from What + How
+                        employee.talent_overall_perf = (
+                            emp_data.get('talent_overall_perf')
+                            or derive_overall_performance(employee.talent_perf_what, employee.talent_perf_how)
+                        )
 
                         # Future Talent (manager-entered)
                         employee.talent_growth_agility = emp_data.get('talent_growth_agility')
                         employee.talent_change_agility = emp_data.get('talent_change_agility')
-                        employee.talent_identified_future = emp_data.get('talent_identified_future')
+                        # Use file value if present, otherwise derive from agility fields
+                        employee.talent_identified_future = (
+                            emp_data.get('talent_identified_future')
+                            if emp_data.get('talent_identified_future') is not None
+                            else derive_future_talent(employee.talent_growth_agility, employee.talent_change_agility)
+                        )
 
                         # Movement & Career (manager-entered)
                         employee.talent_movement_readiness = emp_data.get('talent_movement_readiness')
@@ -2916,6 +2928,28 @@ def import_current():
                             if not mentor_fields_equal(employee.talent_mentees, new_mentees):
                                 emp_preserved.append({'field': 'talent_mentees', 'local': format_change_value(employee.talent_mentees, 'talent_mentees'), 'workday': format_change_value(new_mentees, 'talent_mentees')})
                         employee.talent_mentees_original = new_mentees
+
+                        # Derive computed fields from updated What/How and agility values
+                        employee.talent_overall_perf = derive_overall_performance(
+                            employee.talent_perf_what, employee.talent_perf_how
+                        )
+                        employee.talent_identified_future = derive_future_talent(
+                            employee.talent_growth_agility, employee.talent_change_agility
+                        )
+
+                        # Aggregate per-employee changes for existing talent employees
+                        if emp_updates or workday_fields_changed:
+                            import_changes['updated'].append({
+                                'associate_id': associate_id,
+                                'associate': emp_data['associate'],
+                                'changes': emp_updates
+                            })
+                        if emp_preserved:
+                            import_changes['preserved'].append({
+                                'associate_id': associate_id,
+                                'associate': emp_data['associate'],
+                                'conflicts': emp_preserved
+                            })
                 elif spreadsheet_type != 'talent':
                     # Update bonus-specific fields
                     employee.photo = emp_data.get('photo', '')
