@@ -24,6 +24,7 @@ Instructions for AI agents and human developers working on this codebase.
 | `static/js/employee-index.js` | Shared sidebar navigation (rate + calibrate) |
 | `tests/conftest.py` | Shared pytest fixtures (always use these) |
 | `tests/test_export_sync.py` | Export sync detection regression tests (19 tests) |
+| `tests/test_employee_modal.py` | Employee modal API, save roundtrip, template, JS consistency tests |
 
 **Never commit**: `ratings.db`, `real-*.xlsx`, `sample-data-*.xlsx`
 
