@@ -466,35 +466,42 @@ def demo_response_wrapper(response):
 
 
 def ensure_templates_exist():
-    """Generate demo template databases if they don't exist.
+    """Generate demo template databases if missing or stale.
 
     Templates are normally pre-built during Docker build, but when running
-    locally with DEMO_MODE=true they won't exist. This generates them
-    on-the-fly so demo mode works without Docker.
+    locally with DEMO_MODE=true they may not exist or may be outdated.
+    Regenerates when the generator script is newer than the templates.
     """
     small_path = get_template_path('small')
     large_path = get_template_path('large')
 
-    if os.path.exists(small_path) and os.path.exists(large_path):
-        return  # Templates already exist
+    script_path = os.path.join(SCRIPT_DIR, 'scripts', 'generate-demo-templates.py')
+    script_mtime = os.path.getmtime(script_path) if os.path.exists(script_path) else 0
 
-    _log("Templates missing, generating on-the-fly...")
+    def _is_stale(template_path):
+        if not os.path.exists(template_path):
+            return True
+        return os.path.getmtime(template_path) < script_mtime
+
+    if not _is_stale(small_path) and not _is_stale(large_path):
+        return  # Templates are up to date
+
+    _log("Templates missing or stale, regenerating...")
 
     # Import and run the template generator
     import importlib.util
-    script_path = os.path.join(SCRIPT_DIR, 'scripts', 'generate-demo-templates.py')
     spec = importlib.util.spec_from_file_location('generate_demo_templates', script_path)
     gen = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(gen)
 
     os.makedirs(TEMPLATES_DIR, exist_ok=True)
 
-    if not os.path.exists(small_path):
+    if _is_stale(small_path):
         gen.create_template_database(small_path, gen.get_small_team_employees(),
                                      include_large_history=False)
         _log(f"Generated {small_path}")
 
-    if not os.path.exists(large_path):
+    if _is_stale(large_path):
         gen.create_template_database(large_path, gen.get_large_team_employees(),
                                      include_large_history=True)
         _log(f"Generated {large_path}")
