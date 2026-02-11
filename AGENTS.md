@@ -23,9 +23,6 @@ Instructions for AI agents and human developers working on this codebase.
 | `static/js/placeholder.js` | Shared placeholder detection (rate + calibrate) |
 | `static/js/employee-index.js` | Shared sidebar navigation (rate + calibrate) |
 | `tests/conftest.py` | Shared pytest fixtures (always use these) |
-| `tests/test_export_sync.py` | Export sync detection regression tests (19 tests) |
-| `tests/test_employee_modal.py` | Employee modal API, save roundtrip, template, JS consistency tests |
-| `tests/test_job_level_tenets.py` | Job-level tenets section visibility, chart JS rendering, backend categorisation (21 tests) |
 
 **Never commit**: `ratings.db`, `real-*.xlsx`, `sample-data-*.xlsx`
 
@@ -209,10 +206,10 @@ Compares `int(calculated_bonus_percent) != round(proposed_percent_of_target_bonu
 **Combined**: `needs_sync = tool_additions_modified OR bonus_allocation_differs`
 
 **Template rendering rules** (critical — do NOT regress):
-1. **Tool Additions box**: Render ONLY when `tool_additions_modified` is true. Do not gate on `tool_additions_text` (non-empty) — that shows the box for every employee with any content.
+1. **Tool Additions box**: Render ONLY when `tool_additions_modified` is true. ⚠️ Never gate on `tool_additions_text` (non-empty) — that shows the box for every employee with any content.
 2. **Description content** (`.description-content`): Hidden by JS when "Show pending only" is active and `tool_additions_modified` is false (avoids showing unchanged notes for bonus-only diffs).
-3. **Bonus sync badge**: Shown next to Bonus % when `bonus_allocation_differs` is true.
-4. **Per-field sync badges**: Inside the Tool Additions box, each modified field gets a `field-sync-badge`.
+3. **Bonus ⟳ badge**: Shown next to Bonus % when `bonus_allocation_differs` is true.
+4. **Per-field ⟳ badges**: Inside the Tool Additions box, each modified field gets a `field-sync-badge`.
 
 **"Show pending only" + "Hide bonus changes" interaction** (JS in `applyBonusFilters()`):
 - When "Hide bonus changes" is checked, `effectiveNeedsSync = toolSyncModified` (ignores bonus diffs for row visibility).
@@ -224,7 +221,7 @@ Compares `int(calculated_bonus_percent) != round(proposed_percent_of_target_bonu
 - `data-tool-sync` — tool additions modified
 - `data-bonus-differs` — bonus allocation differs
 
-**Regression tests**: `tests/test_export_sync.py` (19 tests) — covers fresh import invariants, per-field modification detection, bonus comparison, template rendering gates, and description content visibility.
+**Regression tests**: `tests/test_export_sync.py` — covers fresh import invariants, per-field modification detection, bonus comparison, template rendering gates, and description content visibility.
 
 ---
 
