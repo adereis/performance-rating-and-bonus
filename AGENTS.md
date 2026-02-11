@@ -25,6 +25,7 @@ Instructions for AI agents and human developers working on this codebase.
 | `tests/conftest.py` | Shared pytest fixtures (always use these) |
 | `tests/test_export_sync.py` | Export sync detection regression tests (19 tests) |
 | `tests/test_employee_modal.py` | Employee modal API, save roundtrip, template, JS consistency tests |
+| `tests/test_job_level_tenets.py` | Job-level tenets section visibility, chart JS rendering, backend categorisation (21 tests) |
 
 **Never commit**: `ratings.db`, `real-*.xlsx`, `sample-data-*.xlsx`
 

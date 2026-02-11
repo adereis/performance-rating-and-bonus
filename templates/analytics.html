@@ -1398,6 +1398,97 @@ legendDiv.innerHTML = `
     </div>
 `;
 container.insertBefore(legendDiv, container.firstChild);
+
+// Job Level Tenets Butterfly Charts
+{% if job_level_tenets_summary and job_level_tenets_summary|length > 1 %}
+const jobLevelTenetsData = {{ job_level_tenets_summary | tojson }};
+
+function renderButterflyChart(containerId, tenets) {
+    const chartContainer = document.getElementById(containerId);
+    if (!chartContainer || !tenets || tenets.length === 0) return;
+
+    const sorted = [...tenets].sort((a, b) =>
+        (b.strength_count - b.improvement_count) - (a.strength_count - a.improvement_count)
+    );
+
+    const maxVal = Math.max(...sorted.map(t => Math.max(t.strength_count, t.improvement_count)));
+
+    sorted.forEach((tenet, index) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display: grid; grid-template-columns: 1fr 300px 1fr; gap: 8px; align-items: center; margin-bottom: 4px; padding: 2px 0;';
+
+        const weakDiv = document.createElement('div');
+        weakDiv.style.cssText = 'text-align: right;';
+        const weakCanvas = document.createElement('canvas');
+        weakCanvas.id = `${containerId}-w-${index}`;
+        weakCanvas.height = 25;
+        weakDiv.appendChild(weakCanvas);
+
+        const labelDiv = document.createElement('div');
+        labelDiv.style.cssText = 'font-weight: 600; color: #2c3e50; padding: 0 10px; text-align: center; overflow: hidden; text-overflow: ellipsis; font-size: 13px;';
+        labelDiv.textContent = tenet.name;
+
+        const strDiv = document.createElement('div');
+        strDiv.style.cssText = 'text-align: left;';
+        const strCanvas = document.createElement('canvas');
+        strCanvas.id = `${containerId}-s-${index}`;
+        strCanvas.height = 25;
+        strDiv.appendChild(strCanvas);
+
+        row.appendChild(weakDiv);
+        row.appendChild(labelDiv);
+        row.appendChild(strDiv);
+        chartContainer.appendChild(row);
+
+        new Chart(weakCanvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: [''],
+                datasets: [{ data: [tenet.improvement_count], backgroundColor: '#dc3545', borderColor: '#c82333', borderWidth: 1 }]
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => 'Weaknesses: ' + ctx.parsed.x } }
+                },
+                scales: {
+                    x: { min: 0, max: maxVal, reverse: true, display: false, grid: { display: false }, ticks: { display: false } },
+                    y: { display: false, grid: { display: false } }
+                }
+            }
+        });
+
+        new Chart(strCanvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: [''],
+                datasets: [{ data: [tenet.strength_count], backgroundColor: '#27ae60', borderColor: '#229954', borderWidth: 1 }]
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => 'Strengths: ' + ctx.parsed.x } }
+                },
+                scales: {
+                    x: { min: 0, max: maxVal, display: false, grid: { display: false }, ticks: { display: false } },
+                    y: { display: false, grid: { display: false } }
+                }
+            }
+        });
+    });
+}
+
+['Manager', 'Senior IC', 'Others'].forEach(level => {
+    if (jobLevelTenetsData[level]) {
+        renderButterflyChart(
+            'jobLevelTenetsChart-' + level.replace(' ', '-'),
+            jobLevelTenetsData[level].tenets
+        );
+    }
+});
+{% endif %}
 {% endif %}
 
 // Table sorting for Team Rankings
