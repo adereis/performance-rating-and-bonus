@@ -463,7 +463,6 @@
 
     .card-body {
         transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
-        overflow: hidden;
     }
 
     .card.collapsed .card-body {
@@ -471,6 +470,7 @@
         opacity: 0;
         padding: 0;
         margin: 0;
+        overflow: hidden;
     }
 
     .card.collapsed .card-header {
@@ -1274,7 +1274,7 @@ sortedTenets.forEach((tenet, index) => {
 
     // Left side - Weakness bar (red, grows left)
     const weaknessDiv = document.createElement('div');
-    weaknessDiv.style.cssText = 'text-align: right;';
+    weaknessDiv.style.cssText = 'text-align: right; min-width: 0; overflow: hidden;';
     const weaknessCanvas = document.createElement('canvas');
     weaknessCanvas.id = `weakness-${index}`;
     weaknessCanvas.height = 25;
@@ -1287,7 +1287,7 @@ sortedTenets.forEach((tenet, index) => {
 
     // Right side - Strength bar (green, grows right)
     const strengthDiv = document.createElement('div');
-    strengthDiv.style.cssText = 'text-align: left;';
+    strengthDiv.style.cssText = 'text-align: left; min-width: 0; overflow: hidden;';
     const strengthCanvas = document.createElement('canvas');
     strengthCanvas.id = `strength-${index}`;
     strengthCanvas.height = 25;
@@ -1317,6 +1317,8 @@ sortedTenets.forEach((tenet, index) => {
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    xAlign: 'left',
+                    yAlign: 'center',
                     callbacks: {
                         label: function(context) {
                             return 'Weaknesses: ' + context.parsed.x;
@@ -1360,6 +1362,8 @@ sortedTenets.forEach((tenet, index) => {
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    xAlign: 'right',
+                    yAlign: 'center',
                     callbacks: {
                         label: function(context) {
                             return 'Strengths: ' + context.parsed.x;
@@ -1418,7 +1422,7 @@ function renderButterflyChart(containerId, tenets) {
         row.style.cssText = 'display: grid; grid-template-columns: 1fr 300px 1fr; gap: 8px; align-items: center; margin-bottom: 4px; padding: 2px 0;';
 
         const weakDiv = document.createElement('div');
-        weakDiv.style.cssText = 'text-align: right;';
+        weakDiv.style.cssText = 'text-align: right; min-width: 0; overflow: hidden;';
         const weakCanvas = document.createElement('canvas');
         weakCanvas.id = `${containerId}-w-${index}`;
         weakCanvas.height = 25;
@@ -1429,7 +1433,7 @@ function renderButterflyChart(containerId, tenets) {
         labelDiv.textContent = tenet.name;
 
         const strDiv = document.createElement('div');
-        strDiv.style.cssText = 'text-align: left;';
+        strDiv.style.cssText = 'text-align: left; min-width: 0; overflow: hidden;';
         const strCanvas = document.createElement('canvas');
         strCanvas.id = `${containerId}-s-${index}`;
         strCanvas.height = 25;
@@ -1450,7 +1454,7 @@ function renderButterflyChart(containerId, tenets) {
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: ctx => 'Weaknesses: ' + ctx.parsed.x } }
+                    tooltip: { xAlign: 'left', yAlign: 'center', callbacks: { label: ctx => 'Weaknesses: ' + ctx.parsed.x } }
                 },
                 scales: {
                     x: { min: 0, max: maxVal, reverse: true, display: false, grid: { display: false }, ticks: { display: false } },
@@ -1469,7 +1473,7 @@ function renderButterflyChart(containerId, tenets) {
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: ctx => 'Strengths: ' + ctx.parsed.x } }
+                    tooltip: { xAlign: 'right', yAlign: 'center', callbacks: { label: ctx => 'Strengths: ' + ctx.parsed.x } }
                 },
                 scales: {
                     x: { min: 0, max: maxVal, display: false, grid: { display: false }, ticks: { display: false } },
