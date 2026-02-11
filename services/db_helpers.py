@@ -157,11 +157,22 @@ def load_tenets_config():
     """
     Load tenets configuration from tenets.json.
 
+    Looks for tenets.json in the project root. In demo mode, falls back
+    to samples/tenets-sample.json so demos work out of the box.
+
     Returns:
         tuple: (tenets_config dict, tenets_map dict mapping id->name)
                Returns (None, {}) if no config found
     """
-    tenets_file = 'tenets.json'
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    tenets_file = os.path.join(project_root, 'tenets.json')
+
+    # In demo mode, fall back to sample tenets if no custom file exists
+    if not os.path.exists(tenets_file):
+        demo_mode = os.getenv('DEMO_MODE', 'false').lower() == 'true'
+        if demo_mode:
+            tenets_file = os.path.join(project_root, 'samples', 'tenets-sample.json')
+
     if os.path.exists(tenets_file):
         try:
             with open(tenets_file, 'r') as f:

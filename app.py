@@ -1032,7 +1032,10 @@ def get_tenets():
     """API endpoint to serve tenets configuration."""
     tenets_config, _ = load_tenets_config()
     if tenets_config is None:
-        return jsonify({'error': 'Tenets configuration file not found'}), 404
+        return jsonify({
+            'error': 'No tenets.json found. Copy samples/tenets-sample.json '
+                     'to tenets.json and customize it for your organization.'
+        }), 404
     return jsonify(tenets_config)
 
 
