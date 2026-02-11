@@ -35,16 +35,19 @@ header h1 {
 
 nav {
     margin-top: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
 nav a {
     color: white;
     text-decoration: none;
     padding: 8px 16px;
-    margin-right: 10px;
     border-radius: 4px;
     background: rgba(255,255,255,0.1);
     transition: background 0.3s;
+    white-space: nowrap;
 }
 
 nav a:hover, nav a.active {
