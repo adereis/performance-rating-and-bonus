@@ -109,10 +109,13 @@ init_db()
 # Start demo mode cleanup thread if enabled
 if DEMO_MODE:
     from demo_mode import (
-        start_cleanup_thread, demo_response_wrapper,
-        get_session_id, initialize_session_from_template
+        start_cleanup_thread, clear_all_sessions, demo_response_wrapper,
+        get_session_id, initialize_session_from_template,
+        ensure_templates_exist
     )
     from demo_mode import _log
+    ensure_templates_exist()
+    clear_all_sessions()
     start_cleanup_thread()
     _log("Session isolation enabled")
 

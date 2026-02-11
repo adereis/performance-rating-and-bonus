@@ -487,6 +487,175 @@ class TestGetActiveSessionCount:
         assert demo_mode.get_active_session_count() == 3
 
 
+class TestEnsureTemplatesExist:
+    """Tests for ensure_templates_exist() - auto-generation of template DBs."""
+
+    def test_generates_missing_templates(self, temp_demo_dir, monkeypatch):
+        """Should generate both template DBs when they don't exist."""
+        templates_dir = os.path.join(temp_demo_dir, 'demo-templates')
+        monkeypatch.setattr(demo_mode, 'TEMPLATES_DIR', templates_dir)
+
+        small_path = os.path.join(templates_dir, 'small-team.db')
+        large_path = os.path.join(templates_dir, 'large-team.db')
+
+        assert not os.path.exists(small_path)
+        assert not os.path.exists(large_path)
+
+        demo_mode.ensure_templates_exist()
+
+        assert os.path.exists(small_path)
+        assert os.path.exists(large_path)
+        # Templates should have real data (not just schema)
+        assert os.path.getsize(small_path) > 10000
+        assert os.path.getsize(large_path) > 10000
+
+    def test_noop_when_templates_exist(self, temp_demo_dir, template_db, monkeypatch):
+        """Should not regenerate when both templates already exist."""
+        templates_dir = os.path.dirname(template_db)
+        monkeypatch.setattr(demo_mode, 'TEMPLATES_DIR', templates_dir)
+
+        # Create the large template too
+        large_path = os.path.join(templates_dir, 'large-team.db')
+        shutil.copy(template_db, large_path)
+
+        small_mtime = os.path.getmtime(template_db)
+        large_mtime = os.path.getmtime(large_path)
+
+        time.sleep(0.01)
+        demo_mode.ensure_templates_exist()
+
+        # Files should not have been touched
+        assert os.path.getmtime(template_db) == small_mtime
+        assert os.path.getmtime(large_path) == large_mtime
+
+    def test_generated_templates_have_employees(self, temp_demo_dir, monkeypatch):
+        """Generated templates should contain queryable employee data."""
+        templates_dir = os.path.join(temp_demo_dir, 'demo-templates')
+        monkeypatch.setattr(demo_mode, 'TEMPLATES_DIR', templates_dir)
+
+        demo_mode.ensure_templates_exist()
+
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+
+        # Verify small team has 12 employees
+        small_engine = create_engine(
+            f'sqlite:///{os.path.join(templates_dir, "small-team.db")}')
+        Session = sessionmaker(bind=small_engine)
+        session = Session()
+        assert session.query(Employee).count() == 12
+        session.close()
+        small_engine.dispose()
+
+        # Verify large team has 55 employees
+        large_engine = create_engine(
+            f'sqlite:///{os.path.join(templates_dir, "large-team.db")}')
+        Session = sessionmaker(bind=large_engine)
+        session = Session()
+        assert session.query(Employee).count() == 55
+        session.close()
+        large_engine.dispose()
+
+
+class TestDemoResetEndpoint:
+    """Tests for /api/demo/reset endpoint - end-to-end demo loading."""
+
+    @pytest.fixture(autouse=True)
+    def enable_demo_in_app(self, demo_mode_enabled, monkeypatch):
+        """Patch app module to enable demo mode with all required imports.
+
+        DEMO_MODE is False at import time in tests, so the conditional
+        imports (get_session_id, demo_response_wrapper, etc.) never run.
+        We inject them into the app module namespace for the test, then
+        clean up afterwards.
+        """
+        import app as app_module
+        monkeypatch.setattr(app_module, 'DEMO_MODE', True)
+
+        # These attributes don't exist when DEMO_MODE was False at import,
+        # so we set them directly and clean up via finalizer
+        attrs_to_inject = {
+            'get_session_id': demo_mode.get_session_id,
+            'initialize_session_from_template': demo_mode.initialize_session_from_template,
+            'demo_response_wrapper': demo_mode.demo_response_wrapper,
+        }
+        for name, func in attrs_to_inject.items():
+            setattr(app_module, name, func)
+
+        yield
+
+        for name in attrs_to_inject:
+            if hasattr(app_module, name):
+                delattr(app_module, name)
+
+    def test_reset_succeeds_with_generated_templates(self, app, demo_mode_enabled,
+                                                      monkeypatch):
+        """The /api/demo/reset endpoint should work after template generation."""
+        templates_dir = os.path.join(demo_mode_enabled, 'demo-templates')
+        monkeypatch.setattr(demo_mode, 'TEMPLATES_DIR', templates_dir)
+
+        # Generate templates (simulating what startup does)
+        demo_mode.ensure_templates_exist()
+
+        client = app.test_client()
+
+        # Load small team
+        response = client.post('/api/demo/reset',
+                               json={'type': 'small'},
+                               content_type='application/json')
+        data = response.get_json()
+        assert response.status_code == 200
+        assert data['success'] is True
+        assert data['demo_type'] == 'small'
+
+    def test_reset_fails_without_templates(self, app, monkeypatch):
+        """Should return success=false when templates are missing."""
+        monkeypatch.setattr(demo_mode, 'TEMPLATES_DIR', '/nonexistent/path')
+
+        client = app.test_client()
+
+        response = client.post('/api/demo/reset',
+                               json={'type': 'small'},
+                               content_type='application/json')
+        data = response.get_json()
+        assert response.status_code == 200
+        assert data['success'] is False
+
+    def test_reset_with_large_team(self, app, demo_mode_enabled, monkeypatch):
+        """Should support loading the large team dataset."""
+        templates_dir = os.path.join(demo_mode_enabled, 'demo-templates')
+        monkeypatch.setattr(demo_mode, 'TEMPLATES_DIR', templates_dir)
+
+        demo_mode.ensure_templates_exist()
+
+        client = app.test_client()
+
+        response = client.post('/api/demo/reset',
+                               json={'type': 'large'},
+                               content_type='application/json')
+        data = response.get_json()
+        assert response.status_code == 200
+        assert data['success'] is True
+        assert data['demo_type'] == 'large'
+
+    def test_reset_with_clear_ratings(self, app, demo_mode_enabled, monkeypatch):
+        """Should support clearing ratings on load."""
+        templates_dir = os.path.join(demo_mode_enabled, 'demo-templates')
+        monkeypatch.setattr(demo_mode, 'TEMPLATES_DIR', templates_dir)
+
+        demo_mode.ensure_templates_exist()
+
+        client = app.test_client()
+
+        response = client.post('/api/demo/reset',
+                               json={'type': 'small', 'clear_ratings': True},
+                               content_type='application/json')
+        data = response.get_json()
+        assert response.status_code == 200
+        assert data['success'] is True
+        assert data['clear_ratings'] is True
+
+
 class TestGetDemoDb:
     """Tests for get_demo_db() function."""
 

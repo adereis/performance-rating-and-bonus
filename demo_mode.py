@@ -107,6 +107,13 @@ def _clear_ratings_in_db(db_path):
                 tenets_strengths = NULL,
                 tenets_improvements = NULL,
                 last_updated = NULL,
+                -- Bonus _original fields
+                performance_rating_percent_original = NULL,
+                justification_original = NULL,
+                mentor_original = NULL,
+                mentees_original = NULL,
+                tenets_strengths_original = NULL,
+                tenets_improvements_original = NULL,
                 -- Talent cycle fields
                 talent_perf_what = NULL,
                 talent_perf_how = NULL,
@@ -121,7 +128,22 @@ def _clear_ratings_in_db(db_path):
                 talent_promo_role_scope = NULL,
                 talent_promo_readiness = NULL,
                 talent_tenets_strengths = NULL,
-                talent_tenets_improvements = NULL
+                talent_tenets_improvements = NULL,
+                -- Talent _original fields
+                talent_perf_what_original = NULL,
+                talent_perf_how_original = NULL,
+                talent_growth_agility_original = NULL,
+                talent_change_agility_original = NULL,
+                talent_movement_readiness_original = NULL,
+                talent_proposed_actions_original = NULL,
+                talent_mentor_original = NULL,
+                talent_mentees_original = NULL,
+                talent_promo_job_profile_original = NULL,
+                talent_promo_business_need_original = NULL,
+                talent_promo_role_scope_original = NULL,
+                talent_promo_readiness_original = NULL,
+                talent_tenets_strengths_original = NULL,
+                talent_tenets_improvements_original = NULL
         ''')
         conn.commit()
     finally:
@@ -441,6 +463,41 @@ def demo_response_wrapper(response):
         )
 
     return response
+
+
+def ensure_templates_exist():
+    """Generate demo template databases if they don't exist.
+
+    Templates are normally pre-built during Docker build, but when running
+    locally with DEMO_MODE=true they won't exist. This generates them
+    on-the-fly so demo mode works without Docker.
+    """
+    small_path = get_template_path('small')
+    large_path = get_template_path('large')
+
+    if os.path.exists(small_path) and os.path.exists(large_path):
+        return  # Templates already exist
+
+    _log("Templates missing, generating on-the-fly...")
+
+    # Import and run the template generator
+    import importlib.util
+    script_path = os.path.join(SCRIPT_DIR, 'scripts', 'generate-demo-templates.py')
+    spec = importlib.util.spec_from_file_location('generate_demo_templates', script_path)
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
+
+    os.makedirs(TEMPLATES_DIR, exist_ok=True)
+
+    if not os.path.exists(small_path):
+        gen.create_template_database(small_path, gen.get_small_team_employees(),
+                                     include_large_history=False)
+        _log(f"Generated {small_path}")
+
+    if not os.path.exists(large_path):
+        gen.create_template_database(large_path, gen.get_large_team_employees(),
+                                     include_large_history=True)
+        _log(f"Generated {large_path}")
 
 
 def get_active_session_count():

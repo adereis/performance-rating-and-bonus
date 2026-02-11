@@ -14,6 +14,7 @@ Creates:
 """
 import sys
 import os
+import json
 import random
 from datetime import datetime
 
@@ -23,6 +24,56 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Base, Employee, BonusSettings, Period, RatingSnapshot, derive_overall_performance, derive_future_talent
+
+
+# ============================================================================
+# Tenet IDs (from samples/tenets-sample.json)
+# ============================================================================
+
+ALL_TENET_IDS = [
+    'delete_more', 'campfire_cleaner', 'tests_or_hallucination',
+    'comments_apologies', 'ship_to_learn', 'yagni', 'fail_fast',
+    'sleep_feature', 'automate_job', 'cattle_not_pets',
+    'rubber_duck', 'blame_process', 'strong_opinions',
+]
+
+
+def generate_tenets(count, exclude=None):
+    """Pick random tenet IDs without overlap with the exclude set."""
+    pool = [t for t in ALL_TENET_IDS if t not in (exclude or [])]
+    return random.sample(pool, min(count, len(pool)))
+
+
+PROPOSED_ACTIONS_BY_TIER = {
+    'high': [
+        'Ready for expanded scope — consider cross-team technical leadership role',
+        'Strong candidate for architecture review board; sponsor for next cycle',
+        'Mentor assignment: pair with 2 junior engineers for structured growth',
+        'Nominate for company-wide tech talk on area of expertise',
+    ],
+    'solid': [
+        'Continue developing depth in current domain; identify stretch project',
+        'Encourage conference attendance and knowledge sharing within team',
+        'Pair with senior IC for design review mentorship',
+        'Focus on improving cross-team communication and documentation',
+    ],
+    'developing': [
+        'Create structured improvement plan with bi-weekly check-ins',
+        'Assign targeted training in areas of weakness; review in 90 days',
+        'Pair with experienced mentor for daily guidance and code review',
+        'Reduce scope to core responsibilities until quality improves',
+    ],
+}
+
+
+def generate_proposed_actions(rating):
+    """Return performance-appropriate action text."""
+    if rating >= 120:
+        return random.choice(PROPOSED_ACTIONS_BY_TIER['high'])
+    elif rating >= 90:
+        return random.choice(PROPOSED_ACTIONS_BY_TIER['solid'])
+    else:
+        return random.choice(PROPOSED_ACTIONS_BY_TIER['developing'])
 
 
 # ============================================================================
@@ -99,6 +150,15 @@ def generate_talent_data(bonus_rating: int) -> dict:
     last_future_talent = derive_future_talent(last_growth, last_change)
     last_movement = random.choice(MOVEMENT_READINESS_OPTIONS)
 
+    # Generate talent tenets (non-overlapping strengths + improvements)
+    talent_strengths = generate_tenets(3)
+    talent_improvements = generate_tenets(3, exclude=talent_strengths)
+    talent_strengths_json = json.dumps(talent_strengths)
+    talent_improvements_json = json.dumps(talent_improvements)
+
+    # Generate proposed actions aligned with rating
+    proposed_actions = generate_proposed_actions(bonus_rating)
+
     return {
         'talent_perf_what': perf_what,
         'talent_perf_how': perf_how,
@@ -107,10 +167,24 @@ def generate_talent_data(bonus_rating: int) -> dict:
         'talent_change_agility': change,
         'talent_identified_future': future_talent,
         'talent_movement_readiness': movement,
+        'talent_proposed_actions': proposed_actions,
+        'talent_tenets_strengths': talent_strengths_json,
+        'talent_tenets_improvements': talent_improvements_json,
         'talent_last_overall_perf': last_overall,
         'talent_last_identified_future': last_future_talent,
         'talent_last_movement_readiness': last_movement,
         'talent_last_updated': datetime.now(),
+        # _original fields (matching current = freshly imported state)
+        'talent_perf_what_original': perf_what,
+        'talent_perf_how_original': perf_how,
+        'talent_growth_agility_original': growth,
+        'talent_change_agility_original': change,
+        'talent_movement_readiness_original': movement,
+        'talent_proposed_actions_original': proposed_actions,
+        'talent_mentor_original': '',
+        'talent_mentees_original': '',
+        'talent_tenets_strengths_original': talent_strengths_json,
+        'talent_tenets_improvements_original': talent_improvements_json,
     }
 
 
@@ -195,6 +269,12 @@ def get_small_team_employees():
         # Generate talent calibration data aligned with performance rating
         talent_data = generate_talent_data(rating)
 
+        # Generate bonus tenets (non-overlapping strengths + improvements)
+        bonus_strengths = generate_tenets(3)
+        bonus_improvements = generate_tenets(3, exclude=bonus_strengths)
+        bonus_strengths_json = json.dumps(bonus_strengths)
+        bonus_improvements_json = json.dumps(bonus_improvements)
+
         emp_data = {
             'associate_id': f'EMP{1000 + i}',
             'associate': name,
@@ -211,20 +291,36 @@ def get_small_team_employees():
             'justification': justification,
             'mentor': '',  # Empty string, not NULL
             'mentees': '',  # Empty string, not NULL
+            'tenets_strengths': bonus_strengths_json,
+            'tenets_improvements': bonus_improvements_json,
             'last_updated': datetime.now(),
             # New fields from 2025 Workday format
             'country': 'United States',
             'management_level': grade.replace('IC', 'IC ') if 'IC' in grade else 'Manager',
             'last_perf_review_name': '2025-Q2 Talent Assessment & Calibration',
             'last_perf_review_rating': talent_data.get('talent_overall_perf', 'Successful Performer'),
+            # Bonus _original fields (matching current = freshly imported)
+            'performance_rating_percent_original': float(rating),
+            'justification_original': justification,
+            'mentor_original': '',
+            'mentees_original': '',
+            'tenets_strengths_original': bonus_strengths_json,
+            'tenets_improvements_original': bonus_improvements_json,
             # Talent calibration fields
             **talent_data,
         }
 
         # Add promotion data for select candidates
         if name in PROMO_CANDIDATES:
-            emp_data.update(PROMO_CANDIDATES[name])
+            promo = PROMO_CANDIDATES[name]
+            emp_data.update(promo)
             emp_data['talent_movement_readiness'] = 'Ready Now to be promoted in current role'
+            emp_data['talent_movement_readiness_original'] = 'Ready Now to be promoted in current role'
+            # Set promo _original fields
+            emp_data['talent_promo_job_profile_original'] = promo.get('talent_promo_job_profile')
+            emp_data['talent_promo_business_need_original'] = promo.get('talent_promo_business_need')
+            emp_data['talent_promo_role_scope_original'] = promo.get('talent_promo_role_scope')
+            emp_data['talent_promo_readiness_original'] = promo.get('talent_promo_readiness')
 
         result.append(emp_data)
 
@@ -349,6 +445,12 @@ def get_large_team_employees():
             # Generate talent calibration data aligned with performance rating
             talent_data = generate_talent_data(rating)
 
+            # Generate bonus tenets (non-overlapping strengths + improvements)
+            bonus_strengths = generate_tenets(3)
+            bonus_improvements = generate_tenets(3, exclude=bonus_strengths)
+            bonus_strengths_json = json.dumps(bonus_strengths)
+            bonus_improvements_json = json.dumps(bonus_improvements)
+
             emp_data = {
                 'associate_id': f'EMP{emp_id}',
                 'associate': name,
@@ -365,20 +467,36 @@ def get_large_team_employees():
                 'justification': justification,
                 'mentor': '',  # Empty string, not NULL
                 'mentees': '',  # Empty string, not NULL
+                'tenets_strengths': bonus_strengths_json,
+                'tenets_improvements': bonus_improvements_json,
                 'last_updated': datetime.now(),
                 # New fields from 2025 Workday format
                 'country': 'United States',
                 'management_level': grade.replace('IC', 'IC ') if 'IC' in grade else 'Manager',
                 'last_perf_review_name': '2025-Q2 Talent Assessment & Calibration',
                 'last_perf_review_rating': talent_data.get('talent_overall_perf', 'Successful Performer'),
+                # Bonus _original fields (matching current = freshly imported)
+                'performance_rating_percent_original': float(rating),
+                'justification_original': justification,
+                'mentor_original': '',
+                'mentees_original': '',
+                'tenets_strengths_original': bonus_strengths_json,
+                'tenets_improvements_original': bonus_improvements_json,
                 # Talent calibration fields
                 **talent_data,
             }
 
             # Add promotion data for select candidates
             if name in PROMO_CANDIDATES:
-                emp_data.update(PROMO_CANDIDATES[name])
+                promo = PROMO_CANDIDATES[name]
+                emp_data.update(promo)
                 emp_data['talent_movement_readiness'] = 'Ready Now to be promoted in current role'
+                emp_data['talent_movement_readiness_original'] = 'Ready Now to be promoted in current role'
+                # Set promo _original fields
+                emp_data['talent_promo_job_profile_original'] = promo.get('talent_promo_job_profile')
+                emp_data['talent_promo_business_need_original'] = promo.get('talent_promo_business_need')
+                emp_data['talent_promo_role_scope_original'] = promo.get('talent_promo_role_scope')
+                emp_data['talent_promo_readiness_original'] = promo.get('talent_promo_readiness')
 
             result.append(emp_data)
             emp_id += 1
@@ -427,6 +545,11 @@ def generate_snapshot_talent_data(emp: dict) -> dict:
     movement = random.choices(MOVEMENT_READINESS_OPTIONS, weights=movement_weights)[0]
     overall = derive_overall_performance(perf_what, perf_how)
 
+    # Generate snapshot tenets and proposed actions
+    snap_strengths = generate_tenets(3)
+    snap_improvements = generate_tenets(3, exclude=snap_strengths)
+    snap_actions = generate_proposed_actions(historical_rating)
+
     return {
         'snapshot_talent_perf_what': perf_what,
         'snapshot_talent_perf_how': perf_how,
@@ -434,10 +557,10 @@ def generate_snapshot_talent_data(emp: dict) -> dict:
         'snapshot_talent_growth_agility': growth,
         'snapshot_talent_change_agility': change,
         'snapshot_talent_movement_readiness': movement,
-        'snapshot_talent_proposed_actions': None,
+        'snapshot_talent_proposed_actions': snap_actions,
         'snapshot_talent_promo_job_profile': emp.get('talent_promo_job_profile'),
-        'snapshot_talent_tenets_strengths': None,
-        'snapshot_talent_tenets_improvements': None,
+        'snapshot_talent_tenets_strengths': json.dumps(snap_strengths),
+        'snapshot_talent_tenets_improvements': json.dumps(snap_improvements),
     }
 
 

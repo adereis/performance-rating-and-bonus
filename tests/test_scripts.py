@@ -4,6 +4,7 @@ Tests for sample data generation scripts.
 These tests verify that the scripts in scripts/ can be imported and run
 correctly, including proper handling of imports from the parent directory.
 """
+import json
 import pytest
 import os
 import sys
@@ -308,3 +309,148 @@ class TestDemoTemplateSchemaValidation:
                 f"Demo template '{template_file}' is missing columns: {missing}. "
                 f"Run 'python3 scripts/generate-demo-templates.py' to regenerate."
             )
+
+
+class TestDemoTemplateCompleteness:
+    """Verify generated demo employees are fully rated and calibrated."""
+
+    @pytest.fixture(autouse=True)
+    def load_module(self):
+        self.module = load_script('generate-demo-templates.py')
+        self.all_tenet_ids = set(self.module.ALL_TENET_IDS)
+
+    def _all_employees(self):
+        return self.module.get_small_team_employees() + self.module.get_large_team_employees()
+
+    def test_all_employees_have_bonus_tenets(self):
+        """Each employee should have 3 strengths + 3 improvements, non-overlapping, valid IDs."""
+        for emp in self._all_employees():
+            name = emp['associate']
+            strengths = json.loads(emp['tenets_strengths'])
+            improvements = json.loads(emp['tenets_improvements'])
+
+            assert len(strengths) == 3, f"{name}: expected 3 strengths, got {len(strengths)}"
+            assert len(improvements) == 3, f"{name}: expected 3 improvements, got {len(improvements)}"
+
+            # No overlap between strengths and improvements
+            overlap = set(strengths) & set(improvements)
+            assert not overlap, f"{name}: tenets overlap: {overlap}"
+
+            # All IDs are valid
+            for tid in strengths + improvements:
+                assert tid in self.all_tenet_ids, f"{name}: invalid tenet ID '{tid}'"
+
+    def test_all_employees_are_fully_rated(self):
+        """is_employee_rated() should return True for every generated employee."""
+        from services.employee_utils import is_employee_rated
+
+        for emp in self._all_employees():
+            assert is_employee_rated(emp), \
+                f"{emp['associate']} is not fully rated: " \
+                f"rating={emp.get('performance_rating_percent')}, " \
+                f"justification={bool(emp.get('justification'))}, " \
+                f"tenets_s={emp.get('tenets_strengths')}, " \
+                f"tenets_i={emp.get('tenets_improvements')}"
+
+    def test_all_employees_are_fully_calibrated(self):
+        """is_employee_calibrated() should return True for every generated employee."""
+        from services.employee_utils import is_employee_calibrated
+
+        for emp in self._all_employees():
+            assert is_employee_calibrated(emp), \
+                f"{emp['associate']} is not fully calibrated: " \
+                f"what={emp.get('talent_perf_what')}, " \
+                f"how={emp.get('talent_perf_how')}, " \
+                f"actions={bool(emp.get('talent_proposed_actions'))}, " \
+                f"tenets_s={emp.get('talent_tenets_strengths')}, " \
+                f"tenets_i={emp.get('talent_tenets_improvements')}"
+
+    def test_all_employees_have_original_fields(self):
+        """_original fields should match current values (freshly imported state)."""
+        bonus_pairs = [
+            ('performance_rating_percent', 'performance_rating_percent_original'),
+            ('justification', 'justification_original'),
+            ('mentor', 'mentor_original'),
+            ('mentees', 'mentees_original'),
+            ('tenets_strengths', 'tenets_strengths_original'),
+            ('tenets_improvements', 'tenets_improvements_original'),
+        ]
+        talent_pairs = [
+            ('talent_perf_what', 'talent_perf_what_original'),
+            ('talent_perf_how', 'talent_perf_how_original'),
+            ('talent_growth_agility', 'talent_growth_agility_original'),
+            ('talent_change_agility', 'talent_change_agility_original'),
+            ('talent_movement_readiness', 'talent_movement_readiness_original'),
+            ('talent_proposed_actions', 'talent_proposed_actions_original'),
+            ('talent_tenets_strengths', 'talent_tenets_strengths_original'),
+            ('talent_tenets_improvements', 'talent_tenets_improvements_original'),
+        ]
+
+        for emp in self._all_employees():
+            name = emp['associate']
+            for current, original in bonus_pairs:
+                cur_val = emp.get(current)
+                orig_val = emp.get(original)
+                # Float comparison for rating
+                if isinstance(cur_val, int):
+                    cur_val = float(cur_val)
+                assert cur_val == orig_val, \
+                    f"{name}: {current}={cur_val!r} != {original}={orig_val!r}"
+
+            for current, original in talent_pairs:
+                assert emp.get(current) == emp.get(original), \
+                    f"{name}: {current}={emp.get(current)!r} != {original}={emp.get(original)!r}"
+
+    def test_talent_proposed_actions_set(self):
+        """All employees should have non-empty talent_proposed_actions."""
+        for emp in self._all_employees():
+            assert emp.get('talent_proposed_actions'), \
+                f"{emp['associate']} has no talent_proposed_actions"
+
+    def test_clear_ratings_clears_all_fields(self):
+        """_clear_ratings_in_db() should null tenets, originals, and talent fields."""
+        from demo_mode import _clear_ratings_in_db
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, 'test.db')
+            employees = self.module.get_small_team_employees()
+            self.module.create_template_database(db_path, employees)
+
+            _clear_ratings_in_db(db_path)
+
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute('SELECT * FROM employees').fetchall()
+
+            cleared_fields = [
+                # Bonus fields
+                'performance_rating_percent', 'justification', 'mentor', 'mentees',
+                'tenets_strengths', 'tenets_improvements',
+                # Bonus _original
+                'performance_rating_percent_original', 'justification_original',
+                'mentor_original', 'mentees_original',
+                'tenets_strengths_original', 'tenets_improvements_original',
+                # Talent fields
+                'talent_perf_what', 'talent_perf_how', 'talent_overall_perf',
+                'talent_growth_agility', 'talent_change_agility',
+                'talent_identified_future', 'talent_movement_readiness',
+                'talent_proposed_actions', 'talent_tenets_strengths',
+                'talent_tenets_improvements',
+                # Talent _original
+                'talent_perf_what_original', 'talent_perf_how_original',
+                'talent_growth_agility_original', 'talent_change_agility_original',
+                'talent_movement_readiness_original', 'talent_proposed_actions_original',
+                'talent_mentor_original', 'talent_mentees_original',
+                'talent_promo_job_profile_original', 'talent_promo_business_need_original',
+                'talent_promo_role_scope_original', 'talent_promo_readiness_original',
+                'talent_tenets_strengths_original', 'talent_tenets_improvements_original',
+            ]
+
+            for row in rows:
+                name = row['associate']
+                for field in cleared_fields:
+                    assert row[field] is None, \
+                        f"{name}: {field} should be NULL after clear, got {row[field]!r}"
+
+            conn.close()
