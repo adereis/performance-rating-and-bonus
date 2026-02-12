@@ -491,6 +491,10 @@ def index():
     # Count calibrated employees (What + How + Actions + Tenets)
     calibrated_count = sum(1 for emp in team_data if is_employee_calibrated(emp))
 
+    # Track employees ready for promotion (Movement Readiness = "Ready Now...")
+    promotion_ready = [emp for emp in team_data
+                       if (emp.get('talent_movement_readiness') or '').startswith('Ready Now')]
+
     # Check for historical data if no current employees
     historical_info = None
     if total_employees == 0:
@@ -512,7 +516,7 @@ def index():
     return render_template('index.html', team=team_data, stats=stats, filter_info=filter_info,
                          demo_mode=DEMO_MODE, historical_info=historical_info,
                          alignment_data=alignment_data, alignment_stats=alignment_stats,
-                         calibrated_count=calibrated_count)
+                         calibrated_count=calibrated_count, promotion_ready=promotion_ready)
 
 
 @app.route('/rate')
