@@ -477,6 +477,16 @@ def index():
 
         # Add alignment to employee for display in Team Overview table
         emp['alignment'] = alignment
+        # Set detail for incomplete cases so template can show specific messages
+        if alignment == 'incomplete':
+            if bonus_pct is None and talent_overall is not None:
+                emp['alignment_detail'] = 'missing_rating'
+            elif bonus_pct is not None and talent_overall is None:
+                emp['alignment_detail'] = 'missing_talent'
+            else:
+                emp['alignment_detail'] = None
+        else:
+            emp['alignment_detail'] = None
 
         # Only include employees with some data for the alignment table
         if bonus_pct is not None or talent_overall is not None:
