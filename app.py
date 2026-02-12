@@ -488,8 +488,10 @@ def index():
                 'alignment': alignment,
             })
 
-    # Count calibrated employees (What + How + Actions + Tenets)
-    calibrated_count = sum(1 for emp in team_data if is_employee_calibrated(emp))
+    # Stamp calibration status on each employee for template display, and count
+    for emp in team_data:
+        emp['is_calibrated'] = is_employee_calibrated(emp)
+    calibrated_count = sum(1 for emp in team_data if emp['is_calibrated'])
 
     # Track employees ready for promotion (Movement Readiness = "Ready Now...")
     promotion_ready = [emp for emp in team_data
