@@ -10,6 +10,7 @@ os.environ['TESTING'] = 'true'
 
 import pytest
 import tempfile
+from jinja2 import StrictUndefined
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Base, Employee
@@ -145,6 +146,12 @@ def app(test_db):
     flask_app.config['TESTING'] = True
     flask_app.config['DATABASE_URL'] = f'sqlite:///{db_path}'
 
+    # Catch missing template variables (e.g., forgetting to pass a var
+    # to render_template). Without this, Jinja2 silently treats undefined
+    # variables as falsy, hiding regressions like missing promotion_ready.
+    original_undefined = flask_app.jinja_env.undefined
+    flask_app.jinja_env.undefined = StrictUndefined
+
     # Override the get_db function to use test database
     import models
     original_get_db = models.get_db
@@ -161,6 +168,7 @@ def app(test_db):
     yield flask_app
 
     # Restore original
+    flask_app.jinja_env.undefined = original_undefined
     models.get_db = original_get_db
     app_module.get_db = original_get_db
 
