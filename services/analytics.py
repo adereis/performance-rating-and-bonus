@@ -157,10 +157,35 @@ def calculate_rating_distribution(team_data):
         reverse=True
     )
 
+    # Seniority composition for Team Overview
+    seniority_counts = {'Manager': 0, 'Senior IC': 0, 'Others': 0}
+    seniority_roles = {'Manager': {}, 'Senior IC': {}, 'Others': {}}
+    for emp in team_data:
+        level = categorize_job_level(emp, team_data)
+        seniority_counts[level] += 1
+        job = emp.get('Current Job Profile', 'Unknown') or 'Unknown'
+        seniority_roles[level][job] = seniority_roles[level].get(job, 0) + 1
+
+    seniority_composition = []
+    for level in ['Manager', 'Senior IC', 'Others']:
+        count = seniority_counts[level]
+        if count == 0:
+            continue
+        roles = sorted(
+            [{'job': j, 'count': c} for j, c in seniority_roles[level].items()],
+            key=lambda x: x['count'],
+            reverse=True
+        )
+        seniority_composition.append({
+            'level': level,
+            'count': count,
+            'roles': roles
+        })
+
     return (
         rating_buckets, dept_averages, job_averages, sorted_team,
         special_case_count, rated_employees, total_rated,
-        has_bonus_data, job_profile_distribution,
+        has_bonus_data, job_profile_distribution, seniority_composition,
     )
 
 

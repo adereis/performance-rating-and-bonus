@@ -862,6 +862,56 @@ if (jobProfileData.length > 0) {
     }
 }
 
+// Seniority Composition Doughnut Chart
+const seniorityData = {{ seniority_composition | tojson }};
+if (seniorityData.length > 1) {
+    const seniorityCtx = document.getElementById('seniorityCompositionChart');
+    if (seniorityCtx) {
+        const seniorityColors = {
+            'Manager': '#667eea',
+            'Senior IC': '#764ba2',
+            'Others': '#4facfe'
+        };
+
+        new Chart(seniorityCtx, {
+            type: 'doughnut',
+            data: {
+                labels: seniorityData.map(item => item.level),
+                datasets: [{
+                    data: seniorityData.map(item => item.count),
+                    backgroundColor: seniorityData.map(item => seniorityColors[item.level] || '#ccc'),
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 10,
+                            font: { size: 12 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = Math.round(context.raw / total * 100);
+                                return `${context.label}: ${context.raw} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
 // Rating Distribution Chart
 const ratingCtx = document.getElementById('ratingChart').getContext('2d');
 new Chart(ratingCtx, {

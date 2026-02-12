@@ -1166,7 +1166,8 @@ def analytics():
     # --- Rating distribution ---
     (rating_buckets, dept_averages, job_averages, sorted_team, special_case_count,
      rated_employees, total_rated, has_bonus_data,
-     job_profile_distribution) = calculate_rating_distribution(team_data)
+     job_profile_distribution,
+     seniority_composition) = calculate_rating_distribution(team_data)
 
     # Calibration count (talent cycle)
     calibrated_count = sum(1 for emp in team_data if is_employee_calibrated(emp))
@@ -1277,6 +1278,7 @@ def analytics():
                          dept_averages=dept_averages,
                          job_averages=job_averages,
                          job_profile_distribution=job_profile_distribution,
+                         seniority_composition=seniority_composition,
                          calibration_data=calibration_data,
                          total_rated=total_rated,
                          calibrated_count=calibrated_count,

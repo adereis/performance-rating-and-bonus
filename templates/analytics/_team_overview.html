@@ -62,5 +62,44 @@
         </div>
     </div>
 
+    <!-- Seniority Composition -->
+    {% if seniority_composition and seniority_composition|length > 1 %}
+    <h3 style="margin-top: 30px; margin-bottom: 15px;">Seniority Composition</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start;">
+        <!-- Doughnut Chart -->
+        <div class="chart-container" style="box-shadow: none; padding: 0;">
+            <canvas id="seniorityCompositionChart" style="max-height: 280px;"></canvas>
+        </div>
+
+        <!-- Seniority Breakdown -->
+        <div>
+            {% for group in seniority_composition %}
+            <div style="margin-bottom: 15px;">
+                <div style="font-weight: 700; color: #2c3e50; font-size: 15px; margin-bottom: 4px;">
+                    {{ group.level }}
+                    <span style="font-weight: 400; color: #666; font-size: 13px;">
+                        &mdash; {{ group.count }} ({{ "%.0f"|format(group.count / total_employees * 100) }}%)
+                    </span>
+                </div>
+                <div style="font-size: 12px; color: #888; margin-bottom: 6px; font-style: italic;">
+                    {% if group.level == 'Manager' %}
+                        Has direct reports or management title
+                    {% elif group.level == 'Senior IC' %}
+                        Title contains: Senior, Principal, Staff, or Lead
+                    {% else %}
+                        All other individual contributors
+                    {% endif %}
+                </div>
+                <ul style="margin: 0 0 0 18px; padding: 0; font-size: 13px; color: #555;">
+                    {% for role in group.roles %}
+                    <li>{{ role.job }} ({{ role.count }})</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     </div>
 </div>
