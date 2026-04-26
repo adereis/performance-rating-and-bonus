@@ -343,6 +343,58 @@ class TestMultiOrganization:
         assert b'Iris Ibrahim' in response.data    # Data
         assert b'Kelly Kim' in response.data       # Security
 
+    def test_bonus_calculation_multi_org_with_override_no_rating(self, client, db_session):
+        """Test that bonus calculation renders when a multi-team override employee has no rating.
+
+        Regression test: the multi-team comparison table formatted
+        performance_rating_percent with "%.0f" which crashes on None.
+        Override employees (e.g., extended leave) have no rating.
+        """
+        from models import BonusSettings
+
+        # Two orgs required to trigger multi-team comparison table
+        employees = [
+            Employee(
+                associate_id='MT001',
+                associate='Rated TeamA',
+                supervisory_organization='Team Alpha',
+                current_job_profile='Engineer',
+                current_base_pay_all_countries=100000.0,
+                bonus_target_local_currency=15000.0,
+                performance_rating_percent=110.0,
+            ),
+            Employee(
+                associate_id='MT002',
+                associate='Override NoRating',
+                supervisory_organization='Team Alpha',
+                current_job_profile='Engineer',
+                current_base_pay_all_countries=80000.0,
+                bonus_target_local_currency=12000.0,
+                performance_rating_percent=None,
+                bonus_override_percent=0.0,
+                special_case_notes='Extended leave',
+            ),
+            Employee(
+                associate_id='MT003',
+                associate='Rated TeamB',
+                supervisory_organization='Team Beta',
+                current_job_profile='Engineer',
+                current_base_pay_all_countries=90000.0,
+                bonus_target_local_currency=13500.0,
+                performance_rating_percent=100.0,
+            ),
+        ]
+        for emp in employees:
+            db_session.add(emp)
+        db_session.add(BonusSettings(id=1))
+        db_session.commit()
+
+        response = client.get('/bonus-calculation')
+        assert response.status_code == 200
+        assert b'Override NoRating' in response.data
+        assert b'Team Alpha' in response.data
+        assert b'Team Beta' in response.data
+
     def test_bonus_pool_calculation_multi_org(self, populated_multi_org_db):
         """Test that total bonus pool is correctly calculated across all orgs."""
         employees = populated_multi_org_db.query(Employee).all()

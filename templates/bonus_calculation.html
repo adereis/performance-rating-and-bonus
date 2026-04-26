@@ -652,7 +652,7 @@
                     {% set diff = org_bonus - team_bonus %}
                     <tr>
                         <td><strong><span class="employee-name" data-employee-id="{{ emp['Associate ID'] }}">{{ emp.Associate }}</span></strong></td>
-                        <td class="right">{{ "%.0f"|format(emp.performance_rating_percent) }}%</td>
+                        <td class="right">{% if emp.performance_rating_percent is not none %}{{ "%.0f"|format(emp.performance_rating_percent) }}%{% else %}—{% endif %}</td>
                         <td class="right">{{ team_bonus|format_currency }}</td>
                         <td class="right">{{ org_bonus|format_currency }}</td>
                         <td class="right">
