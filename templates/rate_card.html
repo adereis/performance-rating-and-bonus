@@ -96,8 +96,11 @@
             </div>
             <div class="special-case-content" style="{% if employee.bonus_override_percent is none %}display: none;{% endif %}">
                 <div class="special-case-info">
-                    Override the calculated bonus with a fixed percentage. Common uses: pro-rata leave, retention adjustments.
-                    Bypasses the performance curve and excludes from analytics.
+                    <strong>Why use an override?</strong> Set a fixed bonus percentage that bypasses the
+                    performance curve. This prevents penalizing employees whose circumstances
+                    (e.g., partial-quarter leave, retention) don't reflect their actual performance.
+                    The override employee is excluded from team analytics and their unused bonus pool
+                    share is redistributed to other employees.
                 </div>
                 <div class="rating-input-group">
                     <label>Bonus Override %:</label>

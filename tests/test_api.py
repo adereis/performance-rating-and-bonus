@@ -1267,3 +1267,63 @@ class TestZeroRating:
             'tenets_improvements': '["d","e"]',
         }
         assert is_employee_rated(emp) is False
+
+
+class TestIsEmployeeComplete:
+    """Test is_employee_complete() considers overrides for workflow completion."""
+
+    def test_fully_rated_no_override(self):
+        from services.employee_utils import is_employee_complete
+        emp = {
+            'performance_rating_percent': 100,
+            'justification': 'Good work',
+            'tenets_strengths': '["a","b","c"]',
+            'tenets_improvements': '["d","e"]',
+            'bonus_override_percent': None,
+        }
+        assert is_employee_complete(emp) is True
+
+    def test_override_only_no_rating(self):
+        from services.employee_utils import is_employee_complete
+        emp = {
+            'performance_rating_percent': None,
+            'justification': None,
+            'tenets_strengths': None,
+            'tenets_improvements': None,
+            'bonus_override_percent': 50.0,
+        }
+        assert is_employee_complete(emp) is True
+
+    def test_zero_override_is_complete(self):
+        from services.employee_utils import is_employee_complete
+        emp = {
+            'performance_rating_percent': None,
+            'justification': None,
+            'tenets_strengths': None,
+            'tenets_improvements': None,
+            'bonus_override_percent': 0.0,
+        }
+        assert is_employee_complete(emp) is True
+
+    def test_neither_rated_nor_override(self):
+        from services.employee_utils import is_employee_complete
+        emp = {
+            'performance_rating_percent': None,
+            'justification': None,
+            'tenets_strengths': None,
+            'tenets_improvements': None,
+            'bonus_override_percent': None,
+        }
+        assert is_employee_complete(emp) is False
+
+    def test_is_employee_rated_unchanged_by_override(self):
+        """Verify is_employee_rated does NOT consider override."""
+        from services.employee_utils import is_employee_rated
+        emp = {
+            'performance_rating_percent': None,
+            'justification': None,
+            'tenets_strengths': None,
+            'tenets_improvements': None,
+            'bonus_override_percent': 50.0,
+        }
+        assert is_employee_rated(emp) is False

@@ -70,7 +70,7 @@ Instructions for AI agents and human developers working on this codebase.
 - **Split curve**: Upside exponent 1.35 (≥100%), downside exponent 1.9 (<100%)
 - **Budget override**: Proportional scaling of entire pool (`BonusSettings.budget_override`)
 - **Multi-team**: Auto-detected when `len(unique_orgs) > 1`, shows org-level vs team-level
-- **Special case overrides**: Set `bonus_override_percent` to bypass curve calculation (e.g., pro-rata leave, retention). Uses Option B pool handling: override bonuses come from the same pool, unused portion redistributed to other employees. Employees with override are excluded from analytics distributions. Export marker: `[Override: 50%, Paternity leave Apr-Sep]` (reason optional)
+- **Special case overrides**: Set `bonus_override_percent` to bypass curve calculation (e.g., pro-rata leave, retention). This avoids penalizing employees with artificially low performance ratings when their circumstances don't reflect actual performance. Uses Option B pool handling: override bonuses come from the same pool, unused portion redistributed to other employees. Employees with override are excluded from analytics distributions. **Workflow completion**: override employees count as "complete" in the sidebar (green dot with orange ring) regardless of rating/justification/tenets — but those fields remain editable since partial-quarter employees may still receive full evaluations. Export marker: `[Override: 50%, Paternity leave Apr-Sep]` (reason optional)
 
 ### Currency Handling
 - All calculations use **manager's currency** (auto-detected from XLSX headers like "(AUD)")

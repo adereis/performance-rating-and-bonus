@@ -121,6 +121,20 @@ def is_employee_rated(emp):
     return rating is not None and bool(justification) and _has_tenets(tenets_s, tenets_i)
 
 
+def is_employee_complete(emp):
+    """Check if employee is complete for the bonus cycle workflow.
+
+    Complete = fully rated (rating + justification + tenets) OR has a bonus
+    override set. Use for UI completion indicators (sidebar dots, progress
+    counts). For bonus calculation filtering, use is_employee_rated() instead.
+    """
+    if isinstance(emp, dict):
+        has_override = emp.get('bonus_override_percent') is not None
+    else:
+        has_override = emp.bonus_override_percent is not None
+    return is_employee_rated(emp) or has_override
+
+
 def is_employee_calibrated(emp):
     """Check if an employee is fully calibrated for talent cycle.
 

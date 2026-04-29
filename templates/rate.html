@@ -813,6 +813,10 @@
         border: 1px solid #ccc;
     }
 
+    .index-item .status-dot.override {
+        box-shadow: 0 0 0 2px #f39c12;
+    }
+
     .index-item .name {
         flex: 1;
         white-space: nowrap;
@@ -1168,7 +1172,7 @@
                     <li class="index-team-header" data-org="{{ team_group.org }}">{{ team_group.org|truncate(25, True) }}</li>
                     {% for employee in team_group.members %}
                     <li class="index-item" data-employee-id="{{ employee['Associate ID'] }}" onclick="scrollToEmployee('{{ employee['Associate ID'] }}')">
-                        <span class="status-dot {% if employee._is_rated %}rated{% else %}unrated{% endif %}"></span>
+                        <span class="status-dot {% if employee._is_complete %}rated{% else %}unrated{% endif %} {% if employee._has_override %}override{% endif %}"></span>
                         <span class="name">{{ employee.Associate }}</span>
                     </li>
                     {% endfor %}
@@ -1176,7 +1180,7 @@
                 {% else %}
                     {% for employee in team %}
                     <li class="index-item" data-employee-id="{{ employee['Associate ID'] }}" onclick="scrollToEmployee('{{ employee['Associate ID'] }}')">
-                        <span class="status-dot {% if employee._is_rated %}rated{% else %}unrated{% endif %}"></span>
+                        <span class="status-dot {% if employee._is_complete %}rated{% else %}unrated{% endif %} {% if employee._has_override %}override{% endif %}"></span>
                         <span class="name">{{ employee.Associate }}</span>
                     </li>
                     {% endfor %}
@@ -1291,6 +1295,14 @@ function clearSpecialCase(button) {
     content.style.display = 'none';
     section.classList.remove('expanded');
     icon.innerHTML = '&#9654;';
+
+    // Re-evaluate completion (override cleared, revert to normal check)
+    const ratingInput = card.querySelector('[data-field="rating_percent"]');
+    const justificationInput = card.querySelector('[data-field="justification"]');
+    const strengthsChecked = card.querySelectorAll('input[data-tenet-type="strengths"]:checked').length;
+    const improvementsChecked = card.querySelectorAll('input[data-tenet-type="improvements"]:checked').length;
+    const hasTenets = (strengthsChecked >= 3) && (improvementsChecked >= 2);
+    updateEmployeeStatus(associateId, ratingInput?.value || '', justificationInput?.value || '', hasTenets);
 }
 
 function saveSpecialCaseFields(associateId, overridePercent, notes) {
@@ -1305,7 +1317,19 @@ function saveSpecialCaseFields(associateId, overridePercent, notes) {
     })
     .then(response => response.json())
     .then(data => {
-        if (!data.success) {
+        if (data.success) {
+            const card = document.querySelector(`.employee-card[data-associate-id="${associateId}"]`);
+            if (card) {
+                const hasOverride = overridePercent !== null && overridePercent !== undefined && overridePercent !== '';
+                card.dataset.hasOverride = hasOverride ? 'true' : 'false';
+                const ratingInput = card.querySelector('[data-field="rating_percent"]');
+                const justificationInput = card.querySelector('[data-field="justification"]');
+                const strengthsChecked = card.querySelectorAll('input[data-tenet-type="strengths"]:checked').length;
+                const improvementsChecked = card.querySelectorAll('input[data-tenet-type="improvements"]:checked').length;
+                const hasTenets = (strengthsChecked >= 3) && (improvementsChecked >= 2);
+                updateEmployeeStatus(associateId, ratingInput?.value || '', justificationInput?.value || '', hasTenets);
+            }
+        } else {
             console.error('Failed to save special case:', data.error);
         }
     })
@@ -1315,13 +1339,16 @@ function saveSpecialCaseFields(associateId, overridePercent, notes) {
 // Employee index navigation loaded from static/js/employee-index.js
 
 // Update sidebar status dot when employee rating status changes
-function updateSidebarStatus(associateId, isRated) {
+function updateSidebarStatus(associateId, isComplete, hasOverride) {
     const indexItem = document.querySelector(`.index-item[data-employee-id="${associateId}"]`);
     if (indexItem) {
         const statusDot = indexItem.querySelector('.status-dot');
         if (statusDot) {
-            statusDot.classList.remove('rated', 'unrated');
-            statusDot.classList.add(isRated ? 'rated' : 'unrated');
+            statusDot.classList.remove('rated', 'unrated', 'override');
+            statusDot.classList.add(isComplete ? 'rated' : 'unrated');
+            if (hasOverride) {
+                statusDot.classList.add('override');
+            }
         }
     }
 }
@@ -1461,8 +1488,11 @@ function updateEmployeeStatus(associateId, ratingPercent, justification, hasTene
     const isRated = ratingPercent !== null && ratingPercent !== '' && justification && hasTenets;
     const isIncomplete = ratingPercent !== null && ratingPercent !== '' && !isRated;
 
-    // Update detailed view card
     const card = document.querySelector(`.employee-card[data-associate-id="${associateId}"]`);
+    const hasOverride = card && card.dataset.hasOverride === 'true';
+    const isComplete = isRated || hasOverride;
+
+    // Update detailed view card
     if (card) {
         if (isRated) {
             card.classList.add('rated');
@@ -1486,8 +1516,8 @@ function updateEmployeeStatus(associateId, ratingPercent, justification, hasTene
         row.setAttribute('data-rating', ratingPercent || '0');
     }
 
-    // Update sidebar status dot
-    updateSidebarStatus(associateId, isRated);
+    // Update sidebar status dot (override-aware)
+    updateSidebarStatus(associateId, isComplete, hasOverride);
 }
 
 function saveRating(associateId, card, useKeepalive = false) {
@@ -1525,8 +1555,11 @@ function saveRating(associateId, card, useKeepalive = false) {
                 compactInput.value = data.rating_percent;
             }
 
-            // Update status on BOTH views
-            // Requires 3 strengths and 2+ improvements for completion
+            // Sync override status from the card's current input value
+            const overrideVal = card.querySelector('[data-field="bonus_override_percent"]')?.value;
+            card.dataset.hasOverride = (overrideVal !== undefined && overrideVal !== null && overrideVal !== '') ? 'true' : 'false';
+
+            // Update status on BOTH views (override-aware via data attribute)
             const strengthsCount = data.tenets_strengths?.length || 0;
             const improvementsCount = data.tenets_improvements?.length || 0;
             const hasValidTenets = (strengthsCount >= 3) && (improvementsCount >= 2);

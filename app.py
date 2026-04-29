@@ -567,9 +567,11 @@ def rate_page():
             emp.get('justification') and
             has_valid_tenets
         )
+        emp['_has_override'] = emp.get('bonus_override_percent') is not None
+        emp['_is_complete'] = emp['_is_rated'] or emp['_has_override']
 
-    # Count rated employees
-    rated_count = sum(1 for e in team_data if e['_is_rated'])
+    # Count completed employees (rated OR override)
+    rated_count = sum(1 for e in team_data if e['_is_complete'])
 
     # Check if bonus data has been imported (employees have bonus targets)
     employees_with_bonus_targets = [
@@ -599,7 +601,7 @@ def rate_page():
 
         # Build grouped structure with per-team rating counts
         for org, members in sorted(teams_by_org.items()):
-            team_rated = sum(1 for e in members if e['_is_rated'])
+            team_rated = sum(1 for e in members if e['_is_complete'])
             teams_grouped.append({
                 'org': org,
                 'members': members,
