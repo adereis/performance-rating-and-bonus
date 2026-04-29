@@ -187,6 +187,7 @@ class Employee(Base):
 
     # Special case handling (pro-rata leave, etc.)
     bonus_override_percent = Column(Float)  # If set, use this % of target instead of curve calculation
+    bonus_override_percent_original = Column(Float)  # Original from Workday (for modification detection)
     special_case_notes = Column(Text)  # Explanation (e.g., "Paternity leave Apr-Sep")
 
     # ═══════════════════════════════════════════════════════════════
@@ -303,6 +304,7 @@ class Employee(Base):
             'last_updated': self.last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.last_updated else '',
             # Special case handling
             'bonus_override_percent': self.bonus_override_percent,
+            'bonus_override_percent_original': self.bonus_override_percent_original,
             'special_case_notes': self.special_case_notes,
             # Extended identity (from talent report)
             'management_level': self.management_level,

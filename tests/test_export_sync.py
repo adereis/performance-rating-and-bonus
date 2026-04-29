@@ -628,3 +628,117 @@ class TestDescriptionContentVisibility:
             'data-bonus-differs attribute required for hide-bonus-changes interaction'
 
 
+class TestOverrideSyncDetection:
+    """Verify override employees are properly tracked in export sync detection."""
+
+    def test_new_override_triggers_tool_sync(self, client, db_session):
+        """An override set in the tool (no original) should trigger sync."""
+        emp = Employee(
+            associate_id='E001',
+            associate='Override Employee',
+            supervisory_organization='Engineering (Test Manager)',
+            current_job_profile='Software Engineer',
+            current_base_pay_manager_currency=100000.0,
+            currency='USD',
+            bonus_target_local_currency=15000.0,
+            bonus_override_percent=50.0,
+            bonus_override_percent_original=None,
+            special_case_notes='Paternity leave',
+        )
+        db_session.add(emp)
+        db_session.commit()
+
+        response = client.get('/export')
+        html = response.data.decode()
+
+        assert 'data-tool-sync="true"' in html, \
+            'New override should set tool-sync=true'
+        assert 'class="tool-additions"' in html, \
+            'Tool Additions box should render for override employee'
+        assert '[Override: 50.0%' in html, \
+            'Override marker should appear in tool additions'
+
+    def test_zero_override_triggers_tool_sync(self, client, db_session):
+        """A 0% override (e.g., extended leave) should still trigger sync."""
+        emp = Employee(
+            associate_id='E001',
+            associate='Zero Override Employee',
+            supervisory_organization='Engineering (Test Manager)',
+            current_job_profile='Software Engineer',
+            current_base_pay_manager_currency=100000.0,
+            currency='USD',
+            bonus_target_local_currency=15000.0,
+            bonus_override_percent=0.0,
+            bonus_override_percent_original=None,
+            special_case_notes='Extended leave',
+        )
+        db_session.add(emp)
+        db_session.commit()
+
+        response = client.get('/export')
+        html = response.data.decode()
+
+        assert 'data-tool-sync="true"' in html, \
+            '0% override should set tool-sync=true (0.0 is valid, not missing)'
+        assert '[Override: 0.0%' in html, \
+            'Zero override marker should appear in tool additions'
+
+    def test_unchanged_override_no_tool_sync(self, client, db_session):
+        """Override imported from Workday and unchanged should not trigger sync."""
+        emp = Employee(
+            associate_id='E001',
+            associate='Unchanged Override Employee',
+            supervisory_organization='Engineering (Test Manager)',
+            current_job_profile='Software Engineer',
+            current_base_pay_manager_currency=100000.0,
+            currency='USD',
+            bonus_target_local_currency=15000.0,
+            performance_rating_percent=100.0,
+            performance_rating_percent_original=100.0,
+            proposed_percent_of_target_bonus=50.0,
+            bonus_override_percent=50.0,
+            bonus_override_percent_original=50.0,
+            special_case_notes='Paternity leave',
+            justification='Good work',
+            justification_original='Good work',
+        )
+        db_session.add(emp)
+        db_session.commit()
+
+        response = client.get('/export')
+        html = response.data.decode()
+
+        assert 'data-tool-sync="false"' in html, \
+            'Unchanged override should not trigger tool sync'
+
+    def test_override_in_description(self, client, db_session):
+        """Override should appear in the Description text for copy/paste."""
+        emp = Employee(
+            associate_id='E001',
+            associate='Override Desc Employee',
+            supervisory_organization='Engineering (Test Manager)',
+            current_job_profile='Software Engineer',
+            current_base_pay_manager_currency=100000.0,
+            currency='USD',
+            bonus_target_local_currency=15000.0,
+            bonus_override_percent=50.0,
+            bonus_override_percent_original=None,
+            special_case_notes='Paternity leave Apr-Sep',
+        )
+        db_session.add(emp)
+        db_session.commit()
+
+        response = client.get('/export')
+        html = response.data.decode()
+
+        desc_match = re.search(
+            r'class="description-text" id="desc_1">(.*?)</div>',
+            html,
+            re.DOTALL
+        )
+        assert desc_match, 'Description text div should exist'
+        desc_content = desc_match.group(1)
+        assert 'Override: 50.0%' in desc_content, \
+            'Override marker should appear in description text'
+        assert 'Paternity leave' in desc_content, \
+            'Override reason should appear in description text'

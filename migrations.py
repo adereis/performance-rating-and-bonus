@@ -135,6 +135,7 @@ def migrate_add_new_columns(engine):
         ('employees', 'last_perf_review_rating', 'TEXT'),
         # Special case handling (pro-rata leave, etc.)
         ('employees', 'bonus_override_percent', 'REAL'),
+        ('employees', 'bonus_override_percent_original', 'REAL'),
         ('employees', 'special_case_notes', 'TEXT'),
         # Cycle membership
         ('employees', 'in_current_bonus_cycle', 'BOOLEAN DEFAULT 0'),

@@ -188,17 +188,20 @@ Compares calculated bonus allocation against `last_bonus_allocation_percent` fro
 Determines which employees have pending changes for Workday on the `/export` page. **Two-tier architecture**:
 
 **Tier 1 — Tool Additions Modified** (`tool_additions_modified`):
-Any of 6 tracked fields differ from their `_original` value imported from Workday:
+Any of 7 tracked fields differ from their `_original` value imported from Workday:
 - `performance_rating_percent` vs `performance_rating_percent_original`
 - `justification` vs `justification_original`
 - `mentor` vs `mentor_original`
 - `mentees` vs `mentees_original`
 - `tenets_strengths` vs `tenets_strengths_original`
 - `tenets_improvements` vs `tenets_improvements_original`
+- `bonus_override_percent` vs `bonus_override_percent_original`
 
 Two comparison functions in `export_page()` (app.py):
 - `is_field_modified()`: Conservative — returns False if `_original` is None (used for justification)
 - `needs_sync_to_workday()`: Aggressive — returns True if content exists but `_original` is None (used for tool-generated fields like tenets, mentor)
+
+Override uses `is not None` comparison (not `bool()`) because 0.0 is a valid override value.
 
 **Tier 2 — Bonus Allocation Differs** (`bonus_allocation_differs`):
 Compares `int(calculated_bonus_percent) != round(proposed_percent_of_target_bonus)`. True when Workday has no value (new sync needed).

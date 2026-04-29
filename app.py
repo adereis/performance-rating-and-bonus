@@ -1649,6 +1649,22 @@ def export_page():
         strengths_text = ', '.join(strengths) if strengths else ''
         improvements_text = ', '.join(improvements) if improvements else ''
 
+        # Build structured description text using format_notes_field
+        from notes_parser import format_notes_field
+        description_text = format_notes_field(
+            performance_rating=employee.get('performance_rating_percent'),
+            justification=employee.get('justification'),
+            mentor=employee.get('mentor'),
+            mentees=employee.get('mentees'),
+            tenets_strengths=strengths_text,
+            tenets_improvements=improvements_text,
+            bonus_override_percent=employee.get('bonus_override_percent'),
+            special_case_notes=employee.get('special_case_notes'),
+        )
+
+        # Calculate bonus percent of target
+        bonus_percent_of_target = result['bonus_percent_of_target']
+
         # Build tool additions text for copying (formatted for Workday paste)
         tool_additions_parts = []
         if employee.get('performance_rating_percent') is not None:
@@ -1696,6 +1712,15 @@ def export_page():
         tenets_strengths_modified = needs_sync_to_workday(employee, 'tenets_strengths')
         tenets_improvements_modified = needs_sync_to_workday(employee, 'tenets_improvements')
 
+        # Override uses `is not None` (not bool) because 0.0 is a valid override value
+        override_current = employee.get('bonus_override_percent')
+        override_original = employee.get('bonus_override_percent_original')
+        override_modified = (
+            override_current is not None and override_original is None
+        ) or (
+            override_current != override_original
+        )
+
         # Combined flags - all tracked fields are in Tool Additions (bracketed)
         tool_additions_modified = (
             rating_modified or
@@ -1703,7 +1728,8 @@ def export_page():
             mentor_modified or
             mentees_modified or
             tenets_strengths_modified or
-            tenets_improvements_modified
+            tenets_improvements_modified or
+            override_modified
         )
 
         # Combined "needs sync" flag - tool additions OR bonus allocation differs
@@ -3148,6 +3174,7 @@ def import_current():
                             employee.bonus_override_percent = new_override
                         if employee.special_case_notes is None and new_notes:
                             employee.special_case_notes = new_notes
+                        employee.bonus_override_percent_original = new_override
 
                         # Aggregate per-employee changes for existing employees
                         # Count as updated if any field actually changed (manager-input OR Workday-sourced)
@@ -3190,6 +3217,7 @@ def import_current():
                             employee.mentees = ''
                         # Bonus override (special case) for new employees
                         employee.bonus_override_percent = notes_data.get('bonus_override_percent')
+                        employee.bonus_override_percent_original = notes_data.get('bonus_override_percent')
                         employee.special_case_notes = notes_data.get('special_case_notes')
                         employee.last_updated = None
                         db.add(employee)
