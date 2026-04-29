@@ -1504,7 +1504,11 @@ def export_page():
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     # Detect which data types are available
-    rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent') is not None]
+    # Include override employees — they have a fixed bonus % even without a performance rating
+    rated_employees = [
+        emp for emp in team_data
+        if emp.get('performance_rating_percent') is not None or emp.get('bonus_override_percent') is not None
+    ]
     calibrated_employees = [emp for emp in team_data if is_employee_calibrated(emp)]
 
     # has_bonus_data: true only if rated employees have actual bonus target data from Workday
