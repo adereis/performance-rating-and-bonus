@@ -11,10 +11,19 @@ os.environ['TESTING'] = 'true'
 import pytest
 import tempfile
 from jinja2 import StrictUndefined
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from models import Base, Employee
 from app import app as flask_app
+
+
+def _default_bonus_cycle(target, args, kwargs):
+    """Default test employees into the bonus cycle unless explicitly set."""
+    if 'in_current_bonus_cycle' not in kwargs:
+        target.in_current_bonus_cycle = True
+
+
+event.listen(Employee, 'init', _default_bonus_cycle)
 
 
 @pytest.fixture(scope='function')

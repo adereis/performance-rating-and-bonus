@@ -263,6 +263,9 @@ class Employee(Base):
     talent_calibration_status = Column(String)  # Read-only from Workday
     talent_last_updated = Column(DateTime)
 
+    # Cycle membership (set during import, used to filter views)
+    in_current_bonus_cycle = Column(Boolean, default=False)
+
     def to_dict(self):
         """Convert model to dictionary for JSON serialization."""
         return {
@@ -352,7 +355,9 @@ class Employee(Base):
             'talent_tenets_improvements_original': self.talent_tenets_improvements_original,
             # Talent: Metadata
             'talent_calibration_status': self.talent_calibration_status,
-            'talent_last_updated': self.talent_last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.talent_last_updated else None
+            'talent_last_updated': self.talent_last_updated.strftime('%Y-%m-%d %H:%M:%S') if self.talent_last_updated else None,
+            # Cycle membership
+            'in_current_bonus_cycle': self.in_current_bonus_cycle,
         }
 
 
@@ -582,7 +587,11 @@ def init_db():
     engine = _get_standard_engine()
 
     # Run migrations before creating tables (handles schema changes)
-    from migrations import migrate_usd_columns, migrate_add_new_columns, migrate_normalize_mentor_placeholders
+    from migrations import (
+        migrate_usd_columns, migrate_add_new_columns,
+        migrate_normalize_mentor_placeholders,
+        migrate_backfill_bonus_cycle_flag,
+    )
     migrate_usd_columns(engine)
     migrate_add_new_columns(engine)
 
@@ -594,6 +603,7 @@ def init_db():
 
     # Data migrations (run after schema is validated)
     migrate_normalize_mentor_placeholders(engine)
+    migrate_backfill_bonus_cycle_flag(engine)
 
 
 def get_db():

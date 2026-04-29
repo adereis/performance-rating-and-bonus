@@ -357,10 +357,10 @@ def demo_reset():
     })
 
 
-def get_all_employees():
+def get_all_employees(bonus_cycle_only=False):
     """Get all employees from database."""
     from services.db_helpers import get_all_employees as _get_all
-    return _get_all(get_db)
+    return _get_all(get_db, bonus_cycle_only=bonus_cycle_only)
 
 
 def get_manager_currency():
@@ -537,8 +537,8 @@ def rate_page():
     # Get filter params from URL
     filter_params = get_filter_params()
 
-    # Get all employees
-    all_employees = get_all_employees()
+    # Get all employees (bonus cycle only)
+    all_employees = get_all_employees(bonus_cycle_only=True)
 
     # Apply filters
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
@@ -628,7 +628,7 @@ def rate_employee():
     This allows partial updates (e.g., compact view only sends rating).
     """
     # Check if bonus data has been imported before allowing ratings
-    all_employees = get_all_employees()
+    all_employees = get_all_employees(bonus_cycle_only=True)
     employees_with_bonus_targets = [
         emp for emp in all_employees
         if emp.get('Bonus Target Manager Currency') or emp.get('Bonus Target - Local Currency')
@@ -1175,8 +1175,8 @@ def analytics():
     # Get filter params from URL
     filter_params = get_filter_params()
 
-    # Get all employees
-    all_employees = get_all_employees()
+    # Get all employees (bonus cycle only)
+    all_employees = get_all_employees(bonus_cycle_only=True)
 
     # Apply filters
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
@@ -1344,8 +1344,8 @@ def bonus_calculation():
     # Get filter params from URL
     filter_params = get_filter_params()
 
-    # Get all employees
-    all_employees = get_all_employees()
+    # Get all employees (bonus cycle only)
+    all_employees = get_all_employees(bonus_cycle_only=True)
 
     # Apply filters
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
@@ -1499,8 +1499,8 @@ def export_page():
     # Get filter params from URL
     filter_params = get_filter_params()
 
-    # Get all employees
-    all_employees = get_all_employees()
+    # Get all employees (bonus cycle only)
+    all_employees = get_all_employees(bonus_cycle_only=True)
 
     # Apply filters
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
@@ -1818,8 +1818,8 @@ def export_csv():
     # Get filter params from URL
     filter_params = get_filter_params()
 
-    # Get all employees
-    all_employees = get_all_employees()
+    # Get all employees (bonus cycle only)
+    all_employees = get_all_employees(bonus_cycle_only=True)
 
     # Apply filters
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
@@ -1947,8 +1947,8 @@ def export_xlsx():
     # Get filter params from URL
     filter_params = get_filter_params()
 
-    # Get all employees
-    all_employees = get_all_employees()
+    # Get all employees (bonus cycle only)
+    all_employees = get_all_employees(bonus_cycle_only=True)
 
     # Apply filters
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
@@ -2627,6 +2627,11 @@ def import_current():
             imported = 0
             tenet_warnings = []  # Collect unrecognized tenet names for warnings
 
+            # For bonus imports, clear cycle membership so only employees
+            # in this spreadsheet will appear on /rate
+            if spreadsheet_type == 'bonus':
+                db.query(Employee).update({Employee.in_current_bonus_cycle: False})
+
             # Track changes for import change log
             import_changes = {
                 'new': [],       # {associate_id, associate, org, job_profile}
@@ -3011,6 +3016,9 @@ def import_current():
                         employee.last_perf_review_name = emp_data['last_perf_review_name']
                     if emp_data.get('last_perf_review_rating'):
                         employee.last_perf_review_rating = emp_data['last_perf_review_rating']
+
+                if spreadsheet_type == 'bonus':
+                    employee.in_current_bonus_cycle = True
 
                 # Parse Notes field for bonus imports (both new and existing employees)
                 # This sets _original fields for modification tracking

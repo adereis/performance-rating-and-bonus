@@ -136,6 +136,8 @@ def migrate_add_new_columns(engine):
         # Special case handling (pro-rata leave, etc.)
         ('employees', 'bonus_override_percent', 'REAL'),
         ('employees', 'special_case_notes', 'TEXT'),
+        # Cycle membership
+        ('employees', 'in_current_bonus_cycle', 'BOOLEAN DEFAULT 0'),
     ]
 
     with engine.connect() as conn:
@@ -197,3 +199,31 @@ def migrate_normalize_mentor_placeholders(engine):
             if result.rowcount > 0:
                 print(f"Normalized {result.rowcount} placeholder values in {field}")
             conn.commit()
+
+
+def migrate_backfill_bonus_cycle_flag(engine):
+    """
+    Backfill in_current_bonus_cycle for existing databases.
+
+    Employees with bonus_target_local_currency are assumed to be part of
+    the current bonus cycle. This runs once — subsequent imports set the
+    flag explicitly.
+    """
+    inspector = inspect(engine)
+    if 'employees' not in inspector.get_table_names():
+        return
+
+    columns = [col['name'] for col in inspector.get_columns('employees')]
+    if 'in_current_bonus_cycle' not in columns:
+        return
+
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            UPDATE employees
+            SET in_current_bonus_cycle = 1
+            WHERE bonus_target_local_currency IS NOT NULL
+              AND (in_current_bonus_cycle IS NULL OR in_current_bonus_cycle = 0)
+        """))
+        if result.rowcount > 0:
+            print(f"Backfilled in_current_bonus_cycle for {result.rowcount} employees")
+        conn.commit()

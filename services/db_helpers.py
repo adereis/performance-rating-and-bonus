@@ -13,15 +13,19 @@ from models import Employee, BonusSettings, RatingSnapshot, Period
 from services.employee_utils import CURRENCY_SYMBOLS, has_direct_reports
 
 
-def get_all_employees(get_db_fn):
+def get_all_employees(get_db_fn, bonus_cycle_only=False):
     """Get all employees from database.
 
     Args:
         get_db_fn: Callable that returns a database session
+        bonus_cycle_only: If True, return only employees in the current bonus cycle
     """
     db = get_db_fn()
     try:
-        employees = db.query(Employee).all()
+        query = db.query(Employee)
+        if bonus_cycle_only:
+            query = query.filter(Employee.in_current_bonus_cycle == True)  # noqa: E712
+        employees = query.all()
         return [emp.to_dict() for emp in employees]
     finally:
         db.close()
