@@ -335,7 +335,7 @@ class TestMultiOrganization:
         assert response.status_code == 200
 
         # Should show all 14 employees
-        assert b'Rated Employees' in response.data
+        assert b'Included Employees' in response.data
         # Verify some employee names from different orgs appear
         assert b'Alice Anderson' in response.data  # Platform
         assert b'David Davis' in response.data     # Frontend

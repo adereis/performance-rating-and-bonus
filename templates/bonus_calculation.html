@@ -445,13 +445,13 @@
             <div class="value">{{ total_allocated|format_currency }}</div>
         </div>
         <div class="summary-card" {% if total_employees and team|length < total_employees %}style="border-color: #f0ad4e;"{% endif %}>
-            <h4>Rated Employees</h4>
+            <h4>Included Employees</h4>
             <div class="value">
                 {{ team|length }} <span style="font-size: 14px; font-weight: normal; color: #666;">of {{ total_employees or team|length }}</span>
             </div>
             {% if total_employees and team|length < total_employees %}
             <div style="font-size: 11px; color: #f0ad4e; margin-top: 5px;">
-                ⚠️ Partial - pool uses rated only
+                ⚠️ Partial - pool uses included only
             </div>
             {% endif %}
         </div>

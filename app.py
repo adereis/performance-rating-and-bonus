@@ -1349,9 +1349,10 @@ def bonus_calculation():
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     # Filter to only rated employees (or employees with bonus override)
+    # Use 'is not None' — a 0% rating is valid (not missing)
     rated_employees = [
         emp for emp in team_data
-        if emp.get('performance_rating_percent') or emp.get('bonus_override_percent') is not None
+        if emp.get('performance_rating_percent') is not None or emp.get('bonus_override_percent') is not None
     ]
 
     # Calculate sum of ALL employee bonus targets (for proportional pool calculation)
@@ -1503,7 +1504,7 @@ def export_page():
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     # Detect which data types are available
-    rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent')]
+    rated_employees = [emp for emp in team_data if emp.get('performance_rating_percent') is not None]
     calibrated_employees = [emp for emp in team_data if is_employee_calibrated(emp)]
 
     # has_bonus_data: true only if rated employees have actual bonus target data from Workday
