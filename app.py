@@ -563,7 +563,7 @@ def rate_page():
 
         has_valid_tenets = (strengths_count >= 3) and (improvements_count >= 2)
         emp['_is_rated'] = bool(
-            emp.get('performance_rating_percent') and
+            emp.get('performance_rating_percent') is not None and
             emp.get('justification') and
             has_valid_tenets
         )

@@ -1241,3 +1241,29 @@ class TestBonusCalculation:
         assert b'Override' in response.data
         # Check that override notes appear in title attribute
         assert b'Paternity leave' in response.data
+
+
+class TestZeroRating:
+    """Test that 0% rating is treated as a valid rating, not unrated."""
+
+    def test_zero_rating_is_rated(self):
+        """0% is a valid rating — must not be treated as unrated."""
+        from services.employee_utils import is_employee_rated
+        emp = {
+            'performance_rating_percent': 0.0,
+            'justification': 'Did not meet expectations',
+            'tenets_strengths': '["a","b","c"]',
+            'tenets_improvements': '["d","e"]',
+        }
+        assert is_employee_rated(emp) is True
+
+    def test_none_rating_is_not_rated(self):
+        """None rating (not yet entered) must remain unrated."""
+        from services.employee_utils import is_employee_rated
+        emp = {
+            'performance_rating_percent': None,
+            'justification': 'Some text',
+            'tenets_strengths': '["a","b","c"]',
+            'tenets_improvements': '["d","e"]',
+        }
+        assert is_employee_rated(emp) is False

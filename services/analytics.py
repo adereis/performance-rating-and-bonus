@@ -85,7 +85,7 @@ def calculate_rating_distribution(team_data):
             continue
 
         rating = emp.get('performance_rating_percent')
-        if rating:
+        if rating is not None:
             try:
                 rating = float(rating)
 
@@ -133,7 +133,7 @@ def calculate_rating_distribution(team_data):
     # Only count rated employees for calibration (exclude special cases with bonus override)
     rated_employees = [
         emp for emp in team_data
-        if emp.get('performance_rating_percent') and emp.get('bonus_override_percent') is None
+        if emp.get('performance_rating_percent') is not None and emp.get('bonus_override_percent') is None
     ]
     total_rated = len(rated_employees)
 

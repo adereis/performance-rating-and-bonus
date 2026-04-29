@@ -32,7 +32,7 @@ def calculate_calibration_for_employees(employees, team_name=None):
 
     for emp in employees:
         rating = emp.get('performance_rating_percent')
-        if rating:
+        if rating is not None:
             try:
                 rating = float(rating)
                 if rating > RATING_THRESHOLD_HIGH:

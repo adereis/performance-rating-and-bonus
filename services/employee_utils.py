@@ -118,7 +118,7 @@ def is_employee_rated(emp):
         tenets_s = emp.tenets_strengths
         tenets_i = emp.tenets_improvements
 
-    return bool(rating) and bool(justification) and _has_tenets(tenets_s, tenets_i)
+    return rating is not None and bool(justification) and _has_tenets(tenets_s, tenets_i)
 
 
 def is_employee_calibrated(emp):

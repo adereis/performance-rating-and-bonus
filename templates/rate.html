@@ -1122,8 +1122,8 @@
                     {% set strengths_count = (employee.tenets_strengths | default('[]') | fromjson | length) if employee.tenets_strengths else 0 %}
                     {% set improvements_count = (employee.tenets_improvements | default('[]') | fromjson | length) if employee.tenets_improvements else 0 %}
                     {% set has_valid_tenets = (strengths_count >= 3) and (improvements_count >= 2) %}
-                    {% set is_rated = employee.performance_rating_percent and employee.justification and has_valid_tenets %}
-                    {% set is_incomplete = employee.performance_rating_percent and not is_rated %}
+                    {% set is_rated = employee.performance_rating_percent is not none and employee.justification and has_valid_tenets %}
+                    {% set is_incomplete = employee.performance_rating_percent is not none and not is_rated %}
                     <tr class="{% if is_rated %}has-rating{% endif %}"
                         data-associate-id="{{ employee['Associate ID'] }}"
                         data-is-rated="{{ 'true' if is_rated else 'false' }}"
@@ -1202,8 +1202,8 @@
                 {% set strengths_count = (employee.tenets_strengths | default('[]') | fromjson | length) if employee.tenets_strengths else 0 %}
                 {% set improvements_count = (employee.tenets_improvements | default('[]') | fromjson | length) if employee.tenets_improvements else 0 %}
                 {% set has_valid_tenets = (strengths_count >= 3) and (improvements_count >= 2) %}
-                {% set is_rated = employee.performance_rating_percent and employee.justification and has_valid_tenets %}
-                {% set is_incomplete = employee.performance_rating_percent and not is_rated %}
+                {% set is_rated = employee.performance_rating_percent is not none and employee.justification and has_valid_tenets %}
+                {% set is_incomplete = employee.performance_rating_percent is not none and not is_rated %}
                 {% include "rate_card.html" %}
                 {% endfor %}
                 </div>
@@ -1216,8 +1216,8 @@
             {% set strengths_count = (employee.tenets_strengths | default('[]') | fromjson | length) if employee.tenets_strengths else 0 %}
             {% set improvements_count = (employee.tenets_improvements | default('[]') | fromjson | length) if employee.tenets_improvements else 0 %}
             {% set has_valid_tenets = (strengths_count >= 3) and (improvements_count >= 2) %}
-            {% set is_rated = employee.performance_rating_percent and employee.justification and has_valid_tenets %}
-            {% set is_incomplete = employee.performance_rating_percent and not is_rated %}
+            {% set is_rated = employee.performance_rating_percent is not none and employee.justification and has_valid_tenets %}
+            {% set is_incomplete = employee.performance_rating_percent is not none and not is_rated %}
             {% include "rate_card.html" %}
             {% endfor %}
             </div><!-- /.rating-form-inner -->
@@ -1458,8 +1458,8 @@ function validateRatingInput(input) {
 
 // Update rated/incomplete status on BOTH views for an employee
 function updateEmployeeStatus(associateId, ratingPercent, justification, hasTenets) {
-    const isRated = ratingPercent && justification && hasTenets;
-    const isIncomplete = ratingPercent && !isRated;
+    const isRated = ratingPercent !== null && ratingPercent !== '' && justification && hasTenets;
+    const isIncomplete = ratingPercent !== null && ratingPercent !== '' && !isRated;
 
     // Update detailed view card
     const card = document.querySelector(`.employee-card[data-associate-id="${associateId}"]`);
