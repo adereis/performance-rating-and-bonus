@@ -655,7 +655,7 @@ class TestOverrideSyncDetection:
             'New override should set tool-sync=true'
         assert 'class="tool-additions"' in html, \
             'Tool Additions box should render for override employee'
-        assert '[Override: 50.0%' in html, \
+        assert '[Override: 50%' in html, \
             'Override marker should appear in tool additions'
 
     def test_zero_override_triggers_tool_sync(self, client, db_session):
@@ -680,7 +680,7 @@ class TestOverrideSyncDetection:
 
         assert 'data-tool-sync="true"' in html, \
             '0% override should set tool-sync=true (0.0 is valid, not missing)'
-        assert '[Override: 0.0%' in html, \
+        assert '[Override: 0%' in html, \
             'Zero override marker should appear in tool additions'
 
     def test_unchanged_override_no_tool_sync(self, client, db_session):
@@ -738,7 +738,7 @@ class TestOverrideSyncDetection:
         )
         assert desc_match, 'Description text div should exist'
         desc_content = desc_match.group(1)
-        assert 'Override: 50.0%' in desc_content, \
+        assert 'Override: 50%' in desc_content, \
             'Override marker should appear in description text'
         assert 'Paternity leave' in desc_content, \
             'Override reason should appear in description text'

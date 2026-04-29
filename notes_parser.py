@@ -174,14 +174,15 @@ def format_notes_field(
 
     # Bracketed fields (tool additions) - order matches app.py export
     if performance_rating is not None:
-        lines.append(f"[Performance Rating: {performance_rating}%]")
+        lines.append(f"[Performance Rating: {performance_rating:g}%]")
 
     # Special case override (pro-rata leave, retention, etc.)
     if bonus_override_percent is not None:
+        override_fmt = f"{bonus_override_percent:g}"
         if special_case_notes:
-            lines.append(f"[Override: {bonus_override_percent}%, {special_case_notes}]")
+            lines.append(f"[Override: {override_fmt}%, {special_case_notes}]")
         else:
-            lines.append(f"[Override: {bonus_override_percent}%]")
+            lines.append(f"[Override: {override_fmt}%]")
 
     if tenets_strengths:
         lines.append(f"[Strengths: {tenets_strengths}]")

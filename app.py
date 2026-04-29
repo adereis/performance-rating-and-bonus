@@ -1668,13 +1668,14 @@ def export_page():
         # Build tool additions text for copying (formatted for Workday paste)
         tool_additions_parts = []
         if employee.get('performance_rating_percent') is not None:
-            tool_additions_parts.append(f"[Performance Rating: {int(employee['performance_rating_percent'])}%]")
+            tool_additions_parts.append(f"[Performance Rating: {employee['performance_rating_percent']:g}%]")
         # Special case override (pro-rata leave, etc.)
         if employee.get('bonus_override_percent') is not None:
+            override_fmt = f"{employee['bonus_override_percent']:g}"
             if employee.get('special_case_notes'):
-                tool_additions_parts.append(f"[Override: {employee['bonus_override_percent']}%, {employee['special_case_notes']}]")
+                tool_additions_parts.append(f"[Override: {override_fmt}%, {employee['special_case_notes']}]")
             else:
-                tool_additions_parts.append(f"[Override: {employee['bonus_override_percent']}%]")
+                tool_additions_parts.append(f"[Override: {override_fmt}%]")
         if strengths_text:
             tool_additions_parts.append(f"[Strengths: {strengths_text}]")
         if improvements_text:

@@ -160,7 +160,7 @@ class TestFormatNotesField:
             tenets_improvements="Communication"
         )
 
-        assert "[Performance Rating: 125.0%]" in result
+        assert "[Performance Rating: 125%]" in result
         assert "[Mentor: Alice]" in result
         assert "[Mentees: Bob; Carol]" in result  # Normalized to semicolons
         assert "[Strengths: Leadership, Teamwork]" in result
@@ -176,7 +176,7 @@ class TestFormatNotesField:
             justification="Met expectations."
         )
 
-        assert "[Performance Rating: 100.0%]" in result
+        assert "[Performance Rating: 100%]" in result
         assert "Justification:" in result
         assert "Met expectations." in result
         assert "[Mentor:" not in result
@@ -281,8 +281,8 @@ Pro-rata bonus due to leave."""
             justification="Pro-rata bonus"
         )
 
-        assert "[Performance Rating: 100.0%]" in result
-        assert "[Override: 50.0%, Paternity leave Apr-Sep]" in result
+        assert "[Performance Rating: 100%]" in result
+        assert "[Override: 50%, Paternity leave Apr-Sep]" in result
         assert "Justification:" in result
         assert "Pro-rata bonus" in result
 
@@ -293,7 +293,7 @@ Pro-rata bonus due to leave."""
             special_case_notes="Extended leave"
         )
 
-        assert "[Override: 25.0%, Extended leave]" in result
+        assert "[Override: 25%, Extended leave]" in result
         assert "Performance Rating:" not in result
 
     def test_format_no_override(self):
@@ -305,7 +305,7 @@ Pro-rata bonus due to leave."""
         )
 
         assert "[Override:" not in result
-        assert "[Performance Rating: 100.0%]" in result
+        assert "[Performance Rating: 100%]" in result
 
     def test_override_roundtrip(self):
         """Test that formatting then parsing returns original override values."""
