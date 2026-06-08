@@ -308,7 +308,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: redhat-actions/oc-installer@v1
+      - name: Install OpenShift CLI
+        run: |
+          curl -sL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz \
+            | tar xz -C /usr/local/bin oc kubectl
 
       - name: Deploy
         run: |
@@ -318,11 +321,65 @@ jobs:
           oc rollout status deployment/perf-rating --timeout=120s
 ```
 
+**Why direct curl instead of `redhat-actions/oc-installer@v1`**: The action depends on Node.js 20, which GitHub is deprecating. A direct download from the OpenShift mirror has no such dependency and no supply-chain risk from a third-party action.
+
 ### Flow
 
 ```
 git push → GitHub Actions → oc login → oc start-build → S2I → auto-deploy
 ```
+
+---
+
+## Production Deployment Configuration
+
+The live ARO deployment has additional hardening beyond what S2I creates by default. These are applied via `oc set` commands (not in the Git repo) and survive S2I rollouts because they modify the Deployment spec, not the container image.
+
+### Environment Variables
+
+```bash
+oc set env deployment/perf-rating \
+  DEMO_MODE=true \
+  SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
+```
+
+`SECRET_KEY` is required for consistent Flask session cookies across Gunicorn workers. Without it, the app falls back to a dev-only key hardcoded in `app.py` — functional but publicly visible in the repo.
+
+### Health Probes
+
+```bash
+oc set probe deployment/perf-rating \
+  --liveness  --get-url=http://:8080/health --initial-delay-seconds=10 --period-seconds=30
+oc set probe deployment/perf-rating \
+  --readiness --get-url=http://:8080/health --initial-delay-seconds=5  --period-seconds=10
+```
+
+Without probes, OpenShift will not restart a deadlocked pod or remove it from the Service during startup.
+
+### Resource Limits
+
+```bash
+oc set resources deployment/perf-rating \
+  --requests=cpu=250m,memory=256Mi \
+  --limits=cpu=500m,memory=512Mi
+```
+
+Required on shared clusters so the scheduler can place pods intelligently and a runaway process cannot starve other tenants.
+
+### Verify Configuration
+
+```bash
+oc get deployment perf-rating -o jsonpath='{.spec.template.spec.containers[0].env[*].name}'
+# Expected: DEMO_MODE SECRET_KEY
+
+oc get deployment perf-rating -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.path}'
+# Expected: /health
+
+oc get deployment perf-rating -o jsonpath='{.spec.template.spec.containers[0].resources.requests}'
+# Expected: {"cpu":"250m","memory":"256Mi"}
+```
+
+**Important**: These settings live only in the Deployment object on the cluster. If the Deployment is deleted and recreated (e.g., `oc delete all -l app=perf-rating`), they must be reapplied.
 
 ---
 
