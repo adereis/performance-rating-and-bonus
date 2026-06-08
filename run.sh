@@ -93,7 +93,7 @@ VENV_DIR="$SCRIPT_DIR/.venv"
 if [ ! -d "$VENV_DIR" ]; then
     echo ""
     echo "Creating virtual environment (first run only)..."
-    $PYTHON -m venv "$VENV_DIR"
+    $PYTHON -m venv --system-site-packages "$VENV_DIR"
     echo -e "${GREEN}✓${NC} Virtual environment created"
 fi
 
