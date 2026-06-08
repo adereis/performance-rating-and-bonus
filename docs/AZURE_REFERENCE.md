@@ -193,7 +193,7 @@ gh secret set AZURE_CREDENTIALS
 
 ---
 
-## 3. ARO Deployment (Resource Group: areis-aro-lab-rg)
+## 3. ARO Deployment (Resource Group: sre-shared-cluster)
 
 ### Prerequisites
 
@@ -211,24 +211,24 @@ az provider register --namespace Microsoft.Authorization
 
 ```bash
 # Dedicated resource group
-az group create --name areis-aro-lab-rg --location eastus
+az group create --name sre-shared-cluster --location eastus
 
 # VNet with /22 (ARO needs large subnets)
 az network vnet create \
-  --resource-group areis-aro-lab-rg \
+  --resource-group sre-shared-cluster \
   --name aro-vnet \
   --address-prefixes 10.0.0.0/22
 
 # Subnets
 az network vnet subnet create \
-  --resource-group areis-aro-lab-rg \
+  --resource-group sre-shared-cluster \
   --vnet-name aro-vnet \
   --name master-subnet \
   --address-prefixes 10.0.0.0/23 \
   --service-endpoints Microsoft.ContainerRegistry
 
 az network vnet subnet create \
-  --resource-group areis-aro-lab-rg \
+  --resource-group sre-shared-cluster \
   --vnet-name aro-vnet \
   --name worker-subnet \
   --address-prefixes 10.0.2.0/23 \
@@ -236,8 +236,8 @@ az network vnet subnet create \
 
 # Create cluster (30-45 min)
 az aro create \
-  --resource-group areis-aro-lab-rg \
-  --name areis-aro-cluster \
+  --resource-group sre-shared-cluster \
+  --name sre-shared-cluster \
   --vnet aro-vnet \
   --master-subnet master-subnet \
   --worker-subnet worker-subnet \
@@ -248,13 +248,13 @@ az aro create \
 
 ```bash
 # Console URL
-az aro show -g areis-aro-lab-rg -n areis-aro-cluster --query consoleProfile.url -o tsv
+az aro show -g sre-shared-cluster -n sre-shared-cluster --query consoleProfile.url -o tsv
 
 # Credentials
-az aro list-credentials -g areis-aro-lab-rg -n areis-aro-cluster
+az aro list-credentials -g sre-shared-cluster -n sre-shared-cluster
 
 # API URL
-az aro show -g areis-aro-lab-rg -n areis-aro-cluster --query apiserverProfile.url -o tsv
+az aro show -g sre-shared-cluster -n sre-shared-cluster --query apiserverProfile.url -o tsv
 
 # Login
 oc login <api-url> -u kubeadmin -p <password>
@@ -288,11 +288,11 @@ az vm deallocate -g perf-rating-demo-rg -n perf-rating-vm
 az aks delete -g perf-rating-demo-rg -n perf-rating-aks --yes
 
 # Delete ARO
-az aro delete -g areis-aro-lab-rg -n areis-aro-cluster --yes
+az aro delete -g sre-shared-cluster -n sre-shared-cluster --yes
 
 # Nuclear option - delete everything
 az group delete --name perf-rating-demo-rg --yes --no-wait
-az group delete --name areis-aro-lab-rg --yes --no-wait
+az group delete --name sre-shared-cluster --yes --no-wait
 ```
 
 ---
