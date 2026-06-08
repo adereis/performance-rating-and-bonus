@@ -30,7 +30,9 @@ jobs:
 
     steps:
       - name: Install OpenShift CLI
-        uses: redhat-actions/oc-installer@v1
+        run: |
+          curl -sL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz \
+            | tar xz -C /usr/local/bin oc kubectl
 
       - name: Login to OpenShift
         run: |
