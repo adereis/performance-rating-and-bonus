@@ -360,11 +360,11 @@ Without probes, OpenShift will not restart a deadlocked pod or remove it from th
 
 ```bash
 oc set resources deployment/perf-rating \
-  --requests=cpu=250m,memory=256Mi \
-  --limits=cpu=500m,memory=512Mi
+  --requests=cpu=10m,memory=100Mi \
+  --limits=cpu=250m,memory=256Mi
 ```
 
-Required on shared clusters so the scheduler can place pods intelligently and a runaway process cannot starve other tenants.
+With a single Gunicorn worker, the pod idles at ~1m CPU and ~73Mi memory. Low requests free up scheduler capacity on the shared cluster while limits cap a runaway process.
 
 ### Verify Configuration
 
@@ -376,7 +376,7 @@ oc get deployment perf-rating -o jsonpath='{.spec.template.spec.containers[0].li
 # Expected: /health
 
 oc get deployment perf-rating -o jsonpath='{.spec.template.spec.containers[0].resources.requests}'
-# Expected: {"cpu":"250m","memory":"256Mi"}
+# Expected: {"cpu":"10m","memory":"100Mi"}
 ```
 
 **Important**: These settings live only in the Deployment object on the cluster. If the Deployment is deleted and recreated (e.g., `oc delete all -l app=perf-rating`), they must be reapplied.
