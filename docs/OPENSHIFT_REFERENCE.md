@@ -381,6 +381,20 @@ oc get deployment perf-rating -o jsonpath='{.spec.template.spec.containers[0].re
 
 **Important**: These settings live only in the Deployment object on the cluster. If the Deployment is deleted and recreated (e.g., `oc delete all -l app=perf-rating`), they must be reapplied.
 
+### History Limits
+
+Automatic pruning keeps the project clean after repeated deployments:
+
+```bash
+# Keep only 3 old ReplicaSets for rollback (default is 10)
+oc patch deployment perf-rating -p '{"spec":{"revisionHistoryLimit":3}}'
+
+# Keep 3 successful builds and 1 failed build
+oc patch bc perf-rating -p '{"spec":{"successfulBuildsHistoryLimit":3,"failedBuildsHistoryLimit":1}}'
+```
+
+Without these limits, completed build pods and scaled-to-zero ReplicaSets accumulate indefinitely.
+
 ---
 
 ## Security Context Constraints (SCC)
