@@ -5,7 +5,7 @@
 bind = "0.0.0.0:8080"  # S2I expects 8080, not 5000
 
 # Workers
-workers = 3  # Max for 1 vCPU, handles concurrent demo users
+workers = 1  # Single worker sufficient for ~2 visitors/day demo traffic
 
 # Timeout
 timeout = 30  # Reasonable for demo mode
