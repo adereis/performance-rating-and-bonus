@@ -1258,6 +1258,21 @@ tr:hover {
     animation: slideInRight 0.3s;
 }
 
+/* Dim the page behind the open filter panel so it reads as a modal layer.
+   Driven purely by the panel's .show state; clicking it closes via the
+   existing click-outside handler. */
+.filter-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.25);
+    z-index: 9997;
+    display: none;
+}
+
+.filter-panel.show + .filter-overlay {
+    display: block;
+}
+
 @keyframes slideInRight {
     from {
         transform: translateX(100%);
