@@ -50,8 +50,14 @@ nav a {
     white-space: nowrap;
 }
 
-nav a:hover, nav a.active {
+nav a:hover {
     background: rgba(255,255,255,0.2);
+}
+
+nav a.active {
+    background: #fff;
+    color: #2c3e50;
+    font-weight: 600;
 }
 
 .card {
