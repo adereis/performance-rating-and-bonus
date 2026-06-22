@@ -784,7 +784,8 @@
                     backgroundColor: 'rgba(0, 86, 179, 0.1)',
                     borderWidth: 3,
                     pointRadius: 0,
-                    fill: false
+                    fill: false,
+                    pointStyle: 'line'
                 },
                 {
                     label: 'Your Team Members',
@@ -802,7 +803,8 @@
                     borderWidth: 1,
                     borderDash: [5, 5],
                     pointRadius: 0,
-                    fill: false
+                    fill: false,
+                    pointStyle: 'line'
                 }
             ]
         },
@@ -861,7 +863,10 @@
             plugins: {
                 legend: {
                     display: true,
-                    position: 'top'
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true
+                    }
                 },
                 tooltip: {
                     callbacks: {
