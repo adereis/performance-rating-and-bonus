@@ -784,9 +784,10 @@ function toggleCard(headerElement) {
 }
 
 // Start all cards collapsed by default, restore any explicitly expanded cards
-// Exception: "team-overview" starts expanded by default
+// Exception: team overview + the headline rating distribution start expanded
+// (users can collapse them; the choice persists via localStorage below)
 document.addEventListener('DOMContentLoaded', function() {
-    const expandedByDefault = ['team-overview'];
+    const expandedByDefault = ['team-overview', 'performance-distribution'];
 
     // Collapse all cards first (except those expanded by default)
     document.querySelectorAll('.card[data-card-id]').forEach(card => {
