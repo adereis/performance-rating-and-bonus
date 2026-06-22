@@ -294,6 +294,7 @@ def get_small_team_employees():
             'tenets_strengths': bonus_strengths_json,
             'tenets_improvements': bonus_improvements_json,
             'last_updated': datetime.now(),
+            'in_current_bonus_cycle': True,
             # New fields from 2025 Workday format
             'country': 'United States',
             'management_level': grade.replace('IC', 'IC ') if 'IC' in grade else 'Manager',
@@ -470,6 +471,7 @@ def get_large_team_employees():
                 'tenets_strengths': bonus_strengths_json,
                 'tenets_improvements': bonus_improvements_json,
                 'last_updated': datetime.now(),
+                'in_current_bonus_cycle': True,
                 # New fields from 2025 Workday format
                 'country': 'United States',
                 'management_level': grade.replace('IC', 'IC ') if 'IC' in grade else 'Manager',
