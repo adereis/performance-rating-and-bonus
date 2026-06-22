@@ -1263,6 +1263,24 @@ tr:hover {
     }
 }
 
+/* Small screens: the fixed Filters button collides with the header title,
+   so dock it (and its panel) to the bottom of the viewport instead. */
+@media (max-width: 768px) {
+    .filter-toggle {
+        top: auto;
+        bottom: 20px;
+    }
+
+    .filter-panel {
+        top: auto;
+        bottom: 80px;
+        left: 20px;
+        right: 20px;
+        width: auto;
+        max-height: calc(100vh - 160px);
+    }
+}
+
 .filter-panel-header {
     padding: 20px;
     border-bottom: 2px solid #e0e0e0;
