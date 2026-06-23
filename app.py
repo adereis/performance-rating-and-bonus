@@ -64,6 +64,11 @@ if os.getenv('FLASK_ENV') == 'production':
 # Example: export SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
 app.secret_key = os.getenv('SECRET_KEY', 'dev-only-insecure-key-change-in-production')
 
+# Cap upload size to prevent disk/memory exhaustion from oversized files.
+# Workday XLSX exports are small; 10 MB is generous. Override via MAX_UPLOAD_MB.
+# Flask returns 413 (Request Entity Too Large) automatically when exceeded.
+app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_UPLOAD_MB', '10')) * 1024 * 1024
+
 # Demo mode configuration
 DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
 

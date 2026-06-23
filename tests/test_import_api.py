@@ -143,6 +143,19 @@ class TestImportDemoModeGating:
             assert response.get_json()['success'] is False
 
 
+class TestImportUploadLimit:
+    """Uploads larger than MAX_CONTENT_LENGTH must be rejected, not parsed."""
+
+    def test_oversized_upload_returns_413(self, client, db_session, monkeypatch):
+        import app as app_module
+        # Shrink the limit so the test doesn't need a huge payload.
+        monkeypatch.setitem(app_module.app.config, 'MAX_CONTENT_LENGTH', 100)
+        data = {'file': (io.BytesIO(b'x' * 1000), 'big.xlsx')}
+        response = client.post('/api/import/analyze', data=data,
+                               content_type='multipart/form-data')
+        assert response.status_code == 413
+
+
 class TestImportAnalyze:
     """Tests for the /api/import/analyze endpoint."""
 
