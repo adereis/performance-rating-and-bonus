@@ -57,12 +57,12 @@
 
     .index-team-header {
         font-size: 11px;
-        color: #888;
+        color: var(--ink-soft);
         font-weight: 600;
         text-transform: uppercase;
         margin: 12px 0 6px 0;
         padding-bottom: 4px;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid var(--border);
     }
 
     .index-team-header:first-child {
@@ -83,7 +83,7 @@
     }
 
     .index-item:hover {
-        background: #f0f0f0;
+        background: var(--surface-2);
     }
 
     .index-item.active {
@@ -104,7 +104,7 @@
 
     .index-item .status-dot.uncalibrated {
         background: var(--border);
-        border: 1px solid #ccc;
+        border: 1px solid var(--border);
     }
 
     .index-item .name {
@@ -192,7 +192,7 @@
 
     .employee-card.calibrated {
         border-color: var(--good);
-        background: #f8fff9;
+        background: var(--good-soft);
     }
 
     /* Collapsible card sections */
@@ -224,7 +224,7 @@
 
     .card-section-header .section-toggle {
         font-size: 10px;
-        color: #888;
+        color: var(--ink-soft);
         transition: transform 0.2s;
     }
 
@@ -267,7 +267,7 @@
     .section-control-btn {
         font-size: 11px;
         padding: 4px 10px;
-        background: #f0f0f0;
+        background: var(--surface-2);
         border: 1px solid var(--border);
         border-radius: 4px;
         cursor: pointer;
@@ -294,7 +294,7 @@
         gap: 15px;
         margin-bottom: 20px;
         padding-bottom: 15px;
-        border-bottom: 2px solid #f0f0f0;
+        border-bottom: 2px solid var(--border);
     }
 
     .employee-header div {
@@ -390,7 +390,7 @@
     }
 
     .derived-value {
-        background: #e8f4fc;
+        background: var(--info-soft);
         padding: 8px 12px;
         border-radius: 4px;
         font-weight: 600;
@@ -404,8 +404,8 @@
     }
 
     .derived-value.successful {
-        background: #cce5ff;
-        color: #004085;
+        background: var(--info-soft);
+        color: var(--info);
     }
 
     .derived-value.evolving {
@@ -473,7 +473,7 @@
     }
 
     .workday-info div {
-        background: #f0f0f0;
+        background: var(--surface-2);
         padding: 8px;
         border-radius: 4px;
     }
@@ -507,7 +507,7 @@
         align-items: center;
         font-weight: 600;
         font-size: 13px;
-        color: #495057;
+        color: var(--ink);
     }
 
     .collapsible-header:hover {
@@ -538,7 +538,7 @@
     /* Promotion section highlighting when Ready Now selected */
     .collapsible-section.promotion-required .collapsible-header {
         background: var(--warn-soft);
-        border-left: 4px solid #ffc107;
+        border-left: 4px solid var(--warn);
     }
     .collapsible-section.promotion-required .collapsible-header .promotion-label {
         font-weight: 600;
@@ -676,7 +676,7 @@
     .tenets-legend {
         margin-top: 10px;
         padding-top: 8px;
-        border-top: 1px solid #eee;
+        border-top: 1px solid var(--border);
         font-size: 11px;
         color: var(--ink-soft);
         display: none;
@@ -750,8 +750,8 @@
 
     /* Bonus context section */
     .bonus-context {
-        background: #fff8e1;
-        border: 1px solid #ffe082;
+        background: var(--warn-soft);
+        border: 1px solid var(--warn-border);
         border-radius: 4px;
         padding: 12px;
         margin-top: 10px;
@@ -761,7 +761,7 @@
     .bonus-context h5 {
         margin: 0 0 8px 0;
         font-size: 12px;
-        color: #f57c00;
+        color: var(--warn);
         text-transform: uppercase;
     }
 
@@ -830,7 +830,7 @@
         <p style="margin-top: 15px;">
             <a href="{{ url_for('import_page') }}" class="btn">Import Talent Data</a>
         </p>
-        <p style="margin-top: 20px; font-size: 13px; color: #888;">
+        <p style="margin-top: 20px; font-size: 13px; color: var(--ink-soft);">
             Your Workday export should include columns for talent assessments (e.g., "Performance: What", "Performance: How").
             <br>If you've only imported bonus data, you'll need to import the talent spreadsheet first.
         </p>

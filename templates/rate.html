@@ -23,7 +23,7 @@
 
     .employee-card.rated {
         border-color: var(--good);
-        background: #f8fff9;
+        background: var(--good-soft);
     }
 
     .employee-header {
@@ -32,7 +32,7 @@
         gap: 15px;
         margin-bottom: 20px;
         padding-bottom: 15px;
-        border-bottom: 2px solid #f0f0f0;
+        border-bottom: 2px solid var(--border);
     }
 
     .employee-header div {
@@ -93,7 +93,7 @@
 
     .rating-input-group input[type="number"].invalid {
         border-color: var(--bad);
-        background-color: #fee;
+        background-color: var(--bad-soft);
     }
 
     .rating-input-group input[type="text"] {
@@ -148,7 +148,7 @@
     }
 
     .save-btn:disabled {
-        background: #95a5a6;
+        background: var(--ink-faint);
         cursor: not-allowed;
     }
 
@@ -202,7 +202,7 @@
     }
 
     .workday-info div {
-        background: #f0f0f0;
+        background: var(--surface-2);
         padding: 8px;
         border-radius: 4px;
     }
@@ -242,7 +242,7 @@
     }
 
     .view-btn:hover {
-        background: #f0f2ff;
+        background: var(--talent-soft);
     }
 
     .view-btn.active {
@@ -282,7 +282,7 @@
 
     .compact-table td {
         padding: 10px 12px;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--border);
     }
 
     .compact-table tr:hover {
@@ -290,7 +290,7 @@
     }
 
     .compact-table tr.has-rating {
-        background: #f8fff9;
+        background: var(--good-soft);
     }
 
     .compact-table input[type="number"] {
@@ -304,7 +304,7 @@
 
     .compact-table input[type="number"].invalid {
         border-color: var(--bad);
-        background-color: #fee;
+        background-color: var(--bad-soft);
     }
 
     .compact-table .validation-error {
@@ -334,7 +334,7 @@
     }
 
     .compact-table th.sortable:hover {
-        background: #e8e9ea;
+        background: var(--surface-2);
     }
 
     .compact-table th.sortable::after {
@@ -478,7 +478,7 @@
         display: inline-block;
         width: 8px;
         height: 8px;
-        background: #9b59b6;
+        background: var(--talent);
         border-radius: 2px;
         margin-left: 6px;
         vertical-align: middle;
@@ -488,7 +488,7 @@
     .tenets-legend {
         margin-top: 10px;
         padding-top: 8px;
-        border-top: 1px solid #eee;
+        border-top: 1px solid var(--border);
         font-size: 11px;
         color: var(--ink-soft);
         display: none;
@@ -508,7 +508,7 @@
         display: inline-block;
         width: 8px;
         height: 8px;
-        background: #9b59b6;
+        background: var(--talent);
         border-radius: 2px;
     }
 
@@ -592,14 +592,14 @@
     }
 
     .guidelines-header:hover {
-        background: rgba(102, 126, 234, 0.05);
+        background: var(--accent-soft);
     }
 
     .guidelines-header h4 {
         margin: 0;
         font-size: 14px;
         font-weight: 600;
-        color: #495057;
+        color: var(--ink);
         display: flex;
         align-items: center;
         gap: 8px;
@@ -622,7 +622,7 @@
     }
 
     .guidelines-toggle:hover {
-        background: rgba(102, 126, 234, 0.1);
+        background: var(--accent-soft);
     }
 
     .guidelines-content {
@@ -656,7 +656,7 @@
     .guidelines-section h5 {
         font-size: 13px;
         font-weight: 600;
-        color: #495057;
+        color: var(--ink);
         margin: 0 0 10px 0;
         padding-bottom: 6px;
         border-bottom: 1px solid var(--border);
@@ -676,11 +676,11 @@
     .rating-scale-table td:first-child {
         font-weight: 600;
         width: 70px;
-        color: #495057;
+        color: var(--ink);
     }
 
     .rating-scale-table tr.baseline td {
-        background: #e8f5e9;
+        background: var(--good-soft);
         padding: 4px 6px;
         border-radius: 3px;
     }
@@ -703,7 +703,7 @@
 
     .guidelines-note {
         font-size: 11px;
-        color: #6c757d;
+        color: var(--ink-soft);
         margin-top: 10px;
         padding-top: 8px;
         border-top: 1px dashed var(--border);
@@ -763,12 +763,12 @@
 
     .index-team-header {
         font-size: 11px;
-        color: #888;
+        color: var(--ink-soft);
         font-weight: 600;
         text-transform: uppercase;
         margin: 12px 0 6px 0;
         padding-bottom: 4px;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid var(--border);
     }
 
     .index-team-header:first-child {
@@ -789,7 +789,7 @@
     }
 
     .index-item:hover {
-        background: #f0f0f0;
+        background: var(--surface-2);
     }
 
     .index-item.active {
@@ -810,7 +810,7 @@
 
     .index-item .status-dot.unrated {
         background: var(--border);
-        border: 1px solid #ccc;
+        border: 1px solid var(--border);
     }
 
     .index-item .status-dot.override {
@@ -944,7 +944,7 @@
     }
 
     .special-case-toggle:hover {
-        background: #f0f0f0;
+        background: var(--surface-2);
     }
 
     .special-case-section.expanded .special-case-toggle {
@@ -998,8 +998,8 @@
 
     .clear-override-btn {
         background: none;
-        border: 1px solid #dc3545;
-        color: #dc3545;
+        border: 1px solid var(--bad);
+        color: var(--bad);
         padding: 6px 12px;
         border-radius: 4px;
         font-size: 12px;
@@ -1008,7 +1008,7 @@
     }
 
     .clear-override-btn:hover {
-        background: #dc3545;
+        background: var(--bad);
         color: white;
     }
 
@@ -1091,7 +1091,7 @@
         <p style="margin-top: 15px;">
             <a href="{{ url_for('import_page') }}" class="btn">Import Bonus Data</a>
         </p>
-        <p style="margin-top: 20px; font-size: 13px; color: #888;">
+        <p style="margin-top: 20px; font-size: 13px; color: var(--ink-soft);">
             Your Workday export should include columns for bonus targets (e.g., "Bonus Target - Local Currency").
             <br>If you've only imported talent calibration data, you'll need to import the bonus spreadsheet first.
         </p>

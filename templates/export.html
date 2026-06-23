@@ -198,13 +198,13 @@
     }
 
     .export-tab.disabled {
-        color: #ccc;
+        color: var(--border);
         cursor: not-allowed;
     }
 
     .export-tab.disabled:hover {
         background: transparent;
-        color: #ccc;
+        color: var(--border);
     }
 
     .export-tab-count {
@@ -339,7 +339,7 @@
         padding: 10px 15px;
         background: var(--info-soft);
         border-radius: 6px;
-        border: 1px solid #b8daff;
+        border: 1px solid var(--info-soft);
     }
 
     .sync-status-info {
@@ -800,7 +800,7 @@
                         {% elif item.bonus_delta == 0 %}
                         <span class="u-faint">0</span>
                         {% else %}
-                        <span style="color: #ccc;">—</span>
+                        <span style="color: var(--border);">—</span>
                         {% endif %}
                     </td>
                     <td class="description-cell">

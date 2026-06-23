@@ -67,7 +67,7 @@
 
     .empty-state .btn-large:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
     }
 
     .empty-state-divider {
@@ -115,7 +115,7 @@
     }
 
     .empty-state-sample .hint {
-        color: #888;
+        color: var(--ink-soft);
         font-size: 13px;
         margin: 0;
     }
@@ -129,7 +129,7 @@
     }
 
     th.sortable:hover {
-        background: #e8e9ea;
+        background: var(--surface-2);
     }
 
     th.sortable::after {
@@ -191,8 +191,8 @@
     }
 
     .period-status .value.talent {
-        background: rgba(118, 75, 162, 0.15);
-        color: #764ba2;
+        background: var(--talent-soft);
+        color: var(--talent);
     }
 
     .period-status .value.empty {
@@ -203,7 +203,7 @@
     .period-divider {
         width: 1px;
         height: 30px;
-        background: #ccc;
+        background: var(--border);
     }
 
     /* Cross-Cycle Alignment Styles */
@@ -256,7 +256,7 @@
 
     .alignment-stat.review {
         background: var(--warn-soft);
-        border: 1px solid #ffeeba;
+        border: 1px solid var(--warn-border);
     }
 
     .alignment-stat.incomplete {
@@ -278,7 +278,7 @@
     }
 
     .alignment-stat.incomplete .stat-value {
-        color: #6c757d;
+        color: var(--ink-soft);
     }
 
     .alignment-stat .stat-label {
@@ -307,8 +307,8 @@
     }
 
     .alignment-badge.incomplete {
-        background: #e9ecef;
-        color: #6c757d;
+        background: var(--surface-2);
+        color: var(--ink-soft);
     }
 
     .alignment-badge.incomplete.missing_rating {
@@ -317,8 +317,8 @@
     }
 
     .alignment-badge.incomplete.missing_talent {
-        background: #fff8e1;
-        color: #f57c00;
+        background: var(--warn-soft);
+        color: var(--warn);
     }
 
     .calibrated-badge {
@@ -340,20 +340,20 @@
 
     .calibrated-badge.no {
         background: var(--surface-2);
-        color: #adb5bd;
+        color: var(--ink-faint);
     }
 
     .info-icon {
         display: inline-block;
         cursor: help;
         font-size: 14px;
-        color: #6c757d;
+        color: var(--ink-soft);
         margin-left: 4px;
         vertical-align: middle;
     }
 
     .info-icon:hover {
-        color: #007bff;
+        color: var(--info);
     }
 
     .talent-rating-badge {
@@ -370,8 +370,8 @@
     }
 
     .talent-rating-badge.successful {
-        background: #cce5ff;
-        color: #004085;
+        background: var(--info-soft);
+        color: var(--info);
     }
 
     .talent-rating-badge.evolving {
@@ -400,7 +400,7 @@
     .promotion-table th {
         background: var(--surface-2);
         font-weight: 600;
-        color: #495057;
+        color: var(--ink);
         font-size: 13px;
         text-transform: uppercase;
     }
@@ -728,7 +728,7 @@
 
     .demo-session-note {
         margin-top: 15px;
-        color: #888;
+        color: var(--ink-soft);
         font-size: 14px;
     }
 

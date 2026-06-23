@@ -183,7 +183,7 @@
 
     .snapshots-table td {
         padding: 12px;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--border);
     }
 
     .snapshots-table tr:hover {
@@ -214,7 +214,7 @@
     .empty-state svg {
         width: 64px;
         height: 64px;
-        color: #ccc;
+        color: var(--border);
         margin-bottom: 20px;
     }
 
@@ -237,7 +237,7 @@
     }
 
     th.sortable:hover {
-        background: #e8e9ea;
+        background: var(--surface-2);
     }
 
     th.sortable::after {
@@ -260,7 +260,7 @@
 
     /* Filter warning banner */
     .history-filter-warning {
-        background: #dc3545;
+        background: var(--bad);
         color: white;
         padding: 15px 20px;
         border-radius: 6px;
@@ -340,7 +340,7 @@
 
         <div id="periodDetailContent">
             <div class="empty-state">
-                <div class="employee-modal-spinner" style="border-top-color: #667eea;"></div>
+                <div class="employee-modal-spinner" style="border-top-color: var(--accent);"></div>
                 <p>Loading period details...</p>
             </div>
         </div>
