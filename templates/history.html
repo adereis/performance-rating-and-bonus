@@ -12,7 +12,7 @@
     }
 
     .period-card {
-        background: white;
+        background: var(--surface);
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         overflow: hidden;
@@ -26,13 +26,14 @@
     }
 
     .period-card.active {
-        border: 2px solid #667eea;
+        border: 2px solid var(--accent);
     }
 
     .period-card-header {
         padding: 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: var(--surface);
+        border-left: 3px solid var(--accent);
+        color: var(--ink);
     }
 
     .period-card-header h3 {
@@ -59,21 +60,21 @@
     .period-stat .value {
         font-size: 24px;
         font-weight: 700;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .period-stat .label {
         font-size: 11px;
-        color: #666;
+        color: var(--ink-soft);
         text-transform: uppercase;
     }
 
     .period-card-footer {
         padding: 15px 20px;
-        background: #f8f9fa;
+        background: var(--surface-2);
         font-size: 12px;
-        color: #666;
-        border-top: 1px solid #e0e0e0;
+        color: var(--ink-soft);
+        border-top: 1px solid var(--border);
     }
 
     /* Period Detail View */
@@ -97,7 +98,7 @@
     }
 
     .back-link {
-        color: #667eea;
+        color: var(--accent);
         text-decoration: none;
         font-weight: 600;
         display: flex;
@@ -117,7 +118,7 @@
     }
 
     .summary-stat {
-        background: #f8f9fa;
+        background: var(--surface-2);
         padding: 20px;
         border-radius: 8px;
         text-align: center;
@@ -126,28 +127,29 @@
     .summary-stat .value {
         font-size: 28px;
         font-weight: 700;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .summary-stat .label {
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
         text-transform: uppercase;
         margin-top: 5px;
     }
 
     .summary-stat.highlight {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--surface);
+        border-left: 3px solid var(--accent);
     }
 
     .summary-stat.highlight .value,
     .summary-stat.highlight .label {
-        color: white;
+        color: var(--ink);
     }
 
     /* Distribution Chart */
     .distribution-container {
-        background: white;
+        background: var(--surface);
         padding: 20px;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -157,7 +159,7 @@
     .distribution-container h3 {
         margin: 0 0 15px 0;
         font-size: 16px;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .chart-wrapper {
@@ -171,12 +173,12 @@
     }
 
     .snapshots-table th {
-        background: #f8f9fa;
+        background: var(--surface-2);
         padding: 12px;
         text-align: left;
         font-weight: 600;
-        color: #2c3e50;
-        border-bottom: 2px solid #e0e0e0;
+        color: var(--slate);
+        border-bottom: 2px solid var(--border);
     }
 
     .snapshots-table td {
@@ -185,14 +187,14 @@
     }
 
     .snapshots-table tr:hover {
-        background: #f8f9fa;
+        background: var(--surface-2);
     }
 
     .partial-badge {
         display: inline-block;
         padding: 2px 8px;
-        background: #fff3cd;
-        color: #856404;
+        background: var(--warn-soft);
+        color: var(--warn);
         border-radius: 4px;
         font-size: 11px;
         font-weight: 600;
@@ -200,13 +202,13 @@
 
     .rating-value {
         font-weight: 600;
-        color: #27ae60;
+        color: var(--good);
     }
 
     .empty-state {
         text-align: center;
         padding: 60px 20px;
-        color: #666;
+        color: var(--ink-soft);
     }
 
     .empty-state svg {
@@ -218,7 +220,7 @@
 
     .empty-state h3 {
         margin: 0 0 10px 0;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .empty-state p {

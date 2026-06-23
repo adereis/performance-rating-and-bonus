@@ -26,24 +26,24 @@
         margin: 80px auto;
         text-align: center;
         padding: 40px;
-        background: white;
+        background: var(--surface);
         border-radius: 12px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
 
     .error-icon {
-        color: #e74c3c;
+        color: var(--bad);
         margin-bottom: 20px;
     }
 
     .error-page h1 {
         font-size: 28px;
-        color: #2c3e50;
+        color: var(--slate);
         margin-bottom: 15px;
     }
 
     .error-message {
-        color: #666;
+        color: var(--ink-soft);
         font-size: 16px;
         margin-bottom: 30px;
     }
@@ -66,8 +66,8 @@
     }
 
     .error-actions .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: var(--surface);
+        color: var(--ink);
     }
 
     .error-actions .btn-primary:hover {
@@ -76,13 +76,13 @@
     }
 
     .error-actions .btn-secondary {
-        background: #f8f9fa;
-        color: #2c3e50;
-        border: 1px solid #dee2e6;
+        background: var(--surface-2);
+        color: var(--slate);
+        border: 1px solid var(--border);
     }
 
     .error-actions .btn-secondary:hover {
-        background: #e9ecef;
+        background: var(--surface-2);
     }
 </style>
 
