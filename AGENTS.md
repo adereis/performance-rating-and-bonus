@@ -234,6 +234,13 @@ Compares `int(calculated_bonus_percent) != round(proposed_percent_of_target_bonu
 
 **Tests**: `python3 -m pytest tests/ -v` — use fixtures from `conftest.py` (never touch production db).
 
+**Interactive / browser testing**: the pytest suite is blind to rendering, CSS, and
+client-side JS (where some of the worst historical bugs lived — the modal data-wipe,
+the tenets crash). After UI changes, follow `docs/INTERACTIVE_TESTING.md` to drive the
+app through headless Chrome (smoke tour, modal, bonus chart, exclude-managers filter,
+demo-mode session isolation). It also documents the environment gotchas (blocked
+`sleep`, kill-by-port not `pkill`, Jinja template caching → restart on `.html` edits).
+
 ### When Modifying
 
 **New API endpoint**: Add to `app.py`, follow try/except pattern, add test to `test_api.py`
