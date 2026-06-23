@@ -361,30 +361,37 @@ class TestModalJSConsistency:
                 f"Changes to this field won't enable the Save button."
             )
 
-    def test_save_function_reads_all_modal_inputs(self, base_html):
-        """saveEmployeeModal must read every editable modal input."""
-        func_body = self._extract_function(base_html, 'saveEmployeeModal')
-        assert func_body is not None
+    @pytest.fixture
+    def employee_form_js(self):
+        """Read static/js/employee-form.js (the modal collect/save module)."""
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            'static', 'js', 'employee-form.js'
+        )
+        with open(path, 'r') as f:
+            return f.read()
 
-        save_ids = [
-            'modal_rating_percent',
-            'modal_justification',
-            'modal_mentor',
-            'modal_mentees',
-            'modal_bonus_override_percent',
-            'modal_special_case_notes',
-            'modal_talent_perf_what',
-            'modal_talent_perf_how',
-            'modal_talent_growth_agility',
-            'modal_talent_change_agility',
-            'modal_talent_movement_readiness',
-            'modal_talent_mentor',
-            'modal_talent_mentees',
-            'modal_talent_proposed_actions',
+    def test_schema_collects_all_editable_modal_inputs(self, employee_form_js):
+        """Every editable modal field must be in the employee-form schema.
+
+        Modal collection is schema-driven (App.EmployeeForm.collectFromModal
+        reads modal_<key> for each key in BONUS_FIELDS/TALENT_FIELDS, shared by
+        both modal save paths). A field rendered in the modal but missing from
+        the schema would be silently dropped on save — this is what made the
+        promotion-data-wipe bug possible, so guard the schema's completeness.
+        """
+        # API keys for each editable modal input (modal input id = 'modal_' + key).
+        field_keys = [
+            'rating_percent', 'justification', 'mentor', 'mentees',
+            'bonus_override_percent', 'special_case_notes',
+            'talent_perf_what', 'talent_perf_how', 'talent_growth_agility',
+            'talent_change_agility', 'talent_movement_readiness',
+            'talent_mentor', 'talent_mentees', 'talent_proposed_actions',
         ]
-
-        for input_id in save_ids:
-            assert input_id in func_body, (
-                f"'{input_id}' is not read by saveEmployeeModal(). "
-                f"User changes to this field will be silently lost on save."
+        for key in field_keys:
+            assert f"'{key}'" in employee_form_js, (
+                f"'{key}' is missing from the employee-form schema "
+                f"(BONUS_FIELDS/TALENT_FIELDS). User changes to modal_{key} "
+                f"would be silently lost on save."
             )

@@ -51,6 +51,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <!-- Shared client utilities (window.App.*) — loaded before inline page scripts -->
     <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/employee-form.js') }}"></script>
     {% block extra_css %}{% endblock %}
 
     <!-- Global Auto-Save Manager: Handles debounced saves with keepalive on page unload -->
@@ -1770,80 +1771,15 @@
             saveButton.disabled = true;
             saveButton.textContent = 'Saving...';
 
-            // Collect selected tenets (only from modal, not from rate page cards)
-            const modal = document.getElementById('employeeModal');
-            const strengthCheckboxes = modal.querySelectorAll('input[data-tenet-type="strengths"]:checked');
-            const improvementCheckboxes = modal.querySelectorAll('input[data-tenet-type="improvements"]:checked');
-
-            const tenetsStrengths = Array.from(strengthCheckboxes).map(cb => cb.value);
-            const tenetsImprovements = Array.from(improvementCheckboxes).map(cb => cb.value);
-
             const associateId = originalEmployeeData['Associate ID'];
+            const { bonusData, talentData } = App.EmployeeForm.collectFromModal(associateId);
 
-            // Bonus cycle data
-            const bonusData = {
-                associate_id: associateId,
-                rating_percent: document.getElementById('modal_rating_percent')?.value || '',
-                justification: document.getElementById('modal_justification')?.value || '',
-                mentor: document.getElementById('modal_mentor')?.value || '',
-                mentees: document.getElementById('modal_mentees')?.value || '',
-                tenets_strengths: tenetsStrengths,
-                tenets_improvements: tenetsImprovements,
-                bonus_override_percent: document.getElementById('modal_bonus_override_percent')?.value || '',
-                special_case_notes: document.getElementById('modal_special_case_notes')?.value || ''
-            };
-
-            // Talent calibration data
-            const talentData = {
-                associate_id: associateId,
-                talent_perf_what: document.getElementById('modal_talent_perf_what')?.value || '',
-                talent_perf_how: document.getElementById('modal_talent_perf_how')?.value || '',
-                talent_growth_agility: document.getElementById('modal_talent_growth_agility')?.value || '',
-                talent_change_agility: document.getElementById('modal_talent_change_agility')?.value || '',
-                talent_movement_readiness: document.getElementById('modal_talent_movement_readiness')?.value || '',
-                talent_mentor: document.getElementById('modal_talent_mentor')?.value || '',
-                talent_mentees: document.getElementById('modal_talent_mentees')?.value || '',
-                talent_proposed_actions: document.getElementById('modal_talent_proposed_actions')?.value || ''
-            };
-
-            // Save both bonus and talent data in parallel (allSettled reports each result independently)
-            Promise.allSettled([
-                fetch('/api/rate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(bonusData)
-                }).then(r => r.json()),
-                fetch('/api/calibrate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(talentData)
-                }).then(r => r.json())
-            ])
-            .then(([bonusResult, talentResult]) => {
-                const errors = [];
-
-                // Check bonus result
-                if (bonusResult.status === 'rejected') {
-                    errors.push('Bonus: Network error - ' + bonusResult.reason.message);
-                } else if (!bonusResult.value.success) {
-                    errors.push('Bonus: ' + (bonusResult.value.error || 'Unknown error'));
-                }
-
-                // Check talent result
-                if (talentResult.status === 'rejected') {
-                    errors.push('Talent: Network error - ' + talentResult.reason.message);
-                } else if (!talentResult.value.success) {
-                    errors.push('Talent: ' + (talentResult.value.error || 'Unknown error'));
-                }
-
+            App.EmployeeForm.submit(bonusData, talentData).then(({ errors }) => {
                 if (errors.length === 0) {
-                    // Reset dirty flag since changes are saved
                     modalHasUnsavedChanges = false;
-                    // Show success and close modal
                     saveButton.textContent = 'Saved!';
                     setTimeout(() => {
                         closeEmployeeModal();
-                        // Reload page to reflect changes
                         window.location.reload();
                     }, 500);
                 } else {
@@ -1881,84 +1817,20 @@
         }
 
         function autoSaveAndCloseModal() {
-            // Collect data (same as saveEmployeeModal but with simpler feedback)
-            const modal = document.getElementById('employeeModal');
-            const strengthCheckboxes = modal.querySelectorAll('input[data-tenet-type="strengths"]:checked');
-            const improvementCheckboxes = modal.querySelectorAll('input[data-tenet-type="improvements"]:checked');
-
-            const tenetsStrengths = Array.from(strengthCheckboxes).map(cb => cb.value);
-            const tenetsImprovements = Array.from(improvementCheckboxes).map(cb => cb.value);
-
             const associateId = originalEmployeeData['Associate ID'];
-
-            // Bonus cycle data
-            const bonusData = {
-                associate_id: associateId,
-                rating_percent: document.getElementById('modal_rating_percent')?.value || '',
-                justification: document.getElementById('modal_justification')?.value || '',
-                mentor: document.getElementById('modal_mentor')?.value || '',
-                mentees: document.getElementById('modal_mentees')?.value || '',
-                tenets_strengths: tenetsStrengths,
-                tenets_improvements: tenetsImprovements,
-                bonus_override_percent: document.getElementById('modal_bonus_override_percent')?.value || '',
-                special_case_notes: document.getElementById('modal_special_case_notes')?.value || ''
-            };
-
-            // Talent calibration data
-            const talentData = {
-                associate_id: associateId,
-                talent_perf_what: document.getElementById('modal_talent_perf_what')?.value || '',
-                talent_perf_how: document.getElementById('modal_talent_perf_how')?.value || '',
-                talent_growth_agility: document.getElementById('modal_talent_growth_agility')?.value || '',
-                talent_change_agility: document.getElementById('modal_talent_change_agility')?.value || '',
-                talent_movement_readiness: document.getElementById('modal_talent_movement_readiness')?.value || '',
-                talent_mentor: document.getElementById('modal_talent_mentor')?.value || '',
-                talent_mentees: document.getElementById('modal_talent_mentees')?.value || '',
-                talent_proposed_actions: document.getElementById('modal_talent_proposed_actions')?.value || ''
-                // NOTE: talent_promo_* fields are intentionally NOT sent here. The modal
-                // does not render them (they live only on the Calibration page), so the
-                // getElementById lookups always returned '' and nulled out the manager's
-                // promotion data on the server every time the modal was closed with changes.
-            };
+            // Collect BEFORE closing (clears originalEmployeeData). The schema-driven
+            // collector cannot send a field the modal doesn't render — which is what
+            // used to null out promotion data here.
+            const { bonusData, talentData } = App.EmployeeForm.collectFromModal(associateId);
 
             // Close modal immediately for snappy feel
-            modal.classList.remove('active');
+            document.getElementById('employeeModal').classList.remove('active');
             currentEmployeeId = null;
             originalEmployeeData = null;
             modalHasUnsavedChanges = false;
 
-            // Save both bonus and talent data in background (allSettled reports each result independently)
-            Promise.allSettled([
-                fetch('/api/rate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(bonusData)
-                }).then(r => r.json()),
-                fetch('/api/calibrate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(talentData)
-                }).then(r => r.json())
-            ])
-            .then(([bonusResult, talentResult]) => {
-                const errors = [];
-
-                // Check bonus result
-                if (bonusResult.status === 'rejected') {
-                    errors.push('Bonus: Network error - ' + bonusResult.reason.message);
-                } else if (!bonusResult.value.success) {
-                    errors.push('Bonus: ' + (bonusResult.value.error || 'Unknown error'));
-                }
-
-                // Check talent result
-                if (talentResult.status === 'rejected') {
-                    errors.push('Talent: Network error - ' + talentResult.reason.message);
-                } else if (!talentResult.value.success) {
-                    errors.push('Talent: ' + (talentResult.value.error || 'Unknown error'));
-                }
-
+            App.EmployeeForm.submit(bonusData, talentData).then(({ errors }) => {
                 if (errors.length === 0) {
-                    // Reload to reflect changes
                     window.location.reload();
                 } else {
                     alert('Error saving changes:\n' + errors.join('\n'));
