@@ -1915,11 +1915,11 @@
                 talent_movement_readiness: document.getElementById('modal_talent_movement_readiness')?.value || '',
                 talent_mentor: document.getElementById('modal_talent_mentor')?.value || '',
                 talent_mentees: document.getElementById('modal_talent_mentees')?.value || '',
-                talent_proposed_actions: document.getElementById('modal_talent_proposed_actions')?.value || '',
-                talent_promo_job_profile: document.getElementById('modal_talent_promo_job_profile')?.value || '',
-                talent_promo_readiness: document.getElementById('modal_talent_promo_readiness')?.value || '',
-                talent_promo_business_need: document.getElementById('modal_talent_promo_business_need')?.value || '',
-                talent_promo_role_scope: document.getElementById('modal_talent_promo_role_scope')?.value || ''
+                talent_proposed_actions: document.getElementById('modal_talent_proposed_actions')?.value || ''
+                // NOTE: talent_promo_* fields are intentionally NOT sent here. The modal
+                // does not render them (they live only on the Calibration page), so the
+                // getElementById lookups always returned '' and nulled out the manager's
+                // promotion data on the server every time the modal was closed with changes.
             };
 
             // Close modal immediately for snappy feel
