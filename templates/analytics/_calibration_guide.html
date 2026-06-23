@@ -3,7 +3,7 @@
 {% if total_rated > 0 or talent_calibration %}
 <div class="card" data-card-id="calibration-guide">
     <div class="card-header" onclick="toggleCard(this)">
-        <h2>📖 Calibration Guide</h2>
+        <h2><svg class="icon"><use href="#i-book"></use></svg> Calibration Guide</h2>
         <span class="collapse-icon">▼</span>
     </div>
     <div class="card-body">
@@ -11,11 +11,11 @@
     <!-- Primary Tabs: Bonus vs Talent -->
     <div class="primary-tabs">
         <button class="primary-tab {% if total_rated > 0 %}active{% else %}disabled{% endif %}" data-primary-tab="bonus-calibration-content" {% if total_rated == 0 %}disabled{% endif %}>
-            📊 Bonus Calibration
+            <svg class="icon"><use href="#i-chart-bar"></use></svg> Bonus Calibration
             {% if total_rated > 0 %}<span class="primary-tab-count">({{ total_rated }})</span>{% endif %}
         </button>
         <button class="primary-tab {% if not total_rated > 0 and talent_calibration %}active{% elif not talent_calibration %}disabled{% endif %}" data-primary-tab="talent-calibration-content" {% if not talent_calibration %}disabled{% endif %}>
-            🎯 Talent Calibration
+            <svg class="icon"><use href="#i-target"></use></svg> Talent Calibration
             {% if talent_calibration %}<span class="primary-tab-count">({{ talent_calibration.total }})</span>{% endif %}
         </button>
     </div>
@@ -47,7 +47,7 @@
 
     {% if total_rated < 10 %}
     <div class="small-team-warning">
-        ⚠️ <strong>Small team size ({{ total_rated }} rated):</strong> Percentage-based distributions are less meaningful for small teams.
+        <svg class="icon"><use href="#i-alert-triangle"></use></svg> <strong>Small team size ({{ total_rated }} rated):</strong> Percentage-based distributions are less meaningful for small teams.
         Focus on individual performance rather than fitting a curve.
     </div>
     {% endif %}
@@ -83,7 +83,7 @@
                             {% endif %}
                         </strong>
                         <br>
-                        <span style="font-size: 12px; color: #666;">
+                        <span class="u-xs u-muted">
                             {% if item.bucket == 'above_120' %}
                                 Exceptional performers
                             {% elif item.bucket == '90_to_120' %}
@@ -97,11 +97,11 @@
                     </td>
                     <td>
                         <strong>{{ item.percentage }}%</strong>
-                        <span style="color: #666; font-size: 13px;">({{ item.count }} people)</span>
+                        <span class="u-hint">({{ item.count }} people)</span>
                     </td>
                     <td>
                         {{ item.suggested_min }}-{{ item.suggested_max }}%
-                        <span style="color: #666; font-size: 13px;">({{ item.suggested_min_people }}-{{ item.suggested_max_people }} people)</span>
+                        <span class="u-hint">({{ item.suggested_min_people }}-{{ item.suggested_max_people }} people)</span>
                     </td>
                     <td>
                         <span class="delta-value delta-{{ item.status }}">
@@ -140,13 +140,13 @@
         </div>
 
         {% for team_cal in team_calibrations %}
-        <div style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+        <div style="margin-bottom: 30px; padding: 20px; background: var(--surface-2); border-radius: 8px;">
             <h3 style="margin-top: 0;">{{ team_cal.team_name }}</h3>
-            <p style="color: #666; margin-bottom: 15px;">{{ team_cal.total_rated }} employees rated</p>
+            <p class="u-muted" style="margin-bottom: 15px;">{{ team_cal.total_rated }} employees rated</p>
 
             {% if team_cal.total_rated < 10 %}
             <div class="small-team-warning" style="margin-bottom: 15px;">
-                ⚠️ <strong>Small team size:</strong> Percentage-based distributions are less meaningful for small teams.
+                <svg class="icon"><use href="#i-alert-triangle"></use></svg> <strong>Small team size:</strong> Percentage-based distributions are less meaningful for small teams.
                 Focus on individual performance rather than fitting a curve.
             </div>
             {% endif %}
@@ -178,7 +178,7 @@
                                     {% endif %}
                                 </strong>
                                 <br>
-                                <span style="font-size: 12px; color: #666;">
+                                <span class="u-xs u-muted">
                                     {% if item.bucket == 'above_120' %}
                                         Exceptional performers
                                     {% elif item.bucket == '90_to_120' %}
@@ -192,11 +192,11 @@
                             </td>
                             <td>
                                 <strong>{{ item.percentage }}%</strong>
-                                <span style="color: #666; font-size: 13px;">({{ item.count }} people)</span>
+                                <span class="u-hint">({{ item.count }} people)</span>
                             </td>
                             <td>
                                 {{ item.suggested_min }}-{{ item.suggested_max }}%
-                                <span style="color: #666; font-size: 13px;">({{ item.suggested_min_people }}-{{ item.suggested_max_people }} people)</span>
+                                <span class="u-hint">({{ item.suggested_min_people }}-{{ item.suggested_max_people }} people)</span>
                             </td>
                             <td>
                                 <span class="delta-value delta-{{ item.status }}">
@@ -259,12 +259,12 @@
                         <td>{{ team.avg_rating }}%</td>
                         <td>{{ team.std_dev }}%</td>
                         {% for bucket in ['above_120', '90_to_120', '60_to_90', 'below_60'] %}
-                        <td style="{% if team.buckets[bucket].status != 'good' %}background: #fff3cd;{% endif %}">
+                        <td style="{% if team.buckets[bucket].status != 'good' %}background: var(--warn-soft);{% endif %}">
                             {{ team.buckets[bucket].percentage }}%
                             {% if team.buckets[bucket].status != 'good' %}
-                            <span style="color: #856404;">⚠</span>
+                            <span style="color: var(--warn);">⚠</span>
                             {% else %}
-                            <span style="color: #155724;">✓</span>
+                            <span style="color: var(--good);">✓</span>
                             {% endif %}
                         </td>
                         {% endfor %}
@@ -286,9 +286,9 @@
         </div>
 
         <!-- Calibration Insights -->
-        <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;">
-            <h4 style="margin: 0 0 10px 0; color: #1976D2;">📊 Calibration Insights</h4>
-            <ul style="margin: 0; padding-left: 20px; color: #555;">
+        <div style="margin-top: 20px; padding: 15px; background: var(--info-soft); border-left: 4px solid var(--info); border-radius: 4px;">
+            <h4 style="margin: 0 0 10px 0; color: var(--info);"><svg class="icon"><use href="#i-chart-bar"></use></svg> Calibration Insights</h4>
+            <ul class="u-muted" style="margin: 0; padding-left: 20px;">
                 {% set max_avg = team_comparisons | map(attribute='avg_rating') | max %}
                 {% set min_avg = team_comparisons | map(attribute='avg_rating') | min %}
                 {% set avg_spread = max_avg - min_avg %}
@@ -340,7 +340,7 @@
 
     {% if talent_calibration.total < 10 %}
     <div class="small-team-warning">
-        ⚠️ <strong>Small team size ({{ talent_calibration.total }} calibrated):</strong> Percentage-based distributions are less meaningful for small teams.
+        <svg class="icon"><use href="#i-alert-triangle"></use></svg> <strong>Small team size ({{ talent_calibration.total }} calibrated):</strong> Percentage-based distributions are less meaningful for small teams.
         Focus on individual assessments rather than fitting a curve.
     </div>
     {% endif %}
@@ -371,11 +371,11 @@
                     </td>
                     <td>
                         <strong>{{ item.percentage }}%</strong>
-                        <span style="color: #666; font-size: 13px;">({{ item.count }} people)</span>
+                        <span class="u-hint">({{ item.count }} people)</span>
                     </td>
                     <td>
                         {{ item.suggested_min }}-{{ item.suggested_max }}%
-                        <span style="color: #666; font-size: 13px;">({{ item.suggested_min_people }}-{{ item.suggested_max_people }} people)</span>
+                        <span class="u-hint">({{ item.suggested_min_people }}-{{ item.suggested_max_people }} people)</span>
                     </td>
                     <td>
                         <span class="delta-value delta-{{ item.status }}">
@@ -397,14 +397,14 @@
                 {% endfor %}
 
                 <!-- Future Talent row (separate metric) -->
-                <tr style="border-top: 2px solid #667eea;">
+                <tr style="border-top: 2px solid var(--accent);">
                     <td>
                         <strong>Identified as Future Talent</strong>
-                        <br><span style="font-size: 12px; color: #666;">Both agility traits "Always/Most of the Time"</span>
+                        <br><span class="u-xs u-muted">Both agility traits "Always/Most of the Time"</span>
                     </td>
                     <td>
                         <strong>{{ talent_calibration.future_talent.percentage }}%</strong>
-                        <span style="color: #666; font-size: 13px;">({{ talent_calibration.future_talent.count }} people)</span>
+                        <span class="u-hint">({{ talent_calibration.future_talent.count }} people)</span>
                     </td>
                     <td>
                         {{ talent_calibration.future_talent.suggested_min }}-{{ talent_calibration.future_talent.suggested_max }}%
@@ -436,10 +436,10 @@
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
         {% for item in talent_calibration.movement_data %}
-        <div class="stat-box" style="border-left-color: {% if loop.index == 1 %}#3498db{% elif loop.index == 2 %}#27ae60{% else %}#9b59b6{% endif %};">
+        <div class="stat-box" style="border-left-color: {% if loop.index == 1 %}var(--info){% elif loop.index == 2 %}var(--good){% else %}var(--accent){% endif %};">
             <h4>{{ item.level }}</h4>
             <div class="avg">{{ item.percentage }}%</div>
-            <div style="font-size: 14px; color: #666;">{{ item.count }} employees</div>
+            <div class="u-muted" style="font-size: 14px;">{{ item.count }} employees</div>
         </div>
         {% endfor %}
     </div>

@@ -3,7 +3,7 @@
 {% if tenure_analytics and tenure_analytics.employees_with_tenure_data > 0 %}
 <div class="card" data-card-id="tenure-mobility">
     <div class="card-header" onclick="toggleCard(this)">
-        <h2>📅 Tenure & Mobility</h2>
+        <h2><svg class="icon"><use href="#i-calendar"></use></svg> Tenure & Mobility</h2>
         <span class="collapse-icon">▼</span>
     </div>
     <div class="card-body">
@@ -53,7 +53,7 @@
     <!-- Long Tenure Employees -->
     {% if tenure_analytics.long_tenure_employees %}
     <h3 style="margin-top: 25px; margin-bottom: 15px;">Longest Time in Current Role</h3>
-    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+    <p class="u-hint" style="margin-bottom: 15px;">
         Employees with 3+ years in their current role, sorted by tenure.
     </p>
     <div style="overflow-x: auto;">
@@ -89,7 +89,7 @@
     <!-- Tenure by Role -->
     {% if tenure_analytics.tenure_by_role %}
     <h3 style="margin-top: 25px; margin-bottom: 15px;">Tenure by Job Profile</h3>
-    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+    <p class="u-hint" style="margin-bottom: 15px;">
         Average tenure metrics grouped by job profile.
     </p>
     <div style="overflow-x: auto;">

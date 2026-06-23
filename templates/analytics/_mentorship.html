@@ -3,7 +3,7 @@
 {% if mentorship_stats or total_mentorship_flags > 0 %}
 <div class="card" data-card-id="mentorship">
     <div class="card-header" onclick="toggleCard(this)">
-        <h2>🤝 Mentorship</h2>
+        <h2><svg class="icon"><use href="#i-users"></use></svg> Mentorship</h2>
         <span class="collapse-icon">▼</span>
     </div>
     <div class="card-body">
@@ -11,10 +11,10 @@
     <!-- Primary Tabs: Overview vs Analysis -->
     <div class="primary-tabs">
         <button class="primary-tab {% if mentorship_stats %}active{% else %}disabled{% endif %}" data-primary-tab="mentorship-overview-content" {% if not mentorship_stats %}disabled{% endif %}>
-            📊 Overview
+            <svg class="icon"><use href="#i-chart-bar"></use></svg> Overview
         </button>
         <button class="primary-tab {% if not mentorship_stats and total_mentorship_flags > 0 %}active{% elif total_mentorship_flags == 0 %}disabled{% endif %}" data-primary-tab="mentorship-analysis-content" {% if total_mentorship_flags == 0 %}disabled{% endif %}>
-            🔍 Analysis
+            <svg class="icon"><use href="#i-search"></use></svg> Analysis
             {% if total_mentorship_flags > 0 %}<span class="primary-tab-count">({{ total_mentorship_flags }})</span>{% endif %}
         </button>
     </div>
@@ -28,17 +28,17 @@
         <div class="stat-box">
             <h4>Being Mentored</h4>
             <div class="avg">{{ mentorship_stats.overall.with_mentor }} / {{ mentorship_stats.overall.total }}</div>
-            <div style="font-size: 14px; color: #666;">{{ "%.0f"|format(mentorship_stats.overall.pct_with_mentor) }}%</div>
+            <div class="u-muted" style="font-size: 14px;">{{ "%.0f"|format(mentorship_stats.overall.pct_with_mentor) }}%</div>
         </div>
         <div class="stat-box">
             <h4>Mentoring Others</h4>
             <div class="avg">{{ mentorship_stats.overall.with_mentees }} / {{ mentorship_stats.overall.total }}</div>
-            <div style="font-size: 14px; color: #666;">{{ "%.0f"|format(mentorship_stats.overall.pct_with_mentees) }}%</div>
+            <div class="u-muted" style="font-size: 14px;">{{ "%.0f"|format(mentorship_stats.overall.pct_with_mentees) }}%</div>
         </div>
         <div class="stat-box">
             <h4>Total Mentorships</h4>
             <div class="avg">{{ mentorship_stats.overall.total_mentee_count }}</div>
-            <div style="font-size: 14px; color: #666;">relationships</div>
+            <div class="u-muted" style="font-size: 14px;">relationships</div>
         </div>
     </div>
 
@@ -61,16 +61,16 @@
                 <td style="text-align: center;">{{ row.count }}</td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="flex: 1; background: #e0e0e0; border-radius: 4px; height: 12px; min-width: 100px;">
-                            <div style="background: #3498db; height: 100%; border-radius: 4px; width: {{ row.pct_with_mentor }}%;"></div>
+                        <div style="flex: 1; background: var(--border); border-radius: 4px; height: 12px; min-width: 100px;">
+                            <div style="background: var(--info); height: 100%; border-radius: 4px; width: {{ row.pct_with_mentor }}%;"></div>
                         </div>
                         <span style="white-space: nowrap; min-width: 80px;">{{ "%.0f"|format(row.pct_with_mentor) }}% ({{ row.with_mentor }})</span>
                     </div>
                 </td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="flex: 1; background: #e0e0e0; border-radius: 4px; height: 12px; min-width: 100px;">
-                            <div style="background: #27ae60; height: 100%; border-radius: 4px; width: {{ row.pct_with_mentees }}%;"></div>
+                        <div style="flex: 1; background: var(--border); border-radius: 4px; height: 12px; min-width: 100px;">
+                            <div style="background: var(--good); height: 100%; border-radius: 4px; width: {{ row.pct_with_mentees }}%;"></div>
                         </div>
                         <span style="white-space: nowrap; min-width: 80px;">{{ "%.0f"|format(row.pct_with_mentees) }}% ({{ row.with_mentees }})</span>
                     </div>
@@ -100,16 +100,16 @@
                 <td style="text-align: center;">{{ team.stats.total }}</td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="flex: 1; background: #e0e0e0; border-radius: 4px; height: 12px; min-width: 100px;">
-                            <div style="background: #3498db; height: 100%; border-radius: 4px; width: {{ team.stats.pct_with_mentor }}%;"></div>
+                        <div style="flex: 1; background: var(--border); border-radius: 4px; height: 12px; min-width: 100px;">
+                            <div style="background: var(--info); height: 100%; border-radius: 4px; width: {{ team.stats.pct_with_mentor }}%;"></div>
                         </div>
                         <span style="white-space: nowrap; min-width: 80px;">{{ "%.0f"|format(team.stats.pct_with_mentor) }}% ({{ team.stats.with_mentor }})</span>
                     </div>
                 </td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="flex: 1; background: #e0e0e0; border-radius: 4px; height: 12px; min-width: 100px;">
-                            <div style="background: #27ae60; height: 100%; border-radius: 4px; width: {{ team.stats.pct_with_mentees }}%;"></div>
+                        <div style="flex: 1; background: var(--border); border-radius: 4px; height: 12px; min-width: 100px;">
+                            <div style="background: var(--good); height: 100%; border-radius: 4px; width: {{ team.stats.pct_with_mentees }}%;"></div>
                         </div>
                         <span style="white-space: nowrap; min-width: 80px;">{{ "%.0f"|format(team.stats.pct_with_mentees) }}% ({{ team.stats.with_mentees }})</span>
                     </div>
@@ -164,9 +164,9 @@
     <div style="display: grid; gap: 20px;">
 
         {% if mentorship_analysis.seniors_without_mentees %}
-        <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #faf5ff; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #8e44ad;">🟣 Senior Roles Without Mentees ({{ mentorship_analysis.seniors_without_mentees | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Senior/Staff/Lead/Director roles not currently mentoring anyone</p>
+        <div class="inconsistency-section" style="border-left: 4px solid var(--accent); padding-left: 15px; background: var(--accent-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--accent);">🟣 Senior Roles Without Mentees ({{ mentorship_analysis.seniors_without_mentees | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">Senior/Staff/Lead/Director roles not currently mentoring anyone</p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in mentorship_analysis.seniors_without_mentees %}
                 <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }})</li>
@@ -176,9 +176,9 @@
         {% endif %}
 
         {% if mentorship_analysis.heavy_mentoring_load %}
-        <div class="inconsistency-section" style="border-left: 4px solid #e67e22; padding-left: 15px; background: #fff8f0; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #d35400;">🟠 Heavy Mentoring Load ({{ mentorship_analysis.heavy_mentoring_load | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Employees mentoring 4 or more people — consider redistributing</p>
+        <div class="inconsistency-section" style="border-left: 4px solid var(--warn); padding-left: 15px; background: var(--warn-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--warn);">🟠 Heavy Mentoring Load ({{ mentorship_analysis.heavy_mentoring_load | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">Employees mentoring 4 or more people — consider redistributing</p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in mentorship_analysis.heavy_mentoring_load %}
                 <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): {{ emp.mentee_count }} mentees</li>
@@ -188,9 +188,9 @@
         {% endif %}
 
         {% if mentorship_analysis.unmentored_juniors %}
-        <div class="inconsistency-section" style="border-left: 4px solid #3498db; padding-left: 15px; background: #f0f7ff; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #2980b9;">🔵 Junior Roles Without Mentors ({{ mentorship_analysis.unmentored_juniors | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Junior/Associate/Entry-level employees who don't have a mentor assigned</p>
+        <div class="inconsistency-section" style="border-left: 4px solid var(--info); padding-left: 15px; background: var(--info-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--info);">🔵 Junior Roles Without Mentors ({{ mentorship_analysis.unmentored_juniors | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">Junior/Associate/Entry-level employees who don't have a mentor assigned</p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in mentorship_analysis.unmentored_juniors %}
                 <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }})</li>

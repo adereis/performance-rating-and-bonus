@@ -3,7 +3,7 @@
 {% if total_inconsistencies > 0 %}
 <div class="card" data-card-id="potential-inconsistencies">
     <div class="card-header" onclick="toggleCard(this)">
-        <h2>⚠️ Potential Inconsistencies <span style="font-size: 14px; font-weight: normal; color: rgba(255,255,255,0.8);">({{ total_inconsistencies }} found)</span></h2>
+        <h2><svg class="icon"><use href="#i-alert-triangle"></use></svg> Potential Inconsistencies <span style="font-size: 14px; font-weight: normal; color: rgba(255,255,255,0.8);">({{ total_inconsistencies }} found)</span></h2>
         <span class="collapse-icon">▼</span>
     </div>
     <div class="card-body">
@@ -20,9 +20,9 @@
 
         <!-- Critical: Rating vs Talent Mismatches -->
         {% if inconsistencies.high_bonus_low_talent %}
-        <div class="inconsistency-section" style="border-left: 4px solid #e74c3c; padding-left: 15px; background: #fdf2f2; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #c0392b;">🔴 Above-Target Bonus + Low Talent Rating ({{ inconsistencies.high_bonus_low_talent | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Performance rating &gt;90% but talent assessment is Low or Evolving Performer</p>
+        <div class="inconsistency-section" style="border-left: 4px solid var(--bad); padding-left: 15px; background: var(--bad-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--bad);">🔴 Above-Target Bonus + Low Talent Rating ({{ inconsistencies.high_bonus_low_talent | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">Performance rating &gt;90% but talent assessment is Low or Evolving Performer</p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in inconsistencies.high_bonus_low_talent %}
                 <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}% / {{ emp.talent }}</li>
@@ -32,9 +32,9 @@
         {% endif %}
 
         {% if inconsistencies.low_bonus_high_talent %}
-        <div class="inconsistency-section" style="border-left: 4px solid #e74c3c; padding-left: 15px; background: #fdf2f2; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #c0392b;">🔴 Low Bonus + High Impact Performer ({{ inconsistencies.low_bonus_high_talent | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Performance rating &lt;90% but talent assessment is High Impact Performer</p>
+        <div class="inconsistency-section" style="border-left: 4px solid var(--bad); padding-left: 15px; background: var(--bad-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--bad);">🔴 Low Bonus + High Impact Performer ({{ inconsistencies.low_bonus_high_talent | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">Performance rating &lt;90% but talent assessment is High Impact Performer</p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in inconsistencies.low_bonus_high_talent %}
                 <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}% / {{ emp.talent }}</li>
@@ -44,9 +44,9 @@
         {% endif %}
 
         {% if inconsistencies.future_talent_low_bonus %}
-        <div class="inconsistency-section" style="border-left: 4px solid #f39c12; padding-left: 15px; background: #fffbf0; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #d68910;">🟡 Future Talent + Low Bonus ({{ inconsistencies.future_talent_low_bonus | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Identified as Future Talent but performance rating &lt;90%</p>
+        <div class="inconsistency-section" style="border-left: 4px solid var(--warn); padding-left: 15px; background: var(--warn-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--warn);">🟡 Future Talent + Low Bonus ({{ inconsistencies.future_talent_low_bonus | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">Identified as Future Talent but performance rating &lt;90%</p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in inconsistencies.future_talent_low_bonus %}
                 <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}%</li>
@@ -56,9 +56,9 @@
         {% endif %}
 
         {% if inconsistencies.promotion_ready_low_rating %}
-        <div class="inconsistency-section" style="border-left: 4px solid #f39c12; padding-left: 15px; background: #fffbf0; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #d68910;">🟡 Promotion Ready + Below-Target Bonus ({{ inconsistencies.promotion_ready_low_rating | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Movement readiness is "Ready Now" but performance rating &lt;100%</p>
+        <div class="inconsistency-section" style="border-left: 4px solid var(--warn); padding-left: 15px; background: var(--warn-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--warn);">🟡 Promotion Ready + Below-Target Bonus ({{ inconsistencies.promotion_ready_low_rating | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">Movement readiness is "Ready Now" but performance rating &lt;100%</p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in inconsistencies.promotion_ready_low_rating %}
                 <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): Bonus {{ emp.rating }}%</li>
@@ -68,9 +68,9 @@
         {% endif %}
 
         {% if inconsistencies.promotion_ready_not_high %}
-        <div class="inconsistency-section" style="border-left: 4px solid #f39c12; padding-left: 15px; background: #fffbf0; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #d68910;">🟡 Promotion Ready + Not High Impact ({{ inconsistencies.promotion_ready_not_high | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Movement readiness is "Ready Now" but talent (measured in current role) is not High Impact</p>
+        <div class="inconsistency-section" style="border-left: 4px solid var(--warn); padding-left: 15px; background: var(--warn-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--warn);">🟡 Promotion Ready + Not High Impact ({{ inconsistencies.promotion_ready_not_high | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">Movement readiness is "Ready Now" but talent (measured in current role) is not High Impact</p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in inconsistencies.promotion_ready_not_high %}
                 <li><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): {{ emp.talent }}</li>
@@ -82,12 +82,12 @@
 
         <!-- Data Completeness -->
         {% if inconsistencies.bonus_only or inconsistencies.talent_only %}
-        <div class="inconsistency-section" style="border-left: 4px solid #95a5a6; padding-left: 15px; background: #f8f9fa; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #7f8c8d;">⚪ Incomplete Data</h4>
+        <div class="inconsistency-section" style="border-left: 4px solid var(--border); padding-left: 15px; background: var(--surface-2); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--ink-soft);">⚪ Incomplete Data</h4>
             {% if inconsistencies.bonus_only %}
             <div style="margin-bottom: 10px;">
                 <strong>Performance rating only, no talent data ({{ inconsistencies.bonus_only | length }}):</strong>
-                <span style="font-size: 13px; color: #666;">
+                <span class="u-hint">
                     {% for emp in inconsistencies.bonus_only %}{{ emp.name }}{% if not loop.last %}, {% endif %}{% endfor %}
                 </span>
             </div>
@@ -95,7 +95,7 @@
             {% if inconsistencies.talent_only %}
             <div>
                 <strong>Talent data only, no performance rating ({{ inconsistencies.talent_only | length }}):</strong>
-                <span style="font-size: 13px; color: #666;">
+                <span class="u-hint">
                     {% for emp in inconsistencies.talent_only %}{{ emp.name }}{% if not loop.last %}, {% endif %}{% endfor %}
                 </span>
             </div>
@@ -105,9 +105,9 @@
 
         <!-- Mentoring Mismatch -->
         {% if inconsistencies.mentoring_mismatch %}
-        <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #f9f5fc; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #8e44ad;">🔄 Mentoring Changes Between Cycles ({{ inconsistencies.mentoring_mismatch | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+        <div class="inconsistency-section" style="border-left: 4px solid var(--accent); padding-left: 15px; background: var(--accent-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--accent);"><svg class="icon"><use href="#i-refresh"></use></svg> Mentoring Changes Between Cycles ({{ inconsistencies.mentoring_mismatch | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">
                 Mentor or mentee data differs between Bonus and Talent Calibration cycles
             </p>
             <ul style="margin: 0; padding-left: 20px;">
@@ -115,17 +115,17 @@
                 <li style="margin-bottom: 8px;">
                     <strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}):
                     {% if emp.mentor_differs %}
-                    <div style="font-size: 12px; color: #666; margin-left: 10px; margin-top: 4px;">
+                    <div class="u-xs u-muted" style="margin-left: 10px; margin-top: 4px;">
                         <strong>Mentor:</strong><br>
-                        <span style="margin-left: 10px; color: #3498db;">Bonus: {% if emp.bonus_mentor == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.bonus_mentor }}{% endif %}</span><br>
-                        <span style="margin-left: 10px; color: #9b59b6;">Talent: {% if emp.talent_mentor == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.talent_mentor }}{% endif %}</span>
+                        <span style="margin-left: 10px; color: var(--info);">Bonus: {% if emp.bonus_mentor == '-' %}<em class="u-faint">(none)</em>{% else %}{{ emp.bonus_mentor }}{% endif %}</span><br>
+                        <span style="margin-left: 10px; color: var(--accent);">Talent: {% if emp.talent_mentor == '-' %}<em class="u-faint">(none)</em>{% else %}{{ emp.talent_mentor }}{% endif %}</span>
                     </div>
                     {% endif %}
                     {% if emp.mentees_differs %}
-                    <div style="font-size: 12px; color: #666; margin-left: 10px; margin-top: 4px;">
+                    <div class="u-xs u-muted" style="margin-left: 10px; margin-top: 4px;">
                         <strong>Mentees:</strong><br>
-                        <span style="margin-left: 10px; color: #3498db;">Bonus: {% if emp.bonus_mentees == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.bonus_mentees }}{% endif %}</span><br>
-                        <span style="margin-left: 10px; color: #9b59b6;">Talent: {% if emp.talent_mentees == '-' %}<em style="color: #999;">(none)</em>{% else %}{{ emp.talent_mentees }}{% endif %}</span>
+                        <span style="margin-left: 10px; color: var(--info);">Bonus: {% if emp.bonus_mentees == '-' %}<em class="u-faint">(none)</em>{% else %}{{ emp.bonus_mentees }}{% endif %}</span><br>
+                        <span style="margin-left: 10px; color: var(--accent);">Talent: {% if emp.talent_mentees == '-' %}<em class="u-faint">(none)</em>{% else %}{{ emp.talent_mentees }}{% endif %}</span>
                     </div>
                     {% endif %}
                 </li>
@@ -136,9 +136,9 @@
 
         <!-- Tenet Mismatch -->
         {% if inconsistencies.tenet_mismatch %}
-        <div class="inconsistency-section" style="border-left: 4px solid #16a085; padding-left: 15px; background: #f0fdf9; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #0d6656;">📋 Tenet Changes Between Cycles ({{ inconsistencies.tenet_mismatch | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+        <div class="inconsistency-section" style="border-left: 4px solid var(--good); padding-left: 15px; background: var(--good-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--good);"><svg class="icon"><use href="#i-clipboard"></use></svg> Tenet Changes Between Cycles ({{ inconsistencies.tenet_mismatch | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">
                 Tenet selections differ between Bonus and Talent Calibration cycles
             </p>
             <ul style="margin: 0; padding-left: 20px;">
@@ -146,23 +146,23 @@
                 <li style="margin-bottom: 12px;" class="{% if loop.index > 5 %}expandable-item expandable-tenet-mismatch{% endif %}">
                     <strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}):
                     {% if emp.strengths_differ %}
-                    <div style="font-size: 12px; color: #666; margin-left: 10px; margin-top: 4px;">
-                        <strong style="color: #27ae60;">Strengths:</strong><br>
-                        <span style="margin-left: 10px; color: #3498db;">Bonus: {% if emp.bonus_strengths %}{{ emp.bonus_strengths | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span><br>
-                        <span style="margin-left: 10px; color: #16a085;">Talent: {% if emp.talent_strengths %}{{ emp.talent_strengths | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span>
+                    <div class="u-xs u-muted" style="margin-left: 10px; margin-top: 4px;">
+                        <strong class="u-success">Strengths:</strong><br>
+                        <span style="margin-left: 10px; color: var(--info);">Bonus: {% if emp.bonus_strengths %}{{ emp.bonus_strengths | join(', ') }}{% else %}<em class="u-faint">(none)</em>{% endif %}</span><br>
+                        <span style="margin-left: 10px; color: var(--good);">Talent: {% if emp.talent_strengths %}{{ emp.talent_strengths | join(', ') }}{% else %}<em class="u-faint">(none)</em>{% endif %}</span>
                     </div>
                     {% endif %}
                     {% if emp.improvements_differ %}
-                    <div style="font-size: 12px; color: #666; margin-left: 10px; margin-top: 4px;">
-                        <strong style="color: #e67e22;">Improvements:</strong><br>
-                        <span style="margin-left: 10px; color: #3498db;">Bonus: {% if emp.bonus_improvements %}{{ emp.bonus_improvements | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span><br>
-                        <span style="margin-left: 10px; color: #16a085;">Talent: {% if emp.talent_improvements %}{{ emp.talent_improvements | join(', ') }}{% else %}<em style="color: #999;">(none)</em>{% endif %}</span>
+                    <div class="u-xs u-muted" style="margin-left: 10px; margin-top: 4px;">
+                        <strong style="color: var(--warn);">Improvements:</strong><br>
+                        <span style="margin-left: 10px; color: var(--info);">Bonus: {% if emp.bonus_improvements %}{{ emp.bonus_improvements | join(', ') }}{% else %}<em class="u-faint">(none)</em>{% endif %}</span><br>
+                        <span style="margin-left: 10px; color: var(--good);">Talent: {% if emp.talent_improvements %}{{ emp.talent_improvements | join(', ') }}{% else %}<em class="u-faint">(none)</em>{% endif %}</span>
                     </div>
                     {% endif %}
                 </li>
                 {% endfor %}
                 {% if inconsistencies.tenet_mismatch | length > 5 %}
-                <li><a href="#" class="expand-toggle" data-target="expandable-tenet-mismatch" style="color: #667eea; text-decoration: none;">... and {{ inconsistencies.tenet_mismatch | length - 5 }} more</a></li>
+                <li><a href="#" class="expand-toggle" data-target="expandable-tenet-mismatch" style="color: var(--accent); text-decoration: none;">... and {{ inconsistencies.tenet_mismatch | length - 5 }} more</a></li>
                 {% endif %}
             </ul>
         </div>
@@ -170,34 +170,34 @@
 
         <!-- Bonus Change from Prior Cycle -->
         {% if inconsistencies.bonus_decrease_from_prior %}
-        <div class="inconsistency-section" style="border-left: 4px solid #e74c3c; padding-left: 15px; background: #fdf2f2; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #c0392b;">📉 Significant Bonus Decrease ({{ inconsistencies.bonus_decrease_from_prior | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+        <div class="inconsistency-section" style="border-left: 4px solid var(--bad); padding-left: 15px; background: var(--bad-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--bad);"><svg class="icon"><use href="#i-trending-down"></use></svg> Significant Bonus Decrease ({{ inconsistencies.bonus_decrease_from_prior | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">
                 Calculated bonus is 15+ percentage points lower than prior cycle — may warrant a conversation
             </p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in inconsistencies.bonus_decrease_from_prior %}
-                <li class="{% if loop.index > 5 %}expandable-item expandable-bonus-decrease{% endif %}"><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): {{ emp.prior_bonus }}% → {{ emp.current_bonus }}% <span style="color: #c0392b;">({{ emp.delta }}pp)</span></li>
+                <li class="{% if loop.index > 5 %}expandable-item expandable-bonus-decrease{% endif %}"><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): {{ emp.prior_bonus }}% → {{ emp.current_bonus }}% <span style="color: var(--bad);">({{ emp.delta }}pp)</span></li>
                 {% endfor %}
                 {% if inconsistencies.bonus_decrease_from_prior | length > 5 %}
-                <li><a href="#" class="expand-toggle" data-target="expandable-bonus-decrease" style="color: #667eea; text-decoration: none;">... and {{ inconsistencies.bonus_decrease_from_prior | length - 5 }} more</a></li>
+                <li><a href="#" class="expand-toggle" data-target="expandable-bonus-decrease" style="color: var(--accent); text-decoration: none;">... and {{ inconsistencies.bonus_decrease_from_prior | length - 5 }} more</a></li>
                 {% endif %}
             </ul>
         </div>
         {% endif %}
 
         {% if inconsistencies.bonus_increase_from_prior %}
-        <div class="inconsistency-section" style="border-left: 4px solid #27ae60; padding-left: 15px; background: #f0fdf4; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #1e8449;">📈 Significant Bonus Increase ({{ inconsistencies.bonus_increase_from_prior | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+        <div class="inconsistency-section" style="border-left: 4px solid var(--good); padding-left: 15px; background: var(--good-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--good);"><svg class="icon"><use href="#i-trending-up"></use></svg> Significant Bonus Increase ({{ inconsistencies.bonus_increase_from_prior | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">
                 Calculated bonus is 15+ percentage points higher than prior cycle — verify this reflects performance change
             </p>
             <ul style="margin: 0; padding-left: 20px;">
                 {% for emp in inconsistencies.bonus_increase_from_prior %}
-                <li class="{% if loop.index > 5 %}expandable-item expandable-bonus-increase{% endif %}"><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): {{ emp.prior_bonus }}% → {{ emp.current_bonus }}% <span style="color: #1e8449;">(+{{ emp.delta }}pp)</span></li>
+                <li class="{% if loop.index > 5 %}expandable-item expandable-bonus-increase{% endif %}"><strong><span class="employee-name" data-employee-id="{{ emp.id }}">{{ emp.name }}</span></strong> ({{ emp.job }}): {{ emp.prior_bonus }}% → {{ emp.current_bonus }}% <span style="color: var(--good);">(+{{ emp.delta }}pp)</span></li>
                 {% endfor %}
                 {% if inconsistencies.bonus_increase_from_prior | length > 5 %}
-                <li><a href="#" class="expand-toggle" data-target="expandable-bonus-increase" style="color: #667eea; text-decoration: none;">... and {{ inconsistencies.bonus_increase_from_prior | length - 5 }} more</a></li>
+                <li><a href="#" class="expand-toggle" data-target="expandable-bonus-increase" style="color: var(--accent); text-decoration: none;">... and {{ inconsistencies.bonus_increase_from_prior | length - 5 }} more</a></li>
                 {% endif %}
             </ul>
         </div>
@@ -205,9 +205,9 @@
 
         <!-- Tenure-Based Inconsistencies -->
         {% if inconsistencies.new_hire_low_rating %}
-        <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #f9f5fc; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #7d3c98;">📅 New Hire Rated Low ({{ inconsistencies.new_hire_low_rating | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+        <div class="inconsistency-section" style="border-left: 4px solid var(--accent); padding-left: 15px; background: var(--accent-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--accent);"><svg class="icon"><use href="#i-calendar"></use></svg> New Hire Rated Low ({{ inconsistencies.new_hire_low_rating | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">
                 Less than 6 months total tenure but rated as Low or Evolving Performer — may be premature judgment
             </p>
             <ul style="margin: 0; padding-left: 20px;">
@@ -219,9 +219,9 @@
         {% endif %}
 
         {% if inconsistencies.promotion_ready_short_tenure %}
-        <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #f9f5fc; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #7d3c98;">📅 Ready Now but Short Tenure ({{ inconsistencies.promotion_ready_short_tenure | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+        <div class="inconsistency-section" style="border-left: 4px solid var(--accent); padding-left: 15px; background: var(--accent-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--accent);"><svg class="icon"><use href="#i-calendar"></use></svg> Ready Now but Short Tenure ({{ inconsistencies.promotion_ready_short_tenure | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">
                 Marked "Ready Now to be promoted" with less than 2 years in current role — verify readiness for next level
             </p>
             <ul style="margin: 0; padding-left: 20px;">
@@ -233,9 +233,9 @@
         {% endif %}
 
         {% if inconsistencies.new_hire_mentoring %}
-        <div class="inconsistency-section" style="border-left: 4px solid #9b59b6; padding-left: 15px; background: #f9f5fc; padding: 15px; border-radius: 0 8px 8px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #7d3c98;">📅 New Hire but Mentoring ({{ inconsistencies.new_hire_mentoring | length }})</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+        <div class="inconsistency-section" style="border-left: 4px solid var(--accent); padding-left: 15px; background: var(--accent-soft); padding: 15px; border-radius: 0 8px 8px 0;">
+            <h4 style="margin: 0 0 10px 0; color: var(--accent);"><svg class="icon"><use href="#i-calendar"></use></svg> New Hire but Mentoring ({{ inconsistencies.new_hire_mentoring | length }})</h4>
+            <p class="u-hint" style="margin-bottom: 10px;">
                 Less than 1 year at the company but listed as mentoring others — verify this is intentional
             </p>
             <ul style="margin: 0; padding-left: 20px;">

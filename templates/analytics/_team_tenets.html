@@ -3,7 +3,7 @@
 {% if tenets_summary %}
 <div class="card" data-card-id="team-tenets">
     <div class="card-header" onclick="toggleCard(this)">
-        <h2>🎯 Team Tenets Analysis</h2>
+        <h2><svg class="icon"><use href="#i-target"></use></svg> Team Tenets Analysis</h2>
         <span class="collapse-icon">▼</span>
     </div>
     <div class="card-body">
@@ -24,22 +24,22 @@
     {# Job Level Tenets Analysis - shows tenets breakdown by Manager / Senior IC / Others #}
     {% if job_level_tenets_summary and job_level_tenets_summary|length > 1 %}
     <div style="margin-top: 30px;">
-        <h3 style="margin-bottom: 15px; color: #2c3e50;">Tenets by Job Level</h3>
-        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
+        <h3 style="margin-bottom: 15px; color: var(--slate);">Tenets by Job Level</h3>
+        <p class="u-muted" style="font-size: 14px; margin-bottom: 20px;">
             Compare tenet patterns across job levels: <strong>Manager</strong> (has direct reports),
             <strong>Senior IC</strong> (Senior, Principal, Staff, Lead in title), and <strong>Others</strong>.
         </p>
         {% for level in ['Manager', 'Senior IC', 'Others'] %}
         {% if level in job_level_tenets_summary %}
         {% set level_data = job_level_tenets_summary[level] %}
-        <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-            <h4 style="margin-bottom: 4px; color: #34495e;">
+        <div style="margin-bottom: 25px; padding: 15px; background: var(--surface-2); border-radius: 8px;">
+            <h4 style="margin-bottom: 4px; color: var(--slate);">
                 {{ level }}
-                <span style="font-weight: normal; color: #666; font-size: 14px;">
+                <span class="u-muted" style="font-weight: normal; font-size: 14px;">
                     ({{ level_data.employees_with_tenets }} employee{{ 's' if level_data.employees_with_tenets != 1 else '' }})
                 </span>
             </h4>
-            <div style="font-size: 12px; color: #888; margin-bottom: 10px; font-style: italic;">
+            <div class="u-xs u-faint" style="margin-bottom: 10px; font-style: italic;">
                 {% if level == 'Manager' %}
                     Has direct reports (management level or supervisory org)
                 {% elif level == 'Senior IC' %}

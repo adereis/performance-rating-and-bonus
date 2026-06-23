@@ -2,13 +2,13 @@
 <!-- 7. Period-over-Period Comparison -->
 <div class="card" id="periodComparisonCard" data-card-id="period-comparison">
     <div class="card-header" onclick="toggleCard(this)">
-        <h2>📈 Period-over-Period Comparison</h2>
+        <h2><svg class="icon"><use href="#i-trending-up"></use></svg> Period-over-Period Comparison</h2>
         <span class="collapse-icon">▼</span>
     </div>
     <div class="card-body">
 
     <div class="comparison-header">
-        <label for="periodSelect" style="font-weight: 600; color: #2c3e50;">Compare current ratings with:</label>
+        <label for="periodSelect" style="font-weight: 600; color: var(--slate);">Compare current ratings with:</label>
         <select id="periodSelect" onchange="loadPeriodComparison()">
             <option value="">Select a historical period...</option>
         </select>
@@ -17,7 +17,7 @@
     <div id="comparisonContent">
         <div class="comparison-empty">
             <p>Select a historical period above to compare ratings.</p>
-            <p style="font-size: 12px; color: #999; margin-top: 10px;">
+            <p class="u-faint" style="font-size: 12px; margin-top: 10px;">
                 Historical data is available after archiving periods from the Dashboard.
             </p>
         </div>
