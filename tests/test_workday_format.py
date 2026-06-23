@@ -522,6 +522,31 @@ class TestNewFormatDecimalConversion:
         assert convert_decimal_to_percent(120.0, is_new_format=False) == 120.0
 
 
+class TestParseFloat:
+    """parse_float must preserve a genuine zero (0% rating, $0 target)."""
+
+    def test_zero_values_are_preserved(self):
+        from xlsx_utils import parse_float
+        # Regression: 0 / 0.0 / "0" are falsy and were being dropped to None.
+        assert parse_float(0) == 0.0
+        assert parse_float(0.0) == 0.0
+        assert parse_float("0") == 0.0
+        assert parse_float("0.0") == 0.0
+
+    def test_normal_values(self):
+        from xlsx_utils import parse_float
+        assert parse_float(5) == 5.0
+        assert parse_float("12.5") == 12.5
+        assert parse_float(-3) == -3.0
+
+    def test_empty_and_invalid_are_none(self):
+        from xlsx_utils import parse_float
+        assert parse_float(None) is None
+        assert parse_float("") is None
+        assert parse_float("   ") is None
+        assert parse_float("abc") is None
+
+
 class TestManagerCurrencyDetection:
     """Tests for detecting the manager's currency from employee data."""
 

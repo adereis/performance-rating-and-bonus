@@ -19,9 +19,17 @@ from datetime import datetime
 
 
 def parse_float(val) -> Optional[float]:
-    """Safely parse a value to float."""
+    """Safely parse a value to float, preserving a genuine zero.
+
+    Guards on None / blank explicitly rather than truthiness, so a real 0
+    (0% rating, $0 bonus target) is kept instead of dropped to None.
+    """
+    if val is None:
+        return None
+    if isinstance(val, str) and not val.strip():
+        return None
     try:
-        return float(val) if val else None
+        return float(val)
     except (ValueError, TypeError):
         return None
 
