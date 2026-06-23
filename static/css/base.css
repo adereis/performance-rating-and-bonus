@@ -52,6 +52,31 @@ body {
     padding: 20px;
 }
 
+/* ── Icons ─── inline SVG sprite (templates/_icons.html); inherits text
+   color via currentColor and scales with font-size. */
+.icon {
+    width: 1em;
+    height: 1em;
+    display: inline-block;
+    vertical-align: -0.125em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+}
+.icon-lg { width: 1.4em; height: 1.4em; }
+
+/* ── Text utilities ─── replace repeated hardcoded inline color styles. */
+.u-muted   { color: var(--ink-soft); }
+.u-faint   { color: var(--ink-faint); }
+.u-danger  { color: var(--bad); }
+.u-success { color: var(--good); }
+.u-sm      { font-size: 13px; }
+.u-xs      { font-size: 12px; }
+.u-hint    { font-size: 13px; color: var(--ink-soft); }
+
 header {
     background: #2c3e50;
     color: white;
@@ -210,7 +235,7 @@ tr:hover {
 
 .btn {
     padding: 10px 20px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     border-radius: 4px;
@@ -221,7 +246,7 @@ tr:hover {
 }
 
 .btn:hover {
-    background: #5568d3;
+    background: var(--accent-hover);
 }
 
 .btn-success {
@@ -253,14 +278,14 @@ tr:hover {
 /* Employee name clickable style */
 .employee-name {
     cursor: pointer;
-    color: #667eea;
+    color: var(--accent);
     font-weight: 600;
     text-decoration: none;
     transition: all 0.2s;
 }
 
 .employee-name:hover {
-    color: #5568d3;
+    color: var(--accent-hover);
     text-decoration: underline;
 }
 
@@ -406,7 +431,7 @@ tr:hover {
 .employee-modal-field input:focus,
 .employee-modal-field textarea:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--accent);
 }
 
 .employee-modal-field textarea {
@@ -520,12 +545,12 @@ tr:hover {
 }
 
 .employee-modal-footer .btn-save {
-    background: #667eea;
+    background: var(--accent);
     color: white;
 }
 
 .employee-modal-footer .btn-save:hover {
-    background: #5568d3;
+    background: var(--accent-hover);
 }
 
 .employee-modal-footer .btn-save:disabled {
@@ -541,7 +566,7 @@ tr:hover {
 
 .employee-modal-spinner {
     border: 3px solid #f3f3f3;
-    border-top: 3px solid #667eea;
+    border-top: 3px solid var(--accent);
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -706,11 +731,11 @@ tr:hover {
 }
 
 .employee-modal-tab:hover {
-    color: #667eea;
+    color: var(--accent);
 }
 
 .employee-modal-tab.active {
-    color: #667eea;
+    color: var(--accent);
 }
 
 .employee-modal-tab.active::after {
@@ -720,7 +745,7 @@ tr:hover {
     left: 0;
     right: 0;
     height: 2px;
-    background: #667eea;
+    background: var(--accent);
 }
 
 .employee-modal-tab-content {
@@ -790,7 +815,7 @@ tr:hover {
 
 .history-period-bonus {
     font-size: 14px;
-    color: #667eea;
+    color: var(--accent);
 }
 
 .history-period-partial {
@@ -1247,7 +1272,7 @@ tr:hover {
 
 .history-talent-section h6 {
     font-size: 11px;
-    color: #667eea;
+    color: var(--accent);
     text-transform: uppercase;
     font-weight: 600;
     margin: 0 0 10px 0;
@@ -1259,7 +1284,7 @@ tr:hover {
     top: 20px;
     right: 20px;
     z-index: 9999;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     padding: 12px 20px;
@@ -1267,13 +1292,13 @@ tr:hover {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
     transition: all 0.2s;
 }
 
 .filter-toggle:hover {
-    background: #5568d3;
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+    background: var(--accent-hover);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.6);
 }
 
 .filter-toggle.active {
@@ -1406,7 +1431,7 @@ tr:hover {
 
 .filter-section select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--accent);
 }
 
 .filter-preview {
@@ -1437,12 +1462,12 @@ tr:hover {
 }
 
 .filter-actions .btn-apply {
-    background: #667eea;
+    background: var(--accent);
     color: white;
 }
 
 .filter-actions .btn-apply:hover {
-    background: #5568d3;
+    background: var(--accent-hover);
 }
 
 .filter-actions .btn-clear {

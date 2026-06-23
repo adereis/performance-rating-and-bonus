@@ -146,6 +146,7 @@
     </script>
 </head>
 <body>
+    {% include '_icons.html' %}
     {% if demo_mode %}
     <!-- Sticky Demo Mode Banner -->
     <div class="demo-banner-sticky">
@@ -179,7 +180,7 @@
     <button class="filter-toggle {% if filter_info is defined and filter_info.active %}active{% endif %}"
             onclick="toggleFilterPanel()"
             id="filterToggle">
-        🔍 Filters{% if filter_info is defined and filter_info.active %} ({{ filter_info.hidden_count }}){% endif %}
+        <svg class="icon"><use href="#i-search"></use></svg> Filters{% if filter_info is defined and filter_info.active %} ({{ filter_info.hidden_count }}){% endif %}
     </button>
     <script>
     // Immediately check sessionStorage to style button before render completes
