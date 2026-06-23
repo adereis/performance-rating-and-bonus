@@ -635,13 +635,13 @@
                 </div>
             </div>
             <div class="snapshot-actions">
-                <a href="{{ url_for('export_snapshot_xlsx') }}" class="export-format-btn snapshot-btn" download>
+                <a href="{{ url_for('export.export_snapshot_xlsx') }}" class="export-format-btn snapshot-btn" download>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Excel
                 </a>
-                <a href="{{ url_for('export_snapshot_csv') }}" class="export-format-btn snapshot-btn" download>
+                <a href="{{ url_for('export.export_snapshot_csv') }}" class="export-format-btn snapshot-btn" download>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
@@ -655,13 +655,13 @@
     {% if has_data %}
     <!-- Mode tabs -->
     <div class="export-tabs">
-        <a href="{{ url_for('export_page', mode='bonus') }}"
+        <a href="{{ url_for('export.export_page', mode='bonus') }}"
            class="export-tab {% if export_mode == 'bonus' %}active{% endif %} {% if not has_bonus_data %}disabled{% endif %}"
            {% if not has_bonus_data %}onclick="return false;"{% endif %}>
             <svg class="icon"><use href="#i-chart-bar"></use></svg> Bonus Export
             <span class="export-tab-count">({{ total_employees }})</span>
         </a>
-        <a href="{{ url_for('export_page', mode='talent') }}"
+        <a href="{{ url_for('export.export_page', mode='talent') }}"
            class="export-tab {% if export_mode == 'talent' %}active{% endif %} {% if not has_talent_data %}disabled{% endif %}"
            {% if not has_talent_data %}onclick="return false;"{% endif %}>
             <svg class="icon"><use href="#i-target"></use></svg> Talent Export

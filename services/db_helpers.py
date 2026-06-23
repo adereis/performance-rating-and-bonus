@@ -418,17 +418,17 @@ def apply_employee_filters(employees, filter_params):
     return filtered, filter_info
 
 
-def get_all_history_snapshots(get_db_fn):
+def get_all_history_snapshots(get_db_fn=None):
     """Query all RatingSnapshot records joined with Period data.
 
     Args:
-        get_db_fn: Callable that returns a database session
+        get_db_fn: Callable that returns a database session (defaults to models.get_db)
 
     Returns:
         List of dicts with snapshot and period information, ordered by
         period date descending, then employee name ascending.
     """
-    db = get_db_fn()
+    db = _resolve_get_db(get_db_fn)()
     try:
         snapshots = db.query(RatingSnapshot, Period).join(
             Period, RatingSnapshot.period_id == Period.id
