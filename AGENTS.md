@@ -241,6 +241,11 @@ app through headless Chrome (smoke tour, modal, bonus chart, exclude-managers fi
 demo-mode session isolation). It also documents the environment gotchas (blocked
 `sleep`, kill-by-port not `pkill`, Jinja template caching → restart on `.html` edits).
 
+**Planned refactor**: `docs/REFACTOR_APP_SPLIT.md` is an executable plan for splitting
+the 4,449-line `app.py` god-module into Flask blueprints and finishing the `services/`
+migration (incremental, behavior-preserving, test-gated). Read it before adding more
+routes/logic to `app.py`; note the endpoint-renaming gotcha (`url_for`/`request.endpoint`).
+
 ### When Modifying
 
 **New API endpoint**: Add to `app.py`, follow try/except pattern, add test to `test_api.py`
