@@ -168,8 +168,8 @@
             <nav>
                 <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Dashboard</a>
                 <a href="{{ url_for('import_.import_page') }}" {% if request.endpoint == 'import_.import_page' %}class="active"{% endif %}>Import</a>
-                <a href="{{ url_for('rate_page') }}" {% if request.endpoint == 'rate_page' %}class="active"{% endif %}>Rate Team</a>
-                <a href="{{ url_for('calibrate_page') }}" {% if request.endpoint == 'calibrate_page' %}class="active"{% endif %}>Talent Calibration</a>
+                <a href="{{ url_for('rate.rate_page') }}" {% if request.endpoint == 'rate.rate_page' %}class="active"{% endif %}>Rate Team</a>
+                <a href="{{ url_for('calibrate.calibrate_page') }}" {% if request.endpoint == 'calibrate.calibrate_page' %}class="active"{% endif %}>Talent Calibration</a>
                 <a href="{{ url_for('bonus.bonus_calculation') }}" {% if request.endpoint == 'bonus.bonus_calculation' %}class="active"{% endif %}>Bonus Calculation</a>
                 <a href="{{ url_for('analytics.analytics') }}" {% if request.endpoint == 'analytics.analytics' %}class="active"{% endif %}>Analytics</a>
                 <a href="{{ url_for('export.export_page') }}" {% if request.endpoint == 'export.export_page' %}class="active"{% endif %}>Export</a>
