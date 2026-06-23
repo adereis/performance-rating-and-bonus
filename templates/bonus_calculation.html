@@ -5,8 +5,8 @@
 {% block extra_css %}
 <style>
     .config-panel {
-        background: #f8f9fa;
-        border: 2px solid #667eea;
+        background: var(--surface-2);
+        border: 2px solid var(--accent);
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 30px;
@@ -14,7 +14,7 @@
 
     .config-panel h3 {
         margin: 0 0 15px 0;
-        color: #2c3e50;
+        color: var(--slate);
         font-size: 18px;
     }
 
@@ -34,29 +34,29 @@
     .config-input label {
         font-size: 13px;
         font-weight: 600;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .config-input input {
         padding: 8px 12px;
-        border: 2px solid #ddd;
+        border: 2px solid var(--border);
         border-radius: 4px;
         font-size: 14px;
     }
 
     .config-input input:focus {
         outline: none;
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .config-help {
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
         margin-top: 3px;
     }
 
     .calculate-btn {
-        background: #667eea;
+        background: var(--accent);
         color: white;
         border: none;
         padding: 12px 30px;
@@ -68,7 +68,7 @@
     }
 
     .calculate-btn:hover {
-        background: #5568d3;
+        background: var(--accent-hover);
     }
 
     .summary-stats {
@@ -79,8 +79,8 @@
     }
 
     .summary-card {
-        background: white;
-        border: 2px solid #e0e0e0;
+        background: var(--surface);
+        border: 2px solid var(--border);
         border-radius: 8px;
         padding: 15px;
         text-align: center;
@@ -89,14 +89,14 @@
     .summary-card h4 {
         margin: 0 0 8px 0;
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
         text-transform: uppercase;
     }
 
     .summary-card .value {
         font-size: 24px;
         font-weight: 700;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     #budget_override_input {
@@ -105,21 +105,21 @@
     }
 
     #budget_override_input:hover {
-        background: rgba(102, 126, 234, 0.05) !important;
+        background: var(--accent-soft) !important;
         border-radius: 4px !important;
     }
 
     #budget_override_input:focus {
         outline: none;
-        background: rgba(102, 126, 234, 0.1) !important;
-        border: 1px solid #667eea !important;
+        background: var(--accent-soft) !important;
+        border: 1px solid var(--accent) !important;
         border-radius: 4px !important;
         padding: 2px 4px !important;
     }
 
     .budget-edit-hint {
         font-size: 10px;
-        color: #888;
+        color: var(--ink-faint);
         margin-top: 4px;
         opacity: 0.8;
     }
@@ -131,23 +131,23 @@
     }
 
     .bonus-table th {
-        background: #f8f9fa;
+        background: var(--surface-2);
         padding: 12px;
         text-align: left;
         font-weight: 600;
-        color: #2c3e50;
-        border-bottom: 2px solid #e0e0e0;
+        color: var(--slate);
+        border-bottom: 2px solid var(--border);
         position: sticky;
         top: 0;
     }
 
     .bonus-table td {
         padding: 10px 12px;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--border);
     }
 
     .bonus-table tr:hover {
-        background: #f8f9fa;
+        background: var(--surface-2);
     }
 
     .bonus-table th.right, .bonus-table td.right {
@@ -158,14 +158,14 @@
     .no-data-message {
         text-align: center;
         padding: 40px;
-        background: #f8f9fa;
+        background: var(--surface-2);
         border-radius: 8px;
-        color: #666;
+        color: var(--ink-soft);
     }
 
     .methodology {
-        background: #e8eaf6;
-        border-left: 4px solid #667eea;
+        background: var(--accent-soft);
+        border-left: 4px solid var(--accent);
         padding: 15px 20px;
         margin-top: 20px;
         border-radius: 4px;
@@ -173,7 +173,7 @@
 
     .methodology h4 {
         margin: 0 0 10px 0;
-        color: #2c3e50;
+        color: var(--slate);
         font-size: 14px;
     }
 
@@ -184,13 +184,13 @@
 
     .methodology li {
         font-size: 13px;
-        color: #555;
+        color: var(--ink-soft);
         margin: 5px 0;
         line-height: 1.5;
     }
 
     .methodology code {
-        background: white;
+        background: var(--surface);
         padding: 2px 6px;
         border-radius: 3px;
         font-family: 'Courier New', monospace;
@@ -206,7 +206,7 @@
     }
 
     th.sortable:hover {
-        background: #e8e9ea;
+        background: var(--surface-2);
     }
 
     th.sortable::after {
@@ -231,31 +231,31 @@
     .tabs {
         display: flex;
         gap: 2px;
-        border-bottom: 2px solid #e0e0e0;
+        border-bottom: 2px solid var(--border);
         margin-bottom: 20px;
     }
 
     .tab-button {
-        background: #f8f9fa;
+        background: var(--surface-2);
         border: none;
         padding: 12px 24px;
         font-size: 14px;
         font-weight: 600;
-        color: #666;
+        color: var(--ink-soft);
         cursor: pointer;
         border-radius: 6px 6px 0 0;
         transition: all 0.2s;
     }
 
     .tab-button:hover {
-        background: #e8e9ea;
-        color: #2c3e50;
+        background: var(--surface-2);
+        color: var(--slate);
     }
 
     .tab-button.active {
-        background: white;
-        color: #667eea;
-        border-bottom: 2px solid #667eea;
+        background: var(--surface);
+        color: var(--accent);
+        border-bottom: 2px solid var(--accent);
         margin-bottom: -2px;
     }
 
@@ -276,21 +276,21 @@
     }
 
     .team-comparison-table th {
-        background: #f8f9fa;
+        background: var(--surface-2);
         padding: 12px;
         text-align: left;
         font-weight: 600;
-        color: #2c3e50;
-        border-bottom: 2px solid #e0e0e0;
+        color: var(--slate);
+        border-bottom: 2px solid var(--border);
     }
 
     .team-comparison-table td {
         padding: 12px;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--border);
     }
 
     .team-comparison-table tr:hover {
-        background: #f8f9fa;
+        background: var(--surface-2);
     }
 
     .team-comparison-table .right {
@@ -298,23 +298,23 @@
     }
 
     .status-gain {
-        color: #27ae60;
+        color: var(--good);
         font-weight: 600;
     }
 
     .status-loss {
-        color: #dc3545;
+        color: var(--bad);
         font-weight: 600;
     }
 
     .status-neutral {
-        color: #666;
+        color: var(--ink-soft);
         font-weight: 600;
     }
 
     .comparison-intro {
-        background: #e8f4f8;
-        border-left: 4px solid #3498db;
+        background: var(--info-soft);
+        border-left: 4px solid var(--info);
         padding: 15px 20px;
         margin-bottom: 20px;
         border-radius: 4px;
@@ -322,7 +322,7 @@
 
     .comparison-intro h4 {
         margin: 0 0 8px 0;
-        color: #2c3e50;
+        color: var(--slate);
         font-size: 14px;
         font-weight: 600;
     }
@@ -330,7 +330,7 @@
     .comparison-intro p {
         margin: 0;
         font-size: 13px;
-        color: #555;
+        color: var(--ink-soft);
         line-height: 1.6;
     }
 </style>
@@ -338,7 +338,7 @@
 
 {% block content %}
 <div class="card">
-    <h2>💰 Bonus Calculation</h2>
+    <h2><svg class="icon"><use href="#i-cash"></use></svg> Bonus Calculation</h2>
 
     {% if has_data %}
     <!-- Tab navigation (only show if multi-team) -->
@@ -351,7 +351,7 @@
     {% endif %}
 
     <div class="config-panel">
-        <h3>🔧 Configuration Parameters</h3>
+        <h3><svg class="icon"><use href="#i-wrench"></use></svg> Configuration Parameters</h3>
         <form method="GET" action="{{ url_for('bonus_calculation') }}">
             <div class="config-grid">
                 <div class="config-input">
@@ -369,7 +369,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="calculate-btn">🔄 Recalculate with New Parameters</button>
+            <button type="submit" class="calculate-btn"><svg class="icon"><use href="#i-refresh"></use></svg> Recalculate with New Parameters</button>
         </form>
     </div>
 
@@ -390,11 +390,11 @@
     {% endif %}
 
     {% if pool_source == 'calculated_sum' and not pool_verified %}
-    <div class="small-team-warning" style="margin-bottom: 20px; background: #fff3cd; border-color: #ffc107;">
+    <div class="small-team-warning" style="margin-bottom: 20px; background: var(--warn-soft); border-color: var(--warn-border);">
         ⚠️ <strong>Pool amount needs verification:</strong> The bonus pool was calculated from employee targets ({{ base_pool|format_currency }})
         because the Workday export didn't contain pool metadata. This may differ from your actual allocated budget.
         Please verify and use <strong>Budget Override</strong> if different, or
-        <a href="#" onclick="verifyPool(); return false;" style="color: #856404; text-decoration: underline;">click here to confirm this amount is correct</a>.
+        <a href="#" onclick="verifyPool(); return false;" style="color: var(--warn); text-decoration: underline;">click here to confirm this amount is correct</a>.
     </div>
     {% endif %}
 
@@ -402,11 +402,11 @@
         <div class="summary-card">
             <h4 title="{% if workday_pool %}From Workday export metadata{% else %}Sum of employee bonus targets (no Workday pool in file){% endif %}">
                 {% if workday_pool %}Imported Pool{% else %}Bonus Pool{% endif %}
-                {% if workday_pool %}<span style="font-size: 10px; color: #27ae60; font-weight: normal;">✓</span>{% endif %}
+                {% if workday_pool %}<span style="font-size: 10px; color: var(--good); font-weight: normal;">✓</span>{% endif %}
             </h4>
             <div class="value">{% if workday_pool %}{{ workday_pool|format_currency }}{% else %}{{ base_pool|format_currency }}{% endif %}</div>
             {% if total_employees and team|length < total_employees and workday_pool %}
-            <div style="font-size: 11px; color: #666; margin-top: 5px;">
+            <div style="font-size: 11px; color: var(--ink-soft); margin-top: 5px;">
                 This calc: {{ base_pool|format_currency }}
             </div>
             {% endif %}
@@ -414,7 +414,7 @@
         <div class="summary-card" style="position: relative;">
             <h4 title="Only fill this if you received a different budget. Leave empty to use Imported Pool.">
                 Budget Override
-                <span style="cursor: help; opacity: 0.6; font-size: 11px;">✏️</span>
+                <span style="cursor: help; opacity: 0.6; font-size: 11px;"><svg class="icon"><use href="#i-edit"></use></svg></span>
             </h4>
             <div class="value">
                 {{ currency.symbol }}{% if currency.space %} {% endif %}<input type="text"
@@ -432,7 +432,7 @@
                     Using Imported Pool
                 {% endif %}
             </div>
-            <div style="position: absolute; bottom: 5px; right: 10px; font-size: 11px; color: #27ae60; opacity: 0; transition: opacity 0.3s;" id="budget-save-indicator">
+            <div style="position: absolute; bottom: 5px; right: 10px; font-size: 11px; color: var(--good); opacity: 0; transition: opacity 0.3s;" id="budget-save-indicator">
                 ✓ Saved
             </div>
         </div>
@@ -444,13 +444,13 @@
             <h4>Total Allocated</h4>
             <div class="value">{{ total_allocated|format_currency }}</div>
         </div>
-        <div class="summary-card" {% if total_employees and team|length < total_employees %}style="border-color: #f0ad4e;"{% endif %}>
+        <div class="summary-card" {% if total_employees and team|length < total_employees %}style="border-color: var(--warn);"{% endif %}>
             <h4>Included Employees</h4>
             <div class="value">
-                {{ team|length }} <span style="font-size: 14px; font-weight: normal; color: #666;">of {{ total_employees or team|length }}</span>
+                {{ team|length }} <span style="font-size: 14px; font-weight: normal; color: var(--ink-soft);">of {{ total_employees or team|length }}</span>
             </div>
             {% if total_employees and team|length < total_employees %}
-            <div style="font-size: 11px; color: #f0ad4e; margin-top: 5px;">
+            <div style="font-size: 11px; color: var(--warn); margin-top: 5px;">
                 ⚠️ Partial - pool uses included only
             </div>
             {% endif %}
@@ -510,9 +510,9 @@
                     </td>
                     <td class="right"><strong>{{ result.final_bonus|format_currency }}</strong></td>
                     <td class="right">
-                        <strong {% if result.is_override %}style="color: #f39c12;" title="Override percentage"
-                                {% elif result.bonus_percent_of_target > 100 %}style="color: #27ae60;"
-                                {% elif result.bonus_percent_of_target < 100 %}style="color: #dc3545;"
+                        <strong {% if result.is_override %}style="color: var(--warn);" title="Override percentage"
+                                {% elif result.bonus_percent_of_target > 100 %}style="color: var(--good);"
+                                {% elif result.bonus_percent_of_target < 100 %}style="color: var(--bad);"
                                 {% endif %}>
                             {{ "%.0f"|format(result.bonus_percent_of_target) }}%
                         </strong>
@@ -524,18 +524,18 @@
     </div>
 
     <div class="methodology">
-        <h4>📋 Calculation Methodology</h4>
+        <h4><svg class="icon"><use href="#i-clipboard"></use></svg> Calculation Methodology</h4>
         <ol>
             <li><strong>Total Pool:</strong> Sum of all bonus targets (from Workday, in your currency)</li>
             <li><strong>Performance Multiplier:</strong> If rating < 100: <code>(rating/100)^{{ params.downside_exponent }}</code>, else <code>(rating/100)^{{ params.upside_exponent }}</code></li>
             <li><strong>Raw Share:</strong> <code>Bonus Target × Perf Multiplier</code></li>
             <li><strong>Normalization:</strong> Final bonus = <code>Raw Share × Value per Share</code> (where value per share ensures total = pool)</li>
         </ol>
-        <p style="margin-top: 10px; font-size: 13px; color: #555;">
-            📖 For detailed explanation of the bonus algorithm, see
+        <p style="margin-top: 10px; font-size: 13px; color: var(--ink-soft);">
+            <svg class="icon"><use href="#i-book"></use></svg> For detailed explanation of the bonus algorithm, see
             <a href="https://github.com/adereis/performance-rating-and-bonus/blob/main/docs/BONUS_CALCULATION_README.md"
                target="_blank"
-               style="color: #667eea; text-decoration: underline;">
+               style="color: var(--accent); text-decoration: underline;">
                 Bonus Calculation Documentation on GitHub
             </a>
         </p>
@@ -601,18 +601,18 @@
         </div>
 
         <div class="methodology" style="margin-top: 20px;">
-            <h4>📋 Understanding the Comparison</h4>
+            <h4><svg class="icon"><use href="#i-clipboard"></use></svg> Understanding the Comparison</h4>
             <ul style="margin: 5px 0; padding-left: 20px;">
-                <li style="font-size: 13px; color: #555; margin: 5px 0; line-height: 1.5;">
+                <li style="font-size: 13px; color: var(--ink-soft); margin: 5px 0; line-height: 1.5;">
                     <strong>Team-Level Norm:</strong> Normalization factor if the team was calculated in isolation
                 </li>
-                <li style="font-size: 13px; color: #555; margin: 5px 0; line-height: 1.5;">
+                <li style="font-size: 13px; color: var(--ink-soft); margin: 5px 0; line-height: 1.5;">
                     <strong>Org-Level Norm:</strong> Actual normalization factor when all teams are combined
                 </li>
-                <li style="font-size: 13px; color: #555; margin: 5px 0; line-height: 1.5;">
+                <li style="font-size: 13px; color: var(--ink-soft); margin: 5px 0; line-height: 1.5;">
                     <strong>Budget Impact:</strong> Dollar amount gained or lost due to organization-level normalization
                 </li>
-                <li style="font-size: 13px; color: #555; margin: 5px 0; line-height: 1.5;">
+                <li style="font-size: 13px; color: var(--ink-soft); margin: 5px 0; line-height: 1.5;">
                     Teams with higher average ratings tend to gain budget, while teams with lower averages tend to contribute budget
                 </li>
             </ul>
@@ -662,11 +662,11 @@
                         </td>
                         <td class="right">
                             {% if diff > 0 %}
-                            <span style="color: #27ae60;">↑</span>
+                            <span style="color: var(--good);">↑</span>
                             {% elif diff < 0 %}
-                            <span style="color: #dc3545;">↓</span>
+                            <span style="color: var(--bad);">↓</span>
                             {% else %}
-                            <span style="color: #666;">=</span>
+                            <span style="color: var(--ink-soft);">=</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -683,16 +683,16 @@
     <!-- No data state -->
     <div class="no-data-message">
         {% if missing_bonus_data %}
-        <h3>📋 Missing Bonus Target Data</h3>
+        <h3><svg class="icon"><use href="#i-clipboard"></use></svg> Missing Bonus Target Data</h3>
         <p>Bonus calculation requires employee bonus target information from Workday.</p>
         <p style="margin-top: 15px;">
             <a href="{{ url_for('import_page') }}" class="btn">Import Bonus Data</a>
         </p>
-        <p style="margin-top: 20px; font-size: 13px; color: #888;">
+        <p style="margin-top: 20px; font-size: 13px; color: var(--ink-faint);">
             Your Workday export should include columns for bonus targets (e.g., "Bonus Target - Local Currency").
         </p>
         {% else %}
-        <h3>📊 No Rated Employees</h3>
+        <h3><svg class="icon"><use href="#i-chart-bar"></use></svg> No Rated Employees</h3>
         <p>Employees must have performance ratings before calculation can be performed.</p>
         <p style="margin-top: 15px;">
             <a href="{{ url_for('rate_page') }}" class="btn">Go to Rating Page</a>

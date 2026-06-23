@@ -14,47 +14,47 @@
         border-radius: 12px;
         padding: 60px 40px;
         text-align: center;
-        background: #fafafa;
+        background: var(--surface-2);
         cursor: pointer;
         transition: all 0.3s ease;
         margin-bottom: 30px;
     }
 
     .upload-zone:hover, .upload-zone.dragover {
-        border-color: #667eea;
-        background: rgba(102, 126, 234, 0.05);
+        border-color: var(--accent);
+        background: var(--accent-soft);
     }
 
     .upload-zone.has-file {
-        border-color: #27ae60;
-        background: rgba(39, 174, 96, 0.05);
+        border-color: var(--good);
+        background: var(--good-soft);
     }
 
     .upload-zone svg {
         width: 64px;
         height: 64px;
-        color: #999;
+        color: var(--ink-faint);
         margin-bottom: 20px;
     }
 
     .upload-zone.has-file svg {
-        color: #27ae60;
+        color: var(--good);
     }
 
     .upload-zone h3 {
         font-size: 18px;
-        color: #333;
+        color: var(--ink);
         margin-bottom: 10px;
     }
 
     .upload-zone p {
-        color: #666;
+        color: var(--ink-soft);
         font-size: 14px;
     }
 
     .upload-zone .file-name {
         font-weight: 600;
-        color: #27ae60;
+        color: var(--good);
         margin-top: 15px;
     }
 
@@ -63,8 +63,8 @@
     }
 
     .import-options {
-        background: white;
-        border: 1px solid #e0e0e0;
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 25px;
         margin-bottom: 25px;
@@ -72,7 +72,7 @@
 
     .import-options h4 {
         font-size: 16px;
-        color: #2c3e50;
+        color: var(--slate);
         margin-bottom: 20px;
     }
 
@@ -84,7 +84,7 @@
         display: flex;
         align-items: flex-start;
         padding: 15px;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border);
         border-radius: 8px;
         cursor: pointer;
         transition: all 0.2s;
@@ -92,8 +92,8 @@
     }
 
     .option-group label:hover {
-        border-color: #667eea;
-        background: rgba(102, 126, 234, 0.02);
+        border-color: var(--accent);
+        background: var(--accent-soft);
     }
 
     .option-group input[type="radio"] {
@@ -102,12 +102,12 @@
     }
 
     .option-group input[type="radio"]:checked + .option-content {
-        color: #667eea;
+        color: var(--accent);
     }
 
     .option-group label:has(input:checked) {
-        border-color: #667eea;
-        background: rgba(102, 126, 234, 0.05);
+        border-color: var(--accent);
+        background: var(--accent-soft);
     }
 
     .option-content strong {
@@ -117,13 +117,13 @@
 
     .option-content span {
         font-size: 13px;
-        color: #666;
+        color: var(--ink-soft);
     }
 
     .current-options {
         margin-top: 20px;
         padding: 15px;
-        background: #f8f9fa;
+        background: var(--surface-2);
         border-radius: 8px;
     }
 
@@ -147,20 +147,20 @@
 
     .clear-data-option .option-text strong {
         display: block;
-        color: #2c3e50;
+        color: var(--slate);
         margin-bottom: 4px;
     }
 
     .clear-data-option .option-text span {
         font-size: 13px;
-        color: #666;
+        color: var(--ink-soft);
     }
 
     .period-fields {
         display: none;
         margin-top: 20px;
         padding: 20px;
-        background: #f8f9fa;
+        background: var(--surface-2);
         border-radius: 8px;
     }
 
@@ -182,32 +182,32 @@
         display: block;
         font-size: 14px;
         font-weight: 600;
-        color: #333;
+        color: var(--ink);
         margin-bottom: 8px;
     }
 
     .period-fields input {
         width: 100%;
         padding: 10px 12px;
-        border: 1px solid #ddd;
+        border: 1px solid var(--border);
         border-radius: 6px;
         font-size: 14px;
     }
 
     .period-fields input:focus {
         outline: none;
-        border-color: #667eea;
+        border-color: var(--accent);
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
 
     .period-fields .hint {
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
         margin-top: 5px;
     }
 
     .detected-period {
-        background: linear-gradient(135deg, #e8f4fd 0%, #f0f7ff 100%);
+        background: var(--surface);
         border: 1px solid #b8d4f0;
         border-radius: 8px;
         padding: 20px;
@@ -223,14 +223,14 @@
 
     .period-badge .period-label {
         font-size: 14px;
-        color: #555;
+        color: var(--ink-soft);
     }
 
     .period-badge .period-value {
         font-size: 18px;
         font-weight: 700;
-        color: #1976d2;
-        background: white;
+        color: var(--info);
+        background: var(--surface);
         padding: 4px 12px;
         border-radius: 4px;
         border: 1px solid #b8d4f0;
@@ -238,21 +238,21 @@
 
     .period-suggestion {
         font-size: 14px;
-        color: #1565c0;
+        color: var(--info);
     }
 
     .period-suggestion.current-period {
-        color: #2e7d32;
+        color: var(--good);
     }
 
     .period-suggestion.historical-period {
-        color: #f57c00;
+        color: var(--warn);
     }
 
     .analysis-results {
         display: none;
-        background: white;
-        border: 1px solid #e0e0e0;
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 25px;
         margin-bottom: 25px;
@@ -264,7 +264,7 @@
 
     .analysis-results h4 {
         font-size: 16px;
-        color: #2c3e50;
+        color: var(--slate);
         margin-bottom: 20px;
         display: flex;
         align-items: center;
@@ -277,15 +277,15 @@
     }
 
     .analysis-results h4 .status-icon.valid {
-        color: #27ae60;
+        color: var(--good);
     }
 
     .analysis-results h4 .status-icon.warning {
-        color: #f39c12;
+        color: var(--warn);
     }
 
     .analysis-results h4 .status-icon.error {
-        color: #e74c3c;
+        color: var(--bad);
     }
 
     .analysis-grid {
@@ -297,7 +297,7 @@
 
     .analysis-item {
         padding: 15px;
-        background: #f8f9fa;
+        background: var(--surface-2);
         border-radius: 6px;
         text-align: center;
     }
@@ -305,28 +305,28 @@
     .analysis-item .value {
         font-size: 24px;
         font-weight: 700;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .analysis-item .label {
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
         text-transform: uppercase;
         margin-top: 5px;
     }
 
     .analysis-item.success .value {
-        color: #27ae60;
+        color: var(--good);
     }
 
     .analysis-item.warning .value {
-        color: #f39c12;
+        color: var(--warn);
     }
 
     .overwrite-warning {
         display: none;
-        background: #fff3cd;
-        border: 1px solid #ffc107;
+        background: var(--warn-soft);
+        border: 1px solid var(--warn-border);
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 20px;
@@ -337,7 +337,7 @@
     }
 
     .overwrite-warning h5 {
-        color: #856404;
+        color: var(--warn);
         margin-bottom: 10px;
         display: flex;
         align-items: center;
@@ -345,7 +345,7 @@
     }
 
     .overwrite-warning p {
-        color: #856404;
+        color: var(--warn);
         font-size: 14px;
         margin-bottom: 15px;
     }
@@ -355,14 +355,14 @@
         align-items: center;
         gap: 10px;
         font-size: 14px;
-        color: #856404;
+        color: var(--warn);
         cursor: pointer;
     }
 
     .allocation-notice {
         display: none;
-        background: #e8f4fd;
-        border: 1px solid #3498db;
+        background: var(--info-soft);
+        border: 1px solid var(--info);
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 20px;
@@ -373,7 +373,7 @@
     }
 
     .allocation-notice h5 {
-        color: #1e5f8a;
+        color: var(--info);
         margin-bottom: 10px;
         display: flex;
         align-items: center;
@@ -381,17 +381,17 @@
     }
 
     .allocation-notice p {
-        color: #1e5f8a;
+        color: var(--info);
         font-size: 14px;
         margin-bottom: 10px;
     }
 
     .allocation-notice .employee-list {
-        background: #fff;
+        background: var(--surface);
         border-radius: 4px;
         padding: 10px 15px;
         font-size: 13px;
-        color: #2c3e50;
+        color: var(--slate);
         max-height: 120px;
         overflow-y: auto;
     }
@@ -422,12 +422,12 @@
     }
 
     .btn-primary {
-        background: #667eea;
+        background: var(--accent);
         color: white;
     }
 
     .btn-primary:hover:not(:disabled) {
-        background: #5568d3;
+        background: var(--accent-hover);
     }
 
     .btn-primary:disabled {
@@ -436,13 +436,13 @@
     }
 
     .btn-secondary {
-        background: white;
-        color: #666;
-        border: 1px solid #ddd;
+        background: var(--surface);
+        color: var(--ink-soft);
+        border: 1px solid var(--border);
     }
 
     .btn-secondary:hover {
-        background: #f5f5f5;
+        background: var(--surface-2);
     }
 
     .import-progress {
@@ -458,8 +458,8 @@
     .import-progress .spinner {
         width: 48px;
         height: 48px;
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #667eea;
+        border: 4px solid var(--surface-2);
+        border-top: 4px solid var(--accent);
         border-radius: 50%;
         animation: spin 1s linear infinite;
         margin: 0 auto 20px;
@@ -472,8 +472,8 @@
 
     .import-results {
         display: none;
-        background: white;
-        border: 1px solid #e0e0e0;
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 30px;
         text-align: center;
@@ -484,11 +484,11 @@
     }
 
     .import-results.success {
-        border-color: #27ae60;
+        border-color: var(--good);
     }
 
     .import-results.error {
-        border-color: #e74c3c;
+        border-color: var(--bad);
     }
 
     .import-results svg {
@@ -498,11 +498,11 @@
     }
 
     .import-results.success svg {
-        color: #27ae60;
+        color: var(--good);
     }
 
     .import-results.error svg {
-        color: #e74c3c;
+        color: var(--bad);
     }
 
     .import-results h3 {
@@ -511,7 +511,7 @@
     }
 
     .import-results .summary {
-        color: #666;
+        color: var(--ink-soft);
         margin-bottom: 25px;
     }
 
@@ -529,12 +529,12 @@
     .import-results .summary-item .value {
         font-size: 28px;
         font-weight: 700;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .import-results .summary-item .label {
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
     }
 
     .import-results .actions {
@@ -544,7 +544,7 @@
     }
 
     .import-intro {
-        color: #555;
+        color: var(--ink-soft);
         font-size: 15px;
         line-height: 1.6;
         margin-bottom: 25px;
@@ -552,37 +552,37 @@
 
     .import-help {
         margin-top: 20px;
-        border: 1px solid #e0e0e0;
+        border: 1px solid var(--border);
         border-radius: 8px;
-        background: #fafafa;
+        background: var(--surface-2);
     }
 
     .import-help summary {
         padding: 15px 20px;
         cursor: pointer;
         font-weight: 600;
-        color: #555;
+        color: var(--ink-soft);
         display: flex;
         align-items: center;
         gap: 10px;
     }
 
     .import-help summary:hover {
-        color: #333;
+        color: var(--ink);
     }
 
     .import-help summary::marker {
-        color: #667eea;
+        color: var(--accent);
     }
 
     .import-help-content {
         padding: 0 20px 20px;
-        border-top: 1px solid #e8e8e8;
+        border-top: 1px solid var(--border);
     }
 
     .import-help h5 {
         font-size: 14px;
-        color: #2c3e50;
+        color: var(--slate);
         margin: 20px 0 10px;
     }
 
@@ -593,13 +593,13 @@
     .import-help ul {
         margin: 0;
         padding-left: 20px;
-        color: #555;
+        color: var(--ink-soft);
         font-size: 13px;
         line-height: 1.7;
     }
 
     .import-help code {
-        background: #e8e8e8;
+        background: var(--border);
         padding: 2px 6px;
         border-radius: 3px;
         font-size: 12px;
@@ -608,16 +608,16 @@
     .import-help .help-note {
         margin-top: 15px;
         padding: 12px 15px;
-        background: #e8f4fd;
+        background: var(--info-soft);
         border-radius: 6px;
         font-size: 13px;
-        color: #1565c0;
+        color: var(--info);
     }
 
     /* Workday report reference styling */
     .workday-reports-info {
-        background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
-        border: 1px solid #ffca28;
+        background: var(--warn-soft);
+        border: 1px solid var(--warn-border);
         border-radius: 8px;
         padding: 15px 18px;
         margin-bottom: 25px;
@@ -633,29 +633,29 @@
 
     .workday-reports-label {
         font-weight: 600;
-        color: #f57c00;
+        color: var(--warn);
     }
 
     .workday-reports-info code {
-        background: white;
+        background: var(--surface);
         padding: 4px 10px;
         border-radius: 4px;
         font-size: 13px;
-        color: #5d4037;
-        border: 1px solid #ffe082;
+        color: var(--ink);
+        border: 1px solid var(--warn-border);
     }
 
     .workday-reports-divider {
-        color: #ffb300;
+        color: var(--warn);
         font-weight: 300;
     }
 
     .workday-export-hint {
         margin-top: 12px;
         padding-top: 12px;
-        border-top: 1px solid #ffe082;
+        border-top: 1px solid var(--warn-border);
         font-size: 13px;
-        color: #795548;
+        color: var(--warn);
     }
 
     /* Import Change Log */
@@ -664,8 +664,8 @@
         text-align: left;
     }
     .import-changelog details {
-        background: white;
-        border: 1px solid #e0e0e0;
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: 8px;
         margin-bottom: 0.75rem;
         overflow: hidden;
@@ -686,50 +686,50 @@
         transition: transform 0.2s;
     }
     .import-changelog details[open] summary::before { transform: rotate(90deg); }
-    .import-changelog summary:hover { background: #f8f9fa; }
+    .import-changelog summary:hover { background: var(--surface-2); }
     .import-changelog .badge {
         min-width: 24px; height: 24px;
         padding: 0 8px; border-radius: 12px;
         font-size: 12px; font-weight: 600; color: white;
         display: inline-flex; align-items: center; justify-content: center;
     }
-    .changelog-new summary { border-left: 4px solid #27ae60; }
-    .changelog-new .badge { background: #27ae60; }
-    .changelog-updated summary { border-left: 4px solid #3498db; }
-    .changelog-updated .badge { background: #3498db; }
-    .changelog-preserved summary { border-left: 4px solid #e67e22; }
-    .changelog-preserved .badge { background: #e67e22; }
+    .changelog-new summary { border-left: 4px solid var(--good); }
+    .changelog-new .badge { background: var(--good); }
+    .changelog-updated summary { border-left: 4px solid var(--info); }
+    .changelog-updated .badge { background: var(--info); }
+    .changelog-preserved summary { border-left: 4px solid var(--warn); }
+    .changelog-preserved .badge { background: var(--warn); }
 
     .changelog-content {
         padding: 12px 16px;
-        border-top: 1px solid #eee;
+        border-top: 1px solid var(--border);
         max-height: 400px;
         overflow-y: auto;
     }
     .changelog-employee {
         margin-bottom: 12px; padding-bottom: 12px;
-        border-bottom: 1px solid #f5f5f5;
+        border-bottom: 1px solid var(--border);
     }
     .changelog-employee:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
-    .changelog-emp-name { font-weight: 600; color: #2c3e50; }
-    .changelog-emp-meta { font-size: 12px; color: #888; margin-bottom: 6px; }
+    .changelog-emp-name { font-weight: 600; color: var(--slate); }
+    .changelog-emp-meta { font-size: 12px; color: var(--ink-faint); margin-bottom: 6px; }
     .changelog-field {
         font-size: 13px; margin: 4px 0;
         display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline;
     }
-    .changelog-field-name { font-weight: 500; color: #555; min-width: 140px; }
-    .changelog-field-old { color: #999; text-decoration: line-through; }
-    .changelog-field-new { color: #27ae60; font-weight: 500; }
+    .changelog-field-name { font-weight: 500; color: var(--ink-soft); min-width: 140px; }
+    .changelog-field-old { color: var(--ink-faint); text-decoration: line-through; }
+    .changelog-field-new { color: var(--good); font-weight: 500; }
     .changelog-arrow { color: #ccc; margin: 0 4px; }
 
     /* Conflict styling */
     .changelog-conflict {
-        background: #fef9e7; border: 1px solid #f7dc6f;
+        background: var(--warn-soft); border: 1px solid var(--warn-border);
         border-radius: 6px; padding: 8px 12px; margin: 6px 0;
     }
     .changelog-conflict-row { font-size: 13px; margin: 2px 0; }
-    .changelog-kept { color: #27ae60; font-weight: 600; }
-    .changelog-ignored { color: #999; }
+    .changelog-kept { color: var(--good); font-weight: 600; }
+    .changelog-ignored { color: var(--ink-faint); }
     .changelog-label { font-size: 11px; text-transform: uppercase; margin-right: 6px; }
     /* Pool Verification Modal Styles */
     .modal-overlay {
@@ -750,7 +750,7 @@
     }
 
     .modal {
-        background: white;
+        background: var(--surface);
         border-radius: 12px;
         padding: 30px;
         max-width: 500px;
@@ -760,7 +760,7 @@
 
     .modal h3 {
         margin: 0 0 15px 0;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .modal .form-group {
@@ -771,13 +771,13 @@
         display: block;
         margin-bottom: 8px;
         font-weight: 600;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .modal input[type="text"] {
         width: 100%;
         padding: 12px;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border);
         border-radius: 6px;
         font-size: 16px;
         box-sizing: border-box;
@@ -785,17 +785,17 @@
 
     .modal input:focus {
         outline: none;
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .modal .hint {
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
         margin-top: 5px;
     }
 
     .modal .summary-box {
-        background: #f8f9fa;
+        background: var(--surface-2);
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 20px;
@@ -805,24 +805,24 @@
     .modal .summary-box h4 {
         margin: 0 0 10px 0;
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
         text-transform: uppercase;
     }
 
     .modal .summary-item .label {
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
     }
 
     .modal .summary-item .value {
         font-size: 28px;
         font-weight: 700;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .modal .warning-box {
-        background: #fff3cd;
-        border: 1px solid #ffc107;
+        background: var(--warn-soft);
+        border: 1px solid var(--warn-border);
         border-radius: 8px;
         padding: 15px;
         margin-bottom: 20px;
@@ -830,7 +830,7 @@
 
     .modal .warning-box p {
         margin: 0;
-        color: #856404;
+        color: var(--warn);
         font-size: 14px;
     }
 
@@ -841,9 +841,9 @@
     }
 
     .modal .btn-secondary {
-        background: white;
-        color: #666;
-        border: 1px solid #ddd;
+        background: var(--surface);
+        color: var(--ink-soft);
+        border: 1px solid var(--border);
         padding: 12px 24px;
         border-radius: 6px;
         font-size: 14px;
@@ -852,11 +852,11 @@
     }
 
     .modal .btn-secondary:hover {
-        background: #f5f5f5;
+        background: var(--surface-2);
     }
 
     .modal .btn-primary {
-        background: #667eea;
+        background: var(--accent);
         color: white;
         border: none;
         padding: 12px 24px;
@@ -867,11 +867,11 @@
     }
 
     .modal .btn-primary:hover {
-        background: #5568d3;
+        background: var(--accent-hover);
     }
 
     .modal .btn-primary:disabled {
-        background: #999;
+        background: var(--ink-faint);
         cursor: not-allowed;
     }
 
@@ -883,13 +883,13 @@
     .modal .success-message svg {
         width: 64px;
         height: 64px;
-        color: #27ae60;
+        color: var(--good);
         margin-bottom: 15px;
     }
 
     .modal .success-message h4 {
         margin: 0 0 10px 0;
-        color: #2c3e50;
+        color: var(--slate);
     }
 </style>
 {% endblock %}
@@ -998,7 +998,7 @@
     }
 
     .demo-generate-intro {
-        color: #666;
+        color: var(--ink-soft);
         font-size: 16px;
         margin-bottom: 30px;
     }
@@ -1011,8 +1011,8 @@
     }
 
     .demo-scenario-card {
-        background: #f8f9fa;
-        border: 2px solid #e0e0e0;
+        background: var(--surface-2);
+        border: 2px solid var(--border);
         border-radius: 12px;
         padding: 30px;
         text-align: center;
@@ -1021,7 +1021,7 @@
     }
 
     .demo-scenario-card:hover {
-        border-color: #667eea;
+        border-color: var(--accent);
         transform: translateY(-3px);
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
     }
@@ -1030,7 +1030,7 @@
         width: 80px;
         height: 80px;
         margin: 0 auto 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--accent-gradient);
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -1043,12 +1043,12 @@
 
     .demo-scenario-card h3 {
         margin: 0 0 10px 0;
-        color: #2c3e50;
+        color: var(--slate);
         font-size: 22px;
     }
 
     .scenario-description {
-        color: #666;
+        color: var(--ink-soft);
         font-size: 16px;
         margin-bottom: 20px;
     }
@@ -1062,9 +1062,9 @@
 
     .scenario-features li {
         padding: 8px 0;
-        color: #555;
+        color: var(--ink-soft);
         font-size: 14px;
-        border-bottom: 1px solid #e8e8e8;
+        border-bottom: 1px solid var(--border);
     }
 
     .scenario-features li:last-child {
@@ -1073,7 +1073,7 @@
 
     .scenario-features li::before {
         content: '✓ ';
-        color: #27ae60;
+        color: var(--good);
         font-weight: bold;
     }
 
@@ -1090,16 +1090,16 @@
         align-items: flex-start;
         gap: 12px;
         padding: 15px 20px;
-        background: #f8f9fa;
-        border: 2px solid #e0e0e0;
+        background: var(--surface-2);
+        border: 2px solid var(--border);
         border-radius: 8px;
         cursor: pointer;
         transition: all 0.2s;
     }
 
     .demo-option-checkbox:hover {
-        border-color: #667eea;
-        background: rgba(102, 126, 234, 0.05);
+        border-color: var(--accent);
+        background: var(--accent-soft);
     }
 
     .demo-option-checkbox input[type="checkbox"] {
@@ -1107,7 +1107,7 @@
         height: 20px;
         margin-top: 2px;
         cursor: pointer;
-        accent-color: #667eea;
+        accent-color: var(--accent);
     }
 
     .demo-option-checkbox .option-text {
@@ -1116,13 +1116,13 @@
 
     .demo-option-checkbox .option-text strong {
         display: block;
-        color: #2c3e50;
+        color: var(--slate);
         margin-bottom: 4px;
     }
 
     .demo-option-checkbox .option-text span {
         font-size: 13px;
-        color: #666;
+        color: var(--ink-soft);
     }
 
     .demo-note {
@@ -1130,9 +1130,9 @@
         align-items: flex-start;
         gap: 12px;
         padding: 15px 20px;
-        background: #e8f4fd;
+        background: var(--info-soft);
         border-radius: 8px;
-        color: #1976d2;
+        color: var(--info);
         font-size: 14px;
     }
 
@@ -1144,8 +1144,8 @@
     .demo-success {
         text-align: center;
         padding: 40px 20px;
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        border: 2px solid #27ae60;
+        background: var(--good-soft);
+        border: 2px solid var(--good);
         border-radius: 12px;
         margin-top: 30px;
     }
@@ -1154,7 +1154,7 @@
         width: 80px;
         height: 80px;
         margin: 0 auto 20px;
-        background: #27ae60;
+        background: var(--good);
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -1166,13 +1166,13 @@
     }
 
     .demo-success h3 {
-        color: #155724;
+        color: var(--good);
         font-size: 24px;
         margin: 0 0 10px 0;
     }
 
     .demo-success p {
-        color: #155724;
+        color: var(--good);
         margin: 0 0 25px 0;
     }
 
@@ -1186,14 +1186,14 @@
     .btn-link {
         background: none;
         border: none;
-        color: #155724;
+        color: var(--good);
         text-decoration: underline;
         cursor: pointer;
         font-size: 14px;
     }
 
     .btn-link:hover {
-        color: #0d3c14;
+        color: var(--good);
     }
 
     .demo-local-cta {
@@ -1205,7 +1205,7 @@
     }
 
     .demo-local-cta p {
-        color: #666;
+        color: var(--ink-soft);
         margin-bottom: 20px;
     }
 
@@ -1517,17 +1517,17 @@ function resetDemoForm() {
                     <div class="label">Full Details</div>
                 </div>
             </div>
-            <div id="derivationWarning" class="alert alert-warning" style="display: none; margin-top: 1rem; text-align: left; padding: 1rem; border-radius: 0.5rem; background: #fff3cd; border: 1px solid #ffc107;">
-                <strong>⚠️ Derivation Mismatch Detected</strong>
+            <div id="derivationWarning" class="alert alert-warning" style="display: none; margin-top: 1rem; text-align: left; padding: 1rem; border-radius: 0.5rem; background: var(--warn-soft); border: 1px solid var(--warn-border);">
+                <strong><svg class="icon"><use href="#i-alert-triangle"></use></svg> Derivation Mismatch Detected</strong>
                 <p style="margin: 0.5rem 0; font-size: 0.9rem;">
                     <span id="mismatchCount">0</span> employee(s) have Overall Performance that doesn't match what we derive from What/How.
                     This may indicate Workday's logic differs from our implementation.
                 </p>
                 <details style="font-size: 0.85rem;">
-                    <summary style="cursor: pointer; color: #856404;">Show details</summary>
+                    <summary style="cursor: pointer; color: var(--warn);">Show details</summary>
                     <ul id="mismatchList" style="margin: 0.5rem 0; padding-left: 1.5rem; max-height: 150px; overflow-y: auto;"></ul>
-                    <p style="margin: 0.5rem 0; font-size: 0.8rem; color: #666;">
-                        Please <a href="https://github.com/adereis/performance-rating-and-bonus/issues" target="_blank" style="color: #856404;">report this issue</a> so we can update our derivation logic.
+                    <p style="margin: 0.5rem 0; font-size: 0.8rem; color: var(--ink-soft);">
+                        Please <a href="https://github.com/adereis/performance-rating-and-bonus/issues" target="_blank" style="color: var(--warn);">report this issue</a> so we can update our derivation logic.
                     </p>
                 </details>
             </div>
@@ -1559,7 +1559,7 @@ function resetDemoForm() {
     <div class="modal">
         <div id="poolVerifyForm">
             <h3>Verify Your Bonus Pool</h3>
-            <p style="color: #666; margin-bottom: 20px;">
+            <p style="color: var(--ink-soft); margin-bottom: 20px;">
                 The bonus pool was calculated by summing employee targets.
                 Please verify this matches your actual Workday allocation.
             </p>
