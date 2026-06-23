@@ -1845,10 +1845,16 @@ let tenetsConfig = null;
 
 function loadTenets() {
     fetch('/api/tenets')
-        .then(response => response.json())
+        // A 404 means no tenets.json is configured — a normal state, not an error.
+        .then(response => response.ok ? response.json() : { tenets: [], unconfigured: true })
         .then(data => {
-            tenetsConfig = data;
+            tenetsConfig = (data && Array.isArray(data.tenets)) ? data : { tenets: [] };
             renderTenets();
+            if (data && data.unconfigured) {
+                document.querySelectorAll('.loading-tenets').forEach(el => {
+                    el.textContent = 'No tenets configured.';
+                });
+            }
         })
         .catch(error => {
             console.error('Error loading tenets:', error);
@@ -1900,6 +1906,7 @@ function renderTenets() {
         let hasCrossRef = false;
 
         // Render tenet checkboxes for both lists
+        if (!tenetsConfig || !Array.isArray(tenetsConfig.tenets)) return;
         tenetsConfig.tenets.forEach(tenet => {
             if (!tenet.active) return;
 

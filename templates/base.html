@@ -420,14 +420,16 @@
                 return Promise.resolve(modalTenetsConfig);
             }
             return fetch('/api/tenets')
-                .then(response => response.json())
+                // A 404 means no tenets.json is configured — a normal state, not an error.
+                .then(response => response.ok ? response.json() : { tenets: [] })
                 .then(data => {
-                    modalTenetsConfig = data;
-                    return data;
+                    modalTenetsConfig = (data && Array.isArray(data.tenets)) ? data : { tenets: [] };
+                    return modalTenetsConfig;
                 })
                 .catch(error => {
                     console.error('Error loading tenets:', error);
-                    return null;
+                    modalTenetsConfig = { tenets: [] };
+                    return modalTenetsConfig;
                 });
         }
 
