@@ -187,7 +187,7 @@ class TestMentorshipAnalyticsRoute:
 
         assert response.status_code == 200
         html = response.data.decode()
-        assert '🤝 Mentorship' in html  # Combined card header
+        assert 'Mentorship' in html  # Combined card header (icon + text)
         assert 'Being Mentored' in html
         assert 'Mentoring Others' in html
 
