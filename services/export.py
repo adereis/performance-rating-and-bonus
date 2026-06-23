@@ -273,7 +273,7 @@ def prepare_snapshot_bonus_row(emp, tenets_map, bonus_results_by_id):
         emp.get('performance_rating_percent', ''),
         get_rating_category(emp.get('performance_rating_percent')),
         bonus_result.get('final_bonus', ''),
-        bonus_result.get('percent_of_target', ''),
+        bonus_result.get('bonus_percent_of_target', ''),
         emp.get('justification', ''),
         strengths_text,
         improvements_text,

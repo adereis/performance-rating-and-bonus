@@ -3967,7 +3967,7 @@ def export_snapshot_xlsx():
         ws_bonus.cell(row=row_idx, column=3, value=emp.get('performance_rating_percent', ''))
         ws_bonus.cell(row=row_idx, column=4, value=get_rating_category(emp.get('performance_rating_percent')))
         ws_bonus.cell(row=row_idx, column=5, value=bonus_result.get('final_bonus', ''))
-        ws_bonus.cell(row=row_idx, column=6, value=bonus_result.get('percent_of_target', ''))
+        ws_bonus.cell(row=row_idx, column=6, value=bonus_result.get('bonus_percent_of_target', ''))
         ws_bonus.cell(row=row_idx, column=7, value=emp.get('justification', ''))
         ws_bonus.cell(row=row_idx, column=8, value=strengths_text)
         ws_bonus.cell(row=row_idx, column=9, value=improvements_text)
@@ -4265,7 +4265,7 @@ def export_snapshot_csv():
                 emp.get('performance_rating_percent', ''),
                 get_rating_category(emp.get('performance_rating_percent')),
                 bonus_result.get('final_bonus', ''),
-                bonus_result.get('percent_of_target', ''),
+                bonus_result.get('bonus_percent_of_target', ''),
                 emp.get('justification', ''),
                 strengths_text,
                 improvements_text,
