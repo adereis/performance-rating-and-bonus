@@ -575,13 +575,13 @@
                         ${talentStrengths.length > 0 ? `
                             <div class="talent-field">
                                 <div class="talent-field-label">Strengths</div>
-                                <div class="talent-field-value">${escapeHtml(getTenetNames(talentStrengths))}</div>
+                                <div class="talent-field-value">${App.escapeHtml(getTenetNames(talentStrengths))}</div>
                             </div>
                         ` : ''}
                         ${talentImprovements.length > 0 ? `
                             <div class="talent-field">
                                 <div class="talent-field-label">Areas for Improvement</div>
-                                <div class="talent-field-value">${escapeHtml(getTenetNames(talentImprovements))}</div>
+                                <div class="talent-field-value">${App.escapeHtml(getTenetNames(talentImprovements))}</div>
                             </div>
                         ` : ''}
                     </div>
@@ -750,7 +750,7 @@
                                 <label>Overall Performance</label>
                                 <div id="modal_talent_overall_display" class="derived-field-display">
                                     ${employee.talent_overall_perf ?
-                                        `<span class="talent-overall-perf ${getOverallPerfClass(employee.talent_overall_perf)}">${escapeHtml(employee.talent_overall_perf)}</span>` :
+                                        `<span class="talent-overall-perf ${getOverallPerfClass(employee.talent_overall_perf)}">${App.escapeHtml(employee.talent_overall_perf)}</span>` :
                                         '<span class="talent-field-value empty">Select What and How above</span>'
                                     }
                                 </div>
@@ -804,7 +804,7 @@
                                     ${employee.mentor ? `
                                         <div class="cross-cycle-hint show">
                                             <span class="hint-label">From Bonus Cycle:</span>
-                                            <span class="hint-value">${escapeHtml(employee.mentor)}</span>
+                                            <span class="hint-value">${App.escapeHtml(employee.mentor)}</span>
                                         </div>
                                     ` : ''}
                                 </div>
@@ -817,7 +817,7 @@
                                     ${employee.mentees ? `
                                         <div class="cross-cycle-hint show">
                                             <span class="hint-label">From Bonus Cycle:</span>
-                                            <span class="hint-value">${escapeHtml(employee.mentees)}</span>
+                                            <span class="hint-value">${App.escapeHtml(employee.mentees)}</span>
                                         </div>
                                     ` : ''}
                                 </div>
@@ -851,7 +851,7 @@
                             <div class="alignment-arrow">↔</div>
                             <div class="alignment-item">
                                 <div class="alignment-item-label">Overall Performance</div>
-                                <div class="alignment-item-value">${escapeHtml(employee.talent_overall_perf)}</div>
+                                <div class="alignment-item-value">${App.escapeHtml(employee.talent_overall_perf)}</div>
                             </div>
                             <div class="alignment-result">
                                 <span class="alignment-result-badge ${alignment.status}">
@@ -955,7 +955,7 @@
                                         ${employee.talent_mentor ? `
                                             <div class="cross-cycle-hint show">
                                                 <span class="hint-label">From Talent Calibration:</span>
-                                                <span class="hint-value">${escapeHtml(employee.talent_mentor)}</span>
+                                                <span class="hint-value">${App.escapeHtml(employee.talent_mentor)}</span>
                                             </div>
                                         ` : ''}
                                     </div>
@@ -968,7 +968,7 @@
                                         ${employee.talent_mentees ? `
                                             <div class="cross-cycle-hint show">
                                                 <span class="hint-label">From Talent Calibration:</span>
-                                                <span class="hint-value">${escapeHtml(employee.talent_mentees)}</span>
+                                                <span class="hint-value">${App.escapeHtml(employee.talent_mentees)}</span>
                                             </div>
                                         ` : ''}
                                     </div>
@@ -1548,7 +1548,7 @@
                     detailsHTML += `
                         <div class="history-detail-row">
                             <div class="history-detail-label">Justification</div>
-                            <div class="history-detail-value">${escapeHtml(snapshot.justification)}</div>
+                            <div class="history-detail-value">${App.escapeHtml(snapshot.justification)}</div>
                         </div>
                     `;
                 }
@@ -1557,7 +1557,7 @@
                     detailsHTML += `
                         <div class="history-detail-row">
                             <div class="history-detail-label">Strengths</div>
-                            <div class="history-detail-value">${escapeHtml(snapshot.tenets_strengths)}</div>
+                            <div class="history-detail-value">${App.escapeHtml(snapshot.tenets_strengths)}</div>
                         </div>
                     `;
                 }
@@ -1566,7 +1566,7 @@
                     detailsHTML += `
                         <div class="history-detail-row">
                             <div class="history-detail-label">Improvements</div>
-                            <div class="history-detail-value">${escapeHtml(snapshot.tenets_improvements)}</div>
+                            <div class="history-detail-value">${App.escapeHtml(snapshot.tenets_improvements)}</div>
                         </div>
                     `;
                 }
@@ -1575,7 +1575,7 @@
                     detailsHTML += `
                         <div class="history-detail-row">
                             <div class="history-detail-label">Mentor</div>
-                            <div class="history-detail-value">${escapeHtml(snapshot.mentors)}</div>
+                            <div class="history-detail-value">${App.escapeHtml(snapshot.mentors)}</div>
                         </div>
                     `;
                 }
@@ -1584,7 +1584,7 @@
                     detailsHTML += `
                         <div class="history-detail-row">
                             <div class="history-detail-label">Mentees</div>
-                            <div class="history-detail-value">${escapeHtml(snapshot.mentees)}</div>
+                            <div class="history-detail-value">${App.escapeHtml(snapshot.mentees)}</div>
                         </div>
                     `;
                 }
@@ -1607,7 +1607,7 @@
                             <div class="history-detail-row">
                                 <div class="history-detail-label">Overall Performance</div>
                                 <div class="history-detail-value">
-                                    <span class="talent-overall-perf ${perfClass}" style="font-size: 12px; padding: 3px 8px;">${escapeHtml(snapshot.snapshot_talent_overall_perf)}</span>
+                                    <span class="talent-overall-perf ${perfClass}" style="font-size: 12px; padding: 3px 8px;">${App.escapeHtml(snapshot.snapshot_talent_overall_perf)}</span>
                                 </div>
                             </div>
                         `;
@@ -1617,7 +1617,7 @@
                         talentRows += `
                             <div class="history-detail-row">
                                 <div class="history-detail-label">Performance: What</div>
-                                <div class="history-detail-value">${escapeHtml(snapshot.snapshot_talent_perf_what)}</div>
+                                <div class="history-detail-value">${App.escapeHtml(snapshot.snapshot_talent_perf_what)}</div>
                             </div>
                         `;
                     }
@@ -1626,7 +1626,7 @@
                         talentRows += `
                             <div class="history-detail-row">
                                 <div class="history-detail-label">Performance: How</div>
-                                <div class="history-detail-value">${escapeHtml(snapshot.snapshot_talent_perf_how)}</div>
+                                <div class="history-detail-value">${App.escapeHtml(snapshot.snapshot_talent_perf_how)}</div>
                             </div>
                         `;
                     }
@@ -1635,7 +1635,7 @@
                         talentRows += `
                             <div class="history-detail-row">
                                 <div class="history-detail-label">Growth Agility</div>
-                                <div class="history-detail-value">${escapeHtml(snapshot.snapshot_talent_growth_agility)}</div>
+                                <div class="history-detail-value">${App.escapeHtml(snapshot.snapshot_talent_growth_agility)}</div>
                             </div>
                         `;
                     }
@@ -1644,7 +1644,7 @@
                         talentRows += `
                             <div class="history-detail-row">
                                 <div class="history-detail-label">Change Agility</div>
-                                <div class="history-detail-value">${escapeHtml(snapshot.snapshot_talent_change_agility)}</div>
+                                <div class="history-detail-value">${App.escapeHtml(snapshot.snapshot_talent_change_agility)}</div>
                             </div>
                         `;
                     }
@@ -1653,7 +1653,7 @@
                         talentRows += `
                             <div class="history-detail-row">
                                 <div class="history-detail-label">Movement Readiness</div>
-                                <div class="history-detail-value">${escapeHtml(snapshot.snapshot_talent_movement_readiness)}</div>
+                                <div class="history-detail-value">${App.escapeHtml(snapshot.snapshot_talent_movement_readiness)}</div>
                             </div>
                         `;
                     }
@@ -1662,7 +1662,7 @@
                         talentRows += `
                             <div class="history-detail-row">
                                 <div class="history-detail-label">Proposed Actions</div>
-                                <div class="history-detail-value">${escapeHtml(snapshot.snapshot_talent_proposed_actions)}</div>
+                                <div class="history-detail-value">${App.escapeHtml(snapshot.snapshot_talent_proposed_actions)}</div>
                             </div>
                         `;
                     }
@@ -1681,9 +1681,9 @@
                     contextHTML = `
                         <div class="history-context-info">
                             <strong>Context at time of rating:</strong>
-                            ${snapshot.snapshot_job_profile ? `Job: ${escapeHtml(snapshot.snapshot_job_profile)}` : ''}
+                            ${snapshot.snapshot_job_profile ? `Job: ${App.escapeHtml(snapshot.snapshot_job_profile)}` : ''}
                             ${snapshot.snapshot_job_profile && snapshot.snapshot_org ? ' | ' : ''}
-                            ${snapshot.snapshot_org ? `Org: ${escapeHtml(snapshot.snapshot_org)}` : ''}
+                            ${snapshot.snapshot_org ? `Org: ${App.escapeHtml(snapshot.snapshot_org)}` : ''}
                         </div>
                     `;
                 }
@@ -1701,7 +1701,7 @@
                     <div class="history-period" data-period-id="${period.id}">
                         <div class="history-period-header" onclick="toggleHistoryPeriod(this)">
                             <div>
-                                <div class="history-period-title">${escapeHtml(period.name)}</div>
+                                <div class="history-period-title">${App.escapeHtml(period.name)}</div>
                                 <div class="history-period-date">Archived ${archivedDate}</div>
                             </div>
                             <div class="history-period-summary">
@@ -1730,12 +1730,7 @@
             period.classList.toggle('expanded');
         }
 
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        // escapeHtml provided by static/js/common.js (window.App)
 
         function validateModalRating() {
             const ratingInput = document.getElementById('modal_rating_percent');

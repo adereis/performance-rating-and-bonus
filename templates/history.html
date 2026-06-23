@@ -490,15 +490,15 @@
                     </thead>
                     <tbody id="snapshotsTableBody">
                         ${snapshots.map(s => `
-                            <tr data-name="${escapeAttr(s.snapshot_name || '')}"
-                                data-job="${escapeAttr(s.snapshot_job_profile || '')}"
+                            <tr data-name="${App.escapeAttr(s.snapshot_name || '')}"
+                                data-job="${App.escapeAttr(s.snapshot_job_profile || '')}"
                                 data-rating="${s.performance_rating !== null ? s.performance_rating : -1}">
                                 <td>
-                                    <span class="employee-name" data-employee-id="${escapeAttr(s.associate_id)}" style="cursor: pointer; color: #667eea; font-weight: 600;">
-                                        ${escapeHtml(s.snapshot_name || s.associate_id)}
+                                    <span class="employee-name" data-employee-id="${App.escapeAttr(s.associate_id)}" style="cursor: pointer; color: #667eea; font-weight: 600;">
+                                        ${App.escapeHtml(s.snapshot_name || s.associate_id)}
                                     </span>
                                 </td>
-                                <td>${escapeHtml(s.snapshot_job_profile || '-')}</td>
+                                <td>${App.escapeHtml(s.snapshot_job_profile || '-')}</td>
                                 <td>
                                     ${s.performance_rating !== null
                                         ? `<span class="rating-text ${getRatingColorClass(s.performance_rating)}">${s.performance_rating}%</span>`
@@ -506,7 +506,7 @@
                                 </td>
                                 <td style="max-width: 300px; font-size: 13px;">
                                     ${s.justification
-                                        ? escapeHtml(s.justification.substring(0, 100)) + (s.justification.length > 100 ? '...' : '')
+                                        ? App.escapeHtml(s.justification.substring(0, 100)) + (s.justification.length > 100 ? '...' : '')
                                         : '<span style="color: #999;">-</span>'}
                                 </td>
                                 <td>
@@ -644,17 +644,7 @@
         document.querySelector('th[data-sort="rating"]').classList.add('desc');
     }
 
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function escapeAttr(text) {
-        if (!text) return '';
-        return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
+    // escapeHtml / escapeAttr provided by static/js/common.js (window.App)
 
     // Handle browser back/forward
     window.addEventListener('popstate', function() {

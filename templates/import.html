@@ -1983,7 +1983,7 @@ function resetDemoForm() {
         if (!hasContent) return;
 
         // Helper to escape HTML
-        const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
+        // inline esc helper replaced by App.escapeHtml (static/js/common.js)
 
         // New employees section
         const newSec = document.getElementById('changelogNew');
@@ -1992,8 +1992,8 @@ function resetDemoForm() {
             document.getElementById('changelogNewCount').textContent = changes.new.length;
             document.getElementById('changelogNewContent').innerHTML = changes.new.map(e => `
                 <div class="changelog-employee">
-                    <div class="changelog-emp-name">${esc(e.associate)}</div>
-                    <div class="changelog-emp-meta">${esc(e.job_profile)} · ${esc(e.org)}</div>
+                    <div class="changelog-emp-name">${App.escapeHtml(e.associate)}</div>
+                    <div class="changelog-emp-meta">${App.escapeHtml(e.job_profile)} · ${App.escapeHtml(e.org)}</div>
                 </div>
             `).join('');
         } else { newSec.style.display = 'none'; }
@@ -2005,13 +2005,13 @@ function resetDemoForm() {
             document.getElementById('changelogUpdatedCount').textContent = changes.updated.length;
             document.getElementById('changelogUpdatedContent').innerHTML = changes.updated.map(e => `
                 <div class="changelog-employee">
-                    <div class="changelog-emp-name">${esc(e.associate)}</div>
+                    <div class="changelog-emp-name">${App.escapeHtml(e.associate)}</div>
                     ${e.changes.map(c => `
                         <div class="changelog-field">
-                            <span class="changelog-field-name">${esc(c.field_display)}</span>
-                            <span class="changelog-field-old">${esc(c.old) || '(empty)'}</span>
+                            <span class="changelog-field-name">${App.escapeHtml(c.field_display)}</span>
+                            <span class="changelog-field-old">${App.escapeHtml(c.old) || '(empty)'}</span>
                             <span class="changelog-arrow">→</span>
-                            <span class="changelog-field-new">${esc(c.new) || '(empty)'}</span>
+                            <span class="changelog-field-new">${App.escapeHtml(c.new) || '(empty)'}</span>
                         </div>
                     `).join('')}
                 </div>
@@ -2025,17 +2025,17 @@ function resetDemoForm() {
             document.getElementById('changelogPreservedCount').textContent = changes.preserved.length;
             document.getElementById('changelogPreservedContent').innerHTML = changes.preserved.map(e => `
                 <div class="changelog-employee">
-                    <div class="changelog-emp-name">${esc(e.associate)}</div>
+                    <div class="changelog-emp-name">${App.escapeHtml(e.associate)}</div>
                     ${e.conflicts.map(c => `
                         <div class="changelog-conflict">
-                            <div class="changelog-field-name">${esc(c.field_display)}</div>
+                            <div class="changelog-field-name">${App.escapeHtml(c.field_display)}</div>
                             <div class="changelog-conflict-row">
                                 <span class="changelog-label changelog-kept">Kept:</span>
-                                <span>${esc(c.local) || '(empty)'}</span>
+                                <span>${App.escapeHtml(c.local) || '(empty)'}</span>
                             </div>
                             <div class="changelog-conflict-row">
                                 <span class="changelog-label changelog-ignored">Workday:</span>
-                                <span class="changelog-ignored">${esc(c.workday) || '(empty)'}</span>
+                                <span class="changelog-ignored">${App.escapeHtml(c.workday) || '(empty)'}</span>
                             </div>
                         </div>
                     `).join('')}
