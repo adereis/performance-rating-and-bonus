@@ -164,6 +164,21 @@ def format_currency_filter(value, show_sign=False):
         return f"{formatted_num}{space}{fmt['symbol']}"
 
 
+@app.template_filter('pct')
+def format_pct_filter(value):
+    """Format a percentage value, dropping a trailing '.0'.
+
+    140.0 -> '140', 137.5 -> '137.5'. Pairs with a literal '%' in the
+    template: {{ employee.performance_rating_percent|pct }}%
+    """
+    if value is None or value == '':
+        return value
+    try:
+        return f'{float(value):g}'
+    except (ValueError, TypeError):
+        return value
+
+
 @app.template_filter('fromjson')
 def fromjson_filter(value):
     """Parse a JSON string into a Python object.

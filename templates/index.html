@@ -966,7 +966,7 @@
                                 {% elif employee.performance_rating_percent >= rating_thresholds.mid %}rating-text-mid
                                 {% elif employee.performance_rating_percent >= rating_thresholds.low %}rating-text-low
                                 {% else %}rating-text-below{% endif %}">
-                                {{ employee.performance_rating_percent }}%
+                                {{ employee.performance_rating_percent|pct }}%
                             </span>
                         {% else %}
                             <span class="rating-text rating-text-none">—</span>
