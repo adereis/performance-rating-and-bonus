@@ -176,7 +176,7 @@
     </header>
 
     <!-- Filter Toggle Button (hidden on pages where filtering doesn't apply) -->
-    {% if request.endpoint not in ['history_page', 'import_page'] %}
+    {% if request.endpoint not in ['history_page'] %}
     <button class="filter-toggle {% if filter_info is defined and filter_info.active %}active{% endif %}"
             onclick="toggleFilterPanel()"
             id="filterToggle">
@@ -199,7 +199,7 @@
     {% endif %}
 
     <!-- Filter Panel (hidden on pages where filtering doesn't apply) -->
-    {% if request.endpoint not in ['history_page', 'import_page'] %}
+    {% if request.endpoint not in ['history_page'] %}
     <div class="filter-panel" id="filterPanel">
         <div class="filter-panel-header">
             <h3>Filter Employees</h3>
