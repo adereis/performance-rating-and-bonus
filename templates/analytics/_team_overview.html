@@ -81,7 +81,7 @@
                         &mdash; {{ group.count }} ({{ "%.0f"|format(group.count / total_employees * 100) }}%)
                     </span>
                 </div>
-                <div style="font-size: 12px; color: #888; margin-bottom: 6px; font-style: italic;">
+                <div style="font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; font-style: italic;">
                     {% if group.level == 'Manager' %}
                         Has direct reports or management title
                     {% elif group.level == 'Senior IC' %}

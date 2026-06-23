@@ -99,7 +99,7 @@
 
     .calibration-table td {
         padding: 12px;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--border);
     }
 
     .calibration-table tr:hover {
@@ -170,7 +170,7 @@
     }
 
     th.sortable:hover {
-        background: #e8e9ea;
+        background: var(--surface-2);
     }
 
     th.sortable::after {
@@ -223,7 +223,7 @@
     }
 
     .primary-tab:hover:not(.active):not(.disabled) {
-        background: #e8e9ea;
+        background: var(--surface-2);
         color: var(--ink);
     }
 
@@ -238,9 +238,9 @@
     }
 
     .primary-tab.disabled {
-        color: #ccc;
+        color: var(--border);
         cursor: not-allowed;
-        background: #f0f0f0;
+        background: var(--surface-2);
     }
 
     .primary-tab-count {
@@ -288,13 +288,13 @@
 
     .tab-button:hover {
         color: var(--accent);
-        background: rgba(102, 126, 234, 0.05);
+        background: var(--accent-soft);
     }
 
     .tab-button.active {
         color: var(--accent);
         border-bottom-color: var(--accent);
-        background: rgba(102, 126, 234, 0.1);
+        background: var(--accent-soft);
     }
 
     .tab-content {
@@ -383,8 +383,8 @@
     }
 
     .trend-badge.new {
-        background: #cce5ff;
-        color: #004085;
+        background: var(--info-soft);
+        color: var(--info);
     }
 
     .trend-badge.departed {
@@ -414,7 +414,7 @@
     .comparison-loading .spinner {
         width: 40px;
         height: 40px;
-        border: 3px solid #f3f3f3;
+        border: 3px solid var(--surface-2);
         border-top: 3px solid var(--accent);
         border-radius: 50%;
         animation: spin 1s linear infinite;
@@ -573,7 +573,7 @@
         align-items: center;
         padding: 10px 16px;
         cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--border);
         transition: background 0.15s;
         font-size: 13px;
     }
@@ -821,9 +821,9 @@ if (jobProfileData.length > 0) {
     if (jobPieCtx) {
         // Color palette for pie chart
         const pieColors = [
-            '#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe',
-            '#00f2fe', '#43e97b', '#38f9d7', '#fa709a', '#fee140',
-            '#30cfd0', '#c471ed', '#12c2e9', '#f64f59', '#c471ed'
+            '#4f46e5', '#7c3aed', '#0891b2', '#d97706', '#e11d48',
+            '#059669', '#2563eb', '#c026d3', '#65a30d', '#475569',
+            '#4f46e5', '#7c3aed', '#0891b2', '#d97706', '#e11d48'
         ];
 
         new Chart(jobPieCtx, {
@@ -871,9 +871,9 @@ if (seniorityData.length > 1) {
     const seniorityCtx = document.getElementById('seniorityCompositionChart');
     if (seniorityCtx) {
         const seniorityColors = {
-            'Manager': '#667eea',
-            'Senior IC': '#764ba2',
-            'Others': '#4facfe'
+            'Manager': '#4f46e5',
+            'Senior IC': '#7c3aed',
+            'Others': '#0891b2'
         };
 
         new Chart(seniorityCtx, {
@@ -925,11 +925,11 @@ new Chart(ratingCtx, {
             label: 'Number of Employees',
             data: chartData.rating_distribution.data,
             backgroundColor: [
-                '#e74c3c',
-                '#e67e22',
-                '#f39c12',
-                '#3498db',
-                '#27ae60'
+                '#e11d48',
+                '#f97316',
+                '#f59e0b',
+                '#2563eb',
+                '#059669'
             ],
             borderColor: '#fff',
             borderWidth: 2
@@ -970,8 +970,8 @@ new Chart(deptCtx, {
         datasets: [{
             label: 'Average Rating %',
             data: chartData.department_averages.data,
-            backgroundColor: '#667eea',
-            borderColor: '#5568d3',
+            backgroundColor: '#4f46e5',
+            borderColor: '#4338ca',
             borderWidth: 1
         }]
     },
@@ -1014,8 +1014,8 @@ new Chart(jobCtx, {
         datasets: [{
             label: 'Average Rating %',
             data: chartData.job_averages.data,
-            backgroundColor: '#3498db',
-            borderColor: '#2980b9',
+            backgroundColor: '#2563eb',
+            borderColor: '#1d4ed8',
             borderWidth: 1
         }]
     },
@@ -1074,9 +1074,9 @@ new Chart(calibrationCtx, {
                     return 'rgba(220, 53, 69, 0.7)';
                 }),
                 borderColor: calibrationData.map(d => {
-                    if (d.status === 'good') return '#27ae60';
-                    if (d.status === 'warning') return '#ffc107';
-                    return '#dc3545';
+                    if (d.status === 'good') return '#059669';
+                    if (d.status === 'warning') return '#f59e0b';
+                    return '#e11d48';
                 }),
                 borderWidth: 2
             },
@@ -1084,7 +1084,7 @@ new Chart(calibrationCtx, {
                 label: 'Suggested Min',
                 data: calibrationData.map(d => d.suggested_min),
                 backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                borderColor: '#667eea',
+                borderColor: '#4f46e5',
                 borderWidth: 2,
                 borderDash: [5, 5],
                 type: 'line',
@@ -1094,7 +1094,7 @@ new Chart(calibrationCtx, {
                 label: 'Suggested Max',
                 data: calibrationData.map(d => d.suggested_max),
                 backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                borderColor: '#667eea',
+                borderColor: '#4f46e5',
                 borderWidth: 2,
                 borderDash: [5, 5],
                 type: 'line',
@@ -1176,9 +1176,9 @@ new Chart(talentPerfCtx, {
                     return 'rgba(220, 53, 69, 0.7)';
                 }),
                 borderColor: talentCalibrationData.performance_data.map(d => {
-                    if (d.status === 'good') return '#27ae60';
-                    if (d.status === 'warning') return '#ffc107';
-                    return '#dc3545';
+                    if (d.status === 'good') return '#059669';
+                    if (d.status === 'warning') return '#f59e0b';
+                    return '#e11d48';
                 }),
                 borderWidth: 2
             },
@@ -1186,7 +1186,7 @@ new Chart(talentPerfCtx, {
                 label: 'Suggested Min',
                 data: talentCalibrationData.performance_data.map(d => d.suggested_min),
                 backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                borderColor: '#667eea',
+                borderColor: '#4f46e5',
                 borderWidth: 2,
                 borderDash: [5, 5],
                 type: 'line',
@@ -1196,7 +1196,7 @@ new Chart(talentPerfCtx, {
                 label: 'Suggested Max',
                 data: talentCalibrationData.performance_data.map(d => d.suggested_max),
                 backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                borderColor: '#667eea',
+                borderColor: '#4f46e5',
                 borderWidth: 2,
                 borderDash: [5, 5],
                 type: 'line',
@@ -1265,8 +1265,8 @@ new Chart(movementCtx, {
                 'rgba(155, 89, 182, 0.7)'    // Ready for lateral - purple
             ],
             borderColor: [
-                '#3498db',
-                '#27ae60',
+                '#2563eb',
+                '#059669',
                 '#9b59b6'
             ],
             borderWidth: 2
@@ -1358,8 +1358,8 @@ sortedTenets.forEach((tenet, index) => {
             labels: [''],
             datasets: [{
                 data: [tenet.improvement_count],
-                backgroundColor: '#dc3545',
-                borderColor: '#c82333',
+                backgroundColor: '#e11d48',
+                borderColor: '#be123c',
                 borderWidth: 1
             }]
         },
@@ -1403,8 +1403,8 @@ sortedTenets.forEach((tenet, index) => {
             labels: [''],
             datasets: [{
                 data: [tenet.strength_count],
-                backgroundColor: '#27ae60',
-                borderColor: '#229954',
+                backgroundColor: '#059669',
+                borderColor: '#047857',
                 borderWidth: 1
             }]
         },
@@ -1446,11 +1446,11 @@ const legendDiv = document.createElement('div');
 legendDiv.style.cssText = 'display: flex; justify-content: center; gap: 30px; margin-bottom: 12px; padding: 10px; background: #f8f9fa; border-radius: 6px;';
 legendDiv.innerHTML = `
     <div style="display: flex; align-items: center; gap: 8px;">
-        <div style="width: 16px; height: 16px; background: #dc3545; border: 1px solid #c82333; border-radius: 3px;"></div>
+        <div style="width: 16px; height: 16px; background: #e11d48; border: 1px solid #be123c; border-radius: 3px;"></div>
         <span style="font-weight: 600; color: #2c3e50; font-size: 14px;">Weaknesses (Left)</span>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
-        <div style="width: 16px; height: 16px; background: #27ae60; border: 1px solid #229954; border-radius: 3px;"></div>
+        <div style="width: 16px; height: 16px; background: #059669; border: 1px solid #047857; border-radius: 3px;"></div>
         <span style="font-weight: 600; color: #2c3e50; font-size: 14px;">Strengths (Right)</span>
     </div>
 `;
@@ -1501,7 +1501,7 @@ function renderButterflyChart(containerId, tenets) {
             type: 'bar',
             data: {
                 labels: [''],
-                datasets: [{ data: [tenet.improvement_count], backgroundColor: '#dc3545', borderColor: '#c82333', borderWidth: 1 }]
+                datasets: [{ data: [tenet.improvement_count], backgroundColor: '#e11d48', borderColor: '#be123c', borderWidth: 1 }]
             },
             options: {
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
@@ -1520,7 +1520,7 @@ function renderButterflyChart(containerId, tenets) {
             type: 'bar',
             data: {
                 labels: [''],
-                datasets: [{ data: [tenet.strength_count], backgroundColor: '#27ae60', borderColor: '#229954', borderWidth: 1 }]
+                datasets: [{ data: [tenet.strength_count], backgroundColor: '#059669', borderColor: '#047857', borderWidth: 1 }]
             },
             options: {
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
@@ -1720,14 +1720,14 @@ async function loadPeriodComparison() {
         } else {
             content.innerHTML = `
                 <div class="comparison-empty">
-                    <p style="color: #e74c3c;">Error: ${data.error}</p>
+                    <p style="color: #e11d48;">Error: ${data.error}</p>
                 </div>
             `;
         }
     } catch (error) {
         content.innerHTML = `
             <div class="comparison-empty">
-                <p style="color: #e74c3c;">Error loading comparison: ${error.message}</p>
+                <p style="color: #e11d48;">Error loading comparison: ${error.message}</p>
             </div>
         `;
     }
@@ -1809,7 +1809,7 @@ function renderComparison(data) {
         tableHTML += `
             <tr>
                 <td>
-                    <span class="employee-name" data-employee-id="${emp.associate_id}" style="cursor: pointer; color: #667eea; font-weight: 600;">
+                    <span class="employee-name" data-employee-id="${emp.associate_id}" style="cursor: pointer; color: #4f46e5; font-weight: 600;">
                         ${escapeHtml(emp.name)}
                     </span>
                 </td>
@@ -1844,7 +1844,7 @@ function renderComparison(data) {
 {% if tenure_analytics and tenure_analytics.employees_with_tenure_data > 0 %}
 (function() {
     const tenureBands = ['< 1 year', '1-2 years', '2-5 years', '5-10 years', '10+ years'];
-    const tenureColors = ['#3498db', '#2ecc71', '#f39c12', '#e74c3c', '#9b59b6'];
+    const tenureColors = ['#2563eb', '#2ecc71', '#f59e0b', '#e11d48', '#9b59b6'];
 
     // Time in Job Profile Chart
     const tijpData = {{ tenure_analytics.tijp_distribution | tojson }};
