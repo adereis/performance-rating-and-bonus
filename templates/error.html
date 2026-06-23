@@ -13,7 +13,7 @@
     <p class="error-message">{{ error_message }}</p>
 
     <div class="error-actions">
-        <a href="{{ url_for('index') }}" class="btn btn-primary">Go to Dashboard</a>
+        <a href="{{ url_for('core.index') }}" class="btn btn-primary">Go to Dashboard</a>
         {% if show_reset %}
         <button onclick="resetDemo()" class="btn btn-secondary">Reset Demo Session</button>
         {% endif %}
