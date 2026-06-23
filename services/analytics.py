@@ -10,6 +10,7 @@ from collections import defaultdict
 
 from services.employee_utils import (
     has_direct_reports,
+    get_manager_names,
     parse_tenure_to_months,
     get_tenure_band,
     _parse_mentee_set,
@@ -35,13 +36,16 @@ def format_months_display(months):
         return f"{remaining_months} months"
 
 
-def categorize_job_level(emp, all_emps):
+def categorize_job_level(emp, all_emps, manager_names=None):
     """Categorize employee into job level for tenet analysis.
 
     Categories: Manager (has direct reports), Senior IC
     (Senior/Principal/Staff/Lead), Others.
+
+    Pass manager_names (from get_manager_names) when calling in a loop to avoid
+    an O(n^2) rescan.
     """
-    if has_direct_reports(emp, all_emps):
+    if has_direct_reports(emp, all_emps, manager_names):
         return 'Manager'
     job_title = (emp.get('Current Job Profile') or '').lower()
     senior_keywords = ['senior', 'principal', 'staff', 'lead']
@@ -160,8 +164,9 @@ def calculate_rating_distribution(team_data):
     # Seniority composition for Team Overview
     seniority_counts = {'Manager': 0, 'Senior IC': 0, 'Others': 0}
     seniority_roles = {'Manager': {}, 'Senior IC': {}, 'Others': {}}
+    manager_names = get_manager_names(team_data)
     for emp in team_data:
-        level = categorize_job_level(emp, team_data)
+        level = categorize_job_level(emp, team_data, manager_names)
         seniority_counts[level] += 1
         job = emp.get('Current Job Profile', 'Unknown') or 'Unknown'
         seniority_roles[level][job] = seniority_roles[level].get(job, 0) + 1
@@ -318,8 +323,9 @@ def calculate_tenets_analytics(team_data, tenets_map):
 
     # ---- Per-Job-Level tenet counts ----
     job_level_tenets = {}
+    manager_names = get_manager_names(team_data)
     for emp in team_data:
-        level = categorize_job_level(emp, team_data)
+        level = categorize_job_level(emp, team_data, manager_names)
         if level not in job_level_tenets:
             job_level_tenets[level] = {
                 'strength_counts': defaultdict(float),

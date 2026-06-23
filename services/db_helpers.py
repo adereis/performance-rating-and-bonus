@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 from models import Employee, BonusSettings, RatingSnapshot, Period
-from services.employee_utils import CURRENCY_SYMBOLS, has_direct_reports
+from services.employee_utils import CURRENCY_SYMBOLS, has_direct_reports, get_manager_names
 
 
 def get_all_employees(get_db_fn, bonus_cycle_only=False):
@@ -252,6 +252,10 @@ def apply_employee_filters(employees, filter_params):
     """
     filtered = employees.copy()
 
+    # Precompute once — manager detection is used in two passes below; without
+    # this each call would rescan all employees (O(n^2)).
+    manager_names = get_manager_names(employees)
+
     # Build team data BEFORE any filtering (for sidebar display)
     teams_by_org = {}
     for emp in employees:
@@ -284,7 +288,7 @@ def apply_employee_filters(employees, filter_params):
 
     # Apply manager exclusion (within scope)
     if filter_params.get('exclude_managers'):
-        filtered = [emp for emp in filtered if not has_direct_reports(emp, employees)]
+        filtered = [emp for emp in filtered if not has_direct_reports(emp, employees, manager_names)]
 
     # Apply title exclusion (within scope)
     if filter_params.get('exclude_titles'):
@@ -317,7 +321,7 @@ def apply_employee_filters(employees, filter_params):
     manager_ids = [
         emp.get('Associate ID', '')
         for emp in employees
-        if has_direct_reports(emp, employees)
+        if has_direct_reports(emp, employees, manager_names)
     ]
 
     # Build employee ID -> job title mapping

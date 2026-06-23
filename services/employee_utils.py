@@ -161,19 +161,41 @@ def is_employee_calibrated(emp):
     return bool(what) and bool(how) and bool(actions) and _has_tenets(tenets_s, tenets_i)
 
 
-def has_direct_reports(employee, all_employees):
+def get_manager_names(all_employees):
+    """Return the set of names that manage at least one supervisory org.
+
+    Handles both Workday formats: legacy "Org Name (Manager Name)" (parse out
+    the parenthesized name) and the report format's "Direct Manager" column
+    (the value is already the bare manager name). Matching against this set is
+    then exact, so a short name like "Lee" is no longer wrongly flagged as
+    managing "Engineering (Ashley Lee)". Build this once and pass it to
+    has_direct_reports() to avoid rescanning all employees per call.
+    """
+    names = set()
+    for emp in all_employees:
+        org = (emp.get('Supervisory Organization') or '').strip()
+        if not org:
+            continue
+        # Parens form -> parsed manager; otherwise the value is the manager name.
+        names.add(parse_manager_name_from_org(org) or org)
+    return names
+
+
+def has_direct_reports(employee, all_employees, manager_names=None):
     """
     Check if an employee has direct reports (is a manager).
 
     Detection methods (OR logic):
-    1. Supervisory org lookup: employee's name appears in other employees'
-       "Supervisory Organization" field (works for bonus files)
-    2. Management level: employee's management_level contains "Manager"
+    1. Management level: employee's management_level contains "Manager"
        or "Director" (works for talent calibration files)
+    2. Supervisory org lookup: the employee is the parsed manager of some
+       other employee's "Supervisory Organization" (works for bonus files)
 
     Args:
         employee: Employee dict to check
         all_employees: List of all employee dicts
+        manager_names: Optional precomputed set from get_manager_names(); pass
+            it when calling in a loop to avoid an O(n^2) rescan.
 
     Returns:
         bool: True if employee has direct reports/is a manager
@@ -187,16 +209,13 @@ def has_direct_reports(employee, all_employees):
         if any(keyword in management_level for keyword in manager_keywords):
             return True
 
-    # Method 2: Check if name appears in other employees' supervisory org
+    # Method 2: Is this employee the parsed manager of some supervisory org?
     employee_name = employee.get('Associate', '')
     if employee_name:
-        for other_emp in all_employees:
-            if other_emp.get('Associate ID') == employee.get('Associate ID'):
-                continue  # Skip self
-
-            supervisory_org = other_emp.get('Supervisory Organization') or ''
-            if employee_name in supervisory_org:
-                return True
+        if manager_names is None:
+            manager_names = get_manager_names(all_employees)
+        if employee_name in manager_names:
+            return True
 
     return False
 

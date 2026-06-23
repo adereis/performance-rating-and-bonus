@@ -13,8 +13,8 @@ class TestManagerDetection:
         manager = {'Associate ID': 'M001', 'Associate': 'Alice Manager'}
         employees = [
             manager,
-            {'Associate ID': 'E001', 'Associate': 'Bob', 'Supervisory Organization': 'Engineering - Alice Manager'},
-            {'Associate ID': 'E002', 'Associate': 'Charlie', 'Supervisory Organization': 'Engineering - Alice Manager'},
+            {'Associate ID': 'E001', 'Associate': 'Bob', 'Supervisory Organization': 'Engineering (Alice Manager)'},
+            {'Associate ID': 'E002', 'Associate': 'Charlie', 'Supervisory Organization': 'Engineering (Alice Manager)'},
         ]
 
         assert has_direct_reports(manager, employees) is True
@@ -25,20 +25,38 @@ class TestManagerDetection:
         employees = [
             ic,
             {'Associate ID': 'M001', 'Associate': 'Alice Manager', 'Supervisory Organization': 'Engineering'},
-            {'Associate ID': 'E002', 'Associate': 'Charlie', 'Supervisory Organization': 'Engineering - Alice Manager'},
+            {'Associate ID': 'E002', 'Associate': 'Charlie', 'Supervisory Organization': 'Engineering (Alice Manager)'},
         ]
 
         assert has_direct_reports(ic, employees) is False
 
-    def test_has_direct_reports_partial_name_match(self):
-        """Test that partial name matches count (e.g., 'John' appears in 'John Smith' supervisory org)."""
+    def test_has_direct_reports_full_name_match(self):
+        """A manager whose full name is the org's manager is detected."""
         manager = {'Associate ID': 'M001', 'Associate': 'John Smith'}
         employees = [
             manager,
-            {'Associate ID': 'E001', 'Associate': 'Bob', 'Supervisory Organization': 'Engineering - John Smith'},
+            {'Associate ID': 'E001', 'Associate': 'Bob', 'Supervisory Organization': 'Engineering (John Smith)'},
         ]
 
         assert has_direct_reports(manager, employees) is True
+
+    def test_has_direct_reports_no_substring_false_positive(self):
+        """A short name must not match a longer manager's name (regression).
+
+        'Lee' must not be flagged a manager just because 'Ashley Lee' manages an
+        org — the old substring check ('Lee' in 'Engineering (Ashley Lee)') did.
+        """
+        lee = {'Associate ID': 'E001', 'Associate': 'Lee'}
+        ashley = {'Associate ID': 'M001', 'Associate': 'Ashley Lee'}
+        employees = [
+            lee,
+            ashley,
+            {'Associate ID': 'E002', 'Associate': 'Bob',
+             'Supervisory Organization': 'Engineering (Ashley Lee)'},
+        ]
+
+        assert has_direct_reports(lee, employees) is False
+        assert has_direct_reports(ashley, employees) is True
 
     def test_has_direct_reports_no_name(self):
         """Test employee with no name."""
@@ -75,8 +93,8 @@ class TestFilterApplication:
         """Test excluding employees with direct reports."""
         employees = [
             {'Associate ID': 'M001', 'Associate': 'Alice Manager', 'Current Job Profile': 'Engineering Manager'},
-            {'Associate ID': 'E001', 'Associate': 'Bob IC', 'Supervisory Organization': 'Engineering - Alice Manager'},
-            {'Associate ID': 'E002', 'Associate': 'Charlie IC', 'Supervisory Organization': 'Engineering - Alice Manager'},
+            {'Associate ID': 'E001', 'Associate': 'Bob IC', 'Supervisory Organization': 'Engineering (Alice Manager)'},
+            {'Associate ID': 'E002', 'Associate': 'Charlie IC', 'Supervisory Organization': 'Engineering (Alice Manager)'},
         ]
 
         filter_params = {
