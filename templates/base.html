@@ -167,7 +167,7 @@
             <h1>Performance Rating System</h1>
             <nav>
                 <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Dashboard</a>
-                <a href="{{ url_for('import_page') }}" {% if request.endpoint == 'import_page' %}class="active"{% endif %}>Import</a>
+                <a href="{{ url_for('import_.import_page') }}" {% if request.endpoint == 'import_.import_page' %}class="active"{% endif %}>Import</a>
                 <a href="{{ url_for('rate_page') }}" {% if request.endpoint == 'rate_page' %}class="active"{% endif %}>Rate Team</a>
                 <a href="{{ url_for('calibrate_page') }}" {% if request.endpoint == 'calibrate_page' %}class="active"{% endif %}>Talent Calibration</a>
                 <a href="{{ url_for('bonus_calculation') }}" {% if request.endpoint == 'bonus_calculation' %}class="active"{% endif %}>Bonus Calculation</a>

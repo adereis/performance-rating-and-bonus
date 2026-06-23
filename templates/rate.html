@@ -1082,14 +1082,14 @@
     <div class="no-data-message">
         <h3>No Employee Data</h3>
         <p>Import employee data from Workday to begin rating bonuses.</p>
-        <a href="{{ url_for('import_page') }}" class="btn">Import Data</a>
+        <a href="{{ url_for('import_.import_page') }}" class="btn">Import Data</a>
     </div>
     {% elif not has_bonus_data %}
     <div class="no-data-message">
         <h3><svg class="icon"><use href="#i-clipboard"></use></svg> Missing Bonus Target Data</h3>
         <p>Bonus rating requires employee bonus target information from Workday.</p>
         <p style="margin-top: 15px;">
-            <a href="{{ url_for('import_page') }}" class="btn">Import Bonus Data</a>
+            <a href="{{ url_for('import_.import_page') }}" class="btn">Import Bonus Data</a>
         </p>
         <p style="margin-top: 20px; font-size: 13px; color: var(--ink-soft);">
             Your Workday export should include columns for bonus targets (e.g., "Bonus Target - Local Currency").

@@ -132,6 +132,10 @@ class TestImportDemoModeGating:
 
     def test_import_endpoints_return_403_in_demo_mode(self, client, db_session, monkeypatch):
         import app as app_module
+        import demo_mode
+        # The import blueprint reads the canonical demo_mode.DEMO_MODE flag for
+        # its route-level gate; app.DEMO_MODE drives the request hooks.
+        monkeypatch.setattr(demo_mode, 'DEMO_MODE', True)
         monkeypatch.setattr(app_module, 'DEMO_MODE', True)
         # The demo after_request cookie wrapper needs real session infra (and is
         # only imported when DEMO_MODE is set at startup); stub it to a passthrough
