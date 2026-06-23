@@ -78,9 +78,10 @@ port **5050**.
 
 ```bash
 cp demo-templates/large-team.db ~/tmp/uitest/app.db          # throwaway copy
-DATABASE_URL="sqlite:///$HOME/tmp/uitest/app.db" \
+DATABASE_URL="sqlite:///$HOME/tmp/uitest/app.db" SECRET_KEY=uitest-secret-key \
 FLASK_HOST=127.0.0.1 FLASK_PORT=5050 FLASK_ENV=production PYTHONUNBUFFERED=1 \
   .venv/bin/python app.py > ~/tmp/uitest/flask.log 2>&1 &
+# SECRET_KEY is REQUIRED with FLASK_ENV=production (config.py fails fast without it).
 # wait for readiness (no sleep!):
 curl -s --retry 25 --retry-connrefused --retry-delay 1 --max-time 3 http://127.0.0.1:5050/health
 ```
@@ -89,7 +90,7 @@ curl -s --retry 25 --retry-connrefused --retry-delay 1 --max-time 3 http://127.0
 
 ```bash
 mkdir -p ~/tmp/demo_sessions
-DEMO_MODE=true SESSION_DB_DIR="$HOME/tmp/demo_sessions" \
+DEMO_MODE=true SESSION_DB_DIR="$HOME/tmp/demo_sessions" SECRET_KEY=uitest-secret-key \
 FLASK_HOST=127.0.0.1 FLASK_PORT=5050 FLASK_ENV=production PYTHONUNBUFFERED=1 \
   .venv/bin/python app.py > ~/tmp/uitest/flask_demo.log 2>&1 &
 curl -s --retry 25 --retry-connrefused --retry-delay 1 --max-time 3 http://127.0.0.1:5050/health

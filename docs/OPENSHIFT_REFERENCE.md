@@ -343,7 +343,7 @@ oc set env deployment/perf-rating \
   SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
 ```
 
-`SECRET_KEY` is required for consistent Flask session cookies across Gunicorn workers. Without it, the app falls back to a dev-only key hardcoded in `app.py` — functional but publicly visible in the repo.
+`SECRET_KEY` is required for consistent Flask session cookies across Gunicorn workers. When `FLASK_ENV=production` (the default in the container image), the app **fails fast at startup** with a clear error if `SECRET_KEY` is unset — it will not silently fall back to a dev key. Outside production (local dev, tests) it uses a dev-only fallback key. This check lives in `config.py` (`Config`).
 
 ### Health Probes
 

@@ -15,6 +15,8 @@ from sqlalchemy import text
 from models import Employee, BonusSettings, Period, RatingSnapshot, init_db, get_db
 from xlsx_utils import analyze_xlsx, parse_xlsx_employees
 from notes_parser import parse_notes_field
+import demo_mode
+from config import Config
 from services.db_helpers import (  # noqa: F401 - re-exported for tests
     load_tenets_config, convert_tenet_names_to_ids,
     get_all_employees, get_employee_by_id,
@@ -49,54 +51,19 @@ from services.employee_utils import (  # noqa: F401 - re-exported for tests
     get_rating_category, is_manager,
 )
 
-app = Flask(__name__)
-
-# Configure logging to reduce noise from exceptions
-# Show only the error type and message, not full tracebacks for handled errors
-if os.getenv('FLASK_ENV') == 'production':
-    # In production, log errors concisely
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s [%(levelname)s] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    # Reduce verbosity of werkzeug and SQLAlchemy loggers
-    logging.getLogger('werkzeug').setLevel(logging.WARNING)
-    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
-
-# Session security - required for secure cookies in production
-# In production, set SECRET_KEY environment variable to a random 32+ character string
-# Example: export SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
-app.secret_key = os.getenv('SECRET_KEY', 'dev-only-insecure-key-change-in-production')
-
-# Cap upload size to prevent disk/memory exhaustion from oversized files.
-# Workday XLSX exports are small; 10 MB is generous. Override via MAX_UPLOAD_MB.
-# Flask returns 413 (Request Entity Too Large) automatically when exceeded.
-app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_UPLOAD_MB', '10')) * 1024 * 1024
-
-# Demo mode configuration
+# Demo mode configuration.
+# Kept as a module-level global (not only on Config) because the request hooks,
+# error handlers, and context processor below read it, and tests monkeypatch
+# app.DEMO_MODE directly. Config.DEMO_MODE mirrors this for create_app's setup.
 DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
 
-# Constants and utility functions imported from services.employee_utils
 
-# Initialize database on startup
-init_db()
+# ───────────────────────────────────────────────────────────────────────────
+# App-level registrations (filters, context processor, hooks, error handlers).
+# Defined as plain functions and wired up inside create_app(). They stay
+# app-level (not in a blueprint) because they apply to every request.
+# ───────────────────────────────────────────────────────────────────────────
 
-# Start demo mode cleanup thread if enabled
-if DEMO_MODE:
-    from demo_mode import (
-        start_cleanup_thread, clear_all_sessions, demo_response_wrapper,
-        get_session_id, initialize_session_from_template,
-        ensure_templates_exist
-    )
-    from demo_mode import _log
-    ensure_templates_exist()
-    clear_all_sessions()
-    start_cleanup_thread()
-    _log("Session isolation enabled")
-
-
-@app.context_processor
 def inject_global_context():
     """Make global config available in all templates."""
     # Get manager's currency for display
@@ -115,7 +82,6 @@ def inject_global_context():
     }
 
 
-@app.template_filter('format_currency')
 def format_currency_filter(value, show_sign=False):
     """Format a number with the manager's currency symbol.
 
@@ -140,7 +106,6 @@ def format_currency_filter(value, show_sign=False):
         return f"{formatted_num}{space}{fmt['symbol']}"
 
 
-@app.template_filter('pct')
 def format_pct_filter(value):
     """Format a percentage value, dropping a trailing '.0'.
 
@@ -155,7 +120,6 @@ def format_pct_filter(value):
         return value
 
 
-@app.template_filter('fromjson')
 def fromjson_filter(value):
     """Parse a JSON string into a Python object.
 
@@ -170,7 +134,6 @@ def fromjson_filter(value):
         return []
 
 
-@app.before_request
 def log_demo_request():
     """Log requests in demo mode for debugging."""
     if DEMO_MODE and request.endpoint not in ('static', 'core.health_check'):
@@ -179,16 +142,13 @@ def log_demo_request():
         _log(f">>> {request.method} {request.path} [session:{sid}]")
 
 
-@app.after_request
 def add_demo_session_cookie(response):
     """Add session cookie in demo mode."""
     if DEMO_MODE:
-        return demo_response_wrapper(response)
+        return demo_mode.demo_response_wrapper(response)
     return response
 
 
-# Error handlers for cleaner error pages and logs
-@app.errorhandler(Exception)
 def handle_exception(error):
     """Handle all exceptions with clean logging and error page.
 
@@ -231,7 +191,6 @@ def handle_exception(error):
     ), 500
 
 
-@app.errorhandler(500)
 def internal_error(error):
     """Handle 500 errors (fallback if Exception handler doesn't catch)."""
     error_msg = str(error.original_exception) if hasattr(error, 'original_exception') else str(error)
@@ -246,29 +205,81 @@ def internal_error(error):
     ), 500
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# BLUEPRINT REGISTRATION
-# Blueprints register on the module-level `app`. Imported at the bottom so
-# app-level globals are defined first. Blueprints never `import app` (which
-# would break `python app.py`, where app runs as __main__); they read config
-# via demo_mode/models/services. See docs/REFACTOR_APP_SPLIT.md.
-# ═══════════════════════════════════════════════════════════════════════════
-from blueprints.core import core_bp  # noqa: E402
-from blueprints.export import export_bp  # noqa: E402
-from blueprints.history import history_bp  # noqa: E402
-from blueprints.import_ import import_bp  # noqa: E402
-from blueprints.analytics import analytics_bp  # noqa: E402
-from blueprints.bonus import bonus_bp  # noqa: E402
-from blueprints.rate import rate_bp  # noqa: E402
-from blueprints.calibrate import calibrate_bp  # noqa: E402
-app.register_blueprint(core_bp)
-app.register_blueprint(export_bp)
-app.register_blueprint(history_bp)
-app.register_blueprint(import_bp)
-app.register_blueprint(analytics_bp)
-app.register_blueprint(bonus_bp)
-app.register_blueprint(rate_bp)
-app.register_blueprint(calibrate_bp)
+def _configure_logging():
+    """Concise logging in production (no verbose tracebacks for handled errors)."""
+    if os.getenv('FLASK_ENV') == 'production':
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s [%(levelname)s] %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        logging.getLogger('werkzeug').setLevel(logging.WARNING)
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+
+
+def _register_blueprints(flask_app):
+    """Register all route blueprints on the app.
+
+    Imported here (not at module top) so app-level globals are defined first.
+    Blueprints never `import app` — that would break `python app.py`, where app
+    runs as __main__ — so they read config via demo_mode/models/services.
+    See docs/REFACTOR_APP_SPLIT.md.
+    """
+    from blueprints.core import core_bp
+    from blueprints.export import export_bp
+    from blueprints.history import history_bp
+    from blueprints.import_ import import_bp
+    from blueprints.analytics import analytics_bp
+    from blueprints.bonus import bonus_bp
+    from blueprints.rate import rate_bp
+    from blueprints.calibrate import calibrate_bp
+
+    for bp in (core_bp, export_bp, history_bp, import_bp,
+               analytics_bp, bonus_bp, rate_bp, calibrate_bp):
+        flask_app.register_blueprint(bp)
+
+
+def create_app(config=None):
+    """Application factory.
+
+    Builds and configures the Flask app: config (with the production SECRET_KEY
+    fail-fast), logging, DB init, demo-mode startup, app-level registrations,
+    and blueprints. A module-level ``app = create_app()`` below keeps
+    ``from app import app`` working for tests, `python app.py`, and tooling.
+    """
+    config = config or Config()
+    _configure_logging()
+
+    flask_app = Flask(__name__)
+    flask_app.secret_key = config.SECRET_KEY
+    flask_app.config['MAX_CONTENT_LENGTH'] = config.MAX_CONTENT_LENGTH
+
+    # Initialize database on startup
+    init_db()
+
+    # Start demo mode cleanup thread if enabled
+    if config.DEMO_MODE:
+        demo_mode.ensure_templates_exist()
+        demo_mode.clear_all_sessions()
+        demo_mode.start_cleanup_thread()
+        demo_mode._log("Session isolation enabled")
+
+    # App-level registrations
+    flask_app.context_processor(inject_global_context)
+    flask_app.template_filter('format_currency')(format_currency_filter)
+    flask_app.template_filter('pct')(format_pct_filter)
+    flask_app.template_filter('fromjson')(fromjson_filter)
+    flask_app.before_request(log_demo_request)
+    flask_app.after_request(add_demo_session_cookie)
+    flask_app.errorhandler(Exception)(handle_exception)
+    flask_app.errorhandler(500)(internal_error)
+
+    _register_blueprints(flask_app)
+
+    return flask_app
+
+
+app = create_app()
 
 
 if __name__ == '__main__':
