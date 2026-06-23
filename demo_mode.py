@@ -56,6 +56,22 @@ _session_db_mtime = {}  # Track DB file modification time to detect changes from
 _cleanup_lock = threading.Lock()
 
 
+def _is_valid_session_id(value):
+    """A session id must be exactly a canonical UUID string.
+
+    The value comes from a client-controlled cookie and is interpolated into
+    a database file path, so anything other than a UUID we minted is untrusted
+    (path traversal via '../', session hijack via a guessed/forged id). Reject
+    it and mint a fresh one.
+    """
+    if not isinstance(value, str) or not value:
+        return False
+    try:
+        return str(uuid.UUID(value)) == value
+    except ValueError:
+        return False
+
+
 def get_session_id():
     """Get or create a session ID from cookie.
 
@@ -67,7 +83,8 @@ def get_session_id():
         return g._demo_session_id
 
     session_id = request.cookies.get(SESSION_COOKIE_NAME)
-    if not session_id:
+    if not _is_valid_session_id(session_id):
+        # Missing, malformed, or attacker-supplied — never trust it as a path.
         session_id = str(uuid.uuid4())
 
     # Cache for this request so all calls return the same ID

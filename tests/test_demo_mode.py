@@ -96,13 +96,32 @@ class TestGetSessionId:
     """Tests for get_session_id() function."""
 
     def test_returns_cookie_value_when_present(self, app):
-        """Should return existing session ID from cookie."""
+        """Should return an existing valid (UUID) session ID from the cookie."""
+        valid_id = '11111111-2222-4333-8444-555555555555'
         with app.test_request_context(
             '/',
-            headers={'Cookie': f'{demo_mode.SESSION_COOKIE_NAME}=test-session-123'}
+            headers={'Cookie': f'{demo_mode.SESSION_COOKIE_NAME}={valid_id}'}
         ):
             session_id = demo_mode.get_session_id()
-            assert session_id == 'test-session-123'
+            assert session_id == valid_id
+
+    def test_rejects_invalid_or_malicious_cookie(self, app):
+        """A non-UUID cookie (path traversal / hijack attempt) is discarded.
+
+        The session id is interpolated into a DB file path, so an attacker
+        cookie like '../../etc/x' must never be used; a fresh UUID is minted.
+        """
+        import uuid as _uuid
+        for bad in ['test-session-123', '../../etc/passwd', 'a/b', '..', '']:
+            with app.test_request_context(
+                '/',
+                headers={'Cookie': f'{demo_mode.SESSION_COOKIE_NAME}={bad}'}
+            ):
+                session_id = demo_mode.get_session_id()
+                assert session_id != bad
+                # Must be a fresh, valid UUID (no path separators possible)
+                assert str(_uuid.UUID(session_id)) == session_id
+                assert '/' not in session_id and '..' not in session_id
 
     def test_generates_uuid_when_no_cookie(self, app):
         """Should generate a new UUID when no cookie present."""
