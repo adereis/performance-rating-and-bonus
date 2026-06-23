@@ -17,8 +17,11 @@ from xlsx_utils import analyze_xlsx, parse_xlsx_employees
 from notes_parser import parse_notes_field
 from services.db_helpers import (  # noqa: F401 - re-exported for tests
     load_tenets_config, convert_tenet_names_to_ids,
+    get_all_employees, get_employee_by_id,
+    get_bonus_settings, update_bonus_settings,
+    get_manager_currency, get_filter_params,
+    apply_employee_filters,
 )
-from services.db_helpers import apply_employee_filters as _apply_employee_filters
 from services.import_handler import (  # noqa: F401 - available for import routes
     text_unmodified, json_string_unmodified, mentor_fields_equal,
     update_text_field, update_mentor_field, update_json_field,
@@ -376,78 +379,6 @@ def demo_reset():
         'clear_ratings': clear_ratings,
         'message': f'Demo reset to {demo_type} team dataset' if success else 'Failed to reset demo'
     })
-
-
-def get_all_employees(bonus_cycle_only=False):
-    """Get all employees from database."""
-    from services.db_helpers import get_all_employees as _get_all
-    return _get_all(get_db, bonus_cycle_only=bonus_cycle_only)
-
-
-def get_manager_currency():
-    """Detect the manager's currency (cached per-request)."""
-    from flask import g, has_request_context
-    from services.db_helpers import get_manager_currency as _get_mc
-
-    def cache_get():
-        if has_request_context() and hasattr(g, '_manager_currency'):
-            return g._manager_currency
-        return None
-
-    def cache_set(result):
-        if has_request_context():
-            g._manager_currency = result
-
-    return _get_mc(get_db, cache_get, cache_set)
-
-
-def get_employee_by_id(associate_id):
-    """Get a single employee by ID."""
-    from services.db_helpers import get_employee_by_id as _get_emp
-    return _get_emp(associate_id, get_db)
-
-
-def get_bonus_settings():
-    """Get bonus settings from database, creating default if needed."""
-    from services.db_helpers import get_bonus_settings as _get_bs
-    return _get_bs(get_db)
-
-
-def update_bonus_settings(budget_override):
-    """Update bonus settings in database."""
-    from services.db_helpers import update_bonus_settings as _update_bs
-    return _update_bs(budget_override, get_db)
-
-
-def get_filter_params():
-    """
-    Extract filter parameters from URL query string.
-
-    Returns dict with:
-    {
-        'include_orgs': [str],          # Supervisory orgs to scope to (inclusion filter)
-        'exclude_managers': bool,
-        'exclude_titles': [str],
-        'exclude_ids': [str]
-    }
-
-    Filter order: include_orgs applies first (scoping), then exclusions refine within.
-    """
-    # Support multiple orgs via repeated params (?include_orgs=A&include_orgs=B)
-    include_orgs = request.args.getlist('include_orgs')
-    # Clean up empty values
-    include_orgs = [o.strip() for o in include_orgs if o.strip()]
-    return {
-        'include_orgs': include_orgs,
-        'exclude_managers': request.args.get('exclude_managers', '').lower() == 'true',
-        'exclude_titles': [t.strip() for t in request.args.get('exclude_titles', '').split(',') if t.strip()],
-        'exclude_ids': [i.strip() for i in request.args.get('exclude_ids', '').split(',') if i.strip()]
-    }
-
-
-def apply_employee_filters(employees, filter_params):
-    """Apply filters to employee list and return filter metadata."""
-    return _apply_employee_filters(employees, filter_params)
 
 
 @app.route('/')

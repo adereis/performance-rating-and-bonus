@@ -1,26 +1,39 @@
 """Database access helpers and filtering logic.
 
-Functions that access the database take a `get_db` callable to avoid
-importing Flask application context directly. Pure filtering functions
-operate on employee dicts.
+Functions that access the database take an optional `get_db_fn` callable so
+tests can inject a fake session; it defaults to the real `models.get_db`, so
+routes and blueprints call these helpers with no arguments. Request-scoped
+concerns (the manager-currency cache, query-string filter parsing) bind to the
+Flask context lazily via local imports, keeping module import Flask-agnostic.
+Pure filtering functions operate on employee dicts.
 """
 import json
 import os
 from collections import Counter
 from datetime import datetime
 
+import models
 from models import Employee, BonusSettings, RatingSnapshot, Period
 from services.employee_utils import CURRENCY_SYMBOLS, has_direct_reports, get_manager_names
 
 
-def get_all_employees(get_db_fn, bonus_cycle_only=False):
+def _resolve_get_db(get_db_fn):
+    """Return the explicit get_db callable, or fall back to models.get_db.
+
+    Resolved dynamically (not imported by value) so test fixtures that patch
+    ``models.get_db`` are honored.
+    """
+    return get_db_fn or models.get_db
+
+
+def get_all_employees(get_db_fn=None, bonus_cycle_only=False):
     """Get all employees from database.
 
     Args:
-        get_db_fn: Callable that returns a database session
+        get_db_fn: Callable that returns a database session (defaults to models.get_db)
         bonus_cycle_only: If True, return only employees in the current bonus cycle
     """
-    db = get_db_fn()
+    db = _resolve_get_db(get_db_fn)()
     try:
         query = db.query(Employee)
         if bonus_cycle_only:
@@ -31,27 +44,27 @@ def get_all_employees(get_db_fn, bonus_cycle_only=False):
         db.close()
 
 
-def get_employee_by_id(associate_id, get_db_fn):
+def get_employee_by_id(associate_id, get_db_fn=None):
     """Get a single employee by ID.
 
     Args:
         associate_id: The employee's associate ID
-        get_db_fn: Callable that returns a database session
+        get_db_fn: Callable that returns a database session (defaults to models.get_db)
     """
-    db = get_db_fn()
+    db = _resolve_get_db(get_db_fn)()
     try:
         return db.query(Employee).filter(Employee.associate_id == associate_id).first()
     finally:
         db.close()
 
 
-def get_bonus_settings(get_db_fn):
+def get_bonus_settings(get_db_fn=None):
     """Get bonus settings from database, creating default if needed.
 
     Args:
-        get_db_fn: Callable that returns a database session
+        get_db_fn: Callable that returns a database session (defaults to models.get_db)
     """
-    db = get_db_fn()
+    db = _resolve_get_db(get_db_fn)()
     try:
         settings = db.query(BonusSettings).first()
         if not settings:
@@ -65,14 +78,14 @@ def get_bonus_settings(get_db_fn):
         db.close()
 
 
-def update_bonus_settings(budget_override, get_db_fn):
+def update_bonus_settings(budget_override, get_db_fn=None):
     """Update bonus settings in database.
 
     Args:
         budget_override: New budget override value
-        get_db_fn: Callable that returns a database session
+        get_db_fn: Callable that returns a database session (defaults to models.get_db)
     """
-    db = get_db_fn()
+    db = _resolve_get_db(get_db_fn)()
     try:
         settings = db.query(BonusSettings).first()
         if not settings:
@@ -90,7 +103,7 @@ def update_bonus_settings(budget_override, get_db_fn):
         db.close()
 
 
-def get_manager_currency(get_db_fn, cache_get=None, cache_set=None):
+def get_manager_currency(get_db_fn=None, cache_get=None, cache_set=None):
     """Detect the manager's currency.
 
     Priority order:
@@ -100,13 +113,31 @@ def get_manager_currency(get_db_fn, cache_get=None, cache_set=None):
     4. Default to USD
 
     Args:
-        get_db_fn: Callable that returns a database session
+        get_db_fn: Callable that returns a database session (defaults to models.get_db)
         cache_get: Optional callable that returns cached value or None
         cache_set: Optional callable to store result in cache
+
+    When cache_get/cache_set are both omitted, the result is cached per-request
+    on the Flask `g` object (no-op outside a request context).
 
     Returns:
         tuple: (currency_code, currency_symbol) e.g., ('AUD', 'A$')
     """
+    get_db_fn = _resolve_get_db(get_db_fn)
+
+    # Default to a per-request cache on Flask's `g` when no cache is supplied.
+    if cache_get is None and cache_set is None:
+        from flask import g, has_request_context
+
+        def cache_get():
+            if has_request_context() and hasattr(g, '_manager_currency'):
+                return g._manager_currency
+            return None
+
+        def cache_set(result):
+            if has_request_context():
+                g._manager_currency = result
+
     # Return cached result if available
     if cache_get:
         cached = cache_get()
@@ -223,6 +254,34 @@ def convert_tenet_names_to_ids(names_str: str, tenets_config: dict) -> str:
             ids.append(tenet_id)
 
     return json.dumps(ids) if ids else None
+
+
+def get_filter_params():
+    """
+    Extract filter parameters from the current request's URL query string.
+
+    Returns dict with:
+    {
+        'include_orgs': [str],          # Supervisory orgs to scope to (inclusion filter)
+        'exclude_managers': bool,
+        'exclude_titles': [str],
+        'exclude_ids': [str]
+    }
+
+    Filter order: include_orgs applies first (scoping), then exclusions refine within.
+    """
+    from flask import request
+
+    # Support multiple orgs via repeated params (?include_orgs=A&include_orgs=B)
+    include_orgs = request.args.getlist('include_orgs')
+    # Clean up empty values
+    include_orgs = [o.strip() for o in include_orgs if o.strip()]
+    return {
+        'include_orgs': include_orgs,
+        'exclude_managers': request.args.get('exclude_managers', '').lower() == 'true',
+        'exclude_titles': [t.strip() for t in request.args.get('exclude_titles', '').split(',') if t.strip()],
+        'exclude_ids': [i.strip() for i in request.args.get('exclude_ids', '').split(',') if i.strip()]
+    }
 
 
 def apply_employee_filters(employees, filter_params):
