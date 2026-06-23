@@ -1104,6 +1104,37 @@ class TestBonusCalculation:
         # Normal employee is NOT an override
         assert normal_result['is_override'] is False
 
+    def test_bonus_override_exceeding_pool_never_goes_negative(self):
+        """If override payouts exceed the pool, normal employees get 0, not negative."""
+        from app import calculate_bonus_for_employees
+
+        employees = [
+            {
+                'Associate ID': 'N1',
+                'performance_rating_percent': 100,
+                'Bonus Target Manager Currency': 10000,
+                'Current Base Pay Manager Currency': 100000,
+                'bonus_override_percent': None,
+            },
+            {
+                'Associate ID': 'O1',
+                'performance_rating_percent': None,
+                'Bonus Target Manager Currency': 10000,
+                'Current Base Pay Manager Currency': 100000,
+                'bonus_override_percent': 200.0,  # 200% of 10k = 20k, exceeds the pool
+            },
+        ]
+        params = {'upside_exponent': 1.35, 'downside_exponent': 1.9}
+
+        result = calculate_bonus_for_employees(
+            employees, params, budget_override=0, workday_pool=15000
+        )
+
+        for emp_id, r in result['results_by_id'].items():
+            assert r['final_bonus'] >= 0, f"{emp_id} got a negative bonus: {r['final_bonus']}"
+        # The pool is exhausted by the override; the normal employee gets 0, not negative.
+        assert result['results_by_id']['N1']['final_bonus'] == 0
+
     def test_bonus_override_option_b_pool_redistribution(self):
         """Test Option B: override bonus comes from pool, remainder redistributed."""
         from app import calculate_bonus_for_employees

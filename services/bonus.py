@@ -297,7 +297,9 @@ def calculate_bonus_for_employees(employees, params, budget_override=0.0, workda
         })
 
     # --- Step 2: Calculate remaining pool for normal employees ---
-    remaining_pool = adjusted_pool - override_total
+    # Clamp at zero: if override payouts exceed the pool, normal employees get
+    # nothing rather than negative bonuses (value_per_share divides by this below).
+    remaining_pool = max(0, adjusted_pool - override_total)
 
     # --- Step 3: Calculate normal employee bonuses using curve ---
     bonus_results = []
