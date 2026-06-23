@@ -17,7 +17,7 @@
         position: sticky;
         top: 20px;
         background: white;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border);
         border-radius: 8px;
         padding: 15px;
         max-height: calc(100vh - 40px);
@@ -26,7 +26,7 @@
 
     .employee-index h4 {
         font-size: 13px;
-        color: #666;
+        color: var(--ink-soft);
         margin: 0 0 12px 0;
         text-transform: uppercase;
         font-weight: 600;
@@ -38,7 +38,7 @@
     .index-search {
         width: 100%;
         padding: 8px 10px;
-        border: 1px solid #ddd;
+        border: 1px solid var(--border);
         border-radius: 4px;
         font-size: 13px;
         margin-bottom: 12px;
@@ -46,7 +46,7 @@
 
     .index-search:focus {
         outline: none;
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .index-list {
@@ -79,7 +79,7 @@
         cursor: pointer;
         transition: background 0.2s;
         font-size: 13px;
-        color: #333;
+        color: var(--ink);
     }
 
     .index-item:hover {
@@ -87,7 +87,7 @@
     }
 
     .index-item.active {
-        background: #667eea;
+        background: var(--accent);
         color: white;
     }
 
@@ -99,11 +99,11 @@
     }
 
     .index-item .status-dot.calibrated {
-        background: #27ae60;
+        background: var(--good);
     }
 
     .index-item .status-dot.uncalibrated {
-        background: #e0e0e0;
+        background: var(--border);
         border: 1px solid #ccc;
     }
 
@@ -117,7 +117,7 @@
     /* Team group sections */
     .team-group {
         margin-bottom: 20px;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border);
         border-radius: 8px;
         overflow: hidden;
     }
@@ -127,8 +127,9 @@
         justify-content: space-between;
         align-items: center;
         padding: 15px 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: var(--surface);
+        border-left: 3px solid var(--accent);
+        color: var(--ink);
         cursor: pointer;
         user-select: none;
     }
@@ -179,18 +180,18 @@
 
     .employee-card {
         background: white;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border);
         border-radius: 8px;
         padding: 25px;
         transition: border-color 0.3s;
     }
 
     .employee-card:hover {
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .employee-card.calibrated {
-        border-color: #27ae60;
+        border-color: var(--good);
         background: #f8fff9;
     }
 
@@ -239,13 +240,13 @@
     }
 
     .card-section-header .section-status.complete {
-        background: #d4edda;
-        color: #155724;
+        background: var(--good-soft);
+        color: var(--good);
     }
 
     .card-section-header .section-status.incomplete {
-        background: #fff3cd;
-        color: #856404;
+        background: var(--warn-soft);
+        color: var(--warn);
     }
 
     .card-section-content {
@@ -267,14 +268,14 @@
         font-size: 11px;
         padding: 4px 10px;
         background: #f0f0f0;
-        border: 1px solid #ddd;
+        border: 1px solid var(--border);
         border-radius: 4px;
         cursor: pointer;
-        color: #555;
+        color: var(--ink-soft);
     }
 
     .section-control-btn:hover {
-        background: #e0e0e0;
+        background: var(--border);
     }
 
     /* Responsive - hide sidebar on small screens */
@@ -303,7 +304,7 @@
 
     .employee-header label {
         font-size: 11px;
-        color: #666;
+        color: var(--ink-soft);
         margin-bottom: 5px;
         text-transform: uppercase;
         font-weight: 600;
@@ -312,11 +313,11 @@
     .employee-header span {
         font-size: 15px;
         font-weight: 500;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .calibration-section {
-        background: #f8f9fa;
+        background: var(--surface-2);
         padding: 20px;
         border-radius: 6px;
         margin-bottom: 15px;
@@ -324,7 +325,7 @@
 
     .calibration-section h4 {
         font-size: 14px;
-        color: #2c3e50;
+        color: var(--slate);
         margin-bottom: 15px;
         font-weight: 600;
     }
@@ -338,7 +339,7 @@
 
     .calibration-input-group label {
         font-size: 13px;
-        color: #555;
+        color: var(--ink-soft);
         min-width: 180px;
         padding-top: 8px;
     }
@@ -347,7 +348,7 @@
         flex: 1;
         max-width: 300px;
         padding: 8px 12px;
-        border: 2px solid #ddd;
+        border: 2px solid var(--border);
         border-radius: 4px;
         font-size: 14px;
         background: white;
@@ -356,13 +357,13 @@
 
     .calibration-input-group select:focus {
         outline: none;
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .calibration-input-group textarea {
         flex: 1;
         padding: 10px 12px;
-        border: 2px solid #ddd;
+        border: 2px solid var(--border);
         border-radius: 4px;
         font-size: 14px;
         min-height: 80px;
@@ -372,20 +373,20 @@
 
     .calibration-input-group textarea:focus {
         outline: none;
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .calibration-input-group input[type="text"] {
         flex: 1;
         padding: 8px 12px;
-        border: 2px solid #ddd;
+        border: 2px solid var(--border);
         border-radius: 4px;
         font-size: 14px;
     }
 
     .calibration-input-group input[type="text"]:focus {
         outline: none;
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .derived-value {
@@ -393,13 +394,13 @@
         padding: 8px 12px;
         border-radius: 4px;
         font-weight: 600;
-        color: #2c3e50;
+        color: var(--slate);
         min-width: 200px;
     }
 
     .derived-value.high-impact {
-        background: #d4edda;
-        color: #155724;
+        background: var(--good-soft);
+        color: var(--good);
     }
 
     .derived-value.successful {
@@ -408,22 +409,22 @@
     }
 
     .derived-value.evolving {
-        background: #fff3cd;
-        color: #856404;
+        background: var(--warn-soft);
+        color: var(--warn);
     }
 
     .derived-value.low {
-        background: #f8d7da;
-        color: #721c24;
+        background: var(--bad-soft);
+        color: var(--bad);
     }
 
     .derived-value.future-talent {
-        background: #d4edda;
-        color: #155724;
+        background: var(--good-soft);
+        color: var(--good);
     }
 
     .saved-indicator {
-        color: #27ae60;
+        color: var(--good);
         font-size: 14px;
         font-weight: 600;
         opacity: 0;
@@ -446,7 +447,7 @@
     .filter-btn {
         padding: 8px 16px;
         background: white;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border);
         border-radius: 4px;
         cursor: pointer;
         transition: all 0.3s;
@@ -454,13 +455,13 @@
     }
 
     .filter-btn:hover {
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .filter-btn.active {
-        background: #667eea;
+        background: var(--accent);
         color: white;
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .workday-info {
@@ -479,7 +480,7 @@
 
     .workday-info label {
         display: block;
-        color: #666;
+        color: var(--ink-soft);
         font-weight: 600;
         margin-bottom: 3px;
         font-size: 10px;
@@ -487,7 +488,7 @@
     }
 
     .workday-info span {
-        color: #2c3e50;
+        color: var(--slate);
         display: block;
         word-wrap: break-word;
     }
@@ -497,7 +498,7 @@
     }
 
     .collapsible-header {
-        background: #e9ecef;
+        background: var(--border);
         padding: 10px 15px;
         border-radius: 4px;
         cursor: pointer;
@@ -510,7 +511,7 @@
     }
 
     .collapsible-header:hover {
-        background: #dee2e6;
+        background: var(--border);
     }
 
     .collapsible-header .toggle-icon {
@@ -525,7 +526,7 @@
         display: none;
         padding: 15px;
         background: white;
-        border: 1px solid #e9ecef;
+        border: 1px solid var(--border);
         border-top: none;
         border-radius: 0 0 4px 4px;
     }
@@ -536,15 +537,15 @@
 
     /* Promotion section highlighting when Ready Now selected */
     .collapsible-section.promotion-required .collapsible-header {
-        background: #fff3cd;
+        background: var(--warn-soft);
         border-left: 4px solid #ffc107;
     }
     .collapsible-section.promotion-required .collapsible-header .promotion-label {
         font-weight: 600;
     }
     .promotion-incomplete-warning {
-        color: #856404;
-        background: #fff3cd;
+        color: var(--warn);
+        background: var(--warn-soft);
         padding: 8px 12px;
         border-radius: 4px;
         margin-top: 10px;
@@ -557,14 +558,14 @@
 
     .progress-bar {
         margin-bottom: 20px;
-        background: #e9ecef;
+        background: var(--border);
         border-radius: 4px;
         overflow: hidden;
     }
 
     .progress-bar-inner {
         height: 24px;
-        background: linear-gradient(90deg, #667eea, #764ba2);
+        background: var(--accent);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -577,11 +578,11 @@
     .no-data-message {
         text-align: center;
         padding: 40px;
-        color: #666;
+        color: var(--ink-soft);
     }
 
     .no-data-message h3 {
-        color: #2c3e50;
+        color: var(--slate);
         margin-bottom: 15px;
     }
 
@@ -592,7 +593,7 @@
     .no-data-message .btn {
         display: inline-block;
         padding: 12px 24px;
-        background: #667eea;
+        background: var(--accent);
         color: white;
         text-decoration: none;
         border-radius: 6px;
@@ -600,7 +601,7 @@
     }
 
     .no-data-message .btn:hover {
-        background: #5a6fd6;
+        background: var(--accent-hover);
     }
 
     /* Tenets selection styles */
@@ -612,14 +613,14 @@
 
     .tenet-category {
         background: white;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border);
         border-radius: 6px;
         padding: 15px;
     }
 
     .tenet-category h6 {
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
         margin: 0 0 10px 0;
         font-weight: 600;
         text-transform: uppercase;
@@ -642,7 +643,7 @@
     }
 
     .tenet-item:hover {
-        background: #f8f9fa;
+        background: var(--surface-2);
     }
 
     .tenet-item input[type="checkbox"] {
@@ -652,7 +653,7 @@
 
     .tenet-count-warning {
         font-size: 11px;
-        color: #e74c3c;
+        color: var(--bad);
         margin-top: 4px;
         display: none;
     }
@@ -665,7 +666,7 @@
         display: inline-block;
         width: 8px;
         height: 8px;
-        background: #3498db;
+        background: var(--info);
         border-radius: 2px;
         margin-left: 6px;
         vertical-align: middle;
@@ -677,7 +678,7 @@
         padding-top: 8px;
         border-top: 1px solid #eee;
         font-size: 11px;
-        color: #666;
+        color: var(--ink-soft);
         display: none;
     }
 
@@ -695,7 +696,7 @@
         display: inline-block;
         width: 8px;
         height: 8px;
-        background: #3498db;
+        background: var(--info);
         border-radius: 2px;
     }
 
@@ -708,7 +709,7 @@
 
     .tenet-name {
         font-weight: 600;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .tenet-description {
@@ -717,7 +718,7 @@
         left: 0;
         top: 100%;
         margin-top: 5px;
-        background: #2c3e50;
+        background: var(--slate);
         color: white;
         padding: 10px 12px;
         border-radius: 6px;
@@ -734,7 +735,7 @@
         bottom: 100%;
         left: 20px;
         border: 6px solid transparent;
-        border-bottom-color: #2c3e50;
+        border-bottom-color: var(--slate);
     }
 
     .tenet-label:hover .tenet-description {
@@ -742,7 +743,7 @@
     }
 
     .loading-tenets {
-        color: #666;
+        color: var(--ink-soft);
         font-style: italic;
         padding: 10px;
     }
@@ -777,22 +778,22 @@
 
     .bonus-context .context-item label {
         font-size: 10px;
-        color: #666;
+        color: var(--ink-soft);
     }
 
     .bonus-context .context-item span {
         font-weight: 600;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     /* Cross-cycle hints */
     .cross-cycle-hint {
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
         margin-top: 6px;
         padding: 6px 10px;
-        background: #f8f9fa;
-        border-left: 3px solid #3498db;
+        background: var(--surface-2);
+        border-left: 3px solid var(--info);
         display: none;
     }
 
@@ -802,11 +803,11 @@
 
     .cross-cycle-hint .hint-label {
         font-weight: 500;
-        color: #555;
+        color: var(--ink-soft);
     }
 
     .cross-cycle-hint .hint-value {
-        color: #2c3e50;
+        color: var(--slate);
     }
 
 </style>
@@ -824,7 +825,7 @@
     </div>
     {% elif not has_talent_data %}
     <div class="no-data-message">
-        <h3>📋 Missing Talent Calibration Data</h3>
+        <h3><svg class="icon"><use href="#i-clipboard"></use></svg> Missing Talent Calibration Data</h3>
         <p>Talent calibration requires importing the talent assessment spreadsheet from Workday.</p>
         <p style="margin-top: 15px;">
             <a href="{{ url_for('import_page') }}" class="btn">Import Talent Data</a>
@@ -855,7 +856,7 @@
     <div class="calibration-layout">
         <!-- Sticky Employee Index Sidebar -->
         <div class="employee-index">
-            <h4>Quick Jump <span style="font-size: 11px; color: #999;">({{ team|length }})</span></h4>
+            <h4>Quick Jump <span class="u-faint" style="font-size: 11px;">({{ team|length }})</span></h4>
             <input type="text" class="index-search" placeholder="Search..." oninput="filterIndex(this.value)">
             <ul class="index-list">
                 {% if is_multi_team %}

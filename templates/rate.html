@@ -11,18 +11,18 @@
 
     .employee-card {
         background: white;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border);
         border-radius: 8px;
         padding: 25px;
         transition: border-color 0.3s;
     }
 
     .employee-card:hover {
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .employee-card.rated {
-        border-color: #27ae60;
+        border-color: var(--good);
         background: #f8fff9;
     }
 
@@ -42,7 +42,7 @@
 
     .employee-header label {
         font-size: 11px;
-        color: #666;
+        color: var(--ink-soft);
         margin-bottom: 5px;
         text-transform: uppercase;
         font-weight: 600;
@@ -51,11 +51,11 @@
     .employee-header span {
         font-size: 15px;
         font-weight: 500;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .rating-section {
-        background: #f8f9fa;
+        background: var(--surface-2);
         padding: 20px;
         border-radius: 6px;
         margin-bottom: 15px;
@@ -63,7 +63,7 @@
 
     .rating-section h4 {
         font-size: 14px;
-        color: #2c3e50;
+        color: var(--slate);
         margin-bottom: 15px;
         font-weight: 600;
     }
@@ -77,14 +77,14 @@
 
     .rating-input-group label {
         font-size: 13px;
-        color: #555;
+        color: var(--ink-soft);
         min-width: 180px;
     }
 
     .rating-input-group input[type="number"] {
         width: 120px;
         padding: 8px 12px;
-        border: 2px solid #ddd;
+        border: 2px solid var(--border);
         border-radius: 4px;
         font-size: 16px;
         font-weight: 600;
@@ -92,14 +92,14 @@
     }
 
     .rating-input-group input[type="number"].invalid {
-        border-color: #e74c3c;
+        border-color: var(--bad);
         background-color: #fee;
     }
 
     .rating-input-group input[type="text"] {
         flex: 1;
         padding: 8px 12px;
-        border: 2px solid #ddd;
+        border: 2px solid var(--border);
         border-radius: 4px;
         font-size: 14px;
     }
@@ -107,7 +107,7 @@
     .rating-input-group textarea {
         flex: 1;
         padding: 10px 12px;
-        border: 2px solid #ddd;
+        border: 2px solid var(--border);
         border-radius: 4px;
         font-size: 14px;
         min-height: 80px;
@@ -118,21 +118,21 @@
     .rating-input-group input:focus,
     .rating-input-group textarea:focus {
         outline: none;
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .rating-input-group input.invalid:focus {
-        border-color: #e74c3c;
+        border-color: var(--bad);
     }
 
     .rating-hint {
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
         margin-left: 195px;
     }
 
     .save-btn {
-        background: #27ae60;
+        background: var(--good);
         color: white;
         border: none;
         padding: 12px 30px;
@@ -144,7 +144,7 @@
     }
 
     .save-btn:hover {
-        background: #229954;
+        background: var(--good);
     }
 
     .save-btn:disabled {
@@ -153,7 +153,7 @@
     }
 
     .saved-indicator {
-        color: #27ae60;
+        color: var(--good);
         font-size: 14px;
         font-weight: 600;
         opacity: 0;
@@ -176,7 +176,7 @@
     .filter-btn {
         padding: 8px 16px;
         background: white;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border);
         border-radius: 4px;
         cursor: pointer;
         transition: all 0.3s;
@@ -184,13 +184,13 @@
     }
 
     .filter-btn:hover {
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .filter-btn.active {
-        background: #667eea;
+        background: var(--accent);
         color: white;
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .workday-info {
@@ -209,7 +209,7 @@
 
     .workday-info label {
         display: block;
-        color: #666;
+        color: var(--ink-soft);
         font-weight: 600;
         margin-bottom: 3px;
         font-size: 10px;
@@ -217,7 +217,7 @@
     }
 
     .workday-info span {
-        color: #2c3e50;
+        color: var(--slate);
         display: block;
         word-wrap: break-word;
     }
@@ -232,12 +232,12 @@
     .view-btn {
         padding: 8px 20px;
         background: white;
-        border: 2px solid #667eea;
+        border: 2px solid var(--accent);
         border-radius: 4px;
         cursor: pointer;
         font-size: 14px;
         font-weight: 600;
-        color: #667eea;
+        color: var(--accent);
         transition: all 0.3s;
     }
 
@@ -246,7 +246,7 @@
     }
 
     .view-btn.active {
-        background: #667eea;
+        background: var(--accent);
         color: white;
     }
 
@@ -269,12 +269,12 @@
     }
 
     .compact-table th {
-        background: #f8f9fa;
+        background: var(--surface-2);
         padding: 12px;
         text-align: left;
         font-weight: 600;
-        color: #2c3e50;
-        border-bottom: 2px solid #e0e0e0;
+        color: var(--slate);
+        border-bottom: 2px solid var(--border);
         position: sticky;
         top: 0;
         z-index: 10;
@@ -286,7 +286,7 @@
     }
 
     .compact-table tr:hover {
-        background: #f8f9fa;
+        background: var(--surface-2);
     }
 
     .compact-table tr.has-rating {
@@ -296,27 +296,27 @@
     .compact-table input[type="number"] {
         width: 80px;
         padding: 6px 10px;
-        border: 2px solid #ddd;
+        border: 2px solid var(--border);
         border-radius: 4px;
         font-size: 14px;
         font-weight: 600;
     }
 
     .compact-table input[type="number"].invalid {
-        border-color: #e74c3c;
+        border-color: var(--bad);
         background-color: #fee;
     }
 
     .compact-table .validation-error {
         display: block;
-        color: #e74c3c;
+        color: var(--bad);
         font-size: 11px;
         margin-top: 2px;
     }
 
     .compact-save-indicator {
         font-size: 11px;
-        color: #27ae60;
+        color: var(--good);
         opacity: 0;
         transition: opacity 0.3s;
         margin-left: 10px;
@@ -359,12 +359,12 @@
     .tenets-section {
         margin-top: 15px;
         padding-top: 15px;
-        border-top: 1px solid #e0e0e0;
+        border-top: 1px solid var(--border);
     }
 
     .tenets-section h5 {
         font-size: 13px;
-        color: #2c3e50;
+        color: var(--slate);
         margin-bottom: 10px;
         font-weight: 600;
     }
@@ -377,14 +377,14 @@
 
     .tenet-category {
         background: white;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border);
         border-radius: 6px;
         padding: 15px;
     }
 
     .tenet-category h6 {
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
         margin: 0 0 10px 0;
         font-weight: 600;
         text-transform: uppercase;
@@ -408,7 +408,7 @@
     }
 
     .tenet-item:hover {
-        background: #f8f9fa;
+        background: var(--surface-2);
     }
 
     .tenet-item input[type="checkbox"] {
@@ -425,7 +425,7 @@
 
     .tenet-name {
         font-weight: 600;
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     .tenet-description {
@@ -433,7 +433,7 @@
         left: 0;
         top: 100%;
         margin-top: 5px;
-        background: #2c3e50;
+        background: var(--slate);
         color: white;
         padding: 10px 12px;
         border-radius: 6px;
@@ -454,7 +454,7 @@
         bottom: 100%;
         left: 20px;
         border: 6px solid transparent;
-        border-bottom-color: #2c3e50;
+        border-bottom-color: var(--slate);
     }
 
     .tenet-label:hover .tenet-description {
@@ -465,7 +465,7 @@
 
     .tenet-count-warning {
         font-size: 11px;
-        color: #e74c3c;
+        color: var(--bad);
         margin-top: 5px;
         display: none;
     }
@@ -490,7 +490,7 @@
         padding-top: 8px;
         border-top: 1px solid #eee;
         font-size: 11px;
-        color: #666;
+        color: var(--ink-soft);
         display: none;
     }
 
@@ -515,18 +515,18 @@
     .loading-tenets {
         text-align: center;
         padding: 20px;
-        color: #666;
+        color: var(--ink-soft);
         font-size: 13px;
     }
 
     .no-data-message {
         text-align: center;
         padding: 40px;
-        color: #666;
+        color: var(--ink-soft);
     }
 
     .no-data-message h3 {
-        color: #2c3e50;
+        color: var(--slate);
         margin-bottom: 15px;
     }
 
@@ -537,7 +537,7 @@
     .no-data-message .btn {
         display: inline-block;
         padding: 12px 24px;
-        background: #667eea;
+        background: var(--accent);
         color: white;
         text-decoration: none;
         border-radius: 6px;
@@ -545,17 +545,17 @@
     }
 
     .no-data-message .btn:hover {
-        background: #5a6fd6;
+        background: var(--accent-hover);
     }
 
     /* Cross-cycle hints */
     .cross-cycle-hint {
         font-size: 12px;
-        color: #666;
+        color: var(--ink-soft);
         margin-top: 6px;
         padding: 6px 10px;
-        background: #f8f9fa;
-        border-left: 3px solid #3498db;
+        background: var(--surface-2);
+        border-left: 3px solid var(--info);
         display: none;
     }
 
@@ -565,18 +565,18 @@
 
     .cross-cycle-hint .hint-label {
         font-weight: 500;
-        color: #555;
+        color: var(--ink-soft);
     }
 
     .cross-cycle-hint .hint-value {
-        color: #2c3e50;
+        color: var(--slate);
     }
 
     /* Rating guidelines panel */
     .guidelines-panel {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border: 1px solid #dee2e6;
-        border-left: 4px solid #667eea;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--accent);
         border-radius: 6px;
         margin-bottom: 20px;
         overflow: hidden;
@@ -614,7 +614,7 @@
         background: none;
         border: none;
         font-size: 12px;
-        color: #667eea;
+        color: var(--accent);
         cursor: pointer;
         padding: 4px 8px;
         border-radius: 4px;
@@ -650,7 +650,7 @@
         background: white;
         border-radius: 6px;
         padding: 14px;
-        border: 1px solid #e9ecef;
+        border: 1px solid var(--border);
     }
 
     .guidelines-section h5 {
@@ -659,7 +659,7 @@
         color: #495057;
         margin: 0 0 10px 0;
         padding-bottom: 6px;
-        border-bottom: 1px solid #e9ecef;
+        border-bottom: 1px solid var(--border);
     }
 
     .rating-scale-table {
@@ -689,7 +689,7 @@
         margin: 0;
         padding-left: 18px;
         font-size: 12px;
-        color: #555;
+        color: var(--ink-soft);
     }
 
     .guidelines-list li {
@@ -698,7 +698,7 @@
     }
 
     .guidelines-list li strong {
-        color: #333;
+        color: var(--ink);
     }
 
     .guidelines-note {
@@ -706,7 +706,7 @@
         color: #6c757d;
         margin-top: 10px;
         padding-top: 8px;
-        border-top: 1px dashed #dee2e6;
+        border-top: 1px dashed var(--border);
         font-style: italic;
     }
 
@@ -723,7 +723,7 @@
         position: sticky;
         top: 20px;
         background: white;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border);
         border-radius: 8px;
         padding: 15px;
         max-height: calc(100vh - 40px);
@@ -732,7 +732,7 @@
 
     .employee-index h4 {
         font-size: 13px;
-        color: #666;
+        color: var(--ink-soft);
         margin: 0 0 12px 0;
         text-transform: uppercase;
         font-weight: 600;
@@ -744,7 +744,7 @@
     .index-search {
         width: 100%;
         padding: 8px 10px;
-        border: 1px solid #ddd;
+        border: 1px solid var(--border);
         border-radius: 4px;
         font-size: 13px;
         margin-bottom: 12px;
@@ -752,7 +752,7 @@
 
     .index-search:focus {
         outline: none;
-        border-color: #667eea;
+        border-color: var(--accent);
     }
 
     .index-list {
@@ -785,7 +785,7 @@
         cursor: pointer;
         transition: background 0.2s;
         font-size: 13px;
-        color: #333;
+        color: var(--ink);
     }
 
     .index-item:hover {
@@ -793,7 +793,7 @@
     }
 
     .index-item.active {
-        background: #667eea;
+        background: var(--accent);
         color: white;
     }
 
@@ -805,16 +805,16 @@
     }
 
     .index-item .status-dot.rated {
-        background: #27ae60;
+        background: var(--good);
     }
 
     .index-item .status-dot.unrated {
-        background: #e0e0e0;
+        background: var(--border);
         border: 1px solid #ccc;
     }
 
     .index-item .status-dot.override {
-        box-shadow: 0 0 0 2px #f39c12;
+        box-shadow: 0 0 0 2px var(--warn);
     }
 
     .index-item .name {
@@ -827,7 +827,7 @@
     /* Team group sections (collapsible per-manager boxes) */
     .team-group {
         margin-bottom: 20px;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border);
         border-radius: 8px;
         overflow: hidden;
     }
@@ -837,8 +837,9 @@
         justify-content: space-between;
         align-items: center;
         padding: 15px 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: var(--surface);
+        border-left: 3px solid var(--accent);
+        color: var(--ink);
         cursor: pointer;
         user-select: none;
     }
@@ -904,13 +905,13 @@
 
     /* Special Case (Bonus Override) Styles */
     .employee-card.special-case {
-        border-color: #f39c12;
+        border-color: var(--warn);
         background: #fffef5;
     }
 
     .special-case-badge {
         display: inline-block;
-        background: #f39c12;
+        background: var(--warn);
         color: white;
         font-size: 10px;
         padding: 2px 8px;
@@ -922,13 +923,13 @@
 
     .special-case-section {
         margin-top: 15px;
-        border: 1px dashed #ddd;
+        border: 1px dashed var(--border);
         border-radius: 6px;
         overflow: hidden;
     }
 
     .special-case-section.expanded {
-        border-color: #f39c12;
+        border-color: var(--warn);
         background: #fffef5;
     }
 
@@ -938,7 +939,7 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        background: #f8f9fa;
+        background: var(--surface-2);
         transition: background 0.2s;
     }
 
@@ -947,22 +948,22 @@
     }
 
     .special-case-section.expanded .special-case-toggle {
-        background: #fff3cd;
+        background: var(--warn-soft);
     }
 
     .toggle-icon {
         font-size: 10px;
-        color: #666;
+        color: var(--ink-soft);
     }
 
     .toggle-label {
         font-size: 13px;
-        color: #555;
+        color: var(--ink-soft);
         font-weight: 500;
     }
 
     .active-indicator {
-        background: #f39c12;
+        background: var(--warn);
         color: white;
         font-size: 10px;
         padding: 2px 8px;
@@ -981,12 +982,12 @@
     }
 
     .special-case-info {
-        background: #fff3cd;
-        border: 1px solid #f39c12;
+        background: var(--warn-soft);
+        border: 1px solid var(--warn);
         border-radius: 4px;
         padding: 10px;
         font-size: 12px;
-        color: #856404;
+        color: var(--warn);
         margin-bottom: 15px;
     }
 
@@ -1055,7 +1056,7 @@
                         </tr>
                     </table>
                     <div class="guidelines-note">
-                        💡 100% is the baseline — a solid performer who met all expectations, not an "average" rating.
+                        <svg class="icon"><use href="#i-bulb"></use></svg> 100% is the baseline — a solid performer who met all expectations, not an "average" rating.
                     </div>
                 </div>
                 <div class="guidelines-section">
@@ -1085,7 +1086,7 @@
     </div>
     {% elif not has_bonus_data %}
     <div class="no-data-message">
-        <h3>📋 Missing Bonus Target Data</h3>
+        <h3><svg class="icon"><use href="#i-clipboard"></use></svg> Missing Bonus Target Data</h3>
         <p>Bonus rating requires employee bonus target information from Workday.</p>
         <p style="margin-top: 15px;">
             <a href="{{ url_for('import_page') }}" class="btn">Import Bonus Data</a>
@@ -1164,7 +1165,7 @@
     <div class="rating-layout" id="detailed-view">
         <!-- Sticky Employee Index Sidebar -->
         <div class="employee-index">
-            <h4>Quick Jump <span style="font-size: 11px; color: #999;">({{ team|length }})</span></h4>
+            <h4>Quick Jump <span class="u-faint" style="font-size: 11px;">({{ team|length }})</span></h4>
             <input type="text" class="index-search" placeholder="Search..." oninput="filterIndex(this.value)">
             <ul class="index-list">
                 {% if is_multi_team %}
