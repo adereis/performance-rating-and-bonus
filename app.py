@@ -2504,6 +2504,9 @@ def analyze_import():
     Returns counts of employees, whether bonus column exists,
     and checks if the period already exists (for historical imports).
     """
+    if DEMO_MODE:
+        return jsonify({'success': False, 'error': 'Imports are disabled in demo mode'}), 403
+
     if 'file' not in request.files:
         return jsonify({'success': False, 'error': 'No file uploaded'}), 400
 
@@ -2577,6 +2580,9 @@ def import_current():
     Updates the Employee table with fresh Workday data.
     Preserves existing ratings and justifications unless clear_existing is set.
     """
+    if DEMO_MODE:
+        return jsonify({'success': False, 'error': 'Imports are disabled in demo mode'}), 403
+
     if 'file' not in request.files:
         return jsonify({'success': False, 'error': 'No file uploaded'}), 400
 
@@ -3296,6 +3302,9 @@ def import_historical():
     Creates Period and RatingSnapshot records.
     Parses Notes field for rating data.
     """
+    if DEMO_MODE:
+        return jsonify({'success': False, 'error': 'Imports are disabled in demo mode'}), 403
+
     if 'file' not in request.files:
         return jsonify({'success': False, 'error': 'No file uploaded'}), 400
 

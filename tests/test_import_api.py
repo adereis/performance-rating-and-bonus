@@ -127,6 +127,22 @@ class TestImportPage:
         assert b'Drop your XLSX file here' in response.data
 
 
+class TestImportDemoModeGating:
+    """Imports must be blocked server-side when DEMO_MODE is on (not just hidden in the UI)."""
+
+    def test_import_endpoints_return_403_in_demo_mode(self, client, db_session, monkeypatch):
+        import app as app_module
+        monkeypatch.setattr(app_module, 'DEMO_MODE', True)
+        # The demo after_request cookie wrapper needs real session infra (and is
+        # only imported when DEMO_MODE is set at startup); stub it to a passthrough
+        # so this test isolates the route-level import gate.
+        monkeypatch.setattr(app_module, 'demo_response_wrapper', lambda resp: resp, raising=False)
+        for endpoint in ['/api/import/analyze', '/api/import/current', '/api/import/historical']:
+            response = client.post(endpoint)
+            assert response.status_code == 403, f'{endpoint} should be 403 in demo mode'
+            assert response.get_json()['success'] is False
+
+
 class TestImportAnalyze:
     """Tests for the /api/import/analyze endpoint."""
 
