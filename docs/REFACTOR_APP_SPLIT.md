@@ -1,8 +1,15 @@
 # Refactor plan: split app.py into blueprints + finish the services migration
 
-Status: **planned, not started.** A durable, executable plan for the second
-high-impact architectural change (the first was the frontend module layer — see
-git history around `static/js/common.js` / `employee-form.js`).
+Status: **done.** All phases (0–7) landed as one coherent commit each. `app.py`
+went from a 4,449-line god-module to a ~290-line application factory: the 32
+routes now live in eight `blueprints/` modules (`core`, `rate`, `calibrate`,
+`bonus`, `analytics`, `export`, `import_`, `history`), the snapshot export
+duplication is gone, the app-local DB/filter helpers moved into
+`services/db_helpers.py`, and `config.py` adds a `Config` with a production
+`SECRET_KEY` fail-fast. The 540-test suite stayed green at every commit and the
+interactive smoke tour passed after each phase. `conftest.py` builds the test
+app from the factory-built module-level `app` (`from app import app`), so no
+fixture rewrite was needed. The notes below are kept as the record of the plan.
 
 ## Why
 

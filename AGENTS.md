@@ -8,7 +8,9 @@ Instructions for AI agents and human developers working on this codebase.
 
 | File | Purpose |
 |------|---------|
-| `app.py` | Flask routes and API endpoints (thin wrappers delegating to services) |
+| `app.py` | Application factory (`create_app()`), app-level filters/context processor/request hooks/error handlers, blueprint registration. **No routes live here** — they're in `blueprints/`. |
+| `config.py` | `Config` class: env-driven settings; fails fast if `SECRET_KEY` unset when `FLASK_ENV=production` |
+| `blueprints/` | Flask blueprints, one per route group: `core` (/, /health, /demo/*), `rate`, `calibrate`, `bonus`, `analytics`, `export`, `import_`, `history`. Thin handlers; logic lives in `services/`. Blueprints never `import app` (would break `python app.py`); they read config via `demo_mode`/`models`/`services`. |
 | `models.py` | SQLAlchemy models: Employee, Period, RatingSnapshot, BonusSettings |
 | `migrations.py` | Database migrations: column renames, additions, placeholder cleanup |
 | `xlsx_utils.py` | Workday XLSX parsing, column detection, spreadsheet type detection |
@@ -241,14 +243,19 @@ app through headless Chrome (smoke tour, modal, bonus chart, exclude-managers fi
 demo-mode session isolation). It also documents the environment gotchas (blocked
 `sleep`, kill-by-port not `pkill`, Jinja template caching → restart on `.html` edits).
 
-**Planned refactor**: `docs/REFACTOR_APP_SPLIT.md` is an executable plan for splitting
-the 4,449-line `app.py` god-module into Flask blueprints and finishing the `services/`
-migration (incremental, behavior-preserving, test-gated). Read it before adding more
-routes/logic to `app.py`; note the endpoint-renaming gotcha (`url_for`/`request.endpoint`).
+**Blueprint split (done)**: `docs/REFACTOR_APP_SPLIT.md` was the executable plan;
+all phases are complete. `app.py` went from a 4,449-line god-module to a ~290-line
+application factory; the 32 routes now live in eight `blueprints/` modules and the
+heavy logic in `services/`. The endpoint-renaming gotcha is resolved (all endpoints
+are now namespaced, e.g. `rate.rate_page`, `core.index`) — keep that in mind when
+adding `url_for(...)`/`request.endpoint` references.
 
 ### When Modifying
 
-**New API endpoint**: Add to `app.py`, follow try/except pattern, add test to `test_api.py`
+**New API endpoint**: Add it to the relevant `blueprints/<group>.py` (decorate with
+that blueprint, e.g. `@rate_bp.route(...)`), follow the try/except pattern, keep logic
+in `services/`, and add a test to `test_api.py`. `url_for`/`request.endpoint` use the
+namespaced name (`<blueprint>.<func>`).
 
 **New database field**: Update `models.py`, add to `_migrate_add_new_columns()`, update `convert_xlsx.py` if from Workday.
 
