@@ -270,8 +270,10 @@ def sample_tenets(app, monkeypatch):
         sample_config = json.load(f)
     sample_map = {t['id']: t['name'] for t in sample_config.get('tenets', [])}
 
-    import app as app_module
-    monkeypatch.setattr(app_module, 'load_tenets_config',
+    # Patch the canonical source so both app.py routes and blueprint routes
+    # (which resolve load_tenets_config via the db_helpers module) are affected.
+    import services.db_helpers as db_helpers
+    monkeypatch.setattr(db_helpers, 'load_tenets_config',
                         lambda: (sample_config, sample_map))
     return sample_config
 

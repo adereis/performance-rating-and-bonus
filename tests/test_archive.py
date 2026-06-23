@@ -176,8 +176,8 @@ class TestArchivePeriodEndpoint:
                 }
             )
 
-        import app
-        monkeypatch.setattr(app, 'load_tenets_config', mock_load_tenets_config)
+        import services.db_helpers as db_helpers
+        monkeypatch.setattr(db_helpers, 'load_tenets_config', mock_load_tenets_config)
 
         # Create employee with tenet IDs
         emp = Employee(

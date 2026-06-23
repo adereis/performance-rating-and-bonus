@@ -22,9 +22,10 @@ import demo_mode
 import models
 from models import Period
 
+from services import db_helpers
 from services.db_helpers import (
     get_filter_params, get_all_employees, apply_employee_filters,
-    get_bonus_settings, load_tenets_config, get_all_history_snapshots,
+    get_bonus_settings, get_all_history_snapshots,
 )
 from services.employee_utils import is_employee_calibrated, is_employee_rated
 from services.bonus import calculate_bonus_for_employees
@@ -112,7 +113,7 @@ def export_page():
     bonus_calc = calculate_bonus_for_employees(rated_employees, params, budget_override, workday_pool, all_targets_sum)
 
     # Load tenets configuration
-    _, tenets_map = load_tenets_config()
+    _, tenets_map = db_helpers.load_tenets_config()
 
     # Helper functions for modification detection
     def is_field_modified(emp, field_name):
@@ -396,7 +397,7 @@ def export_csv():
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     # Load tenets for description
-    _, tenets_map = load_tenets_config()
+    _, tenets_map = db_helpers.load_tenets_config()
 
     # Create CSV in memory
     output = io.StringIO()
@@ -587,7 +588,7 @@ def export_xlsx():
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
     # Load tenets for description
-    _, tenets_map = load_tenets_config()
+    _, tenets_map = db_helpers.load_tenets_config()
 
     # Write data rows
     data_start_row = 2 + demo_row_offset
@@ -756,7 +757,7 @@ def export_talent_xlsx():
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
     # Load tenets for name lookup
-    _, tenets_map = load_tenets_config()
+    _, tenets_map = db_helpers.load_tenets_config()
 
     # Write data rows
     data_start_row = 2 + demo_row_offset
@@ -869,7 +870,7 @@ def export_talent_csv():
     team_data, filter_info = apply_employee_filters(all_employees, filter_params)
 
     # Load tenets for name lookup
-    _, tenets_map = load_tenets_config()
+    _, tenets_map = db_helpers.load_tenets_config()
 
     # Create CSV in memory
     output = io.StringIO()
@@ -996,7 +997,7 @@ def export_snapshot_xlsx():
     all_employees = get_all_employees()
 
     # Load tenets config
-    tenets_config, tenets_map = load_tenets_config()
+    tenets_config, tenets_map = db_helpers.load_tenets_config()
 
     # Calculate bonuses for rated employees
     rated_employees = [e for e in all_employees if is_employee_rated(e)]
@@ -1068,7 +1069,7 @@ def export_snapshot_csv():
     all_employees = get_all_employees()
 
     # Load tenets config
-    tenets_config, tenets_map = load_tenets_config()
+    tenets_config, tenets_map = db_helpers.load_tenets_config()
 
     # Calculate bonuses for rated employees
     rated_employees = [e for e in all_employees if is_employee_rated(e)]

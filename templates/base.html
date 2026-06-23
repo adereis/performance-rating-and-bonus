@@ -173,13 +173,13 @@
                 <a href="{{ url_for('bonus_calculation') }}" {% if request.endpoint == 'bonus_calculation' %}class="active"{% endif %}>Bonus Calculation</a>
                 <a href="{{ url_for('analytics') }}" {% if request.endpoint == 'analytics' %}class="active"{% endif %}>Analytics</a>
                 <a href="{{ url_for('export.export_page') }}" {% if request.endpoint == 'export.export_page' %}class="active"{% endif %}>Export</a>
-                <a href="{{ url_for('history_page') }}" {% if request.endpoint == 'history_page' %}class="active"{% endif %}>History</a>
+                <a href="{{ url_for('history.history_page') }}" {% if request.endpoint == 'history.history_page' %}class="active"{% endif %}>History</a>
             </nav>
         </div>
     </header>
 
     <!-- Filter Toggle Button (hidden on pages where filtering doesn't apply) -->
-    {% if request.endpoint not in ['history_page'] %}
+    {% if request.endpoint not in ['history.history_page'] %}
     <button class="filter-toggle {% if filter_info is defined and filter_info.active %}active{% endif %}"
             onclick="toggleFilterPanel()"
             id="filterToggle">
@@ -202,7 +202,7 @@
     {% endif %}
 
     <!-- Filter Panel (hidden on pages where filtering doesn't apply) -->
-    {% if request.endpoint not in ['history_page'] %}
+    {% if request.endpoint not in ['history.history_page'] %}
     <div class="filter-panel" id="filterPanel">
         <div class="filter-panel-header">
             <h3>Filter Employees</h3>
