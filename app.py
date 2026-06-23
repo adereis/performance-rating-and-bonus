@@ -5,6 +5,7 @@ import logging
 import json
 import csv
 import io
+import tempfile
 from datetime import datetime
 from collections import defaultdict
 import re
@@ -2529,7 +2530,10 @@ def analyze_import():
     temp_dir = os.path.expanduser('~/tmp')
     os.makedirs(temp_dir, exist_ok=True)
 
-    temp_path = os.path.join(temp_dir, f'import_analyze_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
+    # Unique, unpredictable name avoids collisions between concurrent uploads
+    # and symlink/TOCTOU races from a guessable path.
+    fd, temp_path = tempfile.mkstemp(dir=temp_dir, prefix='import_analyze_', suffix='.xlsx')
+    os.close(fd)  # only the path is needed; file.save reopens it
     try:
         file.save(temp_path)
 
@@ -2601,7 +2605,8 @@ def import_current():
     temp_dir = os.path.expanduser('~/tmp')
     os.makedirs(temp_dir, exist_ok=True)
 
-    temp_path = os.path.join(temp_dir, f'import_current_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
+    fd, temp_path = tempfile.mkstemp(dir=temp_dir, prefix='import_current_', suffix='.xlsx')
+    os.close(fd)  # only the path is needed; file.save reopens it
     try:
         file.save(temp_path)
 
@@ -3327,7 +3332,8 @@ def import_historical():
     temp_dir = os.path.expanduser('~/tmp')
     os.makedirs(temp_dir, exist_ok=True)
 
-    temp_path = os.path.join(temp_dir, f'import_historical_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
+    fd, temp_path = tempfile.mkstemp(dir=temp_dir, prefix='import_historical_', suffix='.xlsx')
+    os.close(fd)  # only the path is needed; file.save reopens it
     try:
         file.save(temp_path)
 
