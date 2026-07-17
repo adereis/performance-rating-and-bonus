@@ -148,4 +148,5 @@ open_browser &
 
 # Run the application
 export FLASK_PORT="$PORT"
+export FLASK_ENV="${FLASK_ENV:-development}"
 $PYTHON app.py
