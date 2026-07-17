@@ -1037,6 +1037,9 @@ function saveCalibration(associateId, card, useKeepalive = false) {
                 updateFutureTalentDisplay(card, result.data.talent_identified_future);
             }
 
+            // Update per-section completion badges
+            updateSectionStatuses(card, data, result);
+
             // Check if fully calibrated (What + How + Actions + Tenets)
             const isCalibrated = isCardCalibrated(card, data);
             if (isCalibrated) {
@@ -1072,6 +1075,59 @@ function updateFutureTalentDisplay(card, value) {
     const display = card.querySelector('.future-talent-display');
     display.textContent = value ? 'Yes' : 'No';
     display.classList.toggle('future-talent', value);
+}
+
+function updateSectionStatuses(card, data, result) {
+    // Performance Assessment
+    const perfSection = card.querySelector('.calibration-section[data-section="performance"]');
+    if (perfSection) {
+        const badge = perfSection.querySelector('.section-status');
+        const complete = data.talent_perf_what && data.talent_perf_how;
+        badge.classList.toggle('complete', !!complete);
+        badge.classList.toggle('incomplete', !complete);
+        badge.textContent = complete
+            ? (result.data.talent_overall_perf || 'Complete')
+            : 'Incomplete';
+    }
+
+    // Future Talent Assessment
+    const futureSection = card.querySelector('.calibration-section[data-section="future-talent"]');
+    if (futureSection) {
+        const badge = futureSection.querySelector('.section-status');
+        const complete = data.talent_growth_agility && data.talent_change_agility;
+        badge.classList.toggle('complete', !!complete);
+        badge.classList.toggle('incomplete', !complete);
+        if (result.data.talent_identified_future) {
+            badge.textContent = 'Future Talent';
+        } else if (complete) {
+            badge.textContent = 'No';
+        } else {
+            badge.textContent = 'Incomplete';
+        }
+    }
+
+    // Movement & Career
+    const movementSection = card.querySelector('.calibration-section[data-section="movement"]');
+    if (movementSection) {
+        const badge = movementSection.querySelector('.section-status');
+        const complete = data.talent_movement_readiness &&
+                         data.talent_proposed_actions && data.talent_proposed_actions.trim();
+        badge.classList.toggle('complete', !!complete);
+        badge.classList.toggle('incomplete', !complete);
+        badge.textContent = complete ? 'Complete' : 'Incomplete';
+    }
+
+    // Tenets
+    const tenetsSection = card.querySelector('.calibration-section[data-section="tenets"]');
+    if (tenetsSection) {
+        const badge = tenetsSection.querySelector('.section-status');
+        const sCount = data.talent_tenets_strengths?.length || 0;
+        const iCount = data.talent_tenets_improvements?.length || 0;
+        const complete = sCount === 3 && iCount >= 2 && iCount <= 3;
+        badge.classList.toggle('complete', complete);
+        badge.classList.toggle('incomplete', !complete);
+        badge.textContent = complete ? 'Selected' : 'Select 3 + 2-3';
+    }
 }
 
 function updateProgressBar() {
