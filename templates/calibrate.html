@@ -713,7 +713,6 @@
     }
 
     .tenet-description {
-        display: none;
         position: absolute;
         left: 0;
         top: 100%;
@@ -727,6 +726,8 @@
         z-index: 1000;
         width: 280px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        opacity: 0;
+        visibility: hidden;
     }
 
     .tenet-description::before {
@@ -739,7 +740,9 @@
     }
 
     .tenet-label:hover .tenet-description {
-        display: block;
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0s linear 0.5s, visibility 0s linear 0.5s;
     }
 
     .loading-tenets {
