@@ -138,7 +138,9 @@ def migrate_add_new_columns(engine):
         ('employees', 'bonus_override_percent_original', 'REAL'),
         ('employees', 'special_case_notes', 'TEXT'),
         # Cycle membership
-        ('employees', 'in_current_bonus_cycle', 'BOOLEAN DEFAULT 0'),
+        # NULL identifies legacy rows that still need membership backfill.
+        # Explicit False is reserved for employees excluded by an import.
+        ('employees', 'in_current_bonus_cycle', 'BOOLEAN'),
     ]
 
     with engine.connect() as conn:
@@ -206,9 +208,9 @@ def migrate_backfill_bonus_cycle_flag(engine):
     """
     Backfill in_current_bonus_cycle for existing databases.
 
-    Employees with bonus_target_local_currency are assumed to be part of
-    the current bonus cycle. This runs once — subsequent imports set the
-    flag explicitly.
+    Only legacy rows with NULL membership are inferred from bonus targets.
+    Imports set True/False explicitly, and their decisions must survive
+    every subsequent startup even when excluded employees retain targets.
     """
     inspector = inspect(engine)
     if 'employees' not in inspector.get_table_names():
@@ -221,9 +223,11 @@ def migrate_backfill_bonus_cycle_flag(engine):
     with engine.connect() as conn:
         result = conn.execute(text("""
             UPDATE employees
-            SET in_current_bonus_cycle = 1
-            WHERE bonus_target_local_currency IS NOT NULL
-              AND (in_current_bonus_cycle IS NULL OR in_current_bonus_cycle = 0)
+            SET in_current_bonus_cycle = (
+                bonus_target_local_currency IS NOT NULL
+                OR bonus_target_manager_currency IS NOT NULL
+            )
+            WHERE in_current_bonus_cycle IS NULL
         """))
         if result.rowcount > 0:
             print(f"Backfilled in_current_bonus_cycle for {result.rowcount} employees")

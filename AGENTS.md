@@ -105,6 +105,12 @@ Manager name parsed from: `"Supervisory Organization (Manager Name)"` or `"Direc
 
 **Overwritten on re-import** (from Workday): salary, bonus targets, org structure, management_level, country, tenure fields
 
+**Bonus cycle membership**: Current bonus imports explicitly set
+`in_current_bonus_cycle` to True/False while retaining excluded employees and
+their old targets. Startup must preserve these decisions. The legacy column
+migration leaves membership NULL until backfill infers it from either target
+currency; backfill only updates NULL values, never an explicit False.
+
 **Notes Field Format** (canonical bracketed format for Workday round-tripping):
 - `[Performance Rating: X%]`
 - `[Override: X%, reason]` (special cases like pro-rata leave)
