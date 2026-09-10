@@ -87,7 +87,7 @@ Instructions for AI agents and human developers working on this codebase.
 - **Fallback logic**: `bonus_target_manager_currency OR bonus_target_local_currency`
   - Domestic employees (same currency as manager): converted column is NULL → uses local column
   - International employees: converted column has value → uses it directly
-- `CURRENCY_FORMATS` dict in app.py handles symbol/position per currency
+- `CURRENCY_FORMATS` in `services/employee_utils.py` handles symbol/position per currency
 
 ### Workday Import
 
@@ -137,7 +137,7 @@ Parser: `notes_parser.py` — `parse_notes_field()` extracts, `format_notes_fiel
 - `derive_future_talent(growth, change)` → True if both contain "Always"
 - `get_cross_cycle_alignment(bonus_pct, talent_overall)` → "aligned" | "review" | "incomplete"
 
-**Manager detection**: Uses `management_level` field (e.g., "Manager", "Director") in addition to supervisory org lookup. See `has_direct_reports()` in app.py.
+**Manager detection**: Uses `management_level` field (e.g., "Manager", "Director") in addition to supervisory org lookup. See `has_direct_reports()` in `services/employee_utils.py`.
 
 **Tenets integration**: Tenets and mentor/mentees embedded in "Proposed Talent Actions" on export using bracket markers (`[Strengths: ...]`, `[Mentor: ...]`, `[Mentees: ...]`), parsed back on import via `parse_proposed_actions_metadata()`.
 
@@ -197,7 +197,7 @@ Compares calculated bonus allocation against `last_bonus_allocation_percent` fro
 
 **CSV ZIP files**: Same structure but `README.md` file instead of `_README` sheet
 
-**Implementation**: `build_context_markdown(tenets_config, demo_mode)` in app.py generates the markdown content. Tenet definitions are grouped by category inline (not a separate sheet).
+**Implementation**: `build_context_markdown(tenets_config, demo_mode)` in `services/export.py` generates the markdown content. Tenet definitions are grouped by category inline (not a separate sheet).
 
 ### Export Sync Detection (Bonus Export Page)
 
@@ -213,7 +213,7 @@ Any of 7 tracked fields differ from their `_original` value imported from Workda
 - `tenets_improvements` vs `tenets_improvements_original`
 - `bonus_override_percent` vs `bonus_override_percent_original`
 
-Two comparison functions in `export_page()` (app.py):
+Two comparison functions in `export_page()` (`blueprints/export.py`):
 - `is_field_modified()`: Conservative — returns False if `_original` is None (used for justification)
 - `needs_sync_to_workday()`: Aggressive — returns True if content exists but `_original` is None (used for tool-generated fields like tenets, mentor)
 
@@ -250,6 +250,9 @@ Compares `int(calculated_bonus_percent) != round(proposed_percent_of_target_bonu
 
 **Tests**: `python3 -m pytest tests/ -v` — use fixtures from `conftest.py` (never touch production db).
 
+**Architecture review**: `docs/ARCHITECTURE_REVIEW.md` records the September 2026
+review, completed fixes, and remaining lifecycle, rendering, and pool edge cases.
+
 **Interactive / browser testing**: the pytest suite is blind to rendering, CSS, and
 client-side JS (where some of the worst historical bugs lived — the modal data-wipe,
 the tenets crash). After UI changes, follow `docs/INTERACTIVE_TESTING.md` to drive the
@@ -271,7 +274,8 @@ that blueprint, e.g. `@rate_bp.route(...)`), follow the try/except pattern, keep
 in `services/`, and add a test to `test_api.py`. `url_for`/`request.endpoint` use the
 namespaced name (`<blueprint>.<func>`).
 
-**New database field**: Update `models.py`, add to `_migrate_add_new_columns()`, update `convert_xlsx.py` if from Workday.
+**New database field**: Update `models.py`, add to `migrate_add_new_columns()` in
+`migrations.py`, and update the relevant parser in `xlsx_utils.py` if from Workday.
 
 **Bonus algorithm changes**: Update `docs/BONUS_CALCULATION_README.md`, verify pool normalization in tests
 

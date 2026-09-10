@@ -1,158 +1,57 @@
-# Test Suite for Performance Rating System
+# Test suite
 
-This directory contains comprehensive unit tests for the performance rating system.
+Run the suite from the repository root using the project Python environment.
+Keep temporary databases under the project's required temporary directory:
 
-## Test Coverage
-
-The test suite includes **42 tests** organized into 3 test modules:
-
-### 1. `test_models.py` - Employee Model Tests (14 tests)
-Tests for SQLAlchemy Employee model and database operations:
-
-- **CRUD Operations**: Create, Read, Update, Delete employee records
-- **Query Operations**: Query by name, grade, filter rated/unrated employees
-- **Data Conversion**: to_dict() method for JSON serialization
-- **Data Integrity**: Nullable fields, float precision, timestamps
-- **Ordering**: Sort employees by performance rating
-
-### 2. `test_api.py` - Flask API Tests (22 tests)
-Tests for Flask routes and API endpoints:
-
-#### API Endpoints:
-- **Rating API** (`/api/rate`):
-  - Successfully rating an employee
-  - Updating existing ratings
-  - Validation (missing name, not found, invalid values)
-  - Boundary testing (0, 200)
-  - Decimal ratings
-  - Empty rating (un-rating)
-  - Manager input fields
-
-#### Web Routes:
-- Dashboard (`/`) - statistics display
-- Rating page (`/rate`)
-- Analytics dashboard (`/analytics`) - distribution, averages
-- Export endpoint (`/export`) - CSV generation
-
-#### Validation Tests:
-- Rating must be between 0-200
-- Negative values rejected
-- Values > 200 rejected
-- Invalid format (non-numeric) rejected
-- Empty values allowed (un-rating)
-
-### 3. `test_import.py` - Excel Import Tests (6 tests)
-Tests for Workday Excel import functionality:
-
-- **Import Operations**: Valid Excel file import
-- **Update Logic**: Re-import updates Workday fields
-- **Data Preservation**: Manager inputs preserved on re-import
-- **Edge Cases**: Empty cells, missing values
-- **Initialization**: New employees get empty manager fields
-- **Error Handling**: Nonexistent file
-
-## Running Tests
-
-### Run All Tests
 ```bash
-python -m pytest tests/ -v
+mkdir -p ~/tmp
+TMPDIR="$HOME/tmp" python3 -m pytest tests/ -v
 ```
 
-### Run Specific Test Module
+Run a focused area while iterating:
+
 ```bash
-python -m pytest tests/test_models.py -v
-python -m pytest tests/test_api.py -v
-python -m pytest tests/test_import.py -v
+TMPDIR="$HOME/tmp" python3 -m pytest tests/test_migrations.py -q
+TMPDIR="$HOME/tmp" python3 -m pytest tests/test_import_api.py tests/test_workday_format.py -q
+TMPDIR="$HOME/tmp" python3 -m pytest tests/test_api.py -q -k TestNumericInputValidation
 ```
 
-### Run Specific Test Class
-```bash
-python -m pytest tests/test_models.py::TestEmployeeModel -v
-python -m pytest tests/test_api.py::TestAPIEndpoints -v
-```
+## Shared fixtures and isolation
 
-### Run Specific Test
-```bash
-python -m pytest tests/test_models.py::TestEmployeeModel::test_create_employee -v
-```
+Use [conftest.py](conftest.py) for database and Flask tests. It sets `TESTING=true`
+before importing the application, preventing production database initialization.
+The real `models.get_db()` also rejects unpatched access in testing mode.
 
-### Run with Coverage Report
-```bash
-pip install pytest-cov
-python -m pytest tests/ --cov=. --cov-report=html
-```
+- `test_db` creates and disposes an isolated SQLite database per test.
+- `db_session` provides a session against that database.
+- `app` and `client` patch database access and render with Jinja
+  `StrictUndefined`, catching missing template context.
+- `populated_db` and `populated_db_with_tenets` supply fictitious employees.
+- `sample_tenets` supplies the sample tenets without writing `tenets.json`.
+- `talent_xlsx_file` supplies a generated talent workbook.
 
-## Test Fixtures
+Test employees default to current bonus-cycle membership; explicitly pass
+`in_current_bonus_cycle=False` when testing exclusions. For legacy nullable
+columns, use SQL where necessary to bypass SQLAlchemy insertion defaults.
+Never point tests at `ratings.db` or use real employee exports.
 
-The test suite uses pytest fixtures defined in `conftest.py`:
+## Coverage areas
 
-- **`test_db`**: Temporary SQLite database for each test
-- **`db_session`**: Database session for a test
-- **`sample_employee_data`**: Single employee data
-- **`sample_employees`**: Multiple employees with varied ratings
-- **`app`**: Flask app configured for testing
-- **`client`**: Flask test client for HTTP requests
-- **`populated_db`**: Database pre-populated with sample employees
+| Modules | Responsibility |
+| --- | --- |
+| `test_models.py`, `test_migrations.py` | Persistence, schema upgrades, startup data preservation |
+| `test_api.py`, `test_employee_modal.py` | API validation, partial updates, server-rendered pages |
+| `test_import_api.py`, `test_workday_format.py`, `test_notes_parser.py` | Workbook formats, currency, imports, round-tripping |
+| `test_export_sync.py`, `test_export_snapshot.py`, `test_archive.py` | Export modification tracking, snapshots, history |
+| Talent, tenet, mentorship, filter, and multi-org modules | Domain rules and reporting |
+| `test_demo_mode.py` | Session IDs, cookies, database lifecycle helpers |
+| `test_scripts.py` | Sample generation and command-line tools |
 
-## Test Database
+Use pytest collection output for the current test count. Python dependencies
+are specified in [requirements.txt](../requirements.txt).
 
-Tests use isolated temporary SQLite databases:
-- Each test gets a fresh database
-- No interference between tests
-- Automatic cleanup after each test
-- No impact on production `ratings.db`
-
-## Test Results
-
-All 42 tests currently pass:
-
-```
-============================= test session starts ==============================
-collected 42 items
-
-tests/test_api.py::TestAPIEndpoints::test_index_route PASSED             [  2%]
-tests/test_api.py::TestAPIEndpoints::test_rate_page_route PASSED         [  4%]
-...
-tests/test_models.py::TestEmployeeModel::test_order_by_rating PASSED     [100%]
-
-=============================== 42 passed =========================
-```
-
-## Key Test Scenarios
-
-### Performance Rating Validation
-- ✅ Valid range: 0-200
-- ✅ Boundary values: 0, 200
-- ✅ Decimal values: 123.5
-- ✅ Empty values (un-rating)
-- ❌ Negative values: -10
-- ❌ Too high: 250
-- ❌ Invalid format: "abc"
-
-### Data Preservation
-- ✅ Manager inputs preserved on Workday re-import
-- ✅ Workday fields updated on re-import
-- ✅ Ratings, justifications, mentor/mentee data maintained
-
-### Edge Cases
-- ✅ Empty database operations
-- ✅ Null/empty Excel cells
-- ✅ Missing employee lookup
-- ✅ Float precision maintained
-
-## Dependencies
-
-Required packages (in `requirements.txt`):
-```
-pytest==7.4.3
-pytest-flask==1.3.0
-```
-
-## Future Test Additions
-
-Potential areas for additional test coverage:
-- Integration tests for full workflow (import → rate → export)
-- Performance tests with large datasets (1000+ employees)
-- Concurrent access tests
-- JavaScript client-side validation tests
-- Template rendering tests
+Pytest does not execute browser JavaScript or establish safety across multiple
+server processes. After UI changes, follow
+[INTERACTIVE_TESTING.md](../docs/INTERACTIVE_TESTING.md). Known gaps and remaining
+architecture findings are recorded in
+[ARCHITECTURE_REVIEW.md](../docs/ARCHITECTURE_REVIEW.md).
