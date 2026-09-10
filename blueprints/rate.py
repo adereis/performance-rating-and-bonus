@@ -6,6 +6,7 @@ resolved via the models module and load_tenets_config via the db_helpers
 module so test fixtures patching them are honored.
 """
 import json
+import math
 from datetime import datetime
 
 from flask import Blueprint, render_template, request, jsonify
@@ -129,6 +130,8 @@ def rate_employee():
         return jsonify({'error': 'Cannot save ratings until bonus data is imported'}), 400
 
     data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
     associate_id = data.get('associate_id')
 
     if not associate_id:
@@ -141,9 +144,11 @@ def rate_employee():
         if rating_value is not None and rating_value != '':
             try:
                 rating_percent = float(rating_value)
+                if isinstance(rating_value, bool) or not math.isfinite(rating_percent):
+                    return jsonify({'error': 'Invalid rating value'}), 400
                 if rating_percent < 0 or rating_percent > 200:
                     return jsonify({'error': 'Rating must be between 0 and 200'}), 400
-            except ValueError:
+            except (ValueError, TypeError, OverflowError):
                 return jsonify({'error': 'Invalid rating value'}), 400
 
     # Get optional fields (only if provided in request)
@@ -206,10 +211,12 @@ def rate_employee():
             if override_value is not None and override_value != '':
                 try:
                     override_pct = float(override_value)
+                    if isinstance(override_value, bool) or not math.isfinite(override_pct):
+                        return jsonify({'error': 'Invalid bonus override value'}), 400
                     if override_pct < 0 or override_pct > 200:
                         return jsonify({'error': 'Bonus override must be between 0 and 200'}), 400
                     employee.bonus_override_percent = override_pct
-                except ValueError:
+                except (ValueError, TypeError, OverflowError):
                     return jsonify({'error': 'Invalid bonus override value'}), 400
             else:
                 # Clear override if empty/null
@@ -253,15 +260,24 @@ def bonus_settings_api():
 
     elif request.method == 'POST':
         data = request.get_json()
+        if not isinstance(data, dict):
+            return jsonify({'error': 'Request body must be a JSON object'}), 400
         budget_override = data.get('budget_override')
 
         if budget_override is None:
             return jsonify({'error': 'Missing budget_override'}), 400
+        if isinstance(budget_override, bool):
+            return jsonify({'error': 'Invalid budget_override value'}), 400
 
         try:
             budget_override = float(budget_override)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, OverflowError):
             return jsonify({'error': 'Invalid budget_override value'}), 400
+
+        if not math.isfinite(budget_override) or budget_override < 0:
+            return jsonify({
+                'error': 'Budget override must be a finite nonnegative number'
+            }), 400
 
         try:
             update_bonus_settings(budget_override)

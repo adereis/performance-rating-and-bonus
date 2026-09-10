@@ -3,7 +3,72 @@ Tests for Flask API endpoints.
 """
 import pytest
 import json
-from models import Employee
+from models import BonusSettings, Employee
+
+
+class TestNumericInputValidation:
+    """Invalid numeric inputs must never change persisted manager decisions."""
+
+    @pytest.mark.parametrize('field', ['rating_percent', 'bonus_override_percent'])
+    @pytest.mark.parametrize('value', [
+        'NaN', 'Infinity', '-Infinity', '1e309', [], {}, True, False,
+    ])
+    def test_invalid_percentage_preserves_employee(
+        self, client, populated_db, field, value,
+    ):
+        employee = populated_db.query(Employee).filter_by(associate_id='EMP001').one()
+        employee.bonus_override_percent = 50
+        populated_db.commit()
+        original_justification = employee.justification
+
+        response = client.post('/api/rate', json={
+            'associate_id': employee.associate_id,
+            field: value,
+            'justification': 'This change must not be committed',
+        })
+
+        assert response.status_code == 400
+        assert response.get_json()['error']
+        populated_db.refresh(employee)
+        assert employee.performance_rating_percent == 120
+        assert employee.bonus_override_percent == 50
+        assert employee.justification == original_justification
+
+    @pytest.mark.parametrize('value', [
+        'NaN', 'Infinity', '-Infinity', '1e309', [], {}, True, False, -1,
+    ])
+    def test_invalid_budget_preserves_settings(self, client, db_session, value):
+        settings = BonusSettings(budget_override=1500)
+        db_session.add(settings)
+        db_session.commit()
+
+        response = client.post('/api/bonus-settings', json={'budget_override': value})
+
+        assert response.status_code == 400
+        assert response.get_json()['error']
+        db_session.refresh(settings)
+        assert settings.budget_override == 1500
+
+    @pytest.mark.parametrize('endpoint', ['/api/rate', '/api/bonus-settings'])
+    @pytest.mark.parametrize('payload', [None, [], 'invalid', 0])
+    def test_numeric_endpoints_require_json_object(
+        self, client, populated_db, endpoint, payload,
+    ):
+        response = client.post(
+            endpoint, data=json.dumps(payload), content_type='application/json',
+        )
+
+        assert response.status_code == 400
+        assert response.get_json()['error']
+
+    @pytest.mark.parametrize('value,expected', [(0, 0), ('1500.5', 1500.5)])
+    def test_finite_nonnegative_budget_is_saved(
+        self, client, db_session, value, expected,
+    ):
+        response = client.post('/api/bonus-settings', json={'budget_override': value})
+
+        assert response.status_code == 200
+        assert db_session.query(BonusSettings).one().budget_override == expected
 
 
 class TestAPIEndpoints:

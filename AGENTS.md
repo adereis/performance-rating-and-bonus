@@ -67,6 +67,11 @@ Instructions for AI agents and human developers working on this codebase.
 - **90-110%** = solid performer range (most employees)
 - **130%+** = exceptional (rare)
 - Scale: 0-200% (enforced by validation)
+- Rating and bonus override APIs accept finite numeric values or numeric
+  strings within 0-200; null/empty percentages clear the field. Budget
+  overrides must be finite and nonnegative (zero restores the Workday pool).
+  JSON booleans, arrays, objects, NaN, and infinities are rejected with 400
+  without changing persisted inputs.
 
 ### Bonus Calculation
 - **Split curve**: Upside exponent 1.35 (≥100%), downside exponent 1.9 (<100%)
