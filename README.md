@@ -302,7 +302,7 @@ Tests cover database operations, rating validation, bonus calculations, multi-or
 - **No cloud**: SQLite database, no external dependencies
 - **No telemetry**: No data sent to external services
 - **Git-safe**: `.gitignore` excludes sensitive files:
-  - `ratings.db` (your data)
+  - `ratings.db` and its SQLite journal/WAL files (your data)
   - `real-*.xlsx` (Workday exports)
 
 ## Troubleshooting
