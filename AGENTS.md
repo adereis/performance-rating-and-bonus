@@ -283,6 +283,10 @@ namespaced name (`<blueprint>.<func>`).
 
 **Demo mode** (`DEMO_MODE=true`): Session-isolated databases, template dbs generated at Docker build time, no imports allowed.
 
+Demo session cookies must be canonical UUIDs. When a missing or invalid cookie
+causes `get_session_id()` to mint a replacement, the response must persist that
+same request-cached ID so the next request reaches the same session database.
+
 **Chart.js 4.x segment callbacks**: Use `segCtx.p0DataIndex` (flat), not `segCtx.p0.dataIndex` (undefined).
 
 ---

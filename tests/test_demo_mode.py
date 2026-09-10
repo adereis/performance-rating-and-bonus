@@ -449,10 +449,11 @@ class TestDemoResponseWrapper:
             assert demo_mode.SESSION_COOKIE_NAME in cookie_header
 
     def test_does_not_overwrite_existing_cookie(self, app):
-        """Should not set cookie when already present in request."""
+        """Should not replace a valid session cookie already in the request."""
+        valid_id = '11111111-2222-4333-8444-555555555555'
         with app.test_request_context(
             '/',
-            headers={'Cookie': f'{demo_mode.SESSION_COOKIE_NAME}=existing-id'}
+            headers={'Cookie': f'{demo_mode.SESSION_COOKIE_NAME}={valid_id}'}
         ):
             from flask import make_response
             response = make_response('test')
@@ -462,6 +463,30 @@ class TestDemoResponseWrapper:
             # Should not have Set-Cookie header
             cookie_header = wrapped.headers.get('Set-Cookie', '')
             assert demo_mode.SESSION_COOKIE_NAME not in cookie_header
+
+    @pytest.mark.parametrize('invalid_cookie', ['outdated-session', ''])
+    def test_rejected_cookie_is_replaced_and_reused(self, app, monkeypatch, invalid_cookie):
+        """A rejected cookie must not create a different session on every request."""
+        import app as app_module
+
+        monkeypatch.setattr(app_module, 'DEMO_MODE', True)
+        client = app.test_client()
+        client.set_cookie(demo_mode.SESSION_COOKIE_NAME, invalid_cookie)
+
+        response = client.get('/health')
+
+        assert response.status_code == 200
+        cookie = client.get_cookie(demo_mode.SESSION_COOKIE_NAME)
+        assert demo_mode._is_valid_session_id(cookie.value)
+        assert cookie.http_only
+        assert cookie.same_site == 'Lax'
+        session_id = cookie.value
+
+        response = client.get('/health')
+
+        assert response.status_code == 200
+        assert client.get_cookie(demo_mode.SESSION_COOKIE_NAME).value == session_id
+        assert 'Set-Cookie' not in response.headers
 
 
 class TestClearAllSessions:

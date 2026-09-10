@@ -469,8 +469,9 @@ def demo_response_wrapper(response):
     """Add session cookie to response if needed."""
     session_id = get_session_id()
 
-    # Only set cookie if it wasn't already in the request
-    if SESSION_COOKIE_NAME not in request.cookies:
+    # Persist replacement IDs too: a rejected cookie would otherwise mint a
+    # different session on every request and strand the visitor's demo data.
+    if request.cookies.get(SESSION_COOKIE_NAME) != session_id:
         response.set_cookie(
             SESSION_COOKIE_NAME,
             session_id,
