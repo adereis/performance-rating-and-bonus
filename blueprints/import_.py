@@ -197,8 +197,9 @@ def import_current():
         spreadsheet_type = analysis.get('spreadsheet_type', 'bonus')
         workday_pool = None
         manager_currency = None
-        if analysis.get('metadata'):
+        if spreadsheet_type == 'bonus' and analysis.get('metadata'):
             workday_pool = analysis['metadata'].get('total_pool')
+            manager_currency = analysis['metadata'].get('currency')
 
         # Parse the file using appropriate parser based on type
         parsed_metadata = {}  # Initialize for talent files (which don't return metadata)

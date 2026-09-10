@@ -76,6 +76,9 @@ Instructions for AI agents and human developers working on this codebase.
 
 ### Currency Handling
 - All calculations use **manager's currency** (auto-detected from XLSX headers like "(AUD)")
+- Bonus imports persist the analyzed reporting currency in
+  `BonusSettings.manager_currency`, including when every employee is abroad.
+  Talent imports leave bonus currency and pool settings unchanged.
 - **Fallback logic**: `bonus_target_manager_currency OR bonus_target_local_currency`
   - Domestic employees (same currency as manager): converted column is NULL → uses local column
   - International employees: converted column has value → uses it directly

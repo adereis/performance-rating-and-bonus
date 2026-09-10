@@ -5,8 +5,8 @@ import pytest
 import os
 import io
 import tempfile
-from openpyxl import Workbook
-from models import Employee, Period, RatingSnapshot
+from openpyxl import Workbook, load_workbook
+from models import BonusSettings, Employee, Period, RatingSnapshot
 
 
 def create_test_xlsx(employees_data, include_headers=True, manager_currency='USD',
@@ -847,6 +847,45 @@ class TestXlsxUtils:
             assert metadata.get('currency') == 'USD'
         finally:
             os.remove(temp_path)
+
+
+@pytest.mark.parametrize('prior_currency', [None, 'EUR'])
+@pytest.mark.parametrize('currency_in_budget', [True, False])
+def test_import_persists_reporting_currency(
+    client, db_session, prior_currency, currency_in_budget,
+):
+    """All-international teams must use the workbook's reporting currency."""
+    from services.db_helpers import get_manager_currency
+
+    if prior_currency:
+        db_session.add(BonusSettings(manager_currency=prior_currency))
+        db_session.commit()
+
+    workbook = create_test_xlsx([{
+        'associate_id': 'CURRENCY001',
+        'associate': 'Fictional International Participant',
+        'currency': 'NZD',
+        'bonus_target_local_currency': 1200,
+        'bonus_target_manager_currency': 1000,
+    }], manager_currency='AUD')
+    if not currency_in_budget:
+        # Exercise analysis fallback to converted column headers.
+        wb = load_workbook(workbook)
+        wb.active.cell(row=4, column=7).value = None
+        workbook = io.BytesIO()
+        wb.save(workbook)
+        wb.close()
+        workbook.seek(0)
+
+    response = client.post('/api/import/current', data={
+        'file': (workbook, 'fictional-currency.xlsx'),
+    })
+
+    assert response.status_code == 200
+    db_session.expire_all()
+    assert db_session.query(BonusSettings).one().manager_currency == 'AUD'
+    with client.application.test_request_context('/'):
+        assert get_manager_currency() == ('AUD', 'A$')
 
 
 class TestInternationalManagerCurrency:
